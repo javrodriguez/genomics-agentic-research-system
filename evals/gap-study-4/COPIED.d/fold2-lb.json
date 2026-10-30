@@ -1,0 +1,46 @@
+{
+  "lane": "fold2-lb",
+  "files": [
+    {
+      "path": "COPIED.d/fold2-lb.json",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's fold of pre-freeze review 2, FOLD-PLAN-prefreeze-2.md sections 1-3, lane L-B, under Javier's standing delegation; option A+'s code built before his recorded answer to T199, merged only on it): the freeze and witness gates. Edits without transfer, recorded here only so the owners' fragments stay untouched. freeze.py (pf1-l1-freeze-gates): MAJOR 3, read_ruling with RULING and AMBIGUOUS, the one reader of a review's ruling (exactly one anchored line), read by review_file_problems; m2, rehearsal_required_steps and rehearsal_step_problems, read by rehearsal_evidence; m3, order_function_sources, take_order_function_sha256 and order_function_problem, read by main and check_legs (leg \"take-order function\"); option A+, beacon_history, supersession_swaps, owner_decisions and take_order_witness's superseded entries. review_kit/commit_review.py (review-kit-port): MAJOR 3, imports freeze.read_ruling, no longer refuses a report for its ruling, records the ruling read (ambiguous included) in the commit message. order_beacon.py (pf1-l1-freeze-gates): option A+ (SUPERSEDED_ROUNDS, SWAP_LEAD_S, OWNER_DECISIONS, FIRST_SWAP, superseded_value, superseded_problems, published_text, swap_phrase_problem, decision_problem, history_problem's superseded rounds, registration's and registered_round's superseded, push_witness_problem's lead) and m1 (PUSH_RULE in SEED_RULE, residual and REGISTRATION_ORDER); REGISTERED_ROUND is unchanged. freeze_rehearsal.py (w8b-holdout-digests): m2, runtime_commands, the runtime steps named once for the rehearsal and the check. check_results.py (w9-cp6): m2, rehearsal_record_problems reads every step; MAJOR 2, take_ledger_witness, witness_main and --witness. lint_language.py and lint_pooling.py (pf1-l2b-labelling-stats, w1a-cp1-scaffold): m5, NOT_RUN (3) for an absent round-4 section and --allow-absent. build_draft.py (w5c-draft-ci): m3, the draft's take_order_function_sha256 (order_function_sha256); the committed prereg-draft.json is not re-derived here (lane L-C's). tests/test_pipeline.py (w5b-cp5-pipeline): m2, full_rehearsal_steps, the two record fixtures name every step. tests/test_ci_job.py (w6c-w5c-nits): m5, SECTION and SECTION_LANGUAGE carry ABSENT_OK. tests/test_pf1_l2b.py (pf1-l2b-labelling-stats): m5, RV3SectionOf reads NOT_RUN. tests/test_pf1_freeze_gates.py (pf1-l1-freeze-gates): option A+, the history-unchecked witness on the new history line. tests/test_holdout_digests.py (w8b-holdout-digests): m3, its freeze rig stands in order_function_problem on its synthetic draft, as it does the coverage, beacon and witness gates. Outside the study: .github/workflows/ci.yml, the two round-4 section steps pass --allow-absent only while evals/gap-study-4/RESULT.md does not exist. glitch-45's items after Javier's T199 answer (OD160): check_results.py (w9-cp6), take_order_problems, ORDER_REFERENCE and ORDER_REFERENCE_ARGV, the seed and take_order recomputed at publication from the frozen beacon reading and rows in an isolated interpreter (-I -S), read by check_frozen_content; tests/test_cp6_wiring.py (w9-cp6) and tests/test_pipeline.py (w5b-cp5-pipeline): their synthetic frozen-file rigs stand in take_order_problems, as they stand in the other legs. glitch-45's review of bc207c0a (fold2-lb-REVIEW-orch.md), ruled: freeze.py (pf1-l1-freeze-gates), MJ-3, read_ruling also reads each line loosely (_loose, RULING_LIKE) and refuses a second ruling-like line; order_beacon.py (pf1-l1-freeze-gates), mn-3, decision_problem refuses a superseded, re-answered, withdrawn or expired row; check_results.py (w9-cp6), MJ-1 run_line_ledger_problems (no merge touching the ledger on the first-parent line, each state append-only), mn-1 and mn-2 take_order_problems runs order_reference.py, MJ-2 witness_main's --record, WITNESS_RECORD in RUNTIME_PATHS and witness_publication_problems in the publication check, mn-5 section_lint_problems; takes.py (w5b-cp5-pipeline), MJ-1, read_history reads git log --full-history; result.py (w5b-cp5-pipeline), MJ-2, render_witness and render(rec, witness=...), main refuses without a clean witness run at HEAD's ledger. tests/test_pipeline.py (w5b-cp5-pipeline): PublishedArtifacts stands in the push-witness gate on its synthetic publication, as it stands in the frozen file. glitch-45's re-check of 24fa9be6, R-1 to R-4: freeze.py (pf1-l1-freeze-gates), read_ruling ignores a canonical line in a fence or behind '>' and reads the report ambiguous; order_beacon.py (pf1-l1-freeze-gates), decision_problem refuses a same-ask row with no readable time; check_results.py (w9-cp6), witness_publication_problems reads the record from HEAD and recomputes its counts, take_order_problems passes HEAD's draft round."
+    },
+    {
+      "path": "lint_pooling.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/lint_pooling.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy; its entry removed from COPIED.d/w1a-cp1-scaffold.json). Pre-freeze review 2, m5 (lane fold2-lb): --section-of exits lint_language.NOT_RUN (3) when the page carries no round-4 section, and 0 only under --allow-absent (read only with --section-of); the words say \"Not a pass\" either way. Bound by tests/test_fold2_lb.py TestM5SectionAbsent."
+    },
+    {
+      "path": "checks.d/fold2-lb.txt",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's fold of pre-freeze review 2, FOLD-PLAN-prefreeze-2.md sections 1-3, lane L-B, under Javier's standing delegation; option A+'s code built before his recorded answer to T199, merged only on it): this lane's local checks for run_checks.py, the lane's test module and the changed test modules it does not own."
+    },
+    {
+      "path": "tests/test_fold2_lb.py",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's fold of pre-freeze review 2, FOLD-PLAN-prefreeze-2.md sections 1-3, lane L-B, under Javier's standing delegation; option A+'s code built before his recorded answer to T199, merged only on it): red-first tests. TestMajor3Ruling (the reviewer's quoted-literal report and a two-line report refused by the freeze; commit_review commits them unedited and records the ruling read; run_builders.py rehearse's latest_review on the same gate), TestM5SectionAbsent, TestM2RehearsalSteps (the reviewer's three-line record refused by the freeze and check_results), TestM3OrderFunction (mutating any helper the order function reaches moves the hash), TestMajor2TakeWitness (a pushed take history reset away and re-run is refused; the unwitnessed count printed), TestBeaconSupersession (option A+ and m1: history, entry shape, before_publication lead, decision binding including OD147, append-only entries, the swap commit, a mirror-branch registration, and the rule texts)."
+    },
+    {
+      "path": "owner_decisions.jsonl",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's item 2 after Javier's T199 answer): order_beacon.OWNER_DECISIONS, the study's committed copy of the decision rows a superseded take-order round's entry cites, read by freeze.owner_decisions. One row, OD160 (Javier's 'beacon-r4 aplus', target T199, created 2026-10-29T23:15:17Z), byte-identical to line 160 of OrgOS's decision.jsonl with its newline (sha256 295e85ece9cd78f727cda5b79263cc41dd3e838b62e4bdfb04855b299a050bc0 on both sides). Append-only; a row is copied, never edited. An outside reader takes it on the same trust as the machines (take_order_beacon.residual). Bound by tests/test_fold2_lb.py TestOD160."
+    },
+    {
+      "path": "review_kit/prefreeze-2.md",
+      "status": "new",
+      "reason": "Pre-freeze review 2's report, committed unedited by 0f634fc3 as its reviewer wrote it from the kit; a bound record, never edited. Claimed here by lane fold2-lb at glitch-45's request (29 Oct 2026, under Javier's standing delegation), as the L6a integration lane claimed review 1's; its bytes are not changed by this claim."
+    },
+    {
+      "path": "review_kit/prefreeze-2-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 2's blindness record (review_kit/blindness.py's output over the reviewer's own session file and its sub-agent session files), committed unedited by 0f634fc3; a bound record, never edited. Claimed here by lane fold2-lb at glitch-45's request (29 Oct 2026, under Javier's standing delegation), as the L6a integration lane claimed review 1's; its bytes are not changed by this claim."
+    },
+    {
+      "path": "order_reference.py",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's review of bc207c0a, mn-1 and mn-2, ruled): the take order recomputed from the frozen file alone, stdlib only (hashlib, json, sys), run as `python -I -S order_reference.py <prereg.json | ->` with its own verdict and exit code. It binds the beacon reading to the registered round, chain and round time, the randomness to the signature, the seed to SEED_RULE and the order to freeze.planned_order's permutation (both restated). check_results.take_order_problems runs it at publication. Bound by tests/test_fold2_lb.py TestOrchMN1MN2Recompute and TestTakeOrderRecompute."
+    }
+  ]
+}

@@ -223,17 +223,23 @@ def holdout_check_command(tool, clone, sha):
             "--holdout", str(Path(clone) / study.rel(HOLDOUT_FIXTURE)), "--gars", str(clone), "--sha", sha)
 
 
-def rehearsal_plan(pre, row_file):
-    """A full frozen row and the runtime commands; never another copy gate."""
-    first = copy.deepcopy(pre["take_order"][0])
-    import takes
-    takes.require_planned_row(first, pre)
-    return first, (
+def runtime_commands(row_file):
+    """The runtime steps a green frozen state runs, in order (pre-freeze review 2, m2: freeze.rehearsal_step_problems
+    requires each by name, with the row file as the report masks it, <scratch>/row.json)."""
+    return (
         ("takes.py", "--add", "--row", str(row_file), "--attempt", "1"),
         ("takes.py", "--session-id", "0"),
         ("run.py", "--all"), ("result.py", "--write"),
         ("check_results.py", "--ledger", "--rehearsal-plan"), ("completeness.py", "--check"),
     )
+
+
+def rehearsal_plan(pre, row_file):
+    """A full frozen row and the runtime commands; never another copy gate."""
+    first = copy.deepcopy(pre["take_order"][0])
+    import takes
+    takes.require_planned_row(first, pre)
+    return first, runtime_commands(row_file)
 
 
 # Lane gap-live-box (design section 7): the battery step's limit is run_checks' own for the battery, one source for

@@ -146,7 +146,12 @@ def main() -> int:
     ap.add_argument("--section-of", type=Path, metavar="FILE",
                     help="scan only this round's marked section of FILE (study.SUMMARY_START..SUMMARY_END), "
                          "the one public page the summary lands on; says so when the section does not exist yet")
+    ap.add_argument("--allow-absent", action="store_true",
+                    help=f"with --section-of: a page with no round-4 section exits 0, not {ll.NOT_RUN} (pre-freeze "
+                         f"review 2, m5; CI passes it only while the study has no RESULT.md)")
     args = ap.parse_args()
+    if args.allow_absent and args.section_of is None:
+        ap.error("--allow-absent is read only with --section-of")
 
     if args.section_of is not None:
         # REVIEW 4 (register row prefreeze 5), SHOULD 1. The guard scanned the study folder and the post-freeze
@@ -156,9 +161,11 @@ def main() -> int:
         import study
         text = args.section_of.read_text(errors="replace") if args.section_of.is_file() else ""
         if study.SUMMARY_START not in text or study.SUMMARY_END not in text:
+            # pre-freeze review 2, m5 (lane fold2-lb): not run, never 0, unless --allow-absent
             print(f"no section yet: {args.section_of} carries no {study.SUMMARY_START} block, so this scan has read "
-                  f"nothing and claims nothing. Not a pass.")
-            return 0
+                  f"nothing and claims nothing. Not a pass" + (" (--allow-absent: exit 0)." if args.allow_absent
+                                                               else f" (exit {ll.NOT_RUN}: not run)."))
+            return 0 if args.allow_absent else ll.NOT_RUN
         start = text.index(study.SUMMARY_START)
         end = text.index(study.SUMMARY_END, start)
         before = text[:start].count("\n")

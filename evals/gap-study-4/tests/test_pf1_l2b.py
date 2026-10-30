@@ -712,7 +712,7 @@ class RV3SectionOf(unittest.TestCase):
     def test_the_section_is_read_with_every_pattern(self):
         import study
         code, out = self.run_on("Earlier round: Opus outperforms.\n")
-        self.assertEqual(code, 0)
+        self.assertEqual(code, ll.NOT_RUN)            # pre-freeze review 2, m5 (lane fold2-lb): not run, never 0
         self.assertIn("no section yet", out)
         code, out = self.run_on(f"Opus beats Haiku.\n{study.SUMMARY_START}\nOpus outperforms Sonnet.\n"
                                 f"{study.SUMMARY_END}\n")

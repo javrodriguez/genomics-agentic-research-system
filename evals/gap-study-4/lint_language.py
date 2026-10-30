@@ -344,15 +344,23 @@ def commit_bodies(since: str, at: str = DEFAULT_AT) -> list[tuple[str, str]]:
     return bodies
 
 
-def section_main(page: Path) -> int:
+# Pre-freeze review 2, m5 (lane fold2-lb): a page with no round-4 section is NOT_RUN, never 0, unless the caller says
+# --allow-absent (CI, only while the study has no RESULT.md), so round-4 prose written outside the markers after
+# publication can never pass this lint by having no section. lint_pooling --section-of reads the same two values.
+NOT_RUN = 3
+
+
+def section_main(page: Path, allow_absent: bool = False) -> int:
     """Lane review 3 (pf1-l2b): the public page's round 4 section, read as lint_pooling --section-of reads it (only this
     round's marked block; the earlier rounds' sections are theirs), against every pattern here, the comparatives
-    included. An excusal names the page's repository path and the exact line, as everywhere."""
+    included. An excusal names the page's repository path and the exact line, as everywhere. No section: NOT_RUN, or 0
+    under allow_absent (m5); the words say "Not a pass" either way."""
     text = page.read_text(errors="replace") if page.is_file() else ""
     if study.SUMMARY_START not in text or study.SUMMARY_END not in text:
         print(f"no section yet: {page} carries no {study.SUMMARY_START} block, so this scan has read nothing and "
-              f"claims nothing. Not a pass.")
-        return 0
+              f"claims nothing. Not a pass" + (" (--allow-absent: exit 0)." if allow_absent else
+                                               f" (exit {NOT_RUN}: not run)."))
+        return 0 if allow_absent else NOT_RUN
     start = text.index(study.SUMMARY_START)
     end = text.index(study.SUMMARY_END, start)
     before = text[:start].count("\n")
@@ -387,10 +395,15 @@ def main() -> int:
     ap.add_argument("--section-of", type=Path, metavar="FILE",
                     help="scan only this round's marked section of FILE (study.SUMMARY_START..SUMMARY_END), as "
                          "lint_pooling --section-of does; says so when the section does not exist yet")
+    ap.add_argument("--allow-absent", action="store_true",
+                    help=f"with --section-of: a page with no round-4 section exits 0, not {NOT_RUN} (m5; CI passes it "
+                         f"only while the study has no RESULT.md)")
     args = ap.parse_args()
 
+    if args.allow_absent and args.section_of is None:
+        ap.error("--allow-absent is read only with --section-of")
     if args.section_of is not None:
-        return section_main(args.section_of)
+        return section_main(args.section_of, allow_absent=args.allow_absent)
 
     if args.list_patterns:
         for name, rx, why in PATTERNS:

@@ -11,6 +11,17 @@ Under w5b-4, runtime outputs have no copy fragment. Their commit history must
 start strictly after the freeze, including outputs later removed from the tree.
 Only the disposable rehearsal plan passes --rehearsal-plan: its exact placeholder
 is reported NOT CHECKED. Ordinary checks still require the real rehearsal record.
+
+--witness (pre-freeze review 2, MAJOR 2; lane fold2-lb) reads GitHub's push records
+of the mirror (freeze.push_records, the network, on the Mac at publication and at
+each batch fetch from athena). A pushed commit off HEAD's line that changes the take
+ledger (takes.json, outcomes.json, rulings.json) is refused: a take registered, run,
+reset away and re-run once its first history reached the mirror. Every take-ledger
+commit on HEAD's line that no push record holds is printed by sha and counted as
+unwitnessed; that count is published. Registrations are committed inside the drive
+loop on athena (drive.Driver.register), which holds no push credentials, so the
+window the witness cannot close is from a take's registration to the first push
+that holds it: a history reset inside that window leaves no outside record.
 """
 
 from __future__ import annotations
@@ -530,7 +541,9 @@ RUNTIME_PATHS = ("takes.json", "outcomes.json", "rulings.json", "records",
                  # labelling frame built from the takes (MAJOR 6) are run output too
                  "original-values.json", "labelling/frame.json",
                  # pre-freeze review 2, m8 (lane fold2-ld): the flagged list's verdict record is run output too
-                 "labelling/flagged-verdicts.json")
+                 "labelling/flagged-verdicts.json",
+                 # glitch-45's review of fold2/lb, MJ-2: each run of --witness --record, appended on the Mac
+                 "witness-record.json")
 
 
 def runtime_timing_problems() -> list[str]:
@@ -605,6 +618,188 @@ def frozen_commit_problems(frozen: dict, commit: str) -> list[str]:
     return out
 
 
+TAKE_LEDGER_FILES = ("takes.json", "outcomes.json", "rulings.json")
+
+
+def take_ledger_witness(pushes) -> tuple[list[str], list[str], list[str]]:
+    """MAJOR 2 of pre-freeze review 2: (problems, the take-ledger commits on HEAD's line, those no push holds).
+
+    `pushes` is [(unix time, pushed sha)] as freeze.push_records returns them. Every pushed sha must be in this clone;
+    no pushed commit off HEAD's line may change a take-ledger file (freeze.mirror_problem's shape, for the takes)."""
+    rels = [(HERE / f).relative_to(REPO).as_posix() for f in TAKE_LEDGER_FILES]
+    shas = sorted({s for _, s in pushes if s and set(s) != {"0"}})
+    missing = [s for s in shas if git("cat-file", "-e", f"{s}^{{commit}}")[0] != 0]
+    if missing:
+        return ([f"{len(missing)} sha(s) the mirror records are not in this clone ({missing[0][:12]} first): fetch "
+                 f"the mirror's history before the witness, which reads every pushed commit"], [], [])
+
+    def rev_list(*args):
+        code, out = git("rev-list", "--full-history", *args, "--", *rels)
+        if code != 0:
+            raise ValueError("the take ledger's history cannot be listed")
+        return out.split()
+
+    problems = []
+    if shas:
+        apart = rev_list(*shas, "--not", "HEAD")
+        if apart:
+            problems.append(f"the mirror holds {len(apart)} commit(s) off HEAD's line that change the take ledger "
+                            f"({apart[-1][:12]} first): an abandoned take history (a take registered or run, then "
+                            f"reset away and re-run) is refused")
+    ledger = rev_list("HEAD")
+    # the fold's review (M-1): an abandoned history merged back (`git merge -s ours`) is an ancestor of HEAD, so the
+    # check above passes it and takes.read_history's simplified log never reads it; the run line is one first-parent
+    # chain, so a ledger commit reached only through a merge's other parent is refused
+    code, out = git("rev-list", "--first-parent", "HEAD")
+    if code != 0:
+        raise ValueError("HEAD's first-parent line cannot be listed")
+    line = set(out.split())
+    side = [c for c in ledger if c not in line]
+    if side:
+        problems.append(f"{len(side)} commit(s) that change the take ledger reach HEAD only through a merge "
+                        f"({side[-1][:12]} first): a take history merged back from a side line is refused")
+    problems += run_line_ledger_problems(rels)
+    unwitnessed = rev_list("HEAD", "--not", *shas) if shas else list(ledger)
+    return problems, ledger, unwitnessed
+
+
+def _ledger_rows(commit: str, rel: str):
+    """The take-ledger file `rel` at `commit` as its list of records (takes.json's rows), [] when absent, None when
+    unreadable."""
+    code, text = git("show", f"{commit}:{rel}")
+    if code != 0:
+        return []
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return None
+    if rel.endswith("takes.json"):
+        return doc.get("rows") if isinstance(doc, dict) and isinstance(doc.get("rows"), list) else None
+    return doc if isinstance(doc, list) else None
+
+
+def run_line_ledger_problems(rels) -> list[str]:
+    """glitch-45's review of fold2/lb, MJ-1 (ruled): on HEAD's first-parent line, no merge commit may touch the take
+    ledger (a merge whose first parent is a pushed, abandoned outcome and whose tree resets the ledger read as a clean
+    re-run), and each ledger file's state must be append-only against its first parent. The run line takes no
+    legitimate merge; one that does must not touch the ledger."""
+    code, out = git("log", "--first-parent", "-m", "--reverse", "--format=@%H %P", "--name-only", "HEAD", "--", *rels)
+    if code != 0:
+        raise ValueError("HEAD's first-parent ledger history cannot be read")
+    problems, state = [], {}
+    for block in out.split("@")[1:]:
+        head, *names = block.split("\n")
+        commit, *parents = head.split()
+        touched = [n.strip() for n in names if n.strip()]
+        if len(parents) > 1:
+            problems.append(f"the merge {commit[:12]} on HEAD's first-parent line touches the take ledger "
+                            f"({', '.join(touched)}): the run line takes no merge that touches it")
+            continue
+        for rel in touched:
+            old = state[rel] if rel in state else (_ledger_rows(parents[0], rel) if parents else [])
+            now = _ledger_rows(commit, rel)
+            if old is None or now is None or now[:len(old)] != old:
+                problems.append(f"{commit[:12]} changes {rel.rsplit('/', 1)[-1]} other than by appending: the take "
+                                f"ledger is append-only against its first parent")
+            state[rel] = now
+    return problems
+
+
+WITNESS_RECORD = "witness-record.json"      # glitch-45's review of fold2/lb, MJ-2 (a runtime output, RUNTIME_PATHS)
+DISPOSABLE_PLACEHOLDER = "rehearsal or preview"     # freeze.py's rehearsal_record in a disposable rehearsal's freeze
+
+
+def witness_main(record: bool = False) -> int:
+    """check_results.py --witness [--record]: the take ledger against GitHub's push records (MAJOR 2). With --record
+    (glitch-45's review, MJ-2: the batch-fetch step on the Mac and the step before publication) each run is appended
+    to WITNESS_RECORD, problems and all, so that it ran is on record; it fails closed (exit 1) on any problem."""
+    import freeze
+    problems, ledger, unwitnessed = take_ledger_witness(freeze.push_records())
+    print(f"check_results --witness: {len(ledger)} take-ledger commit(s) on HEAD's line, {len(unwitnessed)} "
+          f"unwitnessed (no push record holds them)" + (": " + ", ".join(c[:12] for c in unwitnessed)
+                                                        if unwitnessed else ""))
+    if record:
+        from datetime import datetime, timezone
+        path = HERE / WITNESS_RECORD
+        runs = json.loads(path.read_text()) if path.is_file() else []
+        if not isinstance(runs, list):
+            raise ValueError(f"{WITNESS_RECORD} is not a list of runs")
+        code, head = git("rev-parse", "HEAD")
+        runs.append({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "head": head,
+                     "ledger_head": ledger[0] if ledger else None, "ledger_commits": len(ledger),
+                     "unwitnessed": unwitnessed, "problems": problems})
+        path.write_text(json.dumps(runs, indent=1) + "\n")
+        print(f"check_results --witness: run {len(runs)} appended to {WITNESS_RECORD}; commit it")
+    if problems:
+        print("check_results --witness: REFUSE: " + "; ".join(problems))
+        return 1
+    return 0
+
+
+def witness_publication_problems(pre: dict | None = None) -> tuple[list[str], dict | None]:
+    """glitch-45's review of fold2/lb, MJ-2 (ruled): publication (result.py and this file's publication check) refuses
+    unless WITNESS_RECORD's latest run is clean, and was taken at HEAD's current ledger head on HEAD's line; returns
+    (problems, that run). A disposable rehearsal's freeze (`pre` with the placeholder rehearsal record) reads no push
+    records: ([], {"disposable": True})."""
+    if pre is not None and pre.get("rehearsal_record") == DISPOSABLE_PLACEHOLDER:
+        return [], {"disposable": True}
+    # glitch-45's re-check, R-1: the record as HEAD commits it, never the working file
+    try:
+        rel = (HERE / WITNESS_RECORD).relative_to(REPO).as_posix()
+        rels = [(HERE / f).relative_to(REPO).as_posix() for f in TAKE_LEDGER_FILES]
+    except ValueError:
+        return [f"{WITNESS_RECORD} is not inside this repository, so no committed run can be read"], None
+    code, text = git("show", f"HEAD:{rel}")
+    try:
+        runs = json.loads(text) if code == 0 else []
+    except ValueError:
+        return [f"{WITNESS_RECORD} at HEAD cannot be read"], None
+    if not isinstance(runs, list) or not runs or not isinstance(runs[-1], dict):
+        return [f"no run of check_results.py --witness --record is on record ({WITNESS_RECORD}): the push records "
+                f"were never read for this publication"], None
+    run = runs[-1]
+    code, now = git("rev-list", "-1", "--full-history", "HEAD", "--", *rels)
+    problems = []
+    if run.get("problems"):
+        problems.append(f"the latest witness run ({run.get('at')}) refused: " + "; ".join(run["problems"])[:300])
+    # R-1: the run's counts recomputed offline at its ledger head: every ledger commit there, and its unwitnessed
+    # shas a subset of them (a hand-written clean record with false counts no longer passes)
+    at = run.get("ledger_head")
+    if isinstance(at, str):
+        code, listed = git("rev-list", "--full-history", at, "--", *rels)
+        ledger = set(listed.split()) if code == 0 else None
+    else:
+        ledger = set()
+    if ledger is None or run.get("ledger_commits") != len(ledger):
+        problems.append(f"the latest witness run counts {run.get('ledger_commits')!r} take-ledger commit(s), and its "
+                        f"ledger head holds {'an unreadable number' if ledger is None else len(ledger)}")
+    unwitnessed = run.get("unwitnessed")
+    if not (isinstance(unwitnessed, list) and ledger is not None and set(unwitnessed) <= ledger):
+        problems.append("the latest witness run's unwitnessed shas are not all take-ledger commits at its ledger head")
+    if run.get("ledger_head") != (now or None):
+        problems.append(f"the latest witness run read the ledger at {str(run.get('ledger_head'))[:12]}, and HEAD's "
+                        f"ledger is at {now[:12] or 'none'}: run check_results.py --witness --record again")
+    head = run.get("head")
+    if not (isinstance(head, str) and git("merge-base", "--is-ancestor", head, "HEAD")[0] == 0):
+        problems.append(f"the latest witness run's head {str(head)[:12]} is not on HEAD's line")
+    return problems, run
+
+
+def section_lint_problems(page) -> list[str]:
+    """glitch-45's review of fold2/lb, mn-5 (ruled): the m5 section lints, lint_language and lint_pooling
+    --section-of, run in the local publication check without --allow-absent (CI may not run), so a published page
+    with no round-4 section, or a finding in it, refuses publication."""
+    out = []
+    for script in ("lint_language.py", "lint_pooling.py"):
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(HERE / script), "--section-of", str(page)],
+                             capture_output=True, text=True, cwd=str(REPO))
+        if got.returncode != 0:
+            tail = (got.stdout + got.stderr).strip().splitlines()
+            out.append(f"{script} --section-of {Path(page).name} exits {got.returncode}: "
+                       + (tail[-1][:200] if tail else "no output"))
+    return out
+
+
 def rehearsal_record_problems(frozen: dict) -> list[str]:
     """Re-check the stored rehearsal evidence, including in disposable clones."""
     import freeze
@@ -622,6 +817,8 @@ def rehearsal_record_problems(frozen: dict) -> list[str]:
         problems.append("the frozen rehearsal record names a different committed tree")
     if lines[-1] != freeze.REHEARSAL_LAST_LINE:
         problems.append("the frozen rehearsal record did not end all green")
+    # pre-freeze review 2, m2 (lane fold2-lb): every step by name, as the freeze reads it
+    problems += [f"the frozen rehearsal record: {p}" for p in freeze.rehearsal_step_problems(lines)]
     return problems
 
 
@@ -653,6 +850,44 @@ def synthetic_digest_problems(frozen: dict, now: dict, rehearsal_plan=False) -> 
     return problems
 
 
+# The order recompute (glitch-45's item 1 after the lane review of fold2/lb, m-1; glitch-45's review, mn-1 and mn-2):
+# order_reference.py, a standalone stdlib-only file, recomputes the seed and the order from the frozen file and binds
+# the reading to the registered round, chain and time, and prints its own verdict. It runs as `python -I -S`, so no
+# study module, and no patch inside one, runs in it. What is not isolated: this process starts it and reads its exit
+# code and lines, and this process has imported study modules; the isolated form is the same command run on its own
+# (order_reference.py's docstring), which a reviewer or a gate runs directly.
+ORDER_REFERENCE_FILE = HERE / "order_reference.py"
+ORDER_REFERENCE_ARGV = (sys.executable, "-I", "-S", str(ORDER_REFERENCE_FILE), "-")
+
+
+def take_order_problems(frozen: dict, draft: dict | None = None) -> list[str]:
+    """order_reference.py's problems for `frozen` (the frozen file as a dict) against `draft` (the committed
+    prereg-draft.json at HEAD by default; glitch-45's re-check, R-2), run in an isolated interpreter; [] when it exits
+    0."""
+    import tempfile
+    if draft is None:
+        code, text = git("show", f"HEAD:{study.rel('prereg-draft.json')}")
+        try:
+            draft = json.loads(text) if code == 0 else None
+        except ValueError:
+            draft = None
+        if draft is None:
+            return ["the committed prereg-draft.json cannot be read at HEAD, so the registered round is unknown"]
+    try:
+        with tempfile.NamedTemporaryFile("w", suffix=".json") as d:
+            d.write(json.dumps({"take_order_beacon": {"round": (draft.get("take_order_beacon") or {}).get("round")}}))
+            d.flush()
+            got = subprocess.run((*ORDER_REFERENCE_ARGV, d.name), input=json.dumps(frozen), capture_output=True,
+                                 text=True, timeout=600)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return [f"the take order could not be recomputed ({type(e).__name__})"]
+    lines = got.stdout.splitlines()
+    found = [ln.split("problem: ", 1)[1] for ln in lines if ln.startswith("order_reference: problem: ")]
+    if got.returncode == 0 and not found and any(ln.startswith("order_reference: ok") for ln in lines):
+        return []
+    return found or [f"the take order could not be recomputed: {(got.stdout + got.stderr).strip()[:200]}"]
+
+
 def check_frozen_content(rehearsal_plan=False) -> list[str]:
     frozen, why = frozen_bytes()
     if frozen is None and why == "NOT A GIT REPOSITORY":
@@ -665,6 +900,9 @@ def check_frozen_content(rehearsal_plan=False) -> list[str]:
     now = json.loads((HERE / "prereg.json").read_text())
     problems = frozen_content_problems(frozen, now)
     problems += synthetic_digest_problems(frozen, now, rehearsal_plan)     # W8B-R2-2 (lane w9-cp6)
+    order = take_order_problems(frozen)      # the order recomputed in isolation (fold2/lb, glitch-45's item 1)
+    print(f"  the take order recomputed from the frozen reading and rows: {len(order)} problem(s)")
+    problems += order
     rehearsal = []
     if rehearsal_plan:
         if frozen.get("rehearsal_record") != "rehearsal or preview":
@@ -738,14 +976,14 @@ def original_values_problems(rec: dict, path=None) -> list[str]:
     return out
 
 
-def check_publication(rows, history, records, pre, page, grade, table=None):
+def check_publication(rows, history, records, pre, page, grade, table=None, witness=None):
     import result
     for row in rows:
         takes_mod.require_planned_row(row, pre)
     stats.check_records(records)
     wanted = pipeline().produce(rows, history, grade, table=table)["records"]
     rec = result.from_records(wanted, pre, rows, history, table)
-    rendered = result.render(rec)
+    rendered = result.render(rec) if witness is None else result.render(rec, witness=witness)
     import run_builders   # lane run-launcher, ruling 2: first registrations follow take_order within each launch part
     problems = run_builders.order_problems(rows, pre)
     if not records_equal(records, wanted):
@@ -771,7 +1009,19 @@ def main(argv=None):
     parser.add_argument("--ledger", action="store_true")
     parser.add_argument("--rehearsal-plan", action="store_true",
                         help="disposable rehearsal only; rehearsal evidence is NOT CHECKED")
+    parser.add_argument("--witness", action="store_true",
+                        help="the take ledger against GitHub's push records of the mirror (network; MAJOR 2)")
+    parser.add_argument("--record", action="store_true",
+                        help=f"with --witness: append this run to {WITNESS_RECORD} (the batch fetch and publication)")
     args = parser.parse_args(argv)
+    if args.record and not args.witness:
+        parser.error("--record is read only with --witness")
+    if args.witness:
+        try:
+            return witness_main(record=args.record)
+        except ValueError as exc:
+            print(f"check_results --witness: REFUSE: {exc}")
+            return 1
     try:
         if is_shallow():
             raise ValueError("the committed ledger cannot be checked in a shallow clone")
@@ -789,9 +1039,17 @@ def main(argv=None):
         problems = check_pins() + check_frozen_content(rehearsal_plan=args.rehearsal_plan)
         if rows or history or records:
             page = HERE / "RESULT.md"
+            # glitch-45's review of fold2/lb: MJ-2, the push witness on record at HEAD's ledger; mn-5, the section
+            # lints without --allow-absent; neither in a disposable rehearsal, which says so
+            witnessed, witness = witness_publication_problems(pre)
+            problems += witnessed
+            if args.rehearsal_plan or witness == {"disposable": True}:
+                print("  NOT CHECKED: the published page's round-4 section (disposable rehearsal)")
+            else:
+                problems += section_lint_problems(REPO / "docs" / "EVALS.md")
             problems += check_publication(rows, history, records, pre,
                                           page.read_text() if page.is_file() else None,
-                                          pipeline().grade_committed)
+                                          pipeline().grade_committed, witness=witness)
         if problems:
             print("check_results: REFUSE: " + "; ".join(problems))
             return 1

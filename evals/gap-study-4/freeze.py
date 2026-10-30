@@ -21,6 +21,7 @@ hash are retained in prereg.json, without adding that output to the build tree.
 from __future__ import annotations
 
 import argparse
+import ast
 import copy
 import hashlib
 import json
@@ -104,6 +105,148 @@ def planned_order(draft, seed):
     return sorted(copy.deepcopy(rows), key=lambda row: hashlib.sha256(seed.encode() + json_bytes(row)).hexdigest())
 
 
+# Pre-freeze review 2, m3 (lane fold2-lb): the order function is witnessed with the draft. The draft carries the sha256
+# of the source of planned_order and of every study function it reaches (take_order_function_sha256), so the push
+# that witnesses the draft before the round also fixes the function that permutes its rows; the freeze refuses a draft
+# whose value is not HEAD's. The walk starts at planned_order and at order_beacon.seed (the seed's derivation), and
+# hashes, for every function it reaches, its source with its decorators and every module-level statement of a parsed
+# module that binds a name the function reads or the function's own name (a rebinding such as `json_bytes = ...`, at
+# top level or inside a module-level if, try, with or loop), and every module-level assignment to an attribute named
+# like a reached function (`check_results.validate_ledger = ...`); the fold's review, m-1. What it cannot see, named
+# (the review's re-check, each reproduced): a module-level patch, in any study file, of the standard library or the
+# builtins the order reads (json.dumps, sorted, hashlib), by assignment or setattr; a patch of a function object
+# (`planned_order.__code__ = ...`); a function reached only through a value the walk does not resolve (a dict of
+# functions, getattr, a parameter); prepare's hand-off of the seed to planned_order (freeze.prepare); and anything
+# outside this study's own .py files. Each is a code edit after the draft's push, visible in the diff a later review
+# reads; the closing check, check_results recomputing take_order from the draft and take_order_seed at publication,
+# is not built here.
+ORDER_FUNCTION_HASH_KEY = "take_order_function_sha256"
+ORDER_FUNCTION_START = ("freeze", "planned_order")
+ORDER_FUNCTION_STARTS = (ORDER_FUNCTION_START, ("order_beacon", "seed"))
+
+
+def _top_functions(tree) -> dict:
+    return {n.name: n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+
+
+def _module_bindings(tree, text) -> tuple[dict, dict]:
+    """({name: [statement source]}, {attribute name: [statement source]}) over the module-level statements of `tree`
+    (descending into if, try, with and loop bodies, never into a def or class body) that bind a name or assign to an
+    attribute; a def binds its name too, so a second def of the same name is caught."""
+    names: dict = {}
+    attrs: dict = {}
+
+    def add(table, key, node):
+        table.setdefault(key, []).append(_segment(text, node))
+
+    def visit(body):
+        for node in body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                add(names, node.name, node)
+                continue
+            for sub in ast.walk(node):
+                if isinstance(sub, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+                    continue
+                if isinstance(sub, ast.Name) and isinstance(sub.ctx, ast.Store):
+                    add(names, sub.id, node)
+                elif isinstance(sub, ast.Attribute) and isinstance(sub.ctx, ast.Store):
+                    add(attrs, sub.attr, node)
+                elif isinstance(sub, ast.alias):
+                    add(names, (sub.asname or sub.name).split(".")[0], node)
+            for field in ("body", "orelse", "finalbody", "handlers"):
+                inner = getattr(node, field, None)
+                if isinstance(inner, list):
+                    visit([n for n in inner if isinstance(n, ast.stmt)] +
+                          [s for h in inner if isinstance(h, ast.ExceptHandler) for s in h.body])
+    visit(tree.body)
+    return names, attrs
+
+
+def _segment(text, node) -> str:
+    """A statement's source with its decorators (ast.get_source_segment starts at the def line)."""
+    lines = text.splitlines(keepends=True)
+    start = min([node.lineno] + [d.lineno for d in getattr(node, "decorator_list", [])])
+    return "".join(lines[start - 1:node.end_lineno])
+
+
+def _study_imports(nodes, root: Path) -> dict:
+    """{local name: study module} for `import x` / `import x as y` in `nodes`, x a .py file in `root`."""
+    out = {}
+    for node in nodes:
+        for imp in ast.walk(node):
+            if isinstance(imp, ast.Import):
+                for alias in imp.names:
+                    if "." not in alias.name and (root / f"{alias.name}.py").is_file():
+                        out[alias.asname or alias.name] = alias.name
+    return out
+
+
+def order_function_sources(root=None) -> list[tuple[str, str]]:
+    """[(label, source)] for planned_order, order_beacon.seed and every study function they reach, found by an ast walk
+    (a name or a study module's attribute that is a top-level function of that module, called or passed), each with
+    its decorators; plus, labelled "module.name=", every module-level statement binding a name such a function reads
+    or its own name, and every module-level attribute assignment named like a reached function (ORDER_FUNCTION_HASH_KEY's
+    comment). Sorted, each once, with no line numbers, so an edit elsewhere in a file moves nothing. `root` is the
+    study folder whose .py files are read: by default the folder this freeze.py runs from (not HERE, which a scratch
+    study may stand in for while the modules still import from here), so the hash is of the code that runs."""
+    root = Path(__file__).resolve().parent if root is None else Path(root)
+    parsed: dict = {}
+
+    def module(name):
+        if name not in parsed:
+            text = (root / f"{name}.py").read_text(encoding="utf-8")
+            tree = ast.parse(text)
+            parsed[name] = (text, tree, _top_functions(tree),
+                            _study_imports([n for n in tree.body if isinstance(n, ast.Import)], root),
+                            *_module_bindings(tree, text))
+        return parsed[name]
+
+    found, work, extra = {}, list(ORDER_FUNCTION_STARTS), set()
+    while work:
+        mod, fn = work.pop()
+        if (mod, fn) in found:
+            continue
+        text, _, funcs, imports, names, _ = module(mod)
+        node = funcs[fn]
+        found[(mod, fn)] = _segment(text, node)
+        aliases = dict(imports, **_study_imports([node], root))
+        read = {fn} | {sub.id for sub in ast.walk(node) if isinstance(sub, ast.Name)}
+        for name in read:
+            for src in names.get(name, []):
+                if src != found[(mod, fn)]:
+                    extra.add((f"{mod}.{name}=", src))
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Name) and sub.id in funcs and sub.id != fn:
+                work.append((mod, sub.id))
+            elif isinstance(sub, ast.Attribute) and isinstance(sub.value, ast.Name) and sub.value.id in aliases:
+                target = aliases[sub.value.id]
+                if sub.attr in module(target)[2]:
+                    work.append((target, sub.attr))
+    reached = {f for _, f in found}
+    for mod, (_, _, _, _, _, attrs) in parsed.items():
+        for name in reached & set(attrs):
+            extra.update((f"{mod}.<attr>.{name}=", src) for src in attrs[name])
+    own = set(found.values())
+    return sorted({(f"{m}.{f}", src) for (m, f), src in found.items()} | {e for e in extra if e[1] not in own})
+
+
+def take_order_function_sha256(root=None) -> str:
+    """The sha256 over order_function_sources(root): each name, its source, in order."""
+    h = hashlib.sha256()
+    for name, source in order_function_sources(root):
+        h.update(name.encode("utf-8") + b"\n" + source.encode("utf-8") + b"\n\0")
+    return h.hexdigest()
+
+
+def order_function_problem(draft):
+    """Why the draft's take_order_function_sha256 is not the order function's at this tree, or None (m3)."""
+    want, got = take_order_function_sha256(), draft.get(ORDER_FUNCTION_HASH_KEY)
+    if got != want:
+        return (f"the draft's {ORDER_FUNCTION_HASH_KEY} is {str(got)[:16]!r}, not the order function's at this tree "
+                f"({want[:16]}): the function that permutes the rows is not the one the draft was witnessed with")
+    return None
+
+
 def draft_pending(draft) -> dict:
     """build_draft.pending over the draft itself: every PENDING input by its pointer (pre-freeze review 1, m2)."""
     import build_draft
@@ -156,10 +299,9 @@ def synthetic_beacon_reading(round_no: int) -> dict:
 REGISTERED_LINE = "REGISTERED_ROUND: int | None = {round}"
 
 
-def registering_commit(round_no: int) -> str:
-    """The one commit in HEAD's history that set REGISTERED_ROUND to `round_no`, read by parsing order_beacon.py at
-    every commit that changed it, oldest first (the review of 53d0e9af, finding 1a and 1b). ValueError unless the
-    value changed exactly once, from None to `round_no`, and never again."""
+def beacon_history() -> list[tuple[str, object, tuple]]:
+    """(commit, REGISTERED_ROUND, SUPERSEDED_ROUNDS) for every commit in HEAD's history that changed order_beacon.py,
+    oldest first, each read by parsing that version (the review of 53d0e9af, finding 1a; option A+)."""
     rel = study.rel("order_beacon.py")
     code, out = git("log", "--reverse", "--topo-order", "--full-history", "--format=%H", "--", rel)
     if code != 0 or not out.split():
@@ -170,13 +312,73 @@ def registering_commit(round_no: int) -> str:
         if code != 0:
             raise ValueError(f"{rel} cannot be read at {sha[:12]}")
         try:
-            history.append((sha, order_beacon.registered_value(text)))
+            history.append((sha, order_beacon.registered_value(text), order_beacon.superseded_value(text)))
         except order_beacon.BeaconRefused as e:
             raise ValueError(f"{rel} at {sha[:12]}: {e}") from None
-    problem = order_beacon.history_problem([v for _, v in history], round_no)
+    return history
+
+
+def registering_commit(round_no: int) -> str:
+    """The one commit in HEAD's history that set REGISTERED_ROUND to `round_no`, read by parsing order_beacon.py at
+    every commit that changed it, oldest first (the review of 53d0e9af, finding 1a and 1b). ValueError unless the
+    value went None, then each superseded round of HEAD's SUPERSEDED_ROUNDS in order (option A+), then `round_no`,
+    and never changed again."""
+    history = beacon_history()
+    problem = order_beacon.history_problem([v for _, v, _ in history], round_no, history[-1][2])
     if problem:
         raise ValueError(problem)
-    return next(sha for sha, v in history if v == round_no)
+    return next(sha for sha, v, _ in history if v == round_no)
+
+
+def supersession_swaps(history) -> list[tuple[dict, str]]:
+    """Option A+, steps 1-2: each SUPERSEDED_ROUNDS entry of HEAD's version with its swap commit, the first commit in
+    which REGISTERED_ROUND leaves the entry's round, which must add exactly that entry; ValueError when the tuple is not
+    append-only across history (each version a prefix of the next), the entry's registering_commit is not the commit
+    that set its round, or another commit added the entry."""
+    for (a_sha, _, a), (b_sha, _, b) in zip(history, history[1:]):
+        if tuple(b[:len(a)]) != tuple(a):
+            raise ValueError(f"SUPERSEDED_ROUNDS at {b_sha[:12]} does not extend its version at {a_sha[:12]}: an entry "
+                             f"was removed or rewritten, and the list is append-only")
+    bad = order_beacon.superseded_problems(history[-1][2]) if history else []
+    if bad:
+        raise ValueError("SUPERSEDED_ROUNDS at HEAD: " + "; ".join(bad))
+    out = []
+    for entry in history[-1][2] if history else ():
+        r = entry["round"]
+        regs = [sha for sha, v, _ in history if v == r]
+        if not regs or entry["registering_commit"] != regs[0]:
+            raise ValueError(f"the superseded entry of round {r} names registering commit "
+                             f"{str(entry['registering_commit'])[:12]}, not the commit that set the round "
+                             f"({regs[0][:12] if regs else 'none'})")
+        at = next((i for i in range(1, len(history)) if history[i - 1][1] == r and history[i][1] != r), None)
+        if at is None:
+            raise ValueError(f"REGISTERED_ROUND never leaves round {r}, which SUPERSEDED_ROUNDS lists")
+        before = [e.get("round") for e in history[at - 1][2]]
+        if entry not in history[at][2] or r in before:
+            raise ValueError(f"the swap commit {history[at][0][:12]}, which moves REGISTERED_ROUND off round {r}, "
+                             f"does not add that round's entry: an entry is added by its own swap commit only")
+        out.append((entry, history[at][0]))
+    return out
+
+
+def owner_decisions(path=None) -> list[dict]:
+    """The study's committed copy of the decision rows a superseded entry cites (order_beacon.OWNER_DECISIONS, one JSON
+    object per line, copied byte for byte from OrgOS's decision.jsonl); [] when the file is absent."""
+    path = HERE / order_beacon.OWNER_DECISIONS if path is None else Path(path)
+    if not path.is_file():
+        return []
+    rows = []
+    for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            raise ValueError(f"{path.name} line {n} is not JSON") from None
+        if not isinstance(row, dict):
+            raise ValueError(f"{path.name} line {n} is not one decision row")
+        rows.append(row)
+    return rows
 
 
 def draft_commit() -> str:
@@ -241,12 +443,17 @@ def mirror_problem(pushes, registering: str):
 WITNESS_HOST = "github.com"
 
 
-def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
+def take_order_witness(draft, *, pushes=None, contains=None, decisions=None) -> dict:
     """Ruling 1 and the review of 53d0e9af (findings 1 and 2): GitHub's own push records on order_beacon.WITNESS_REPO
     must hold both the commit that registered the draft's round and the last commit that changed the draft, each
     stamped at least WITNESS_LEAD_S before the round is published; ValueError otherwise. The witness, written into the
     frozen file as take_order_witness, is each commit with the push that holds it and GitHub's stamp. `pushes` and
-    `contains` stand in for push_records() and history_contains in tests."""
+    `contains` stand in for push_records() and history_contains in tests.
+
+    Option A+ (pre-freeze review 2, section 1; lane fold2-lb): each superseded round's entry is bound to its swap commit
+    (supersession_swaps) and passes only by a push of that commit stamped at least order_beacon.SWAP_LEAD_S before the
+    round publishes (before_publication), or by its decision row in the committed decision list (`decisions`, else
+    owner_decisions(); order_beacon.decision_problem). The witness then also lists each, as `superseded`."""
     try:
         round_no = order_beacon.registered_round(draft.get(BEACON_KEY))
     except order_beacon.BeaconRefused as e:
@@ -264,6 +471,25 @@ def take_order_witness(draft, *, pushes=None, contains=None) -> dict:
             raise ValueError(f"the {name} commit: {problem}")
         stamp, sha = min((t, s) for t, s in pushes if contains(commit, s))
         witness.update({f"{name}_commit": commit, f"{name}_push": {"sha": sha, "stamp": stamp}})
+    swaps = supersession_swaps(beacon_history())
+    if swaps:
+        entries = [entry for entry, _ in swaps]
+        rows = owner_decisions() if decisions is None else decisions
+        seen = []
+        for entry, swap in swaps:
+            r = entry["round"]
+            if entry.get("before_publication") is True:
+                problem = order_beacon.push_witness_problem(swap, r, pushes, contains, lead=order_beacon.SWAP_LEAD_S)
+                if problem:
+                    raise ValueError(f"the swap commit of superseded round {r} (before_publication): {problem}")
+                stamp, sha = min((t, s) for t, s in pushes if contains(swap, s))
+                seen.append({"round": r, "swap_commit": swap, "swap_push": {"sha": sha, "stamp": stamp}})
+            else:
+                problem = order_beacon.decision_problem(entry, rows, entries)
+                if problem:
+                    raise ValueError(f"the swap of superseded round {r}: {problem}")
+                seen.append({"round": r, "swap_commit": swap, "decision": entry["decision"], "ask": entry["ask"]})
+        witness["superseded"] = seen
     return witness
 
 
@@ -457,6 +683,56 @@ TREE_BINDING_EXCLUDED = (re.compile(rf"/{study.VERIFY_DIR}/freeze-rehearsal-\d+(
                          re.compile(r"/PROGRESS\.md$"),
                          re.compile(r"/verification/round1-regrade/environment\.json$"))
 RULING_LINE = "**Ruling: DO FREEZE.**"
+DO_FREEZE = "DO FREEZE"
+# Pre-freeze review 2, MAJOR 3 (lane fold2-lb): the one reader of a review's ruling, here and in
+# review_kit/commit_review.py (which imports these three names), so the commit and the freeze can never read one report
+# two ways. The pattern is the one commit_review used since round 3, anchored to a whole line.
+RULING = re.compile(r"^\*\*Ruling: DO (NOT )?FREEZE\.\*\*$", re.M)
+AMBIGUOUS = "ambiguous"
+
+
+# glitch-45's review of fold2/lb (MJ-3): a refusing line that is not byte-canonical (a trailing space, moved emphasis,
+# a heading, an NBSP or zero-width character, lower case) beside a canonical DO FREEZE line read DO FREEZE. Each line is
+# also read loosely: stripped, NFKC, zero-width characters and NBSP dropped, markdown emphasis, heading and quote marks
+# removed, case-folded; a line that then names a ruling of either kind is ruling-like.
+_INVISIBLE = dict.fromkeys(map(ord, "\u200b\u200c\u200d\u2060\ufeff\u00ad"), None)
+_MARKS = re.compile(r"[*_`~#>]+")
+RULING_LIKE = re.compile(r"\bruling\b\W{0,20}do\W*(not\W*)?freeze\b")
+
+
+def _loose(line: str) -> str:
+    import unicodedata
+    line = unicodedata.normalize("NFKC", line.replace("\u00a0", " ")).translate(_INVISIBLE)
+    return re.sub(r"\s+", " ", _MARKS.sub(" ", line)).strip().casefold()
+
+
+def read_ruling(text: str) -> str:
+    """'DO FREEZE' or 'DO NOT FREEZE' only when exactly one line of `text` is a canonical ruling line (RULING) and it
+    is the only ruling-like line (RULING_LIKE over each line read loosely); else AMBIGUOUS. A quoted literal inside a
+    sentence that names a ruling, a loose "do not freeze" ruling line beside a DO FREEZE line, and a second ruling-like
+    line of either kind all read AMBIGUOUS, which is never DO FREEZE."""
+    # glitch-45's re-check of fold2/lb, R-3: a canonical ruling line inside a ``` or ~~~ fence, or behind '>', is a
+    # quotation, never a ruling, and its presence makes the report ambiguous (the realistic carrier of a canonical
+    # DO FREEZE literal beside a refusal worded some other way)
+    lines, fence, outside = text.splitlines(), None, []
+    for ln in lines:
+        mark = ln.lstrip()[:3]
+        if mark in ("```", "~~~") and (fence is None or fence == mark):
+            fence = None if fence else mark
+            continue
+        quoted = re.sub(r"^\s*(>\s*)+", "", ln)
+        if fence is not None or quoted != ln:
+            if RULING.fullmatch(quoted.strip()):
+                return AMBIGUOUS
+            continue
+        outside.append(ln)
+    found = [m for ln in outside for m in [RULING.fullmatch(ln)] if m]
+    if len(found) != 1:
+        return AMBIGUOUS
+    like = [ln for ln in lines if RULING_LIKE.search(_loose(ln))]
+    if len(like) != 1:
+        return AMBIGUOUS
+    return "DO NOT FREEZE" if found[0].group(1) else DO_FREEZE
 REVIEW_DIGEST_PREFIX = "prereg.json sha256: "     # line 1 of every report (review_kit/commit_review.report_problems)
 REHEARSAL_LAST_LINE = "all green"
 
@@ -726,8 +1002,43 @@ def draft_holdout_problem(draft):
             "(ruling W8B-gap4-1)") if bad else None
 
 
+REHEARSAL_STEP = re.compile(r"\[(-?\d+)\] (.+)")
+REHEARSAL_ROW_FILE = "<scratch>/row.json"      # freeze_rehearsal.main's row file, as its report masks the scratch path
+
+
+def rehearsal_required_steps() -> list[str]:
+    """Pre-freeze review 2, m2 (lane fold2-lb): every step a green rehearsal record must name, in freeze_rehearsal.main's
+    order: the freeze, the holdout digests, the take-order beacon, the live-box step, each COMMANDS step (the holdout
+    gate as the --holdout-tool run, HOLDOUT_STEP_LABEL, never the OWED line), and each runtime step."""
+    import freeze_rehearsal as fr
+    names = ["freeze", "holdout digests", "take-order beacon", fr.LIVE_BOX_STEP]
+    names += [fr.HOLDOUT_STEP_LABEL if c == fr.HOLDOUT_GATE else " ".join(c) for c in fr.COMMANDS]
+    return names + [" ".join(c) for c in fr.runtime_commands(REHEARSAL_ROW_FILE)]
+
+
+def rehearsal_step_problems(lines: list[str]) -> list[str]:
+    """Pre-freeze review 2, m2 (lane fold2-lb): why a rehearsal record's steps are not every required step, each named
+    once with code 0, the live-box step's tail its closed pass line (freeze_rehearsal.LIVE_BOX_OK), and no step with
+    another code; [] when they are. A hand-written record with only the digest, tree and last lines is refused. The
+    live-box step may become a cited residual only by a ruling not yet made (FREEZE-PATH step 5): no such road exists
+    here, so the step must pass."""
+    import freeze_rehearsal as fr
+    steps = [(i, m.group(1), m.group(2)) for i, ln in enumerate(lines) for m in [REHEARSAL_STEP.fullmatch(ln)] if m]
+    out = [f"step {name!r} exited {code}" for _, code, name in steps if code != "0"]
+    for name in rehearsal_required_steps():
+        at = [i for i, code, n in steps if n == name and code == "0"]
+        if len(at) != 1:
+            out.append(f"step {name!r} is named {len(at)} times with code 0, not once")
+        elif name == fr.LIVE_BOX_STEP:
+            tail = lines[at[0] + 1].strip() if at[0] + 1 < len(lines) else ""
+            if not fr.LIVE_BOX_OK.fullmatch(tail):
+                out.append(f"step {name!r} does not end on the live-box verifier's closed pass line")
+    return out
+
+
 def rehearsal_evidence(record, digest: str, tree: str) -> dict:
-    """Bind an external rehearsal output without changing the rehearsed tree."""
+    """Bind an external rehearsal output without changing the rehearsed tree. Pre-freeze review 2, m2: every step by
+    name (rehearsal_step_problems), not the first, tree and last lines alone."""
     if record is None:
         raise ValueError("a green rehearsal record is required (--rehearsal-record)")
     record = Path(record)
@@ -738,6 +1049,9 @@ def rehearsal_evidence(record, digest: str, tree: str) -> dict:
             [line for line in lines if line.startswith(REHEARSAL_TREE_PREFIX)] !=
             [REHEARSAL_TREE_PREFIX + tree]):
         raise ValueError("the rehearsal must be green for this draft and committed tree")
+    steps = rehearsal_step_problems(lines)
+    if steps:
+        raise ValueError("the rehearsal record does not name every step green: " + "; ".join(steps[:6]))
     return {"name": record.name, "sha256": hashlib.sha256(data).hexdigest(), "text": text}
 
 
@@ -773,10 +1087,14 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
         return [f"{reports[0]} was committed {len(hist.split())} times; the seed would be one of several candidates"], None
     # ROUND 2, CP8, review 1 follow-up: the seed's report must have ruled for the freeze, and must be the latest
     # review committed, so a freeze cannot seed from an earlier or a refusing review
+    # Pre-freeze review 2, MAJOR 3 (lane fold2-lb): the ruling is read from exactly one anchored ruling line, never as
+    # a substring, so a DO NOT FREEZE report that quotes the other ruling in a sentence no longer seeds a freeze
     code, body = git("show", f"{review_commit}:{reports[0]}")
-    if RULING_LINE not in body:
-        return [f"{reports[0]} at {review_commit[:12]} carries no `{RULING_LINE}` line: the freeze runs only on a "
-                f"review that ruled for it"], None
+    ruling = read_ruling(body)
+    if ruling != DO_FREEZE:
+        return [f"{reports[0]} at {review_commit[:12]} ruled {ruling} (exactly one ruling line is read, by "
+                f"freeze.read_ruling, which review_kit/commit_review.py records too): the freeze runs only on a review that ruled "
+                f"{DO_FREEZE}"], None
     # Pre-freeze review 1, MAJOR 3: the seed review must have read the bytes being frozen. Its line 1 names the sha256
     # of the prereg.json the reviewer was handed (review_kit/commit_review.py binds it to the kit's copy); a DO FREEZE
     # review of earlier bytes never seeds a freeze of later ones, so a criterion edited after review is not frozen.
@@ -817,6 +1135,8 @@ def check_legs(draft) -> list[tuple[str, list[str]]]:
     legs.append(("vendor legs i-iii", [problem] if problem else []))
     problem = coverage_problem(draft)
     legs.append(("walk coverage of the arms the freeze runs", [problem] if problem else []))
+    problem = order_function_problem(draft)          # pre-freeze review 2, m3
+    legs.append(("take-order function", [problem] if problem else []))
     try:
         reading = synthetic_beacon_reading(order_beacon.registered_round(draft.get(BEACON_KEY)))
         prepare(copy.deepcopy(draft), review=DUMMY_REVIEW, parent=DUMMY_PARENT, pins=[], frozen_at="check",
@@ -885,6 +1205,9 @@ def main(argv=None) -> int:
         if problem:
             raise ValueError(problem)
         problem = unrecorded_shapes_problem(draft)
+        if problem:
+            raise ValueError(problem)
+        problem = order_function_problem(draft)      # pre-freeze review 2, m3
         if problem:
             raise ValueError(problem)
         holdout = ({} if args.holdout_digests is None else

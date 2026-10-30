@@ -179,6 +179,13 @@ def identity_id(prefix, values):
     return prefix + "-" + sha(json.dumps(values, separators=(",", ":"), ensure_ascii=True).encode())
 
 
+def order_function_sha256() -> str:
+    """freeze.take_order_function_sha256 over this study's files (imported here: freeze imports nothing of this
+    file)."""
+    import freeze
+    return freeze.take_order_function_sha256()
+
+
 def assemble(root=None):
     root = HERE if root is None else Path(root)
     tasks = source_tasks(root)
@@ -207,6 +214,8 @@ def assemble(root=None):
             "rows": rows, "counts": {"pairs": len(tasks), "by_arm": dict(collections.Counter(r["arm"] for r in rows)),
                                       "tries": len(rows), "half_cells": len({r["half_cell"] for r in rows})},
             "take_order": None, "take_order_seed": None, "take_order_function": "freeze.planned_order",
+            # pre-freeze review 2, m3 (lane fold2-lb): the order function's source, witnessed with the draft
+            "take_order_function_sha256": order_function_sha256(),
             # Pre-freeze review 1, MAJOR 9 (lane L1; the lane orchestrator's ruling 1): the review commit could be re-made
             # to choose the order, so the seed is a public drand round registered here alone, whose value no one knows
             # until it is published (order_beacon.py); the rule, the chain, the relays and the residual are its words.

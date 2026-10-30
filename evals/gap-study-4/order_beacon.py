@@ -38,6 +38,20 @@ two relays run by different operators must agree instead.
 The network is read only by read_relays and push_records: at the real freeze (on the Mac), by --read, and by prereg.py
 --order-from-beacon once the round is published. No take, check or test reads it; tests hand in an opener and records.
 
+SUPERSEDED ROUNDS (pre-freeze review 2, section 1's option A+; lane fold2-lb, built before Javier's recorded answer and
+merged only on it). A registered round may be replaced, and only as SUPERSEDED_ROUNDS records it: an append-only tuple
+of entries, carried into the draft as take_order_beacon.superseded. history_problem accepts exactly [None, *the
+superseded rounds in order, the round]. Each entry is bound by the freeze (freeze.take_order_witness) to its swap
+commit, the first commit in HEAD's history in which REGISTERED_ROUND leaves that round, which must add the entry; and
+it passes only one of two ways:
+  before_publication: GitHub's push records hold the swap commit at least SWAP_LEAD_S before the superseded round
+    publishes, so no one could know the value it replaced (no selection is possible), and no owner word is needed;
+  decision + ask: the study's committed copy of its decision log (OWNER_DECISIONS, rows copied byte for byte from
+    OrgOS's decision.jsonl) holds exactly one row with that id, Javier's (principal) answer to that ask, dated after
+    the round published, whose reply is the round's swap phrase (swap_phrase_problem), cited by no other entry. That
+    log is our own record: an outside reader takes it on the same trust as the machines and the runner.
+A superseded round's order can be computed by anyone, against the draft its entry names.
+
 No model; stdlib only.
 """
 from __future__ import annotations
@@ -69,6 +83,10 @@ RELAYS = ("https://api.drand.sh", "https://drand.cloudflare.com")
 # first round published at or after the latest time the review can be committed (--round-at <that time>), in the same
 # commit as the regenerated draft. While None, the draft's round reads PENDING and the freeze is closed.
 REGISTERED_ROUND: int | None = 33496978
+# The rounds registered and then replaced, oldest first (option A+, lane fold2-lb). Append-only across history; each
+# entry is a dict literal with ENTRY_COMMON and either before_publication or decision and ask (superseded_problems).
+# The swap commit that moves REGISTERED_ROUND off a round adds its entry in the same commit, with the draft re-derived.
+SUPERSEDED_ROUNDS: tuple = ()
 # The outside witness of when the round was registered (ruling 1, and its second hand-back of 24 Oct 2026): GitHub's
 # push activity on the private GARS mirror, which holds the study's own history (the aegis remote is another
 # repository and can never hold a study commit). Pushes there run under Javier's standing word "mirror every verified
@@ -79,15 +97,35 @@ WITNESS_REPO = "javrodriguez/gars-cloud-mirror"
 WITNESS_LEAD_S = 3600
 STANDING_WORD = ("Javier's standing word \"mirror every verified gap study wave\" (12 Oct 2026, "
                  "plans/gap-study-round-4/next-slices-2026-10-11.md)")
+# Pre-freeze review 2, m1 (lane fold2-lb): the push rule as it is kept. 6190a00c, which registered round 33496978, was
+# pushed under Javier's recorded word OD147 ("mirror-early yes") before its athena battery, which then failed one
+# test-only check; "that push is the mirror of a verified wave" was untrue for it, so the rule names both roads.
+PUSH_RULE = ("the push is a mirror of a wave that passed the whole athena battery, under " + STANDING_WORD + ", or a "
+             "push Javier named by a recorded word (its id cited)")
+# Option A+: the lead a before_publication swap commit needs before the superseded round publishes, against clock skew
+# between GitHub's stamp and drand's schedule.
+SWAP_LEAD_S = 60
+# The committed copy of the decision rows a superseded entry cites (study-relative; rows byte-identical to OrgOS's
+# decision.jsonl lines). Absent until a decision entry exists; then an entry citing an id it does not hold is refused.
+OWNER_DECISIONS = "owner_decisions.jsonl"
+# The swap phrase of a superseded round: `beacon-swap-<round> yes` (outcome yes), except the first, round 33496978,
+# which Javier's answer to ask beacon-r4 (T199) decides; its reply is `beacon-r4 <key>` with outcome <key>, and only the
+# options that drop the round count (aplus, a, b; c keeps it, so it is no word for a swap).
+FIRST_SWAP = {33496978: ("beacon-r4", ("aplus", "a", "b"))}
+ENTRY_COMMON = ("round", "published", "registering_commit", "push", "why", "record")
+ENTRY_BEFORE = ENTRY_COMMON + ("before_publication",)
+ENTRY_DECISION = ENTRY_COMMON + ("decision", "ask")
 # The registering steps, in their run order (written into the draft as take_order_beacon.registration_order).
 REGISTRATION_ORDER = (
     "1. Fetch every mirror ref into the freezing clone, read-only, before the freeze: freeze.mirror_problem refuses "
     "while any commit GitHub records on " + WITNESS_REPO + " is missing from it, so a force push whose old commits the "
     "mirror no longer serves blocks the freeze.",
     "2. Commit the round: set REGISTERED_ROUND in order_beacon.py to a quicknet round (order_beacon.py --round-at) and "
-    "re-derive the draft, in one commit on the freeze line.",
-    "3. athena PASS: the whole gars-gap4 battery passes at that commit.",
-    "4. Mirror: push that verified wave to " + WITNESS_REPO + " with _local/bin/gars-mirror.sh, under " + STANDING_WORD
+    "re-derive the draft, in one commit on the freeze line. Replacing a registered round, the same commit appends its "
+    "entry to SUPERSEDED_ROUNDS: before_publication when the commit will be pushed at least " + str(SWAP_LEAD_S)
+    + " s before that round publishes, else the decision and ask of Javier's recorded answer to the ask naming the swap.",
+    "3. athena PASS: the whole gars-gap4 battery passes at that commit, unless Javier names the push by a recorded word.",
+    "4. Mirror: push that wave to " + WITNESS_REPO + " with _local/bin/gars-mirror.sh, where " + PUSH_RULE
     + "; GitHub stamps the push.",
     "5. Wait: the round must publish at least an hour (" + str(WITNESS_LEAD_S) + " s) after GitHub's push stamp; the "
     "freeze refuses otherwise, and reads the round only once it is published.",
@@ -112,11 +150,18 @@ class BeaconRefused(ValueError):
 
 def registration() -> dict:
     """What build_draft writes as the draft's take_order_beacon: the chain, the relays, the rule; the round is the one
-    value chosen when a draft is regenerated for its review (PENDING until then, so build_draft.pending names it)."""
+    value chosen when a draft is regenerated for its review (PENDING until then, so build_draft.pending names it); and
+    (option A+) the superseded rounds' entries."""
+    bad = superseded_problems(SUPERSEDED_ROUNDS)
+    if bad:
+        raise BeaconRefused("SUPERSEDED_ROUNDS: " + "; ".join(bad))
     if REGISTERED_ROUND is not None:
         round_time(REGISTERED_ROUND)
+        if REGISTERED_ROUND in [e["round"] for e in SUPERSEDED_ROUNDS]:
+            raise BeaconRefused(f"round {REGISTERED_ROUND} is superseded; a superseded round is never the registered one")
     return dict(CHAIN, relays=list(RELAYS), round="PENDING" if REGISTERED_ROUND is None else REGISTERED_ROUND,
-                seed_rule=SEED_RULE, registration_order=list(REGISTRATION_ORDER), residual=residual())
+                seed_rule=SEED_RULE, registration_order=list(REGISTRATION_ORDER), residual=residual(),
+                superseded=[dict(e) for e in SUPERSEDED_ROUNDS])
 
 
 SEED_PREFIX = "gap-study-4 take order\n"
@@ -126,8 +171,9 @@ SEED_RULE = ("take_order_seed is the first 40 hex characters of the sha256 of th
              "signature (order_beacon.seed); the freeze refuses unless the commit that registered the round was pushed "
              "to " + WITNESS_REPO + " at least " + str(WITNESS_LEAD_S) + " s before the round is published, by GitHub's "
              "own push record, and so must the last commit that changed the draft (order_beacon.push_witness_problem); "
-             "that push is the mirror of a verified wave, under "
-             + STANDING_WORD + ".")
+             + PUSH_RULE + ". A registered round is replaced only as take_order_beacon.superseded records it: by a "
+             "swap commit GitHub's records hold at least " + str(SWAP_LEAD_S) + " s before that round publishes, or "
+             "under Javier's recorded answer to the ask naming that swap (order_beacon.SUPERSEDED_ROUNDS).")
 
 
 def residual() -> str:
@@ -141,10 +187,16 @@ def residual() -> str:
             "dropping a deleted branch's records: a record GitHub stops returning refuses the freeze only when it is "
             "one of the two witnessing pushes, and a dropped record of a candidate branch goes unseen (a mirror rule "
             "blocking deletion and force push would close it, a repository setting and Javier's call). The round's "
-            "BLS signature is not verified (two relays run by different operators must agree instead). The "
-            "witnessing pushes are mirrors of verified "
-            "waves, made under " + STANDING_WORD + "; " + RETENTION_NOTE + ", so a push record GitHub no longer "
-            "returns for a witnessing push refuses the freeze, never passes it.")
+            "BLS signature is not verified (two relays run by different operators must agree instead). For the "
+            "witnessing pushes, " + PUSH_RULE + "; " + RETENTION_NOTE + ", so a push record GitHub no longer "
+            "returns for a witnessing push refuses the freeze, never passes it. A registered round may be "
+            "superseded, and each such round is listed in take_order_beacon.superseded with why: the freeze passes "
+            "a superseded round only when GitHub's records hold the commit that replaced it at least "
+            + str(SWAP_LEAD_S) + " s before it published, so its value was unknown, or under Javier's recorded "
+            "answer to the ask naming that swap, a row the freeze reads from the study's committed copy of its "
+            "decision log (" + OWNER_DECISIONS + "), which an outside reader takes on the same trust as the "
+            "machines and the runner. A superseded round's order can be computed by anyone, against the draft its "
+            "entry names; it is a published deviation, never a silent one.")
 
 
 def registered_value(source: str):
@@ -169,13 +221,158 @@ def registered_value(source: str):
     raise BeaconRefused("REGISTERED_ROUND is not assigned the literal None or an integer")
 
 
-def history_problem(values: list, round_no: int):
-    """Why a file's REGISTERED_ROUND values, commit by commit in history order, are not exactly one change from None
-    to `round_no` (finding 1b: a round set twice, or set back, could be chosen after its value is public), or None."""
+def history_problem(values: list, round_no: int, superseded=()):
+    """Why a file's REGISTERED_ROUND values, commit by commit in history order, are not exactly [None, *the superseded
+    rounds in order, `round_no`] (finding 1b: a round set twice, or set back, could be chosen after its value is
+    public; option A+: a round is replaced only as an entry of `superseded` records it), or None."""
+    rounds = [e["round"] for e in superseded]
+    if round_no in rounds:
+        return f"round {round_no} is superseded; a superseded round is never the registered one"
     changes = [v for i, v in enumerate(values) if i == 0 or v != values[i - 1]]
-    if changes != [None, round_no]:
-        return (f"REGISTERED_ROUND's history is {changes}, not one change from None to {round_no}: a round set more "
-                f"than once, set back, or never None first is refused")
+    if changes != [None, *rounds, round_no]:
+        return (f"REGISTERED_ROUND's history is {changes}, not None, then the superseded rounds {rounds}, then "
+                f"{round_no}: a round set more than once, set back, never None first, or replaced with no entry is "
+                f"refused")
+    return None
+
+
+def superseded_value(source: str) -> tuple:
+    """SUPERSEDED_ROUNDS as one version of this file assigns it, read by parsing (a version before option A+ assigns
+    none: ()). One module-level assignment of a literal tuple of dicts, else BeaconRefused."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as e:
+        raise BeaconRefused(f"this version of order_beacon.py does not parse ({e.msg})") from None
+    bound = []
+    for node in tree.body:
+        targets = [node.target] if isinstance(node, ast.AnnAssign) else node.targets if isinstance(node, ast.Assign) \
+            else []
+        if any(isinstance(t, ast.Name) and t.id == "SUPERSEDED_ROUNDS" for t in targets):
+            bound.append(node.value)
+    # the fold's review (NIT): a second binding anywhere (inside an if, a def, a loop) could hide an entry at run time
+    stores = sum(1 for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == "SUPERSEDED_ROUNDS"
+                 and isinstance(n.ctx, (ast.Store, ast.Del)))
+    if stores != len(bound):
+        raise BeaconRefused("SUPERSEDED_ROUNDS is bound somewhere other than one module-level assignment")
+    if not bound:
+        return ()
+    if len(bound) != 1:
+        raise BeaconRefused(f"this version of order_beacon.py assigns SUPERSEDED_ROUNDS {len(bound)} times, not once")
+    try:
+        value = ast.literal_eval(bound[0])
+    except ValueError:
+        raise BeaconRefused("SUPERSEDED_ROUNDS is not a literal") from None
+    if not (isinstance(value, tuple) and all(isinstance(e, dict) for e in value)):
+        raise BeaconRefused("SUPERSEDED_ROUNDS is not a literal tuple of dicts")
+    return value
+
+
+def published_text(round_no: int) -> str:
+    """The round's publication time as an entry's `published` field writes it: UTC, seconds, a trailing Z."""
+    return datetime.fromtimestamp(round_time(round_no), timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def superseded_problems(entries) -> list[str]:
+    """Why `entries` are not well-formed SUPERSEDED_ROUNDS entries (an offline shape check), or []."""
+    if not isinstance(entries, (tuple, list)):
+        return ["SUPERSEDED_ROUNDS is not a tuple"]
+    out, rounds, ids = [], [], []
+    for i, e in enumerate(entries):
+        if not isinstance(e, dict) or set(e) not in (set(ENTRY_BEFORE), set(ENTRY_DECISION)):
+            out.append(f"entry {i} holds neither exactly {list(ENTRY_BEFORE)} nor exactly {list(ENTRY_DECISION)}")
+            continue
+        r = e["round"]
+        try:
+            want = published_text(r)
+        except BeaconRefused as err:
+            out.append(f"entry {i}: {err}")
+            continue
+        rounds.append(r)
+        if e["published"] != want:
+            out.append(f"entry {i}: published is {e['published']!r}, not round {r}'s time {want}")
+        if not (isinstance(e["registering_commit"], str) and SEED_SHAPE.fullmatch(e["registering_commit"])):
+            out.append(f"entry {i}: registering_commit is not a full 40-hex commit")
+        for key in ("push", "why", "record"):
+            if not (isinstance(e[key], str) and e[key].strip()):
+                out.append(f"entry {i}: {key} is not a non-empty sentence")
+        if "before_publication" in e and e["before_publication"] is not True:
+            out.append(f"entry {i}: before_publication is not true")
+        if "decision" in e:
+            for key in ("decision", "ask"):
+                if not (isinstance(e[key], str) and e[key].strip()):
+                    out.append(f"entry {i}: {key} is not a non-empty id")
+            ids.append(e["decision"])
+    if len(set(rounds)) != len(rounds):
+        out.append("a round is superseded twice")
+    if len(set(ids)) != len(ids):
+        out.append("one decision id is cited by two entries")
+    return out
+
+
+def swap_phrase_problem(round_no: int, row: dict):
+    """Why a decision row's reply is not the swap phrase of `round_no`, or None (FIRST_SWAP for round 33496978;
+    `beacon-swap-<round> yes` with outcome yes for every other round)."""
+    match, outcome = row.get("principal_match"), row.get("outcome")
+    if round_no in FIRST_SWAP:
+        code, keys = FIRST_SWAP[round_no]
+        if outcome in keys and match == f"{code} {outcome}":
+            return None
+        return (f"its reply is {match!r} with outcome {outcome!r}, not one of "
+                f"{[f'{code} {k}' for k in keys]} with that key as its outcome")
+    if match == f"beacon-swap-{round_no} yes" and outcome == "yes":
+        return None
+    return f"its reply is {match!r} with outcome {outcome!r}, not 'beacon-swap-{round_no} yes' with outcome 'yes'"
+
+
+def _utc(text) -> float | None:
+    try:
+        return datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def decision_problem(entry: dict, rows: list, entries, now: float | None = None) -> str | None:
+    """Option A+, step 3b: why `entry`'s decision does not bind its swap, or None. The decision list `rows` must hold
+    exactly one row with the entry's id, an `ask.answer` by the principal with its turn's sha256, answering the entry's
+    ask with the round's swap phrase, created after the round published; no other entry of `entries` cites the id.
+    glitch-45's review of fold2/lb, mn-3 (ruled): no row of the list supersedes it (`supersedes_id`), no later row
+    answers or withdraws the same ask, and its `expires_at`, when set, is still ahead of `now` (the check's own clock
+    by default). The list is the study's committed copy; a later row OrgOS holds and the copy lacks is not seen (the
+    copy's trust limit, named in residual())."""
+    did, r = entry["decision"], entry["round"]
+    if sum(1 for e in entries if isinstance(e, dict) and e.get("decision") == did) != 1:
+        return f"decision {did} is cited by more than one superseded entry"
+    match = [row for row in rows if isinstance(row, dict) and row.get("id") == did]
+    if len(match) != 1:
+        return f"the committed decision list ({OWNER_DECISIONS}) holds {len(match)} row(s) with id {did}, not one"
+    row = match[0]
+    if row.get("action") != "ask.answer" or row.get("actor_role") != "principal":
+        return f"{did} is a {row.get('action')!r} by {row.get('actor_role')!r}, not the principal's answer to an ask"
+    if not (isinstance(row.get("principal_turn_sha256"), str) and re.fullmatch(r"[0-9a-f]{64}",
+                                                                                 row["principal_turn_sha256"])):
+        return f"{did} carries no principal_turn_sha256: it binds no turn of his"
+    phrase = swap_phrase_problem(r, row)
+    if phrase:
+        return f"{did}: {phrase}"
+    if row.get("target_id") != entry["ask"]:
+        return f"{did} answers {row.get('target_id')!r}, not the ask {entry['ask']!r} the entry names"
+    made = _utc(row.get("created_at"))
+    if made is None or made <= round_time(r):
+        return (f"{did} is dated {row.get('created_at')!r}, not after round {r} published ({published_text(r)}): "
+                f"no word on a swap before the value it replaces was out")
+    later = [x.get("id") for x in rows if isinstance(x, dict) and x is not row and
+             (x.get("supersedes_id") == did or
+              (x.get("target_id") == entry["ask"] and
+               # glitch-45's re-check, R-4: a same-ask row with no readable time refuses, never reads as earlier
+               (_utc(x.get("created_at")) is None or _utc(x.get("created_at")) > made)))]
+    if later:
+        return (f"{did} is superseded, or its ask {entry['ask']} answered or withdrawn again, by {later[0]}: a word "
+                f"taken back binds no swap")
+    if row.get("expires_at") is not None:
+        ends = _utc(row["expires_at"])
+        clock = datetime.now(timezone.utc).timestamp() if now is None else now
+        if ends is None or ends <= clock:
+            return f"{did} expired at {row['expires_at']!r}: an expired word binds no swap"
     return None
 
 
@@ -207,11 +404,15 @@ def registered_round(beacon) -> int:
         raise BeaconRefused(f"take_order_beacon.relays is {beacon.get('relays')!r}, not {list(RELAYS)!r}")
     if beacon.get("seed_rule") != SEED_RULE:
         raise BeaconRefused("take_order_beacon.seed_rule is not order_beacon.SEED_RULE")
+    if beacon.get("superseded") != [dict(e) for e in SUPERSEDED_ROUNDS]:
+        raise BeaconRefused("take_order_beacon.superseded is not order_beacon.SUPERSEDED_ROUNDS (option A+)")
     r = beacon.get("round")
     if type(r) is not int:
         raise BeaconRefused(f"take_order_beacon.round is {r!r}: a round is registered when the draft is regenerated "
                             f"for its review, and no order exists without one")
     round_time(r)
+    if r in [e["round"] for e in SUPERSEDED_ROUNDS]:
+        raise BeaconRefused(f"take_order_beacon.round {r} is superseded; a superseded round is never the registered one")
     return r
 
 
@@ -279,17 +480,17 @@ def seed(reading: dict) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:40]
 
 
-def push_witness_problem(commit, round_no: int, pushes, contains) -> str | None:
+def push_witness_problem(commit, round_no: int, pushes, contains, lead: int = WITNESS_LEAD_S) -> str | None:
     """Why GitHub's push records do not witness the round's registration in time (ruling 1), or None.
 
     `commit` is the commit that set REGISTERED_ROUND to `round_no` (None when no commit did); `pushes` is
     [(unix time, pushed sha)] as GitHub recorded them on WITNESS_REPO; `contains(commit, sha)` says whether `sha`'s
-    history holds `commit`. A push counts only if it holds the commit and GitHub stamped it at least WITNESS_LEAD_S
-    before the round's publication time."""
+    history holds `commit`. A push counts only if it holds the commit and GitHub stamped it at least `lead` seconds
+    (WITNESS_LEAD_S; SWAP_LEAD_S for a before_publication swap) before the round's publication time."""
     if not (isinstance(commit, str) and SEED_SHAPE.fullmatch(commit)):
         return (f"no commit in this history sets REGISTERED_ROUND to {round_no}: the round's registration has no "
                 f"commit to witness")
-    deadline = round_time(round_no) - WITNESS_LEAD_S
+    deadline = round_time(round_no) - lead
     held = sorted(t for t, sha in pushes if contains(commit, sha))
     if not held:
         return (f"GitHub returns no push to {WITNESS_REPO} holding {commit[:12]}, the commit that registered round "
@@ -297,7 +498,7 @@ def push_witness_problem(commit, round_no: int, pushes, contains) -> str | None:
                 f"a missing record never passes")
     if held[0] > deadline:
         return (f"GitHub's first push to {WITNESS_REPO} holding {commit[:12]} is stamped {iso(held[0])}, later than "
-                f"{iso(deadline)} ({WITNESS_LEAD_S} s before round {round_no} is published): the round could have been "
+                f"{iso(deadline)} ({lead} s before round {round_no} is published): the round could have been "
                 f"registered with its value in sight")
     return None
 

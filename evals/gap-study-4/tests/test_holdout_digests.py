@@ -201,6 +201,9 @@ class FreezeHarness:
                    (f, "coverage_problem", lambda *a, **k: None),
                    (f, "take_order_beacon_reading", lambda *a, **k: {"synthetic": "beacon reading"}),
                    (f, "take_order_witness", lambda *a, **k: {"synthetic": "push witness"}),
+                   # lane fold2-lb (pre-freeze review 2, m3): the order-function gate stood in for on the synthetic
+                   # draft, as the gates above are; tests/test_fold2_lb.py binds it
+                   (f, "order_function_problem", lambda *a, **k: None),
                    (f.copy_manifest, "problems", lambda *a, **k: []))
         with contextlib.ExitStack() as stack:
             for module, name, value in patches:
