@@ -3120,7 +3120,7 @@ def expected_prefreeze_reading(i):
             "from the plan's text, round 3's transcripts and labels4 alone (COPIED.d/w2b-cp3-text-graders.json), and no "
             "round-4 module imports round 2's labels.py.")}
     if i == 10:
-        return {"disposition": "reword", "by": PREFREEZE_CLOSE_BY, "read": (
+        return {"disposition": "reword", "by": PREFREEZE_CLOSE_BY + "; reread by " + PREFREEZE_2_BY, "read": (
             "V8-L10's condition resolved on round 4's checker, with the route read from check_take.py as built: an "
             "absolute path outside the take's own run tree that a tool call or its result names (outside_checkout_reads "
             "at line 325, outside_home_reads at line 440, outside_temp_reads at line 586) is counted as the "
