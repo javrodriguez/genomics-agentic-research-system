@@ -1,0 +1,37 @@
+{
+  "agent_calls": 0,
+  "change": {
+    "checker_constants_sha256": [
+      "e3bc32b2077f98ce95e4debcd1eade371676ce7b6493a10facf7b77cec5d9c61",
+      "2bca79394adf37177ee64b63ab4f121b61d9bbe2c412f58d1cdb9b35835c944f"
+    ],
+    "reasons_added": [],
+    "reasons_removed": []
+  },
+  "checker_constants_sha256": "2bca79394adf37177ee64b63ab4f121b61d9bbe2c412f58d1cdb9b35835c944f",
+  "checker_reasons": [],
+  "machine": {
+    "checkout": "/home/javier/w-PagN1Unn/repo",
+    "home": "/home/javier",
+    "temp_root": "/tmp"
+  },
+  "n": 2,
+  "nested_cli_calls": 0,
+  "no_output_nudges": 0,
+  "route": null,
+  "run_tree": "/tmp/run-fb80dc36",
+  "schema": 1,
+  "subagents": {
+    "calls": [],
+    "models": [],
+    "stream_file_differences": 0
+  },
+  "supersedes": "recheck-1.json",
+  "walk": "w174",
+  "walk_commit": "542d1fe2927975c0632ef25ef294dfec8afcc01f",
+  "was": {
+    "checker_constants_sha256": "e3bc32b2077f98ce95e4debcd1eade371676ce7b6493a10facf7b77cec5d9c61",
+    "checker_reasons": [],
+    "file": "recheck-1.json"
+  }
+}
