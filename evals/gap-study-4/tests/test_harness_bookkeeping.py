@@ -296,13 +296,13 @@ def source_line(path: str, n: int) -> str:
 
 
 def derived_codex_pattern() -> str:
-    """codex_adapter.py:41: the rollout is `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...`: any folders); and
+    """codex_adapter.py:44: the rollout is `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...`: any folders); and
     box/run_take.py:68, 169-171: CODEX_HOME is the config mount (HOME is the run tree's .home since R-H5), so the
     pattern is relative to the config mount."""
     m = re.fullmatch(r"\s*rollout\s+`\$CODEX_HOME/([^`]+)`, copied out host-side by the driver and handed over by",
-                     source_line(CODEX_ADAPTER, 41))
+                     source_line(CODEX_ADAPTER, 44))
     if not m:
-        raise AssertionError("codex_adapter.py:41 is not the rollout line this candidate is grounded in")
+        raise AssertionError("codex_adapter.py:44 is not the rollout line this candidate is grounded in")
     if source_line(RUN_TAKE, 68) != 'CONFIG_MOUNT = "/opt/cfg"':
         raise AssertionError("box/run_take.py:68 is not CONFIG_MOUNT")
     row = " ".join(source_line(RUN_TAKE, n) for n in (169, 170, 171))
@@ -390,7 +390,7 @@ def candidate_problems(table: dict) -> list:
                        f"real walks show no other run-tree furniture)")
         grounds = " ".join(e.grounds)
         # B21-2 and B21-7 (glitch-26, lane vendor-b21): each grounds line names its walks and its pinned source lines
-        for need in ({"codex": ["codex_adapter.py:41", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
+        for need in ({"codex": ["codex_adapter.py:44", "`$CODEX_HOME/sessions/.../rollout-*.jsonl`",
                                 "box/run_take.py:68", '"CODEX_HOME": CONFIG_MOUNT', "092d3acd",
                                 "rollout/src/recorder.rs:1739-1762", "rollout/src/rollout_file_name.rs:62-73",
                                 "rollout/src/lib.rs:86", "12 of 12 codex walks", "w-o7 to w-o17, w-o45",

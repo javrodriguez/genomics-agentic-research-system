@@ -111,7 +111,7 @@ TABLE: dict = {
         home_paths=("sessions/**/rollout-*.jsonl",),
         run_tree_paths=(".home/**",),
         grounds=(
-            "evals/gap-study-4/codex_adapter.py:41: rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...` any "
+            "evals/gap-study-4/codex_adapter.py:44: rollout    `$CODEX_HOME/sessions/.../rollout-*.jsonl` (`...` any "
             "folders: sessions/<year>/<month>/<day>/ as native_snapshot.py:84 spells it)",
             "pinned source openai/codex 092d3acd (rust-v0.162.1): rollout/src/lib.rs:86 SESSIONS_SUBDIR = \"sessions\"; "
             "rollout/src/recorder.rs:1739-1762 precompute_new_rollout_path: codex_home/sessions/<year>/<mm>/<dd>/; "
