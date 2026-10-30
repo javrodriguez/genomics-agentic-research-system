@@ -136,6 +136,25 @@ def without_reason(table: dict, reason: str) -> dict:
     return t
 
 
+def before_reason(table: dict, reason: str) -> dict:
+    """The table as it stood before `reason` was added to the vocabulary: without_reason, and every row condition
+    that reads it through op has dropped too (a row left with no any_of is dropped). Since pre-freeze review 2 MAJOR 1
+    (lane fold2/la1) the agent-reachable-reason row names operator-lines, and routing.check_table refuses a has-read of
+    a reason outside the vocabulary, so a HEAD table that only drops the vocabulary entry is unreadable."""
+    t = without_reason(table, reason)
+    rows = []
+    for row in t["rows"]:
+        for key in ("any_of", "all_of", "none_of"):
+            if key in row:
+                row[key] = [c for c in row[key] if not (c.get("op") == "has" and c.get("value") == reason)]
+                if not row[key] and key != "any_of":
+                    del row[key]
+        if row.get("any_of", True):
+            rows.append(row)
+    t["rows"] = rows
+    return t
+
+
 def non_graded_names(table: dict) -> set:
     """Review MINOR 4: every reason a non-graded row of the after-first-turn phase (or any phase) names through an
     any_of or all_of condition on checker_reasons; the tests' own reading."""
@@ -447,7 +466,7 @@ def dirty_vocabulary_cases(mod) -> list:
     f = Folder()
     try:
         table = live_table()
-        repo = repo_with(without_reason(table, "operator-lines"), tmp)
+        repo = repo_with(before_reason(table, "operator-lines"), tmp)
         (repo / "routing.json").write_text(json.dumps(table, indent=1))
         w = f.walk("w-ol", ["operator-lines"])
         with mock.patch.object(routing, "TABLE_PATH", str(repo / "routing.json")):
