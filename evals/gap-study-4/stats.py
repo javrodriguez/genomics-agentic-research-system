@@ -145,7 +145,7 @@ TAKE_FIELDS = ("arm", "task", "half", "model", "agent", "wording", "repeat", "pr
                "label", "views", "agent_events", "ruled", "human_sample", "human_why")
 # MAJOR 5 (pre-freeze review 1): routing.json's agent_event_rows, in its order; tests/test_pf1_routing_rulings.py
 # binds the two (stats reads no routing table).
-AGENT_EVENTS = ("nonzero-exec-exit", "quiescence-cap-reached")
+AGENT_EVENTS = ("nonzero-exec-exit", "quiescence-cap-reached", "store-variable-assigned")   # + pre-freeze review 2 M1
 # Pre-freeze review 1, MAJOR 6 (lane pf1-l2b, Sat 24 Oct 2026, under the lane orchestrator's approval of the fold
 # plan): a take its grader sent to the human sample carries that flag into its record, appended after the twelve
 # base fields (and, at the L6a merge, after lane pf1-l2a's agent_events and ruled) so the first eight (the
@@ -458,14 +458,17 @@ def render_route_events(rows) -> str:
     out = [TABLE_HEADINGS["route_events"], ""]
     if rows == NO_TAKES:
         return "\n".join(out + [NO_TAKES, ""])
-    out += ["Graded takes the routing table graded because the agent's own act ended its CLI with a non-zero exit, or "
-            "left a process of its own alive at the quiescence cap, each in its own column beside the take's ordinary "
+    out += ["Graded takes the routing table graded because the agent's own act ended its CLI with a non-zero exit, "
+            "left a process of its own alive at the quiescence cap, or assigned HOME or an agent CLI's store variable "
+            "in a shell command with no nested agent found, each in its own column beside the take's ordinary "
             "reading in the tables below; and the takes of a slot a committed human ruling touched. Counts of takes.",
             "", "| Arm | Task | Model | Harness | Half | Takes | Non-zero exit (the agent's own exit) "
-            "| Process alive at the quiescence cap | Ruled takes |", "|---|---|---|---|---|---|---|---|---|"]
+            "| Process alive at the quiescence cap | Store variable assigned | Ruled takes |",
+            "|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         out.append(f"{_cellname(r)} | {r['half']} | {_none(r['takes'])} | {_none(r['nonzero-exec-exit'])} "
-                   f"| {_none(r['quiescence-cap-reached'])} | {_none(r['ruled'])} |")
+                   f"| {_none(r['quiescence-cap-reached'])} | {_none(r['store-variable-assigned'])} "
+                   f"| {_none(r['ruled'])} |")
     return "\n".join(out + [""])
 
 

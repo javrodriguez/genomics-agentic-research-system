@@ -611,9 +611,12 @@ CASES = {
     # stage V every settled reader of the snapshot refuses it too, each under its row's reason for codex and as
     # transcript-unreadable for gemini; none passes)
     "a codex snapshot the ledger does not bind": (("codex",), case_snapshot_unbound,
+                                                  # pf2 L-A1 review (MAJOR 3): the four codex sites of
+                                                  # unknown-harness-origin, leak-in-loaded-context and checkout-binding
+                                                  # name a snapshot the ledger does not bind driver-record-fault
                                                   {"transcript-unreadable": 3, "inherited-context": 5,
-                                                   "unknown-harness-origin": 1, "leak-in-loaded-context": 1,
-                                                   "environment-record": 1, "checkout-binding": 2,
+                                                   "driver-record-fault": 4,
+                                                   "environment-record": 1,
                                                    "constant-binding": 3, "harness-condition-violated": 1}, None),
     "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 11},
                                                    None),
@@ -656,7 +659,7 @@ CASES = {
                                               None),
     "a turn with no launch journal": (("codex", "gemini"), case_no_journal,
                                       {"codex": {"inherited-context": 1},
-                                       "gemini": {"inherited-context": 3, "checkout-binding": 1,
+                                       "gemini": {"inherited-context": 3, "driver-record-fault": 1,   # pf2 L-A1 review
                                                   "constant-binding": 1}}, None),
     # gemini constant-binding 1: T-24's S10 registered-invocation reading, argv_mode (glitch-f1 ruling 22 Oct, merge 5)
     "a launch journal naming another turn's stream": (("codex", "gemini"), case_journal_of_another_turn,
@@ -734,9 +737,9 @@ CASES = {
                                            "gemini": {"transcript-unreadable": 1, "constant-binding": 1}}, None),
     # nested-agent (T-21)
     "a nested agent's session switch": (("codex",), edits(tool_command("codex exec --ephemeral hi"), None),
-                                        {"nested-agent": 1}, None),
+                                        {"nested-agent-session": 1}, None),       # pre-freeze review 2, MAJOR 1
     "a nested agent's store moved": (("codex", "gemini"), edits(tool_command("CODEX_HOME=/x codex exec hi"), None),
-                                     {"nested-agent": 1}, None),
+                                     {"store-variable-assigned": 1}, None),       # pre-freeze review 2, MAJOR 1
     # codex: the session's working directory (T-11), the run tree (T-4), and file_change (T-8, PENDING)
     "a rollout turn in another working directory": (("codex",), case_rollout_cwd,
                                                     {"inherited-context": 1, "readers-disagree": 1}, None),
@@ -1001,7 +1004,7 @@ P2_WITNESSES = {
     "the unread lines admitted": (("    if bad and not (isinstance(outcome, str) and outcome.startswith((\"timed-out\", "
                                    "\"aborted\"))):\n", "    if False:\n"), "a turn stream line no parser read"),
     "the nested switches unread": ((
-        "    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)\n",
+        "    return nested_command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)\n",
         "    return []\n"), "a nested agent's session switch"),
     "file_change read as clean": (('        return vendor_pending("codex", "T-8:file-change", '
                                    'vendor_file_change_reads, path)\n',

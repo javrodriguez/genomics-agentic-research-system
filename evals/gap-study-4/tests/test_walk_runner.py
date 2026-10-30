@@ -720,8 +720,8 @@ class R2WalkCheck(Case):
             store2["sweeps"][0]["files"].append(["/tmp/n/projects/-x/n1.jsonl", "claude", "n1"])
             (swept / "session-store.json").write_text(json.dumps(store2))
             for where, why, says in ((unset, hcv, "do not set CLAUDE_CODE_THRIFTY_SONIC off"),
-                                     (nested, "nested-agent", "is not the take's own session record"),
-                                     (swept, "nested-agent", "/tmp/n/projects/-x/n1.jsonl is a claude session"),
+                                     (nested, "nested-agent-session", "is not the take's own session record"),
+                                     (swept, "nested-agent-session", "/tmp/n/projects/-x/n1.jsonl is a claude session"),
                                      (hold, hcv, "crossSessionInbound is 'hold'"),
                                      (undenied, hcv, "permissions.deny lacks"),
                                      (sep, "transcript-unreadable", "line separator(s) U+000B"),

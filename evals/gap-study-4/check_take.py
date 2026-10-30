@@ -1112,7 +1112,7 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
             return nxt is not None and norm[k] == nxt
 
         if not want:
-            problems.append("[operator-lines] " + f"operator turn {step['n']} renders to nothing; the script is broken")
+            problems.append(f"[{DRIVER_RECORD_FAULT}] operator turn {step['n']} renders to nothing; the script is broken")
             continue
         pos = next((k for k in range(i, len(ops)) if norm[k] == want), None)
         if pos is None:
@@ -3242,9 +3242,15 @@ def transcript_line_problems(path: Path) -> list[str]:
 #   box) refuses; an errored call (a non-dict toolUseResult) is recorded as errored. A model off the pin's and
 #   SUBAGENT_EXPLICIT_MODELS refuses; a sub-agent's API-error record is the harness's, never a model (F3). A denied
 #   isolation tool refuses [harness-condition-violated]. [subagent-records] is a round-4 operator reason routed like
-#   harness-condition-violated.
+#   harness-condition-violated; since pre-freeze review 2 (MAJOR 1) it names only the driver's copy ledger, and every
+#   finding the agent can produce is [subagent-unbound], aborted after the first turn.
 AGENT_TOOL = "Agent"
 SUBAGENT_RECORDS = "subagent-records"
+# MAJOR 1 of pre-freeze review 2 (fold plan prefreeze-2, lane L-A1): every way the sub-agent records fail to bind that
+# the agent can produce (its Agent calls, a background call still running at its turn's end, the sub-agent model it
+# asked for, the sub-agent files its uid writes) is [subagent-unbound], aborted after the first turn by its own row;
+# [subagent-records] keeps harness-error for the one finding only the driver produces, the copies its ledger names.
+SUBAGENT_UNBOUND = "subagent-unbound"
 SUBAGENTS_DIR = "subagents"
 _SUBAGENT_FILE = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.jsonl")
 _SUBAGENT_META = re.compile(r"agent-([A-Za-z0-9_-]{1,64})\.meta\.json")
@@ -3395,13 +3401,14 @@ def _model_problem(where: str, model: str, pin) -> list:
         return []
     why = ("a context-window suffix on the model id is not on the admitted list"
            if "[" in model else "neither the pin's nor one of the admitted ids")
-    return [f"[{SUBAGENT_RECORDS}] {where} ran on {model[:60]!r}: {why} ({list(SUBAGENT_EXPLICIT_MODELS)} and the pin's)"]
+    return [f"[{SUBAGENT_UNBOUND}] {where} ran on {model[:60]!r}: {why} ({list(SUBAGENT_EXPLICIT_MODELS)} and the pin's)"]
 
 
 def subagent_problems(path: Path) -> list[str]:
-    """[subagent-records] (and, for a denied tool, [harness-condition-violated]; for a bad line,
-    [transcript-unreadable]) for each way the sub-agent records fail to bind, or show a sub-agent still running; [] for
-    a take with no Agent call and no sub-agent record."""
+    """[subagent-unbound] (and, for a denied tool the stream shows, [harness-condition-violated]; for a bad line,
+    [transcript-unreadable]) for each way the sub-agent records fail to bind, or show a sub-agent still running;
+    [subagent-records] for the one finding only the driver produces, copies the driver ledger does not name exactly
+    (MAJOR 1 of pre-freeze review 2); [] for a take with no Agent call and no sub-agent record."""
     calls, files, metas = agent_calls(path), subagent_files(path), subagent_metas(path)
     subs = stream_subagent_records(path)
     led = _ledger_beside(path) or {}
@@ -3431,21 +3438,21 @@ def subagent_problems(path: Path) -> list[str]:
                         turn_of_call[b["id"]] = n
     agents = [c["agent_id"] for c in calls if c["agent_id"]]
     if len(agents) != len(set(agents)):
-        out.append(f"[{SUBAGENT_RECORDS}] two Agent calls name one sub-agent: calls and sub-agents are one to one")
+        out.append(f"[{SUBAGENT_UNBOUND}] two Agent calls name one sub-agent: calls and sub-agents are one to one")
     for c in calls:
         cid = c["tool_use_id"]
         if c["status"] == AGENT_ERRORED:
             continue
         if c["status"] is None or c["agent_id"] is None:
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} has no result naming its sub-agent and a status: it was "
+            out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid} has no result naming its sub-agent and a status: it was "
                        f"still running when the turn ended")
             continue
         if c["status"] not in AGENT_STATUSES or c["status"] == "remote_launched":
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} has status {c['status'][:30]!r}: only completed, and "
+            out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid} has status {c['status'][:30]!r}: only completed, and "
                        f"async_launched with its completion in the same turn, are read (remote_launched runs outside "
                        f"the box)")
         if c["status"] == "async_launched" and c["completion"] not in TASK_TERMINAL_STATUSES:
-            out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid} runs in the background and its turn holds no completion "
+            out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid} runs in the background and its turn holds no completion "
                        f"for it: a sub-agent still running when the turn ended")
         if c["resolved_model"] is not None:
             out += _model_problem(f"Agent call {cid}'s sub-agent", c["resolved_model"], pin)
@@ -3456,14 +3463,14 @@ def subagent_problems(path: Path) -> list[str]:
             done = [i for i, r in enumerate(recs) if r.get("type") == "system" and r.get("subtype") == "task_notification"
                     and r.get("tool_use_id") == cid]
             if not done or done[-1] > final:
-                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s completion is not in its own turn before the "
+                out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid}'s completion is not in its own turn before the "
                            f"turn's final result")
             else:
                 end = done[-1]                       # review r12 NIT: the notification agent_calls' completion reads
                 started = [r.get("task_id") for r in recs if r.get("type") == "system"
                            and r.get("subtype") == "task_started" and r.get("tool_use_id") == cid]
                 if len(started) != 1 or recs[end].get("task_id") != started[0]:
-                    out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s task_notification does not name the task its "
+                    out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid}'s task_notification does not name the task its "
                                f"task_started began")
         for m, (fin, recs) in final_of_turn.items():
             limit = end if (m == n and end is not None) else fin
@@ -3473,12 +3480,12 @@ def subagent_problems(path: Path) -> list[str]:
             later_events = [i for i, r in enumerate(recs) if m != n and r.get("type") == "system"
                             and r.get("tool_use_id") == cid]
             if late or later_events:
-                out.append(f"[{SUBAGENT_RECORDS}] Agent call {cid}'s sub-agent wrote after its completion or its turn's "
+                out.append(f"[{SUBAGENT_UNBOUND}] Agent call {cid}'s sub-agent wrote after its completion or its turn's "
                            f"final result, or a task event names it in another turn")
                 break
     named = {c["agent_id"] for c in calls if c["agent_id"] and c["status"] != AGENT_ERRORED}
     if set(files) != named or set(metas) != named:
-        out.append(f"[{SUBAGENT_RECORDS}] {len(named)} Agent call(s) name sub-agents {sorted(named)} and the folder "
+        out.append(f"[{SUBAGENT_UNBOUND}] {len(named)} Agent call(s) name sub-agents {sorted(named)} and the folder "
                    f"holds files for {sorted(files)} and metas for {sorted(metas)}: each call's sub-agent has exactly "
                    f"one of each")
     inputs = {b.get("id"): b.get("input") for r in _records_of(path) if r.get("type") == "assistant"
@@ -3488,15 +3495,15 @@ def subagent_problems(path: Path) -> list[str]:
         given = inputs.get(meta.get("toolUseId")) if isinstance(meta, dict) else None
         if call is not None and isinstance(given, dict) and \
                 _meta_input_mismatch(meta, given):                                       # review r11, R11-4
-            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta does not carry the call's own "
+            out.append(f"[{SUBAGENT_UNBOUND}] sub-agent {aid}'s meta does not carry the call's own "
                        f"{list(SUBAGENT_META_FROM_INPUT)}")
         if call is None or call["agent_id"] != aid:
-            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s meta is not bound to the Agent call that names it")
+            out.append(f"[{SUBAGENT_UNBOUND}] sub-agent {aid}'s meta is not bound to the Agent call that names it")
     stream_recs: dict = {}
     for n, rec in subs:
         call = by_call.get(rec.get("parent_tool_use_id"))
         if call is None or not isinstance(rec.get("agent_id"), str) or rec.get("agent_id") != call["agent_id"]:
-            out.append(f"[{SUBAGENT_RECORDS}] turn {n}'s sub-agent record is not bound to an Agent call of the "
+            out.append(f"[{SUBAGENT_UNBOUND}] turn {n}'s sub-agent record is not bound to an Agent call of the "
                        f"transcript by its parent call and agent id")
             continue
         stream_recs.setdefault(call["agent_id"], []).append(rec)
@@ -3508,16 +3515,26 @@ def subagent_problems(path: Path) -> list[str]:
     for aid in sorted(file_recs):
         mine, theirs = _calls_of(stream_recs.get(aid, [])), _calls_of(file_recs[aid])
         if mine != theirs:
-            out.append(f"[{SUBAGENT_RECORDS}] sub-agent {aid}'s tool calls in the stream and in its file disagree "
+            out.append(f"[{SUBAGENT_UNBOUND}] sub-agent {aid}'s tool calls in the stream and in its file disagree "
                        f"({len(mine)} against {len(theirs)})")
         for rec in file_recs[aid]:
             if rec.get("type") == "assistant" and not _api_error(rec):
                 model = (rec.get("message") or {}).get("model")
                 if isinstance(model, str):
                     out += _model_problem(f"sub-agent {aid}'s file", model, pin)
+    # MAJOR 1 of pre-freeze review 2 (the class table's harness-condition-violated entry): a denied call is a harness
+    # condition only where the host-captured stream shows it too; one only the agent-writable sub-agent file holds is a
+    # disagreement between the records, which the stream-and-file comparison above already refuses as subagent-unbound
+    # (aborted), so the agent's own write never voids its take (harness-condition-violated outranks every aborted row)
+    # (the lane review of b62445c4, finding 2) the stream too can be forged through the CLI's stdout pipe, so a denied
+    # call counts only where both records hold it; one on either side alone is a disagreement, subagent-unbound above
     every = set()
-    for recs in list(stream_recs.values()) + list(file_recs.values()):
+    for recs in stream_recs.values():
         every |= _calls_of(recs)
+    in_files = set()
+    for recs in file_recs.values():
+        in_files |= _calls_of(recs)
+    every &= in_files
     denied = sorted({name for _, name in every if name in ISOLATION_DENIED_TOOLS})
     if denied:
         out.append(f"[{HARNESS_CONDITION_VIOLATED}] a sub-agent called {denied}: the isolation denials did not hold")
@@ -3652,7 +3669,28 @@ def subagent_leak_problems(path: Path, pre: dict) -> list[str]:
 #     - the sweep: after every turn, inside the box, every writable location of the take container is read for files
 #       of a session's shape (box/run_take.sweep_sessions); any but the take's own session and its sub-agent pairs
 #       refuses.
+# PRE-FREEZE REVIEW 2, MAJOR 1 (fold plan prefreeze-2, lane L-A1, 29 Oct 2026; the split by evidence, F1-2): one id
+# routed every finding harness-error, a re-run, so the agent's own ordinary command removed its take from every view.
+# The finding is now split by who can produce the record it reads:
+#     [nested-agent-session]     (aborted after the first turn) what the agent's uid can produce: a foreign session in
+#                                the store or the sweep, an entry it made unreadable, its link out of the swept roots,
+#                                a sweep stopped at its file cap, a listing or a sweep that did not complete (both run
+#                                as the agent's uid, box/run_take.sweep_argv), and the persistence switch;
+#     [store-variable-assigned]  (graded, an agent event of its own column) a bare assignment or export of HOME,
+#                                CLAUDE_CONFIG_DIR, CODEX_HOME or GEMINI_CLI_HOME: `HOME=/tmp git status` is an
+#                                ordinary command, and a nested agent it started shows as nested-agent-session;
+#     [nested-agent]             (harness-error, its ruling unchanged) what only the driver or the runtime produces:
+#                                session-store.json missing or off its shape, a sweep entry off its shape, a run tree
+#                                the launch journal does not record, an expected set or a read-write mount table the
+#                                runtime, not the agent, made (the root filesystem is read-only), and the drive's own
+#                                counts disagreeing with the streams.
 NESTED_AGENT = "nested-agent"
+NESTED_AGENT_SESSION = "nested-agent-session"
+# The lane review of 8d71ae0d, MAJOR 3 (glitch-45's ruling): a finding that reads only the driver's or the box's own
+# records (the frozen script, the envelopes, the launch journals), raised where a reason that is otherwise the agent's
+# would stand; it routes harness-error after the first turn by the generic row, never aborted.
+DRIVER_RECORD_FAULT = "driver-record-fault"
+STORE_VARIABLE_ASSIGNED = "store-variable-assigned"
 SESSION_STORE_RECORD = "session-store.json"
 SESSION_STORE_ROOTS = {CLAUDE_CODE: "projects", "codex": "sessions", "gemini": ".gemini/tmp"}
 SWEEP_CONFIG_MOUNT = "/opt/cfg"           # box/run_take.CONFIG_MOUNT (tests/test_nested_agent.py binds the two)
@@ -3797,20 +3835,40 @@ def assigned_variables(command: str, depth: int = 0) -> list:
 
 
 def command_problems(commands, harness: str = CLAUDE_CODE) -> list:
-    """[nested-agent] for each shell command that carries a session-off switch of the harness (by prefix, in the raw
-    text or a token), or assigns or exports a variable that moves an agent CLI's session store."""
+    """[nested-agent-session] for each shell command that carries a session-off switch of the harness (by prefix, in
+    the raw text or a token). The driver's vendor road (drive.vendor_nested_problems, a hashed reader source never
+    edited here) refuses a take on these lines; a bare store-variable assignment is not one of them (MAJOR 1 of
+    pre-freeze review 2: an ordinary command), so it is store_variable_problems' and the checker's alone."""
     out = []
     prefixes = NO_PERSISTENCE_PREFIXES.get(harness, ()) + (NO_PERSISTENCE_PREFIX,)
     for c in commands:
         toks = _split_all(c)
         hit = sorted({p for p in prefixes if p in c or any(p in t for t in toks)})
         if hit:
-            out.append(f"[{NESTED_AGENT}] a shell command carries {hit[0]}...: a nested agent that writes no session "
-                       f"would pass the session store and the sweep")
+            out.append(f"[{NESTED_AGENT_SESSION}] a shell command carries {hit[0]}...: a nested agent that writes no "
+                       f"session would pass the session store and the sweep")
+    return out
+
+
+def store_variable_problems(commands) -> list:
+    """[store-variable-assigned] for each shell command that assigns or exports a variable that moves an agent CLI's
+    session store (MAJOR 1 of pre-freeze review 2: graded with an agent event; a nested agent it started still shows
+    in the store or the sweep as nested-agent-session)."""
+    out = []
+    for c in commands:
         moved = sorted(set(assigned_variables(c)) & set(NESTED_HOME_VARIABLES))
         if moved:
-            out.append(f"[{NESTED_AGENT}] a shell command assigns or exports {moved}: a nested agent's session "
-                       f"written outside the store")
+            out.append(f"[{STORE_VARIABLE_ASSIGNED}] a shell command assigns or exports {moved}: an agent CLI started "
+                       f"under it would write its session outside the store")
+    return out
+
+
+def nested_command_problems(commands, harness: str = CLAUDE_CODE) -> list:
+    """The checker's reading of the take's shell commands: command_problems, then store_variable_problems, per
+    command in order (the lane review of 8d71ae0d, BLOCKER 1: the split lives here, drive.py stays byte-identical)."""
+    out = []
+    for c in commands:
+        out += command_problems([c], harness) + store_variable_problems([c])
     return out
 
 
@@ -3856,8 +3914,8 @@ def vendor_shell_commands(folder, harness: str) -> tuple:
 
 
 def nested_agent_flag_problems(path: Path) -> list:
-    """command_problems over the take's Bash commands, main thread and sub-agents."""
-    return command_problems(_bash_commands(path), CLAUDE_CODE)
+    """nested_command_problems over the take's Bash commands, main thread and sub-agents."""
+    return nested_command_problems(_bash_commands(path), CLAUDE_CODE)
 
 
 def _take_facts(path: Path) -> set:
@@ -4025,10 +4083,29 @@ def _admitted_session_files(listing_entries, own: str) -> set:
                                                             and rel.split("/")[3] == "subagents"))}
 
 
+# MAJOR 1 of pre-freeze review 2: a sweep finding is the driver's or the runtime's when sweep_violations gives it with
+# every field the agent's uid can write emptied (files, unreadable, escapes, truncated): the run tree, the expected
+# set and the mount table alone. Every other finding is the agent's to produce, [nested-agent-session]. By branch,
+# never by the sentence's words, which carry paths the agent names (the lane review of b62445c4, finding 1).
+SWEEP_AGENT_FIELDS = {"files": [], "unreadable": [], "escapes": [], "truncated": False}
+
+
+def sweep_driver_findings(sweep: dict, run_tree=None) -> set:
+    """The findings of one sweep that only the driver or the runtime produces (above)."""
+    return set(sweep_violations(dict(sweep, **SWEEP_AGENT_FIELDS), set(), None, run_tree))
+
+
+def sweep_finding_id(finding: str, driver: set) -> str:
+    """The reason id of one sweep_violations sentence: [nested-agent] when it is one of `driver`
+    (sweep_driver_findings of the same sweep), else [nested-agent-session]."""
+    return NESTED_AGENT if finding in driver else NESTED_AGENT_SESSION
+
+
 def session_store_problems(path: Path) -> list:
-    """[nested-agent] unless session-store.json beside the transcript shows claude-code's session store holding only
-    the take's own session (the driver ledger's session_id) after every turn and at publish (its last listing), and
-    every turn's sweep of the take container finding no session but the take's own."""
+    """[nested-agent-session] unless session-store.json beside the transcript shows claude-code's session store holding
+    only the take's own session (the driver ledger's session_id) after every turn and at publish (its last listing),
+    and every turn's sweep of the take container finding no session but the take's own; [nested-agent] when the record
+    itself, or a finding only the driver or the runtime produces, is at fault (MAJOR 1 of pre-freeze review 2)."""
     led = _ledger_beside(path) or {}
     own = led.get("session_id")
     try:
@@ -4051,20 +4128,25 @@ def session_store_problems(path: Path) -> list:
     out = []
     for x in listings:
         if "refused" in x:
-            out.append(f"[{NESTED_AGENT}] the session store could not be listed at {x['at']}: {str(x['refused'])[:200]}")
+            out.append(f"[{NESTED_AGENT_SESSION}] the session store could not be listed at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
             continue
-        out += [f"[{NESTED_AGENT}] at {x['at']}: {v}" for v in claude_store_violations(x["entries"], own, facts)][:5]
+        out += [f"[{NESTED_AGENT_SESSION}] at {x['at']}: {v}"
+                for v in claude_store_violations(x["entries"], own, facts)][:5]
     admitted = set()
     for x in listings:
         if "entries" in x:
             admitted |= _admitted_session_files(x["entries"], own)
     for x in sweeps:
-        if "refused" in x or set(x) != {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated",
-                                         "expected"}:
-            out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: "
-                       f"{str(x.get('refused', 'off its shape'))[:200]}")
+        if "refused" in x:                       # the sweep runs as the agent's uid (box/run_take.sweep_argv)
+            out.append(f"[{NESTED_AGENT_SESSION}] the take container could not be swept at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
             continue
-        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}"
+        if set(x) != {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated", "expected"}:
+            out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: off its shape")
+            continue
+        driver = sweep_driver_findings(x, _take_run_tree(path))
+        out += [f"[{sweep_finding_id(v, driver)}] the sweep at {x['at']}: {v}"
                 for v in sweep_violations(x, admitted, own, _take_run_tree(path))][:5]
     return out
 
@@ -5603,9 +5685,9 @@ def vendor_unread_problems(path, harness, ledger) -> list:
 
 
 def vendor_nested_flag_problems(path, harness) -> list:
-    """nested-agent (T-21): command_problems over the CLI's own shell commands (vendor_shell_commands), as the drive
-    runs it for a vendor take."""
-    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
+    """nested-agent-session and store-variable-assigned (T-21; MAJOR 1 of pre-freeze review 2): command_problems over
+    the CLI's own shell commands (vendor_shell_commands), as the drive runs it for a vendor take."""
+    return nested_command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
 
 
 # Stage Z2 (glitch-f1 on CODEX-S0-READ-20261022.md): the two other patch roads of codex-cli 0.162.1. A code-mode exec
@@ -5895,7 +5977,8 @@ def vendor_native_rel(entries, harness, vendor_id) -> str:
 
 
 def vendor_session_store_problems(path, harness) -> list:
-    """nested-agent (T-21; plan section 1b's session_store_problems line and section 2's leg 4): unless
+    """nested-agent-session and nested-agent (T-21; MAJOR 1 of pre-freeze review 2 splits them as
+    session_store_problems does; plan section 1b's session_store_problems line and section 2's leg 4): unless
     session-store.json beside the envelopes is of the vendor's closed shape (VENDOR_STORE_KEYS: the harness and its
     store root, a listing after every turn, post-1 to post-n for the ledger's n retained snapshots, then one at publish;
     one sweep per turn's listing; the drive's two counts), the take's own session derived from the publish listing for
@@ -5929,30 +6012,36 @@ def vendor_session_store_problems(path, harness) -> list:
             raise _native_snapshot.SnapshotRefused(f"the publish listing was refused: {str(listings[-1]['refused'])[:120]}")
         own = vendor_native_rel(listings[-1]["entries"], harness, vid)
     except (_native_snapshot.SnapshotRefused, TypeError, ValueError) as e:
-        return [f"[{NESTED_AGENT}] the take's own native session cannot be derived from its publish listing for the "
-                f"session id the CLI wrote ({vid!r}): {e}"]
+        return [f"[{NESTED_AGENT_SESSION}] the take's own native session cannot be derived from its publish listing "
+                f"for the session id the CLI wrote ({vid!r}): {e}"]
     out = []
     for x in listings:
         if "refused" in x:
-            out.append(f"[{NESTED_AGENT}] the session store could not be listed at {x['at']}: {str(x['refused'])[:200]}")
+            out.append(f"[{NESTED_AGENT_SESSION}] the session store could not be listed at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
             continue
         bad = vendor_store_violations(x["entries"], harness, own)
         if [own, "file"] not in x["entries"]:
             bad = bad + [f"{own} is not in the listing, so the session the take resumed is not shown"]
-        out += [f"[{NESTED_AGENT}] at {x['at']}: {v}" for v in bad][:5]
+        out += [f"[{NESTED_AGENT_SESSION}] at {x['at']}: {v}" for v in bad][:5]
     own_path = f"{SWEEP_CONFIG_MOUNT}/{own}"
     for x in sweeps:
+        if "refused" in x:                       # the sweep runs as the agent's uid (box/run_take.sweep_argv)
+            out.append(f"[{NESTED_AGENT_SESSION}] the take container could not be swept at {x['at']}: "
+                       f"{str(x['refused'])[:200]}")
+            continue
         try:
-            if "refused" in x or set(x) != VENDOR_SWEEP_KEYS:
-                raise ValueError(str(x.get("refused", "off its shape"))[:200])
+            if set(x) != VENDOR_SWEEP_KEYS:
+                raise ValueError("off its shape")
             # only the take's own record is admitted: its path, the harness's shape and the CLI's session id, as
             # Claude Code's sweep admits its own path (review d-7c774ad finding 2); any other record there is a finding
             seen = sweep_violations(dict(x, files=[f for f in x["files"] if f != [own_path, harness, vid]]), set(),
                                     None, _take_run_tree(path))
+            driver = sweep_driver_findings(x, _take_run_tree(path))
         except (TypeError, ValueError, IndexError, KeyError) as e:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: {e}")
             continue
-        out += [f"[{NESTED_AGENT}] the sweep at {x['at']}: {v}" for v in seen][:5]
+        out += [f"[{sweep_finding_id(v, driver)}] the sweep at {x['at']}: {v}" for v in seen][:5]
     cmds, unread = vendor_shell_commands(path.parent, harness)
     calls = sum(len(nested_cli_mentions(c)) for c in cmds)
     if (doc["nested_cli_calls"], doc["unread_stream_lines"]) != (calls, len(unread)):
@@ -6272,6 +6361,19 @@ def _vendor_codex_lines(path) -> list:
     return list(zip(lines, records))
 
 
+def _vc_driver_fault(path) -> list:
+    """The lane review of 8d71ae0d, MAJOR 3: [driver-record-fault] when the driver ledger or the retained native
+    snapshot it binds (a host copy, its bytes bound by the ledger's sha256) cannot be read, so a reason that reads the
+    rollout's content (the agent's) never stands for a driver or host fault; [] otherwise."""
+    try:
+        ledger = _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
+        _vendor_last_snapshot(path, ledger)
+    except _VENDOR_READ_ERRORS + (OSError, ValueError) as e:
+        return [f"[{DRIVER_RECORD_FAULT}] the driver ledger or the retained native snapshot it binds cannot be read "
+                f"({type(e).__name__}: {str(e)[:160]})"]
+    return []
+
+
 def _vc_unreadable(reason: str, e) -> list:
     return [f"[{reason}] the codex rollout cannot be read, so this row's record cannot be shown "
             f"({type(e).__name__}: {str(e)[:160]})"]
@@ -6335,9 +6437,16 @@ def vendor_codex_origin_reads(path) -> list:
     `<environment_context>` part; every developer part opens with one of CODEX_DEVELOPER_SECTIONS; and no message has
     another role. Survey: 38 of 38, 89 operator parts for 89 turns, 38 and 38."""
     reason = "unknown-harness-origin"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
+    try:
+        sent = [env["sent"] for env in _vendor_envelopes(path)]
+    except _VENDOR_READ_ERRORS as e:                 # the envelopes are the driver's (the lane review of 8d71ae0d)
+        return [f"[{DRIVER_RECORD_FAULT}] the envelopes cannot be read, so the operator lines cannot be placed "
+                f"({type(e).__name__}: {str(e)[:160]})"]
     try:
         lines = _vendor_codex_lines(path)
-        sent = [env["sent"] for env in _vendor_envelopes(path)]
     except _VENDOR_READ_ERRORS as e:
         return _vc_unreadable(reason, e)
     out, operator, agents, env = [], [], 0, 0
@@ -6401,6 +6510,9 @@ def vendor_codex_loaded_context_reads(path, pre) -> list:
     C's context includes its prompt snapshot), world_state, every developer message, and the AGENTS.md and
     environment-context user parts (never an operator line, T-6's). Survey: 0 of 38."""
     reason = "leak-in-loaded-context"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
     try:
         text = vendor_codex_loaded_context_text(path)
     except _VENDOR_READ_ERRORS as e:
@@ -6580,6 +6692,9 @@ def vendor_codex_checkout_partial(path) -> list:
     {branch, commit_hash}, the branch `main` (CODEX_CHECKOUT_BRANCH, drive.py:381) and a 40-character lower-case hex
     commit hash. Survey: 38 of 38."""
     reason = "checkout-binding"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
     try:
         lines = _vendor_codex_lines(path)
     except _VENDOR_READ_ERRORS as e:
@@ -6605,6 +6720,9 @@ def vendor_codex_instruction_content_reads(path, design) -> list:
     (pinned_instruction_problems' rule); a file outside the session folder is T-12:instruction-files', skipped here.
     Survey: 38 of 38 both copies equal the pinned root CLAUDE.md."""
     reason = "checkout-binding"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
     try:
         lines = _vendor_codex_lines(path)
     except _VENDOR_READ_ERRORS as e:
@@ -7241,8 +7359,8 @@ def vendor_gemini_checkout_partial(path) -> list:
         return refused
     folder = _gemini_launch_folder(path)
     if folder is None:
-        return ["[checkout-binding] the launch journals record no one working folder, so the listed checkout cannot "
-                "be compared"]
+        return [f"[{DRIVER_RECORD_FAULT}] the launch journals record no one working folder, so the listed checkout "
+                f"cannot be compared"]
     return [f"[checkout-binding] the session context ({where}) lists the directory {root!r}, not the launch folder "
             f"{folder!r}" for where, root in ((w, gemini_context_facts(t)["root"]) for w, t in versions)
             if root != folder]
@@ -7432,7 +7550,91 @@ def transcript_content_problems(path: Path) -> list[str]:
     cut = _host_recorded_cuts(path)
     out = [f"[{TRANSCRIPT_MISMATCH}] {p}" for p in
            _cca.content_problems([_cca.stream_content_units(t) for t in texts], session, cut=cut)]
-    return out + transcript_record_problems(path, texts, session, _journals, cut=cut)
+    return (out + transcript_record_problems(path, texts, session, _journals, cut=cut)
+            + api_error_record_problems(path, texts, session))
+
+
+# ---- A STREAM-ONLY API ERROR (pre-freeze review 2, MAJOR 1, step 5; glitch-45's ruling (a), 29 Oct 2026) -----------
+# The content units leave the harness's API-error records out (claude_code_adapter._units), so one line written into
+# the CLI's stdout pipe (/proc/<cli pid>/fd/1, the agent's own uid) gave the take an API error, a rate limit or a spend
+# cap that routed pause, harness-error or a refusal: the review's demonstration on a copy of rehearsals/w001. Claude Code
+# 2.1.296 writes the same API error into the session file as an assistant record {isApiErrorMessage: true, model
+# <synthetic>, error, apiErrorStatus, the words in text blocks}: three real 2.1.296 records read on the Mac on 29 Oct
+# 2026 (the L-A1 report cites them by path and line; static read of the pinned binary not possible there, the ruling's
+# evidence instead). So every API-error record of a turn stream needs its twin: a main-thread one a session-file
+# API-error record with the same words in the same turn (the session split at its operator lines), a sub-agent's one
+# in its own sub-agent file, and an error result (the session file holds no result record) at least one session-file
+# API-error record in its turn, unless it is the stream's one and last record and the host recorded a non-zero exit
+# (the CLI's own fault, which stays harness-error: the lane review of 8d71ae0d, MINOR 4). Otherwise
+# [transcript-mismatch]: aborted after the first turn, and routing.json's rate-limit row yields to it (its none_of), so
+# a stream-only rate limit is aborted, never a pause. The roads left, which /box_residuals/9 names: two records the
+# agent's uid can write, a stream line and a session-file line; and a forged error result written as the stream's last
+# line by an agent that also ends its own CLI non-zero.
+def _api_words(rec: dict) -> str:
+    return "\n".join(t for t in _cca._texts(rec) if t)
+
+
+def api_error_record_problems(path: Path, texts=None, session=None) -> list[str]:
+    """claude-code: [transcript-mismatch] for each stream API-error record (or error result) with no session-file
+    twin, above; [] when every one has it. `texts` and `session` are the turn streams and the session file, read here
+    when not given."""
+    path = Path(path)
+    if texts is None or session is None:
+        _j, streams = _turn_files(path)
+        texts = [(path.parent / f"turn-{n}.jsonl").read_bytes().decode("utf-8", errors="replace")
+                 for n in sorted(streams)]
+        session = path.read_bytes().decode("utf-8", errors="replace")
+    turns = [[]]
+    for rec in _cca._content_records(session):
+        if rec.get("isSidechain") is True:
+            continue
+        if _cca._is_operator_line(rec):
+            turns.append([])
+        elif rec.get("type") == "assistant" and (rec.get("isApiErrorMessage") is True or _cca._is_api_error(rec)):
+            turns[-1].append(_api_words(rec))
+    exits = []
+    try:
+        rows = json.loads((path.parent / "driver-ledger.json").read_text(encoding="utf-8")).get("turns") or []
+        exits = [r.get("exit") if isinstance(r, dict) else None for r in rows]
+    except (OSError, ValueError, AttributeError):
+        pass
+    out, sub_stream = [], collections.Counter()
+    for k, text in enumerate(texts, 1):
+        main, error_result = collections.Counter(), False
+        recs = _cca._content_records(text)
+        results = [i for i, rec in enumerate(recs) if rec.get("type") == "result"]
+        for i, rec in enumerate(recs):
+            if rec.get("type") == "assistant" and _cca._is_api_error(rec):
+                if rec.get("parent_tool_use_id") is None:
+                    main[_api_words(rec)] += 1
+                else:
+                    sub_stream[(rec.get("agent_id"), _api_words(rec))] += 1
+            elif rec.get("type") == "result" and (rec.get("is_error") is True
+                                                  or str(rec.get("subtype") or "").startswith("error")):
+                # the lane review of 8d71ae0d, MINOR 4: the CLI writes its own error result last and then exits
+                # non-zero; only a result that is not the stream's one and last record, or one in a turn the host
+                # recorded exiting 0, is the records disagreeing (else the CLI's fault stays harness-error)
+                exit_code = exits[k - 1] if k - 1 < len(exits) else None
+                if results != [i] or i != len(recs) - 1 or exit_code == 0:
+                    error_result = True
+        had = collections.Counter(turns[k] if k < len(turns) else [])
+        if main - had:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] turn {k}: {sum((main - had).values())} API-error record(s) of the "
+                       f"stream have no API-error record with the same words in the session file's turn: the records "
+                       f"disagree")
+        if error_result and not had:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] turn {k}: the stream's result is an error and the session file's turn "
+                       f"holds no API-error record: the records disagree")
+    if sub_stream:
+        files = collections.Counter()
+        for aid, q in subagent_files(path).items():
+            for rec in _records_of(q):
+                if rec.get("type") == "assistant" and (rec.get("isApiErrorMessage") is True or _cca._is_api_error(rec)):
+                    files[(aid, _api_words(rec))] += 1
+        if sub_stream - files:
+            out.append(f"[{TRANSCRIPT_MISMATCH}] {sum((sub_stream - files).values())} sub-agent API-error record(s) of "
+                       f"the streams have no twin in their sub-agent file: the records disagree")
+    return out
 
 
 def _host_readable(texts: list, cut=()) -> bool:

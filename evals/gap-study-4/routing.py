@@ -31,9 +31,10 @@ records are:
                      queue_overflow (bool)
     preflight        ok (bool)
     operator         unexplained_diffs (count): operator-step diffs no logged operator event explains
-    checker_reasons  the checker's reason ids (strs), computed in the drive step. An id listed in
-                     routing.json's reasons_only_before_first_turn (no-first-agent-turn) after
-                     the agent's first turn started is refused (W1B2-8)
+    checker_reasons  the checker's reason ids (strs), computed in the drive step: routing.json's
+                     operator_reasons, or its agent_event_reasons (pre-freeze review 2, MAJOR 1). An id
+                     listed in reasons_only_before_first_turn (no-first-agent-turn) after the agent's
+                     first turn started is refused (W1B2-8), and so is an agent event reason before it
     quiescence_kill  (bool) the box stopped a background process at the quiescence cap
     unreadable_consequential   (CP2 ruling C3) the run-tree paths among the task's consequential ones
                      the sidecar could not read (non-empty strs), from the sidecar reply's field of
@@ -41,7 +42,8 @@ records are:
                      (unreadable-consequential-path); before it, it is refused (a preflight failure is
                      CP2's to fold into preflight.ok), never read as nothing
     quiescence_cap_survivors   (CP2 ruling C3; W2A2-6) the processes still alive at the quiescence cap
-                     (int >= 0). After the first turn > 0 routes harness-error (quiescence-cap-reached),
+                     (int >= 0). After the first turn > 0 routes graded with an agent event
+                     (quiescence-cap-reached; pre-freeze review 1, MAJOR 5, re-routed it from harness-error),
                      and the operator-diff row does not also match; before it, > 0 is refused (lane
                      w4h decision)
     events           outside_reach (count, int >= 0): how many outside-reach EVENTS the drive step
@@ -123,6 +125,21 @@ agent's own acts as far as harness records can tell, so both rows route graded, 
 rule says no try is discarded or re-run for something the agent did. routing.json's agent_event_rows names them;
 `check_table` refuses an id there that is not a graded after-first-turn row; run.py writes the winning ones into the
 take record's agent_events, and stats counts each in its own column.
+
+AGENT EVENT REASONS (pre-freeze review 2, MAJOR 1, F1-2; fold plan prefreeze-2, the lane orchestrator's approval, 29 Oct
+2026, under Javier's standing delegation). A checker reason the agent's own ordinary command produces and that harms no
+record (store-variable-assigned: a bare assignment of HOME or an agent CLI's store variable) is listed in routing.json's
+agent_event_reasons, never in operator_reasons, so the generic operator-reason rows never read it: after the first turn
+its own graded row (has) routes the take graded, an agent event of the record. `check_table` refuses an id in both lists
+or with no such row, and `check_records` refuses one before the first turn.
+
+THE CLASS TABLE (pre-freeze review 2, MAJOR 1, step 1; fold plan prefreeze-2, the lane orchestrator's approval, 29 Oct
+2026). routing.json's agent_reach answers, for every row that does not route graded after the first turn, the two
+refusal rules and every reason routing reads, whether the agent can produce the record it reads, and how. `check_table`
+requires the key; `reach_problems` (load_table, and so --check, runs it after check_table) refuses a missing or extra
+entry, a stated route
+that is not the table's own (`reason_route` for a reason), and an agent-reachable entry whose route re-runs or refuses
+its take with no stated call (a named exception or a ruling owed).
 
 THE NO-MATCH PROOF (pre-freeze review 1, m17; the same approval). `--check` enumerates the table's closed input
 classes for every pin harness (`no_match_classes`: each condition's truth read through PROOF_CONDITIONS, each variable
@@ -247,7 +264,16 @@ AGENT_EVENTS_KEY = "agent_event_rows"
 NO_MATCH_KEY = "no_match_defaults"
 NO_MATCH_ENTRY_KEYS = ("when", "end", "ruling", "route", "why")
 # The review of 5afd80a7, finding 5, and the Lane-orchestrator's ruling on it: agent_event_rows is exactly these two.
-AGENT_EVENT_IDS = ("nonzero-exec-exit", "quiescence-cap-reached")
+AGENT_EVENT_IDS = ("nonzero-exec-exit", "quiescence-cap-reached", "store-variable-assigned")
+# Pre-freeze review 2, MAJOR 1 (F1-2): the checker reasons that route graded with an agent event, apart from
+# operator_reasons (AGENT EVENT REASONS, above).
+AGENT_EVENT_REASONS_KEY = "agent_event_reasons"
+# Pre-freeze review 2, MAJOR 1, step 1: the class table (THE CLASS TABLE, below).
+AGENT_REACH_KEY = "agent_reach"
+REACH_KINDS = ("row", "rule", "reason")
+REACH_ENTRY_KEYS = ("reachable", "how", "route", "call")
+REACH_REFUSED = "refused"
+REACH_FINAL = ("aborted", "graded")
 
 
 class TableError(ValueError):
@@ -375,7 +401,7 @@ def check_table(table: dict) -> list[str]:
                 "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
                 "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "pin_refusal", "rows",
                 "annotations", "spend_cap_markers", "spend_cap_markers_status", "spend_cap_refusal",
-                AGENT_EVENTS_KEY, NO_MATCH_KEY):
+                AGENT_EVENTS_KEY, NO_MATCH_KEY, AGENT_EVENT_REASONS_KEY, AGENT_REACH_KEY):
         if key not in table:
             p.append(f"missing {key}")
     if p:
@@ -397,6 +423,8 @@ def check_table(table: dict) -> list[str]:
         if not _is_str(table[key]) or not table[key]:
             p.append(f"{key} must say where the data stands")
     listed = set(table["operator_reasons"]) if isinstance(table["operator_reasons"], list) else set()
+    p += _agent_event_reason_problems(table, listed)
+    readable = listed | set(agent_event_reasons(table))     # the reasons a `has` condition may name
     # glitch-6b (15 Oct 2026): every operator reason is round 3's, with its round-3 source, or a named round-4
     # addition with its own ruling (operator_reasons_round4); never both, never neither.
     r3 = table.get("operator_reason_sources")
@@ -486,10 +514,11 @@ def check_table(table: dict) -> list[str]:
                 if isinstance(c, dict) and c.get("path", "").partition(".")[0] in ANNOTATION_ONLY:
                     p.append(f"{rid}: a routing row reads {c.get('path')!r}, a text-derived count only annotations may read")
                 if isinstance(c, dict) and c.get("op") == "has" and (c.get("path") != HAS_PATH
-                                                                     or c.get("value") not in listed):
-                    # glitch-b5's ruling 3 (17 Oct 2026): `has` names one operator reason of checker_reasons
-                    p.append(f"{rid}: op has reads {HAS_PATH} for one of operator_reasons, got {c.get('path')!r} "
-                             f"{c.get('value')!r}")
+                                                                     or c.get("value") not in readable):
+                    # glitch-b5's ruling 3 (17 Oct 2026): `has` names one operator reason of checker_reasons (or, since
+                    # pre-freeze review 2's MAJOR 1, one agent event reason)
+                    p.append(f"{rid}: op has reads {HAS_PATH} for one of operator_reasons or agent_event_reasons, got "
+                             f"{c.get('path')!r} {c.get('value')!r}")
     for r in labels4.ROUTES:
         if r not in seen_routes:
             p.append(f"no row routes to {r}")
@@ -651,6 +680,105 @@ def _pin_refusal_problems(rule, order: dict) -> list[str]:
     return p
 
 
+def agent_event_reasons(table: dict) -> tuple:
+    """Pre-freeze review 2, MAJOR 1: routing.json's agent_event_reasons ids ((): a table check_table refuses)."""
+    sub = table.get(AGENT_EVENT_REASONS_KEY)
+    ids = sub.get("ids") if isinstance(sub, dict) else None
+    return tuple(i for i in ids if _is_str(i)) if isinstance(ids, list) else ()
+
+
+def _agent_event_reason_problems(table: dict, listed: set) -> list[str]:
+    """MAJOR 1 of pre-freeze review 2: agent_event_reasons gives its ids and source; no id is an operator reason or a
+    checker event; each is read by exactly one row, a graded after-first-turn row that names it with has alone, and that
+    row is an agent event row."""
+    sub = table[AGENT_EVENT_REASONS_KEY]
+    if (not isinstance(sub, dict) or set(sub) != {"ids", "source"} or not isinstance(sub["ids"], list) or not sub["ids"]
+            or not all(_is_str(i) and i for i in sub["ids"]) or len(set(sub["ids"])) != len(sub["ids"])
+            or not (_is_str(sub["source"]) and sub["source"])):
+        return [f"{AGENT_EVENT_REASONS_KEY} must give a non-empty list of distinct ids and its source"]
+    p = []
+    events = table["checker_reasons_become_events"].get("ids") if isinstance(
+        table["checker_reasons_become_events"], dict) else None
+    both = set(sub["ids"]) & (listed | set(events if isinstance(events, list) else []))
+    if both:
+        p.append(f"{AGENT_EVENT_REASONS_KEY} ids {sorted(both)} are also operator reasons or checker events: an agent "
+                 f"event reason is read by its own graded row alone")
+    agent_rows = table[AGENT_EVENTS_KEY].get("ids") if isinstance(table[AGENT_EVENTS_KEY], dict) else None
+    for rid in sub["ids"]:
+        readers = [r for r in table["rows"] if isinstance(r, dict) and any(
+            isinstance(c, dict) and c.get("op") == "has" and c.get("value") == rid
+            for g in ("all_of", "any_of", "none_of") for c in r.get(g, []))]
+        good = (len(readers) == 1 and readers[0].get("route") == labels4.GRADED
+                and readers[0].get("when") == labels4.AFTER_FIRST_TURN
+                and readers[0].get("any_of") == [{"path": HAS_PATH, "op": "has", "value": rid}]
+                and not readers[0].get("all_of") and not readers[0].get("none_of")
+                and isinstance(agent_rows, list) and readers[0].get("id") in agent_rows)
+        if not good:
+            p.append(f"{AGENT_EVENT_REASONS_KEY} id {rid!r} must be read by exactly one row, a graded after-first-turn "
+                     f"agent event row whose any_of is that has alone (got {[r.get('id') for r in readers]})")
+    return p
+
+
+def reason_route(table: dict, rid: str) -> str:
+    """THE CLASS TABLE: the route a clean after-first-turn take (last turn end_turn) carrying the checker reason `rid`
+    alone gets, read from the rows: REACH_REFUSED for a reason only before the first turn, else the highest-precedence
+    route among the after-first-turn rows whose any_of reads it (has, or in_operator_reasons) and whose none_of does
+    not, and graded (the end-turn row) when none does."""
+    if rid in table["reasons_only_before_first_turn"]["ids"]:
+        return REACH_REFUSED
+    level = {r: i for i, lvl in enumerate(table["precedence"]) for r in lvl}
+
+    def reads(c):
+        return isinstance(c, dict) and c.get("path") == HAS_PATH and (
+            (c.get("op") == "has" and c.get("value") == rid)
+            or (c.get("op") == "in_operator_reasons" and rid in table["operator_reasons"]))
+    routes = [r["route"] for r in table["rows"] if r.get("when") in (labels4.AFTER_FIRST_TURN, labels4.ANY_TIME)
+              and not r.get("all_of") and any(reads(c) for c in r.get("any_of", []))
+              and not any(reads(c) for c in r.get("none_of", []))]
+    return min(routes, key=lambda x: level[x]) if routes else labels4.GRADED
+
+
+def reach_required(table: dict) -> dict:
+    """THE CLASS TABLE's keys ("<kind>:<id>") and the route each must state."""
+    out = {f"row:{r['id']}": r["route"] for r in table["rows"]
+           if r.get("when") in (labels4.AFTER_FIRST_TURN, labels4.ANY_TIME) and r.get("route") != labels4.GRADED}
+    for rule in ("pin_refusal", "spend_cap_refusal"):
+        out[f"rule:{table[rule]['id']}"] = REACH_REFUSED
+    for rid in list(table["operator_reasons"]) + list(agent_event_reasons(table)):
+        out[f"reason:{rid}"] = reason_route(table, rid)
+    return out
+
+
+def reach_problems(table: dict) -> list[str]:
+    """THE CLASS TABLE against the table it sits in (load_table and --check run it after check_table). Kept out of
+    check_table so a synthetic table built in memory from the live one (tests/test_walk_cover_strict.py's derivation
+    cases) is checked for its routing alone; the table that routes takes is always read through load_table."""
+    if AGENT_REACH_KEY not in table:
+        return [f"missing {AGENT_REACH_KEY}"]
+    sub = table[AGENT_REACH_KEY]
+    if not isinstance(sub, dict) or set(sub) != {"source", "entries"} or not (_is_str(sub["source"]) and sub["source"]) \
+            or not isinstance(sub["entries"], dict):
+        return [f"{AGENT_REACH_KEY} must give its source and its entries"]
+    want, got = reach_required(table), sub["entries"]
+    p = [f"{AGENT_REACH_KEY}: no entry for {k}" for k in sorted(set(want) - set(got))]
+    p += [f"{AGENT_REACH_KEY}: {k} is no row, rule or reason this table must answer" for k in sorted(set(got) - set(want))]
+    for k in sorted(set(want) & set(got)):
+        e = got[k]
+        if not isinstance(e, dict) or set(e) != set(REACH_ENTRY_KEYS):
+            p.append(f"{AGENT_REACH_KEY} {k} must hold exactly {list(REACH_ENTRY_KEYS)}")
+            continue
+        if not _is_bool(e["reachable"]) or not (_is_str(e["how"]) and e["how"].strip()):
+            p.append(f"{AGENT_REACH_KEY} {k}: reachable is a bool and how says how, from code")
+        if e["route"] != want[k]:
+            p.append(f"{AGENT_REACH_KEY} {k} states route {e['route']!r}; the table gives {want[k]!r}")
+        if e["call"] is not None and not (_is_str(e["call"]) and e["call"].strip()):
+            p.append(f"{AGENT_REACH_KEY} {k}: call is None or a stated call")
+        if e["reachable"] is True and want[k] not in REACH_FINAL and e["call"] is None:
+            p.append(f"{AGENT_REACH_KEY} {k}: the agent can reach it and it routes {want[k]!r} (re-run or refused): "
+                     f"a named exception or a ruling owed must be stated in call")
+    return p
+
+
 def agent_event_rows(table: dict) -> tuple:
     """MAJOR 5: the ids of the graded after-first-turn rows whose records the agent itself can produce, in table
     order (routing.json's agent_event_rows)."""
@@ -715,6 +843,7 @@ def load_table(path: str | None = None) -> dict:
     with open(path or TABLE_PATH, encoding="utf-8") as fh:   # W7C: TABLE_PATH read at call time
         table = json.load(fh)
     problems = check_table(table)
+    problems = problems or reach_problems(table)        # THE CLASS TABLE, on the table as it stands
     if problems:
         raise TableError("; ".join(problems))
     return table
@@ -843,9 +972,15 @@ def check_records(records: dict, table: dict) -> list[str]:
     p = shape_problems(records, table)
     if p:
         return p
-    unknown = [r for r in records["checker_reasons"] if r not in table["operator_reasons"]]
+    events = agent_event_reasons(table)
+    unknown = [r for r in records["checker_reasons"] if r not in table["operator_reasons"] and r not in events]
     if unknown:
         p.append(f"checker reason ids not in routing.json: {unknown}")
+    early_events = [r for r in records["checker_reasons"] if r in events]
+    if early_events and phase_of(records) == labels4.BEFORE_FIRST_TURN:
+        # MAJOR 1 of pre-freeze review 2: an agent event reason reads a Bash command, which is completed agent output
+        p.append(f"agent event reason(s) {early_events} before the agent's first turn: a Bash command is completed "
+                 f"agent output, so the checker and the records disagree and a human must look")
     pin = records["pin"]
     models = table["pin_profiles"].get(pin["harness"])        # interface 8: keyed by harness, then model
     profile = None if models is None else models.get(pin["model"])
@@ -1084,7 +1219,8 @@ PROOF_CONDITIONS = {
 # variable reach every combination of truth values its conditions can take: the sidecar's four fields as all sixteen
 # combinations; API errors as none, an error with no marker, a rate limit, a spend cap and both (a condition reads any
 # error of the list); the checker reasons as none, an operator reason, harness-condition-violated (an operator reason
-# that cgroup-kill's none_of names), round 3's before-first-turn reason, an event id and an unlisted id; init as the
+# that cgroup-kill's none_of names), round 3's before-first-turn reason, an event id, an unlisted id and an agent event
+# reason (pre-freeze review 2, MAJOR 1); init as the
 # pin, a differing event and none. Counts are 0 or 1 because every condition on them is "gt 0". The end and phase are
 # assigned first, so every class carries both.
 PROOF_ORDER = ("survivors", "api", "oom", "pids", "checker", "unreadable", "init", "exec", "sidecar", "opdiff",
@@ -1092,7 +1228,7 @@ PROOF_ORDER = ("survivors", "api", "oom", "pids", "checker", "unreadable", "init
 _SIDECAR = tuple((s, t, x, q) for s in (True, False) for t in (True, False) for x in (0, 1) for q in (False, True))
 PROOF_DOMAINS = {
     "survivors": (0, 1), "api": ("none", "error", "rate", "spend", "rate+spend"), "oom": (0, 1), "pids": (0, 1),
-    "checker": ("none", "operator", "harness-condition-violated", "before-only", "event", "unlisted"),
+    "checker": ("none", "operator", "harness-condition-violated", "before-only", "event", "unlisted", "agent-event"),
     "unreadable": (False, True), "init": ("pin", "differs", "missing"), "exec": (0, 1), "sidecar": _SIDECAR,
     "opdiff": (0, 1), "finalize": (False, True), "started": (True, False), "exited": (False, True),
     "preflight": (True, False),
@@ -1130,7 +1266,8 @@ def _proof_records(table: dict, harness: str, profile: dict, a: dict) -> dict | 
            and r not in table["reasons_only_before_first_turn"]["ids"]]
     checker = {"none": [], "operator": ops[:1], "harness-condition-violated": ["harness-condition-violated"],
                "before-only": list(table["reasons_only_before_first_turn"]["ids"][:1]),
-               "event": list(table["checker_reasons_become_events"]["ids"][:1]), "unlisted": ["pf1-proof-unlisted"]}
+               "event": list(table["checker_reasons_become_events"]["ids"][:1]), "unlisted": ["pf1-proof-unlisted"],
+               "agent-event": list(agent_event_reasons(table)[:1])}
     s, t, x, q = v["sidecar"]
     return {
         "ledger": {"first_turn_started": after, "turns": n, "end": a["end"], "turn_ends": [a["end"]] * n,

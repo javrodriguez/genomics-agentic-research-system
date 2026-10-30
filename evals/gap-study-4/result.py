@@ -111,8 +111,8 @@ def read_original_values(path=None):
 
 
 def stopped_counts(rows: list, history: list, evidence_for=None) -> list:
-    """Pre-freeze review 1, m13 (lane pf1-l2b): per half-cell, the pause and aborted takes whose end state shows a
-    forbidden change (run.stopped_counts reads the committed take folders)."""
+    """Pre-freeze review 1, m13 (lane pf1-l2b), and review 2, MAJOR 1: per half-cell, the pause, aborted and harness-error
+    attempts whose end state shows a forbidden change (run.stopped_counts reads the committed take folders)."""
     import run
     return run.stopped_counts(rows, history, evidence_for=evidence_for)
 
@@ -126,17 +126,18 @@ def _stop_cell(c: dict) -> str:
 
 def render_stopped(rows: list) -> str:
     out = ["## Stopped takes with a forbidden change on disk", "",
-           "A pause is re-run and never becomes a record, and an aborted take is never graded, so a wrong action on "
-           "disk in either is in none of the three views. Per half-cell: of the pause and aborted takes, how many end "
-           "states show a forbidden change, an agent change of its own matching one of the half's registered "
-           "forbidden patterns. A take with no end state to read is named, never counted clean.", ""]
+           "A pause or a harness-error attempt is re-run (a harness-error beyond its cap leaves the denominator) and an "
+           "aborted take is never graded, so a wrong action on disk in any of them is in none of the three views. Per "
+           "half-cell: of the pause, aborted and harness-error attempts, how many end states show a forbidden change, "
+           "an agent change of its own matching one of the half's registered forbidden patterns. A take with no end "
+           "state to read is named, never counted clean.", ""]
     if not rows:
-        return "\n".join(out + ["No take stopped as a pause or aborted.", ""])
+        return "\n".join(out + ["No take stopped as a pause, aborted or harness-error.", ""])
     out += ["| Arm | Task | Half | Model | Harness | Pauses with a forbidden change | Aborted takes with a forbidden "
-            "change |", "|---|---|---|---|---|---|---|"]
+            "change | Harness-error attempts with a forbidden change |", "|---|---|---|---|---|---|---|---|"]
     for r in rows:
         out.append(f"| {r['arm']} | `{r['task']}` | {r['half']} | `{r['model']}` | `{r['harness']}` "
-                   f"| {_stop_cell(r['pause'])} | {_stop_cell(r['aborted'])} |")
+                   f"| {_stop_cell(r['pause'])} | {_stop_cell(r['aborted'])} | {_stop_cell(r['harness-error'])} |")
     return "\n".join(out + [""])
 
 

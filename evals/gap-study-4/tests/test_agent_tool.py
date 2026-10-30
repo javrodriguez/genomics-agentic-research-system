@@ -462,11 +462,11 @@ def check_problems(ct=None) -> list:
         got = ct.subagent_problems(take_folder(**kw))
         if got:
             out.append(f"A-check {name}: refused {got}")
-    sr = ["subagent-records"]
+    sr = ["subagent-unbound"]      # pre-freeze review 2, MAJOR 1: what the agent produces
     late = sub(tool=dict(BASH, id="toolu_late"))
     refused = {
-        "a copy the ledger does not name": ({"ledger_subagents": []}, sr),
-        "no ledger list": ({"ledger_subagents": None}, sr),
+        "a copy the ledger does not name": ({"ledger_subagents": []}, ["subagent-records"]),
+        "no ledger list": ({"ledger_subagents": None}, ["subagent-records"]),
         "a file no call names": ({"files": dict(pair(), **pair(agent="zzz"))}, sr),
         "a call with no file": ({"files": {}}, sr),
         "a call with no meta": ({"files": {f"agent-{AGENT_ID}.jsonl": jl(side_record(), side_record("user"))}}, sr),
@@ -833,7 +833,7 @@ def r11_problems(ct=None) -> list:
         out.append(f"R11-1: the difference count is {diff['subagents']['stream_file_differences']}, not 1")
     if ct.agent_summary(take_folder())["subagents"]["stream_file_differences"] != 0:
         out.append("R11-1: a stream equal to its file reads as differing")
-    sr = "subagent-records"
+    sr = "subagent-unbound"       # pre-freeze review 2, MAJOR 1
     refused = {
         "R11-2b: a file-only off-list model": {"files": pair(jl(side_record(message={
             "role": "assistant", "model": "claude-sonnet-4-5", "content": [BASH]}), side_record("user")))},
@@ -931,7 +931,7 @@ def r12_problems(ct=None, wg=None) -> list:
     if wg is None:
         import walk_regrade as wg
     out = []
-    sr = "subagent-records"
+    sr = "subagent-unbound"       # pre-freeze review 2, MAJOR 1
     # R12-1: regrade_problems on a committed walk with subagents/, its true count clean and a forged 0 named
     peek = {"type": "tool_use", "id": "toolu_sub", "name": "Read", "input": {"file_path": STUDY}}
     benign = dict(peek, input={"file_path": "/run/README.md"})
