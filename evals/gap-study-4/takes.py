@@ -85,7 +85,9 @@ def read_history(*, root=HERE, repo=REPO) -> list[dict]:
     """
     root, repo = Path(root).resolve(), Path(repo).resolve()
     paths = [(root / p).relative_to(repo).as_posix() for p in HISTORY_FILES]
-    shas = _git_at(repo, "log", "--reverse", "--format=%H", "--", *paths).split()
+    # glitch-45's review of fold2/lb, MJ-1 (ruled): no history simplification, so a merge that resets the ledger to an
+    # earlier state, and the commits it hides, are read and refused as a rewrite, never followed past
+    shas = _git_at(repo, "log", "--reverse", "--full-history", "--format=%H", "--", *paths).split()
     previous, history = {p: [] for p in paths}, []
     for sha in shas:
         added = []

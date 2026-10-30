@@ -595,8 +595,51 @@ def take_ledger_witness(pushes) -> tuple[list[str], list[str], list[str]]:
     if side:
         problems.append(f"{len(side)} commit(s) that change the take ledger reach HEAD only through a merge "
                         f"({side[-1][:12]} first): a take history merged back from a side line is refused")
+    problems += run_line_ledger_problems(rels)
     unwitnessed = rev_list("HEAD", "--not", *shas) if shas else list(ledger)
     return problems, ledger, unwitnessed
+
+
+def _ledger_rows(commit: str, rel: str):
+    """The take-ledger file `rel` at `commit` as its list of records (takes.json's rows), [] when absent, None when
+    unreadable."""
+    code, text = git("show", f"{commit}:{rel}")
+    if code != 0:
+        return []
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return None
+    if rel.endswith("takes.json"):
+        return doc.get("rows") if isinstance(doc, dict) and isinstance(doc.get("rows"), list) else None
+    return doc if isinstance(doc, list) else None
+
+
+def run_line_ledger_problems(rels) -> list[str]:
+    """glitch-45's review of fold2/lb, MJ-1 (ruled): on HEAD's first-parent line, no merge commit may touch the take
+    ledger (a merge whose first parent is a pushed, abandoned outcome and whose tree resets the ledger read as a clean
+    re-run), and each ledger file's state must be append-only against its first parent. The run line takes no
+    legitimate merge; one that does must not touch the ledger."""
+    code, out = git("log", "--first-parent", "-m", "--reverse", "--format=@%H %P", "--name-only", "HEAD", "--", *rels)
+    if code != 0:
+        raise ValueError("HEAD's first-parent ledger history cannot be read")
+    problems, state = [], {}
+    for block in out.split("@")[1:]:
+        head, *names = block.split("\n")
+        commit, *parents = head.split()
+        touched = [n.strip() for n in names if n.strip()]
+        if len(parents) > 1:
+            problems.append(f"the merge {commit[:12]} on HEAD's first-parent line touches the take ledger "
+                            f"({', '.join(touched)}): the run line takes no merge that touches it")
+            continue
+        for rel in touched:
+            old = state[rel] if rel in state else (_ledger_rows(parents[0], rel) if parents else [])
+            now = _ledger_rows(commit, rel)
+            if old is None or now is None or now[:len(old)] != old:
+                problems.append(f"{commit[:12]} changes {rel.rsplit('/', 1)[-1]} other than by appending: the take "
+                                f"ledger is append-only against its first parent")
+            state[rel] = now
+    return problems
 
 
 def witness_main() -> int:
