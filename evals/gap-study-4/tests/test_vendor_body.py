@@ -611,9 +611,12 @@ CASES = {
     # stage V every settled reader of the snapshot refuses it too, each under its row's reason for codex and as
     # transcript-unreadable for gemini; none passes)
     "a codex snapshot the ledger does not bind": (("codex",), case_snapshot_unbound,
+                                                  # pf2 L-A1 review (MAJOR 3): the four codex sites of
+                                                  # unknown-harness-origin, leak-in-loaded-context and checkout-binding
+                                                  # name a snapshot the ledger does not bind driver-record-fault
                                                   {"transcript-unreadable": 3, "inherited-context": 5,
-                                                   "unknown-harness-origin": 1, "leak-in-loaded-context": 1,
-                                                   "environment-record": 1, "checkout-binding": 2,
+                                                   "driver-record-fault": 4,
+                                                   "environment-record": 1,
                                                    "constant-binding": 3, "harness-condition-violated": 1}, None),
     "a gemini snapshot the ledger does not bind": (("gemini",), case_snapshot_unbound, {"transcript-unreadable": 11},
                                                    None),
@@ -1001,7 +1004,7 @@ P2_WITNESSES = {
     "the unread lines admitted": (("    if bad and not (isinstance(outcome, str) and outcome.startswith((\"timed-out\", "
                                    "\"aborted\"))):\n", "    if False:\n"), "a turn stream line no parser read"),
     "the nested switches unread": ((
-        "    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)\n",
+        "    return nested_command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)\n",
         "    return []\n"), "a nested agent's session switch"),
     "file_change read as clean": (('        return vendor_pending("codex", "T-8:file-change", '
                                    'vendor_file_change_reads, path)\n',
