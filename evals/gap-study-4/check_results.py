@@ -705,51 +705,29 @@ def synthetic_digest_problems(frozen: dict, now: dict, rehearsal_plan=False) -> 
     return problems
 
 
-# The order recompute (glitch-45's item 1 after the lane review of fold2/lb, m-1: take_order_function_sha256 cannot see a
-# study-file monkey-patch of the standard library or of a function object, nor prepare's seed hand-off). At
-# publication the seed and the order are recomputed from the frozen beacon reading and the frozen rows by
-# ORDER_REFERENCE, a fixed stdlib-only text run in an isolated interpreter (ORDER_REFERENCE_ARGV: -I ignores the
-# environment and the script's folder, -S skips site), so no study module, and no patch inside one, runs in it. The
-# reference restates SEED_RULE (order_beacon.seed) and freeze.planned_order's permutation; a change to either changes
-# the order this check expects, so this text is bound by the same review as theirs.
-ORDER_REFERENCE = r"""
-import hashlib, json, sys
-doc = json.load(sys.stdin)
-r = doc["reading"]
-ok = isinstance(r, dict) and isinstance(r.get("signature"), str) and \
-    r.get("randomness") == hashlib.sha256(bytes.fromhex(r["signature"])).hexdigest()
-seed = hashlib.sha256(("gap-study-4 take order\n%s\n%s" % (r.get("round"), r.get("randomness"))).encode("utf-8")
-                      ).hexdigest()[:40]
-key = lambda row: hashlib.sha256(seed.encode() + (json.dumps(row, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
-                                 ).hexdigest()
-json.dump({"reading_ok": ok, "seed": seed, "order": sorted(doc["rows"], key=key)}, sys.stdout)
-"""
-ORDER_REFERENCE_ARGV = (sys.executable, "-I", "-S", "-c", ORDER_REFERENCE)
+# The order recompute (glitch-45's item 1 after the lane review of fold2/lb, m-1; glitch-45's review, mn-1 and mn-2):
+# order_reference.py, a standalone stdlib-only file, recomputes the seed and the order from the frozen file and binds
+# the reading to the registered round, chain and time, and prints its own verdict. It runs as `python -I -S`, so no
+# study module, and no patch inside one, runs in it. What is not isolated: this process starts it and reads its exit
+# code and lines, and this process has imported study modules; the isolated form is the same command run on its own
+# (order_reference.py's docstring), which a reviewer or a gate runs directly.
+ORDER_REFERENCE_FILE = HERE / "order_reference.py"
+ORDER_REFERENCE_ARGV = (sys.executable, "-I", "-S", str(ORDER_REFERENCE_FILE), "-")
 
 
 def take_order_problems(frozen: dict) -> list[str]:
-    """Why the frozen take_order_seed or take_order is not what ORDER_REFERENCE recomputes from the frozen beacon
-    reading and rows, in an isolated interpreter; [] when both match."""
-    rows, reading, order = frozen.get("rows"), frozen.get("take_order_beacon_reading"), frozen.get("take_order")
-    if not (isinstance(rows, list) and rows and isinstance(reading, dict) and isinstance(order, list)):
-        return ["the frozen file carries no rows, beacon reading or take_order to recompute"]
+    """order_reference.py's problems for `frozen` (the frozen file as a dict), run in an isolated interpreter; []
+    when it exits 0."""
     try:
-        got = subprocess.run(ORDER_REFERENCE_ARGV, input=json.dumps({"rows": rows, "reading": reading}),
-                             capture_output=True, text=True, timeout=600)
-        out = json.loads(got.stdout) if got.returncode == 0 else None
-    except (OSError, subprocess.TimeoutExpired, ValueError) as e:
+        got = subprocess.run(ORDER_REFERENCE_ARGV, input=json.dumps(frozen), capture_output=True, text=True,
+                             timeout=600)
+    except (OSError, subprocess.TimeoutExpired) as e:
         return [f"the take order could not be recomputed ({type(e).__name__})"]
-    if not isinstance(out, dict):
-        return [f"the take order could not be recomputed: {got.stderr.strip()[:200]}"]
-    problems = []
-    if not out["reading_ok"]:
-        problems.append("the frozen beacon reading's randomness is not the sha256 of its signature")
-    if frozen.get("take_order_seed") != out["seed"]:
-        problems.append("the frozen take_order_seed is not SEED_RULE over the frozen beacon reading, recomputed")
-    if order != out["order"]:
-        problems.append("the frozen take_order is not the permutation the seed gives the frozen rows, recomputed in an "
-                        "isolated interpreter: the order function that ran was not the registered one")
-    return problems
+    lines = got.stdout.splitlines()
+    found = [ln.split("problem: ", 1)[1] for ln in lines if ln.startswith("order_reference: problem: ")]
+    if got.returncode == 0 and not found and any(ln.startswith("order_reference: ok") for ln in lines):
+        return []
+    return found or [f"the take order could not be recomputed: {(got.stdout + got.stderr).strip()[:200]}"]
 
 
 def check_frozen_content(rehearsal_plan=False) -> list[str]:

@@ -866,7 +866,8 @@ def frozen_with(order_fn=None):
     rows = json.loads((HERE / "prereg-draft.json").read_text())["rows"][:40]
     seed = ob.seed(READING)
     order = (order_fn or freeze.planned_order)({"rows": copy.deepcopy(rows)}, seed)
-    return {"rows": rows, "take_order_seed": seed, "take_order_beacon_reading": dict(READING), "take_order": order}
+    return {"rows": rows, "take_order_seed": seed, "take_order_beacon_reading": dict(READING), "take_order": order,
+            "take_order_beacon": registered_beacon()}
 
 
 class TestTakeOrderRecompute(unittest.TestCase):
@@ -902,11 +903,12 @@ class TestTakeOrderRecompute(unittest.TestCase):
 
     def test_the_recompute_reads_no_study_module(self):
         import check_results as cr
-        src = cr.ORDER_REFERENCE
+        src = cr.ORDER_REFERENCE_FILE.read_text()
         self.assertNotIn("import freeze", src)
         self.assertNotIn("sys.path", src)
         for flag in ("-I", "-S"):
             self.assertIn(flag, cr.ORDER_REFERENCE_ARGV)
+        self.assertIn(str(cr.ORDER_REFERENCE_FILE), cr.ORDER_REFERENCE_ARGV)
 
     def test_publication_reads_it(self):
         import inspect

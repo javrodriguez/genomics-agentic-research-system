@@ -36,6 +36,11 @@
       "path": "review_kit/prefreeze-2-blindness.txt",
       "status": "new",
       "reason": "Pre-freeze review 2's blindness record (review_kit/blindness.py's output over the reviewer's own session file and its sub-agent session files), committed unedited by 0f634fc3; a bound record, never edited. Claimed here by lane fold2-lb at glitch-45's request (29 Oct 2026, under Javier's standing delegation), as the L6a integration lane claimed review 1's; its bytes are not changed by this claim."
+    },
+    {
+      "path": "order_reference.py",
+      "status": "new",
+      "reason": "Lane fold2-lb (glitch-45's review of bc207c0a, mn-1 and mn-2, ruled): the take order recomputed from the frozen file alone, stdlib only (hashlib, json, sys), run as `python -I -S order_reference.py <prereg.json | ->` with its own verdict and exit code. It binds the beacon reading to the registered round, chain and round time, the randomness to the signature, the seed to SEED_RULE and the order to freeze.planned_order's permutation (both restated). check_results.take_order_problems runs it at publication. Bound by tests/test_fold2_lb.py TestOrchMN1MN2Recompute and TestTakeOrderRecompute."
     }
   ]
 }
