@@ -1137,6 +1137,13 @@ BOOTSTRAP_SUBSTITUTIONS = (
     ('.read_text(errors="replace").splitlines()', '.read_text(errors="replace").split("\\n")', 18),
     ('.read_text(encoding="utf-8", errors="replace").splitlines()',
      '.read_text(encoding="utf-8", errors="replace").split("\\n")', 2),
+    # Pre-freeze review 2 MAJOR 3 (glitch-45's ruling on the lane review of 8d71ae0d; lane fold2/la1, 83185e5b): an
+    # operator turn the frozen script renders to nothing is the driver's own record, so it is raised as
+    # driver-record-fault (harness-error), never the agent-reachable operator-lines; in place at 0-based line 1114.
+    # No committed walk carries the reason (every rehearsals/ check.json has checker_reasons []).
+    ('problems.append("[operator-lines] " + f"operator turn {step[\'n\']} renders to nothing; the script is broken")',
+     'problems.append(f"[{DRIVER_RECORD_FAULT}] operator turn {step[\'n\']} renders to nothing; the script is broken")',
+     1),
 )
 
 
