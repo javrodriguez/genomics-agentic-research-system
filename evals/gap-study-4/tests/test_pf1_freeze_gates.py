@@ -495,14 +495,19 @@ def g4_coverage(fz, wp, fr, p="G4.coverage") -> list:
 class MainHarness:
     """freeze.main with git, the review, the tree and the writer faked, and the new gates stood in for."""
 
-    def __init__(self, fz, *, coverage=lambda d: None, prepare_calls=None):
+    def __init__(self, fz, *, coverage=lambda d: None, prepare_calls=None, order_hash=None):
         self.fz, self.coverage, self.calls = fz, coverage, prepare_calls if prepare_calls is not None else []
+        self.order_hash = order_hash if order_hash is not None else (lambda fz: fz.take_order_function_sha256())
 
     def run(self, argv):
         fz = self.fz
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
-            (tmp / "prereg-draft.json").write_text(json.dumps({"status": "DRAFT", "tasks": [], "rows": []}))
+            # pre-freeze review 2, m3 (lane fold2/lb's leg; this rig's draft by lane fold2/lc): a draft carries the
+            # order function's hash, at the value this tree computes, as a built draft does, so freeze.main reaches
+            # the gates this harness exercises; no gate is stood in for it
+            (tmp / "prereg-draft.json").write_text(json.dumps({"status": "DRAFT", "tasks": [], "rows": [],
+                                                               fz.ORDER_FUNCTION_HASH_KEY: self.order_hash(fz)}))
             fake_git = {("remote",): (0, ""), ("status", "--porcelain"): (0, ""), ("rev-parse", "HEAD"): (0, "b" * 40)}
             patches = ((fz, "HERE", tmp), (fz, "REPO", tmp), (fz, "DRAFT", tmp / "prereg-draft.json"),
                        (fz, "PINNED", []), (fz, "git", lambda *a: fake_git.get(a, (1, "no fake"))),
