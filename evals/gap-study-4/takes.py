@@ -211,7 +211,7 @@ def ruling_door_problems(record: dict, history: list, rows: list, *, table=None,
 
 
 def _ruling_reads_row(record: dict, history: list) -> bool:
-    """Whether the door reads the ruled take's registered row: a re-running ruling always does; a graded or aborted
+    """Whether the door reads the ruled take's registered row: every re-running ruling does; a graded or aborted
     one only after the take's first turn, where its end state is read (pre-freeze review 2, m6; the review of
     fold2/la2, M1: a ruling that reads no end state needs no readable takes.json)."""
     if batch.reruns(record):
