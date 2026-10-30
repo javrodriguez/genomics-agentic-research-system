@@ -178,9 +178,10 @@ SEED_RULE = ("take_order_seed is the first 40 hex characters of the sha256 of th
 
 def residual() -> str:
     return ("The take order is seeded by the registered drand round and its randomness alone. The freeze enforces that "
-            "REGISTERED_ROUND, read by parsing order_beacon.py at every commit, changed exactly once in the history it "
-            "freezes, from None to the round, and that GitHub's own records hold a push of the commit that made that "
-            "change and a push of the last commit that changed the draft, each at least an hour before the round is "
+            "REGISTERED_ROUND, read by parsing order_beacon.py at every commit, changed in the history it freezes only "
+            "from None to the round, through each superseded round take_order_beacon.superseded records, in that order "
+            "(history_problem: [None, *superseded, round]), and that GitHub's own records hold a push of the commit "
+            "that set the round and a push of the last commit that changed the draft, each at least an hour before the round is "
             "published, and that no commit the mirror's records hold registers another round, or changes the draft "
             "after the registration, off that one line. The remaining road is only a mirror whose history someone "
             "rewrites, or GitHub itself (or the clock its records are stamped by), and among GitHub's own roads its "
