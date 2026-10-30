@@ -14,8 +14,10 @@ API-error record in its turn; otherwise [transcript-mismatch], aborted.
   E.both       the same line also written into the session file (the two-record road the draft names) passes
   E.result     a forged error result line with no session-file API-error record in its turn is transcript-mismatch
   E.walks      every committed claude-code walk still reads clean (no walk carries an API error)
-  E.vendor     drive.vendor_nested_problems no longer refuses a vendor take for a bare store-variable assignment (the
-               checker's vendor road grades it with its agent event); a foreign session still refuses
+  E.vendor     drive.vendor_nested_problems (drive.py byte-identical to 0f634fc3, a hashed reader source) no longer
+               refuses a vendor take for a bare store-variable assignment, because command_problems no longer raises it
+               (the checker's nested_command_problems does, graded with its agent event); a foreign session, under /tmp
+               too, still refuses
 
 Synthetic copies only; the committed walk is never written.
 """
@@ -79,10 +81,21 @@ def sid_of(path: Path) -> str:
     return first["session_id"]
 
 
-def route_ids(ids):
+def route_ids(ids, api_errors=()):
     rec = tr.baseline(labels4.AFTER_FIRST_TURN)
     rec["checker_reasons"] = sorted(set(ids))
+    rec["api_errors"] = [dict(e) for e in api_errors]
     return routing.route(rec, tr.test_table())["route"]
+
+
+def full_route(path):
+    """The take's route from its full records: the API errors read_stream gives each turn stream (as the drive step's
+    harness_records does) and the checker's reasons (the lane review of 8d71ae0d, MAJOR 2)."""
+    import claude_code_adapter as cca
+    errors = []
+    for s in sorted(path.parent.glob("turn-*.jsonl"), key=lambda q: int(q.stem.split("-")[1])):
+        errors += cca.read_stream(s.read_text())["api_errors"]
+    return route_ids(ct.reason_ids(ct.transcript_content_problems(path)), errors), errors
 
 
 class StreamOnlyApiError(unittest.TestCase):
@@ -92,7 +105,13 @@ class StreamOnlyApiError(unittest.TestCase):
         inject_stream(path, api_line(sid_of(path)))
         got = ct.transcript_content_problems(path)
         self.assertEqual(set(ct.reason_ids(got)), {ct.TRANSCRIPT_MISMATCH}, got)
-        self.assertEqual(route_ids(ct.reason_ids(got)), labels4.ABORTED)
+        route, errors = full_route(path)
+        self.assertTrue(errors)
+        self.assertEqual(route, labels4.ABORTED)                 # a rate-limit marker, one line: aborted, never pause
+        plain = copy_w001()
+        inject_stream(plain, api_line(sid_of(plain), message={"id": "m", "role": "assistant", "model": "<synthetic>",
+                                                              "content": [{"type": "text", "text": "API Error: 500"}]}))
+        self.assertEqual(full_route(plain)[0], labels4.ABORTED)
 
     def test_e_both(self):
         path = copy_w001()
@@ -103,15 +122,29 @@ class StreamOnlyApiError(unittest.TestCase):
         lines.insert(ops[1] if len(ops) > 1 else len(lines) - 1, lines.pop())
         path.write_text("\n".join(lines) + "\n")
         self.assertEqual(ct.transcript_content_problems(path), [])
+        self.assertEqual(full_route(path)[0], labels4.PAUSE)    # the two-record road: a genuine-looking rate limit
 
     def test_e_result(self):
-        path = copy_w001()
-        res = json.dumps({"type": "result", "subtype": "success", "is_error": True, "result": WORDS,
-                          "session_id": sid_of(path), "api_error_status": 429})
-        s = path.parent / "turn-1.jsonl"
-        s.write_text(s.read_text().rstrip("\n") + "\n" + res + "\n")
-        got = ct.transcript_content_problems(path)
-        self.assertIn(ct.TRANSCRIPT_MISMATCH, ct.reason_ids(got), got)
+        """MINOR 4 of the lane review of 8d71ae0d: an error result with no session-file API-error record is the
+        records disagreeing only when it is not the stream's one and last result, or the host recorded exit 0."""
+        def with_result(replace_last: bool, exit_code):
+            path = copy_w001()
+            res = json.dumps({"type": "result", "subtype": "success", "is_error": True, "result": "boom",
+                              "session_id": sid_of(path)})
+            s = path.parent / "turn-1.jsonl"
+            lines = [x for x in s.read_text().split("\n") if x.strip()]
+            if replace_last:
+                lines[-1] = res                                  # the CLI's own one result, last
+            else:
+                lines.append(res)                                # a second result, after the CLI's own
+            s.write_text("\n".join(lines) + "\n")
+            led = json.loads((path.parent / "driver-ledger.json").read_text())
+            led["turns"][0]["exit"] = exit_code
+            (path.parent / "driver-ledger.json").write_text(json.dumps(led))
+            return ct.reason_ids(ct.transcript_content_problems(path))
+        self.assertIn(ct.TRANSCRIPT_MISMATCH, with_result(False, 1))     # not the only result: forged
+        self.assertIn(ct.TRANSCRIPT_MISMATCH, with_result(True, 0))      # the only and last, and the CLI exited 0
+        self.assertNotIn(ct.TRANSCRIPT_MISMATCH, with_result(True, 1))   # the CLI's own fault: harness-error stands
 
     def test_e_walks(self):
         reg = json.loads((STUDY / "rehearsals" / "register.json").read_text())
@@ -133,12 +166,16 @@ class VendorRoad(unittest.TestCase):
         listing = [{"at": "post-1", "entries": [["sessions/2026", "dir"], ["sessions/2026/10", "dir"],
                                                ["sessions/2026/10/16", "dir"], [own, "file"]]}]
         mine = {"at": "post-1", "files": [[f"/opt/cfg/{own}", "codex", "t1"]], "unreadable": [], "escapes": [],
-                "mounts": ["/opt/cfg", "/run/t"], "scanned": 4, "truncated": False,
+                "mounts": ["/opt/cfg", "/run/t", "/tmp"], "scanned": 4, "truncated": False,
                 "expected": ct.sweep_expected("/run/t")}
         self.assertEqual(drive.vendor_nested_problems(listing, [mine], "codex", own, ["HOME=/tmp git status"], [],
                                                       "/run/t"), [])
-        self.assertEqual(ct.reason_ids(ct.command_problems(["HOME=/tmp git status"], "codex")),
+        self.assertEqual(ct.command_problems(["HOME=/tmp git status"], "codex"), [])   # drive.py's own call
+        self.assertEqual(ct.reason_ids(ct.nested_command_problems(["HOME=/tmp git status"], "codex")),
                          [ct.STORE_VARIABLE_ASSIGNED])               # the checker's vendor road still records it
+        tmp = dict(mine, files=mine["files"] + [["/tmp/h/.codex/sessions/r.jsonl", "codex", "t9"]])
+        self.assertTrue(drive.vendor_nested_problems(listing, [tmp], "codex", own, ["HOME=/tmp/h codex exec x"], [],
+                                                     "/run/t"))      # a nested session under /tmp is still found
         foreign = dict(mine, files=mine["files"] + [["/tmp/r.jsonl", "codex", "t2"]])
         self.assertTrue(drive.vendor_nested_problems(listing, [foreign], "codex", own, ["HOME=/tmp git status"], [],
                                                      "/run/t"))
