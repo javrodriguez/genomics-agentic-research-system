@@ -662,6 +662,53 @@ def synthetic_digest_problems(frozen: dict, now: dict, rehearsal_plan=False) -> 
     return problems
 
 
+# The order recompute (glitch-45's item 1 after the lane review of fold2/lb, m-1: take_order_function_sha256 cannot see a
+# study-file monkey-patch of the standard library or of a function object, nor prepare's seed hand-off). At
+# publication the seed and the order are recomputed from the frozen beacon reading and the frozen rows by
+# ORDER_REFERENCE, a fixed stdlib-only text run in an isolated interpreter (ORDER_REFERENCE_ARGV: -I ignores the
+# environment and the script's folder, -S skips site), so no study module, and no patch inside one, runs in it. The
+# reference restates SEED_RULE (order_beacon.seed) and freeze.planned_order's permutation; a change to either changes
+# the order this check expects, so this text is bound by the same review as theirs.
+ORDER_REFERENCE = r"""
+import hashlib, json, sys
+doc = json.load(sys.stdin)
+r = doc["reading"]
+ok = isinstance(r, dict) and isinstance(r.get("signature"), str) and \
+    r.get("randomness") == hashlib.sha256(bytes.fromhex(r["signature"])).hexdigest()
+seed = hashlib.sha256(("gap-study-4 take order\n%s\n%s" % (r.get("round"), r.get("randomness"))).encode("utf-8")
+                      ).hexdigest()[:40]
+key = lambda row: hashlib.sha256(seed.encode() + (json.dumps(row, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+                                 ).hexdigest()
+json.dump({"reading_ok": ok, "seed": seed, "order": sorted(doc["rows"], key=key)}, sys.stdout)
+"""
+ORDER_REFERENCE_ARGV = (sys.executable, "-I", "-S", "-c", ORDER_REFERENCE)
+
+
+def take_order_problems(frozen: dict) -> list[str]:
+    """Why the frozen take_order_seed or take_order is not what ORDER_REFERENCE recomputes from the frozen beacon
+    reading and rows, in an isolated interpreter; [] when both match."""
+    rows, reading, order = frozen.get("rows"), frozen.get("take_order_beacon_reading"), frozen.get("take_order")
+    if not (isinstance(rows, list) and rows and isinstance(reading, dict) and isinstance(order, list)):
+        return ["the frozen file carries no rows, beacon reading or take_order to recompute"]
+    try:
+        got = subprocess.run(ORDER_REFERENCE_ARGV, input=json.dumps({"rows": rows, "reading": reading}),
+                             capture_output=True, text=True, timeout=600)
+        out = json.loads(got.stdout) if got.returncode == 0 else None
+    except (OSError, subprocess.TimeoutExpired, ValueError) as e:
+        return [f"the take order could not be recomputed ({type(e).__name__})"]
+    if not isinstance(out, dict):
+        return [f"the take order could not be recomputed: {got.stderr.strip()[:200]}"]
+    problems = []
+    if not out["reading_ok"]:
+        problems.append("the frozen beacon reading's randomness is not the sha256 of its signature")
+    if frozen.get("take_order_seed") != out["seed"]:
+        problems.append("the frozen take_order_seed is not SEED_RULE over the frozen beacon reading, recomputed")
+    if order != out["order"]:
+        problems.append("the frozen take_order is not the permutation the seed gives the frozen rows, recomputed in an "
+                        "isolated interpreter: the order function that ran was not the registered one")
+    return problems
+
+
 def check_frozen_content(rehearsal_plan=False) -> list[str]:
     frozen, why = frozen_bytes()
     if frozen is None and why == "NOT A GIT REPOSITORY":
@@ -674,6 +721,9 @@ def check_frozen_content(rehearsal_plan=False) -> list[str]:
     now = json.loads((HERE / "prereg.json").read_text())
     problems = frozen_content_problems(frozen, now)
     problems += synthetic_digest_problems(frozen, now, rehearsal_plan)     # W8B-R2-2 (lane w9-cp6)
+    order = take_order_problems(frozen)      # the order recomputed in isolation (fold2/lb, glitch-45's item 1)
+    print(f"  the take order recomputed from the frozen reading and rows: {len(order)} problem(s)")
+    problems += order
     rehearsal = []
     if rehearsal_plan:
         if frozen.get("rehearsal_record") != "rehearsal or preview":

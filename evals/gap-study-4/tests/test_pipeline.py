@@ -1501,7 +1501,8 @@ class FreezeCoverage(unittest.TestCase):
                         mock.patch.object(cr, "frozen_bytes", return_value=(frozen, "")), \
                         mock.patch.object(cr, "freeze_commit", return_value="synthetic"), \
                         mock.patch.object(cr, "frozen_commit_problems", return_value=[]), \
-                        redirect_stdout(io.StringIO()) as output:
+                        mock.patch.object(cr, "take_order_problems", return_value=[]), \
+                        redirect_stdout(io.StringIO()) as output:      # fold2/lb: the order recompute stood in
                     problems = cr.check_frozen_content()
                 self.assertEqual(len(problems), 1 + int(changed))
                 lines = output.getvalue().splitlines()
@@ -1681,7 +1682,9 @@ class FreezeCoverage(unittest.TestCase):
             commit(repo.root, ["prereg.json"], "Freeze synthetic evidence")
             with mock.patch.object(cr, "HERE", repo.root), \
                     mock.patch.object(cr, "REPO", repo.root), \
-                    mock.patch.object(study, "rel", lambda name: name), redirect_stdout(io.StringIO()):
+                    mock.patch.object(study, "rel", lambda name: name), \
+                    mock.patch.object(cr, "take_order_problems", return_value=[]), \
+                    redirect_stdout(io.StringIO()):     # fold2/lb: the order recompute stood in (test_fold2_lb's)
                 return cr.check_frozen_content()
 
     def test_frozen_rehearsal_three_lines_and_placeholder(self):
