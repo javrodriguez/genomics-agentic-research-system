@@ -261,7 +261,19 @@ def derive() -> dict | None:
     return from_records(records, pre, rows, history)
 
 
-def render(rec: dict) -> str:
+def render_witness(run) -> str:
+    """glitch-45's review of fold2/lb, MJ-2: the push witness, printed on the page (check_results.py --witness --record's
+    latest run, held to HEAD's ledger by check_results.witness_publication_problems)."""
+    if not run:
+        return ""
+    if run.get("disposable"):
+        return "## Push witness\n\nNot read: a disposable rehearsal reads no push records.\n"
+    return (f"## Push witness\n\n{run['ledger_commits']} take-ledger commit(s) on the run line; "
+            f"{len(run['unwitnessed'])} unwitnessed (no push record of the mirror holds them), read by "
+            f"check_results.py --witness at {run['at']}.\n")
+
+
+def render(rec: dict, witness=None) -> str:
     lines = [f"# {study.STUDY_TITLE} — result", ""]
     if rec["stats"]["takes"] == 0:
         lines += [empty_line(), ""]
@@ -270,7 +282,7 @@ def render(rec: dict) -> str:
               *([render_flagged_counts(rec["flagged"])] if rec.get("flagged") is not None else []),   # off: no byte
               check_results.render_harness_events(rec.get("harness_events") or []),
               stats_block(rec["stats"]), render_followup(rec.get("followup") or [], rec.get("followup_arms") or []),
-              prior_sections()]
+              render_witness(witness), prior_sections()]
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -299,7 +311,12 @@ def main(argv=None) -> int:
                                    encoding="utf-8")
         print(f"result: wrote {ORIGINAL_VALUES.name}, the original report's values, once")
         return 0
-    wanted = render(got)
+    # glitch-45's review of fold2/lb, MJ-2 (ruled): the page is written or checked only with the push witness on record
+    problems, witness = check_results.witness_publication_problems(prereg.require_frozen("publishing the result"))
+    if problems:
+        print("result: FAIL " + "; ".join(problems))
+        return 1
+    wanted = render(got, witness=witness)
     if args.write:
         PAGE.write_text(wanted, encoding="utf-8")
     elif not PAGE.is_file() or PAGE.read_text(encoding="utf-8") != wanted:

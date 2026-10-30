@@ -480,7 +480,9 @@ RUNTIME_PATHS = ("takes.json", "outcomes.json", "rulings.json", "records",
                  "RESULT.md", "cost-calls.json", "COSTS.md", "deferred-arm-go.json",
                  # pre-freeze review 1 (lane pf1-l2b): the original report's published values (MAJOR 10) and the
                  # labelling frame built from the takes (MAJOR 6) are run output too
-                 "original-values.json", "labelling/frame.json")
+                 "original-values.json", "labelling/frame.json",
+                 # glitch-45's review of fold2/lb, MJ-2: each run of --witness --record, appended on the Mac
+                 "witness-record.json")
 
 
 def runtime_timing_problems() -> list[str]:
@@ -642,17 +644,80 @@ def run_line_ledger_problems(rels) -> list[str]:
     return problems
 
 
-def witness_main() -> int:
-    """check_results.py --witness: the take ledger against GitHub's push records (MAJOR 2)."""
+WITNESS_RECORD = "witness-record.json"      # glitch-45's review of fold2/lb, MJ-2 (a runtime output, RUNTIME_PATHS)
+DISPOSABLE_PLACEHOLDER = "rehearsal or preview"     # freeze.py's rehearsal_record in a disposable rehearsal's freeze
+
+
+def witness_main(record: bool = False) -> int:
+    """check_results.py --witness [--record]: the take ledger against GitHub's push records (MAJOR 2). With --record
+    (glitch-45's review, MJ-2: the batch-fetch step on the Mac and the step before publication) each run is appended
+    to WITNESS_RECORD, problems and all, so that it ran is on record; it fails closed (exit 1) on any problem."""
     import freeze
     problems, ledger, unwitnessed = take_ledger_witness(freeze.push_records())
     print(f"check_results --witness: {len(ledger)} take-ledger commit(s) on HEAD's line, {len(unwitnessed)} "
           f"unwitnessed (no push record holds them)" + (": " + ", ".join(c[:12] for c in unwitnessed)
                                                         if unwitnessed else ""))
+    if record:
+        from datetime import datetime, timezone
+        path = HERE / WITNESS_RECORD
+        runs = json.loads(path.read_text()) if path.is_file() else []
+        if not isinstance(runs, list):
+            raise ValueError(f"{WITNESS_RECORD} is not a list of runs")
+        code, head = git("rev-parse", "HEAD")
+        runs.append({"at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "head": head,
+                     "ledger_head": ledger[0] if ledger else None, "ledger_commits": len(ledger),
+                     "unwitnessed": unwitnessed, "problems": problems})
+        path.write_text(json.dumps(runs, indent=1) + "\n")
+        print(f"check_results --witness: run {len(runs)} appended to {WITNESS_RECORD}; commit it")
     if problems:
         print("check_results --witness: REFUSE: " + "; ".join(problems))
         return 1
     return 0
+
+
+def witness_publication_problems(pre: dict | None = None) -> tuple[list[str], dict | None]:
+    """glitch-45's review of fold2/lb, MJ-2 (ruled): publication (result.py and this file's publication check) refuses
+    unless WITNESS_RECORD's latest run is clean, and was taken at HEAD's current ledger head on HEAD's line; returns
+    (problems, that run). A disposable rehearsal's freeze (`pre` with the placeholder rehearsal record) reads no push
+    records: ([], {"disposable": True})."""
+    if pre is not None and pre.get("rehearsal_record") == DISPOSABLE_PLACEHOLDER:
+        return [], {"disposable": True}
+    path = HERE / WITNESS_RECORD
+    try:
+        runs = json.loads(path.read_text()) if path.is_file() else []
+    except ValueError:
+        return [f"{WITNESS_RECORD} cannot be read"], None
+    if not isinstance(runs, list) or not runs or not isinstance(runs[-1], dict):
+        return [f"no run of check_results.py --witness --record is on record ({WITNESS_RECORD}): the push records "
+                f"were never read for this publication"], None
+    run = runs[-1]
+    rels = [(HERE / f).relative_to(REPO).as_posix() for f in TAKE_LEDGER_FILES]
+    code, now = git("rev-list", "-1", "--full-history", "HEAD", "--", *rels)
+    problems = []
+    if run.get("problems"):
+        problems.append(f"the latest witness run ({run.get('at')}) refused: " + "; ".join(run["problems"])[:300])
+    if run.get("ledger_head") != (now or None):
+        problems.append(f"the latest witness run read the ledger at {str(run.get('ledger_head'))[:12]}, and HEAD's "
+                        f"ledger is at {now[:12] or 'none'}: run check_results.py --witness --record again")
+    head = run.get("head")
+    if not (isinstance(head, str) and git("merge-base", "--is-ancestor", head, "HEAD")[0] == 0):
+        problems.append(f"the latest witness run's head {str(head)[:12]} is not on HEAD's line")
+    return problems, run
+
+
+def section_lint_problems(page) -> list[str]:
+    """glitch-45's review of fold2/lb, mn-5 (ruled): the m5 section lints, lint_language and lint_pooling
+    --section-of, run in the local publication check without --allow-absent (CI may not run), so a published page
+    with no round-4 section, or a finding in it, refuses publication."""
+    out = []
+    for script in ("lint_language.py", "lint_pooling.py"):
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(HERE / script), "--section-of", str(page)],
+                             capture_output=True, text=True, cwd=str(REPO))
+        if got.returncode != 0:
+            tail = (got.stdout + got.stderr).strip().splitlines()
+            out.append(f"{script} --section-of {Path(page).name} exits {got.returncode}: "
+                       + (tail[-1][:200] if tail else "no output"))
+    return out
 
 
 def rehearsal_record_problems(frozen: dict) -> list[str]:
@@ -818,14 +883,14 @@ def original_values_problems(rec: dict, path=None) -> list[str]:
     return out
 
 
-def check_publication(rows, history, records, pre, page, grade, table=None):
+def check_publication(rows, history, records, pre, page, grade, table=None, witness=None):
     import result
     for row in rows:
         takes_mod.require_planned_row(row, pre)
     stats.check_records(records)
     wanted = pipeline().produce(rows, history, grade, table=table)["records"]
     rec = result.from_records(wanted, pre, rows, history, table)
-    rendered = result.render(rec)
+    rendered = result.render(rec, witness=witness)
     import run_builders   # lane run-launcher, ruling 2: first registrations follow take_order within each launch part
     problems = run_builders.order_problems(rows, pre)
     if not records_equal(records, wanted):
@@ -853,10 +918,14 @@ def main(argv=None):
                         help="disposable rehearsal only; rehearsal evidence is NOT CHECKED")
     parser.add_argument("--witness", action="store_true",
                         help="the take ledger against GitHub's push records of the mirror (network; MAJOR 2)")
+    parser.add_argument("--record", action="store_true",
+                        help=f"with --witness: append this run to {WITNESS_RECORD} (the batch fetch and publication)")
     args = parser.parse_args(argv)
+    if args.record and not args.witness:
+        parser.error("--record is read only with --witness")
     if args.witness:
         try:
-            return witness_main()
+            return witness_main(record=args.record)
         except ValueError as exc:
             print(f"check_results --witness: REFUSE: {exc}")
             return 1
@@ -877,9 +946,17 @@ def main(argv=None):
         problems = check_pins() + check_frozen_content(rehearsal_plan=args.rehearsal_plan)
         if rows or history or records:
             page = HERE / "RESULT.md"
+            # glitch-45's review of fold2/lb: MJ-2, the push witness on record at HEAD's ledger; mn-5, the section
+            # lints without --allow-absent; neither in a disposable rehearsal, which says so
+            witnessed, witness = witness_publication_problems(pre)
+            problems += witnessed
+            if args.rehearsal_plan or witness == {"disposable": True}:
+                print("  NOT CHECKED: the published page's round-4 section (disposable rehearsal)")
+            else:
+                problems += section_lint_problems(REPO / "docs" / "EVALS.md")
             problems += check_publication(rows, history, records, pre,
                                           page.read_text() if page.is_file() else None,
-                                          pipeline().grade_committed)
+                                          pipeline().grade_committed, witness=witness)
         if problems:
             print("check_results: REFUSE: " + "; ".join(problems))
             return 1
