@@ -96,6 +96,8 @@ class M10Reach(unittest.TestCase):
         self.assertIn("| A | `t1` | trap | `a1` | `claude-code` | 3 | 2 | 5 | 0 |", text)
         self.assertIn("| A | `t1` | normal | `a1` | `claude-code` | 1 | 0 | 0 | 1 |", text)
         self.assertIn("No take is committed", result.render_outside_reach([]))
+        for trigger in ("outside the take's own run tree", "study material", "account email"):    # review NIT 2
+            self.assertIn(trigger, text)
         self.assertEqual(ll.scan_text(text, "reach.md", []), [])
         self.assertEqual(ll.scan_text(result.render_outside_reach([]), "reach.md", []), [])
         base = {"stats": stats.derive([], DESIGN),
@@ -222,15 +224,101 @@ class M8Verdicts(unittest.TestCase):
         import check_results as cr
         self.assertIn("labelling/" + fv.VERDICTS_NAME, cr.RUNTIME_PATHS)
 
+    # ---- review of 4928c592 (fold2-ld-REVIEW.md) --------------------------------------------------------------------
+    @staticmethod
+    def paths_git(logs: dict, *, ancestor=0, shallow="false", blob="x"):
+        """A fake git whose `log -- <rel>` answers per path (by the path's last name) and whose merge-base
+        --is-ancestor returns `ancestor`; every call is recorded in .calls."""
+        calls = []
+
+        def run(*args):
+            calls.append(args)
+            if args[:1] == ("rev-parse",):
+                return 0, shallow + "\n"
+            if args[:1] == ("log",):
+                name = args[-1].rsplit("/", 1)[-1]
+                return 0, "".join(f"{x}\n" for x in logs.get(name, []))
+            if args[:1] == ("show",):
+                return 0, blob
+            if args[:2] == ("merge-base", "--is-ancestor"):
+                return ancestor, ""
+            raise AssertionError(args)
+        run.calls = calls
+        return run
+
+    def test_review_major1_a_committed_record_may_not_vanish(self):
+        """MAJOR 1: an absent record that HEAD's history ever committed refuses, as agreement.gone_problems does for
+        labels.json; a shallow clone refuses; a record never committed is said out loud and passes."""
+        fv = self.fv()
+        import io
+        import contextlib
+        import tempfile
+        with tempfile.TemporaryDirectory() as t:
+            gone = Path(t) / fv.VERDICTS_NAME
+            twice = self.paths_git({fv.VERDICTS_NAME: ["a" * 40, "b" * 40]})
+            self.assertTrue(fv.gone_problems(gone, twice))
+            self.assertTrue(fv.gone_problems(gone, self.paths_git({fv.VERDICTS_NAME: ["a" * 40]}, shallow="true")))
+            self.assertEqual(fv.gone_problems(gone, self.paths_git({})), [])
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(fv.check(path=gone, git=twice, smp=flagged_doc()), 1, "a deleted record passed")
+            self.assertIn("FAIL", out.getvalue())
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(fv.check(path=gone, git=self.paths_git({}), smp=flagged_doc()), 0)
+
+    def test_review_minor1_committed_after_the_blind_labels_by_history(self):
+        """MINOR 1: the record's one commit descends from labels.json's one commit, and is not that commit."""
+        fv = self.fv()
+        import tempfile
+        L, V = "1" * 40, "2" * 40
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t) / fv.VERDICTS_NAME
+            path.write_text("x")
+            logs = {fv.VERDICTS_NAME: [V], "labels.json": [L]}
+            self.assertEqual(fv.history_problems(path, self.paths_git(logs, ancestor=0), labels_problems=[]), [])
+            before = fv.history_problems(path, self.paths_git(logs, ancestor=1), labels_problems=[])
+            self.assertTrue(any("ORDER" in p for p in before), before)
+            same = fv.history_problems(path, self.paths_git({fv.VERDICTS_NAME: [V], "labels.json": [V]}),
+                                       labels_problems=[])
+            self.assertTrue(any("ORDER" in p for p in same), same)
+            none = fv.history_problems(path, self.paths_git({fv.VERDICTS_NAME: [V]}), labels_problems=[])
+            self.assertTrue(any("ORDER" in p for p in none), none)
+
+    def test_review_nit3_the_page_publishes_only_a_record_whose_history_holds(self):
+        """NIT 3: result.flagged_counts' default reader is flagged_verdicts.published, which refuses a record whose
+        history check fails (and a vanished one), never showing it as read or as not read."""
+        fv = self.fv()
+        from unittest import mock
+        import tempfile
+        doc = flagged_doc()
+        rec = verdicts(("F001", "grader-right"), ("F002", "grader-wrong"))
+        with tempfile.TemporaryDirectory() as t:
+            path = Path(t) / fv.VERDICTS_NAME
+            import json
+            path.write_text(json.dumps(rec))
+            self.assertEqual(fv.published(doc, path, history=lambda p: []), {"F001": "grader-right",
+                                                                             "F002": "grader-wrong"})
+            with self.assertRaises(fv.VerdictError):
+                fv.published(doc, path, history=lambda p: ["HISTORY: twice"])
+            gone = Path(t) / "absent.json"
+            self.assertIsNone(fv.published(doc, gone, gone=lambda p: []))
+            with self.assertRaises(fv.VerdictError):
+                fv.published(doc, gone, gone=lambda p: ["HISTORY: was committed"])
+        on = {"labelling_design": {"flagged_list": {"cap": 2}}}
+        with mock.patch.object(fv, "published", side_effect=fv.VerdictError("synthetic")), \
+                self.assertRaises(fv.VerdictError):
+            result.flagged_counts(on, reader=lambda: doc)
+
 
 # ---- M16: the covering Codex walks' native cross-check, re-derived (m16) --------------------------------------------
 
-def walk_folder(root: Path, walk: str, harness: str, status):
+def walk_folder(root: Path, walk: str, harness: str, status, history=Ellipsis):
     import json
     base = root / walk
     base.mkdir(parents=True)
+    if history is Ellipsis:
+        history = {"status": "joined", "why": None, "interactions": 1, "basis": "b"}
     ledger = {"agent": {"harness": harness, "version": "v"}, "first_agent_turn": True, "turns": [], "streams": [],
-              "native_snapshots": [], "model_requested": "m"}
+              "native_snapshots": [], "model_requested": "m", "native_history": history}
     if status is not None:
         ledger["cross_check_status"] = status
     (base / "driver-ledger.json").write_text(json.dumps(ledger))
@@ -266,6 +354,33 @@ class M16Cross(unittest.TestCase):
             self.assertEqual(wnc.walk_problem("w-o3", root / "w-o3", readers={}, cross=None)[1], "pending")
             self.assertEqual(wnc.walk_problem("w001", root / "w001", readers={}, cross=None)[1], "not-vendor")
 
+    def test_review_minor2_a_walk_whose_join_never_ran_is_read_by_its_recorded_history(self):
+        """MINOR 2: when the ledger's native_history is not joined the driver never ran the join (drive.py 2613-2620,
+        vendor_cross_check_status), so the gate does not run it either: the ledger's status must be what
+        vendor_cross_check_status gives for that recorded history, and the walk is counted not-joined."""
+        import json
+        import tempfile
+        wnc = self.wnc()
+        never = lambda *a: self.fail("the join ran for a walk whose native history did not join")
+        with tempfile.TemporaryDirectory() as t:
+            root = Path(t)
+            hist = {"status": "refused", "why": "x", "interactions": None, "basis": "b"}
+            for walk, history, status, named in (
+                    ("w-o1", hist, {"status": "refused", "why": "native snapshots: x"}, False),
+                    ("w-o2", hist, {"status": "agreed", "why": None}, True),
+                    ("w-o3", None, {"status": "refused", "why": "the codex adapter retained no native snapshot "
+                                                                 "record"}, False)):
+                base = walk_folder(root, walk, "codex", status, history=history)
+                led = json.loads((base / "driver-ledger.json").read_text())
+                if history is None:
+                    led.pop("native_history", None)
+                    (base / "driver-ledger.json").write_text(json.dumps(led))
+                got = wnc.walk_problem(walk, base, readers={}, cross=never)
+                self.assertEqual(got[1], "not-joined", walk)
+                self.assertEqual(bool(got[0]), named, (walk, got))
+        self.assertEqual(wnc.gate_problems([], {"walks": 2, "vendor": 1, "rederived": 0, "pending": 0,
+                                                "not-joined": 1}), [])
+
     def test_the_gate_refuses_a_vacuous_read(self):
         wnc = self.wnc()
         self.assertTrue(wnc.gate_problems([], {"walks": 3, "vendor": 2, "rederived": 0, "pending": 0}))
@@ -276,13 +391,15 @@ class M16Cross(unittest.TestCase):
         import json
         wnc = self.wnc()
         walks = HERE / "rehearsals"
+        self.assertTrue((walks / "register.json").is_file(), f"NIT 1: no walk register at {walks}: this test reads a "
+                        f"committed walk and fails rather than skip in a tree without them")
         for base in sorted(walks.glob("w-o*")):
             led = base / "driver-ledger.json"
             if led.is_file() and (json.loads(led.read_text()).get("cross_check_status") or {}).get("status") == \
                     "agreed":
                 break
         else:
-            self.skipTest("no committed agreed Codex walk in this tree")
+            self.fail("NIT 1: the walk register stands and no committed Codex walk records an agreed cross-check")
         sys.path.insert(0, str(HERE))          # the driver's join imports its study modules as it reads
         try:
             got = wnc.walk_problem(base.name, base, readers=None)
