@@ -3429,11 +3429,7 @@ def vendor_nested_problems(listings, sweeps, harness: str, native_rel, commands,
             for v in (["sweep refused"] if "refused" in x else
                       _ct.sweep_violations(dict(x, files=[f for f in x["files"] if f[0] not in own]), set(), None,
                                            run_tree))]
-    # pre-freeze review 2, MAJOR 1 (glitch-45's ruling 4): a bare store-variable assignment is the agent's ordinary
-    # command, graded with its agent event on the checker's vendor road (check_take.vendor_nested_flag_problems), never a
-    # refusal here; a nested agent it started still shows in the listing or the sweep above
-    return bad + list(unread) + [x for x in _ct.command_problems(commands, harness)
-                                 if _ct.reason_ids([x]) != [_ct.STORE_VARIABLE_ASSIGNED]]
+    return bad + list(unread) + _ct.command_problems(commands, harness)
 
 
 def store_listing(lister, root: str) -> list:

@@ -1112,7 +1112,7 @@ def operator_line_problems(ops: list[str], steps: list[dict], expected_project: 
             return nxt is not None and norm[k] == nxt
 
         if not want:
-            problems.append("[operator-lines] " + f"operator turn {step['n']} renders to nothing; the script is broken")
+            problems.append(f"[{DRIVER_RECORD_FAULT}] operator turn {step['n']} renders to nothing; the script is broken")
             continue
         pos = next((k for k in range(i, len(ops)) if norm[k] == want), None)
         if pos is None:
@@ -3686,6 +3686,10 @@ def subagent_leak_problems(path: Path, pre: dict) -> list[str]:
 #                                counts disagreeing with the streams.
 NESTED_AGENT = "nested-agent"
 NESTED_AGENT_SESSION = "nested-agent-session"
+# The lane review of 8d71ae0d, MAJOR 3 (glitch-45's ruling): a finding that reads only the driver's or the box's own
+# records (the frozen script, the envelopes, the launch journals), raised where a reason that is otherwise the agent's
+# would stand; it routes harness-error after the first turn by the generic row, never aborted.
+DRIVER_RECORD_FAULT = "driver-record-fault"
 STORE_VARIABLE_ASSIGNED = "store-variable-assigned"
 SESSION_STORE_RECORD = "session-store.json"
 SESSION_STORE_ROOTS = {CLAUDE_CODE: "projects", "codex": "sessions", "gemini": ".gemini/tmp"}
@@ -3832,9 +3836,9 @@ def assigned_variables(command: str, depth: int = 0) -> list:
 
 def command_problems(commands, harness: str = CLAUDE_CODE) -> list:
     """[nested-agent-session] for each shell command that carries a session-off switch of the harness (by prefix, in
-    the raw text or a token); [store-variable-assigned] for each that assigns or exports a variable that moves an agent
-    CLI's session store (MAJOR 1 of pre-freeze review 2: an ordinary command, graded with an agent event; a nested
-    agent it started still shows in the store or the sweep as nested-agent-session)."""
+    the raw text or a token). The driver's vendor road (drive.vendor_nested_problems, a hashed reader source never
+    edited here) refuses a take on these lines; a bare store-variable assignment is not one of them (MAJOR 1 of
+    pre-freeze review 2: an ordinary command), so it is store_variable_problems' and the checker's alone."""
     out = []
     prefixes = NO_PERSISTENCE_PREFIXES.get(harness, ()) + (NO_PERSISTENCE_PREFIX,)
     for c in commands:
@@ -3843,10 +3847,28 @@ def command_problems(commands, harness: str = CLAUDE_CODE) -> list:
         if hit:
             out.append(f"[{NESTED_AGENT_SESSION}] a shell command carries {hit[0]}...: a nested agent that writes no "
                        f"session would pass the session store and the sweep")
+    return out
+
+
+def store_variable_problems(commands) -> list:
+    """[store-variable-assigned] for each shell command that assigns or exports a variable that moves an agent CLI's
+    session store (MAJOR 1 of pre-freeze review 2: graded with an agent event; a nested agent it started still shows
+    in the store or the sweep as nested-agent-session)."""
+    out = []
+    for c in commands:
         moved = sorted(set(assigned_variables(c)) & set(NESTED_HOME_VARIABLES))
         if moved:
             out.append(f"[{STORE_VARIABLE_ASSIGNED}] a shell command assigns or exports {moved}: an agent CLI started "
                        f"under it would write its session outside the store")
+    return out
+
+
+def nested_command_problems(commands, harness: str = CLAUDE_CODE) -> list:
+    """The checker's reading of the take's shell commands: command_problems, then store_variable_problems, per
+    command in order (the lane review of 8d71ae0d, BLOCKER 1: the split lives here, drive.py stays byte-identical)."""
+    out = []
+    for c in commands:
+        out += command_problems([c], harness) + store_variable_problems([c])
     return out
 
 
@@ -3892,8 +3914,8 @@ def vendor_shell_commands(folder, harness: str) -> tuple:
 
 
 def nested_agent_flag_problems(path: Path) -> list:
-    """command_problems over the take's Bash commands, main thread and sub-agents."""
-    return command_problems(_bash_commands(path), CLAUDE_CODE)
+    """nested_command_problems over the take's Bash commands, main thread and sub-agents."""
+    return nested_command_problems(_bash_commands(path), CLAUDE_CODE)
 
 
 def _take_facts(path: Path) -> set:
@@ -5665,7 +5687,7 @@ def vendor_unread_problems(path, harness, ledger) -> list:
 def vendor_nested_flag_problems(path, harness) -> list:
     """nested-agent-session and store-variable-assigned (T-21; MAJOR 1 of pre-freeze review 2): command_problems over
     the CLI's own shell commands (vendor_shell_commands), as the drive runs it for a vendor take."""
-    return command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
+    return nested_command_problems(vendor_shell_commands(Path(path).parent, harness)[0], harness)
 
 
 # Stage Z2 (glitch-f1 on CODEX-S0-READ-20261022.md): the two other patch roads of codex-cli 0.162.1. A code-mode exec
@@ -6339,6 +6361,19 @@ def _vendor_codex_lines(path) -> list:
     return list(zip(lines, records))
 
 
+def _vc_driver_fault(path) -> list:
+    """The lane review of 8d71ae0d, MAJOR 3: [driver-record-fault] when the driver ledger or the retained native
+    snapshot it binds (a host copy, its bytes bound by the ledger's sha256) cannot be read, so a reason that reads the
+    rollout's content (the agent's) never stands for a driver or host fault; [] otherwise."""
+    try:
+        ledger = _binding._json(_binding._regular_bytes(Path(path).parent / "driver-ledger.json").decode("utf-8"))
+        _vendor_last_snapshot(path, ledger)
+    except _VENDOR_READ_ERRORS + (OSError, ValueError) as e:
+        return [f"[{DRIVER_RECORD_FAULT}] the driver ledger or the retained native snapshot it binds cannot be read "
+                f"({type(e).__name__}: {str(e)[:160]})"]
+    return []
+
+
 def _vc_unreadable(reason: str, e) -> list:
     return [f"[{reason}] the codex rollout cannot be read, so this row's record cannot be shown "
             f"({type(e).__name__}: {str(e)[:160]})"]
@@ -6402,9 +6437,16 @@ def vendor_codex_origin_reads(path) -> list:
     `<environment_context>` part; every developer part opens with one of CODEX_DEVELOPER_SECTIONS; and no message has
     another role. Survey: 38 of 38, 89 operator parts for 89 turns, 38 and 38."""
     reason = "unknown-harness-origin"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
+    try:
+        sent = [env["sent"] for env in _vendor_envelopes(path)]
+    except _VENDOR_READ_ERRORS as e:                 # the envelopes are the driver's (the lane review of 8d71ae0d)
+        return [f"[{DRIVER_RECORD_FAULT}] the envelopes cannot be read, so the operator lines cannot be placed "
+                f"({type(e).__name__}: {str(e)[:160]})"]
     try:
         lines = _vendor_codex_lines(path)
-        sent = [env["sent"] for env in _vendor_envelopes(path)]
     except _VENDOR_READ_ERRORS as e:
         return _vc_unreadable(reason, e)
     out, operator, agents, env = [], [], 0, 0
@@ -6468,6 +6510,9 @@ def vendor_codex_loaded_context_reads(path, pre) -> list:
     C's context includes its prompt snapshot), world_state, every developer message, and the AGENTS.md and
     environment-context user parts (never an operator line, T-6's). Survey: 0 of 38."""
     reason = "leak-in-loaded-context"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
     try:
         text = vendor_codex_loaded_context_text(path)
     except _VENDOR_READ_ERRORS as e:
@@ -6647,6 +6692,9 @@ def vendor_codex_checkout_partial(path) -> list:
     {branch, commit_hash}, the branch `main` (CODEX_CHECKOUT_BRANCH, drive.py:381) and a 40-character lower-case hex
     commit hash. Survey: 38 of 38."""
     reason = "checkout-binding"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
     try:
         lines = _vendor_codex_lines(path)
     except _VENDOR_READ_ERRORS as e:
@@ -6672,6 +6720,9 @@ def vendor_codex_instruction_content_reads(path, design) -> list:
     (pinned_instruction_problems' rule); a file outside the session folder is T-12:instruction-files', skipped here.
     Survey: 38 of 38 both copies equal the pinned root CLAUDE.md."""
     reason = "checkout-binding"
+    fault = _vc_driver_fault(path)
+    if fault:
+        return fault
     try:
         lines = _vendor_codex_lines(path)
     except _VENDOR_READ_ERRORS as e:
@@ -7308,8 +7359,8 @@ def vendor_gemini_checkout_partial(path) -> list:
         return refused
     folder = _gemini_launch_folder(path)
     if folder is None:
-        return ["[checkout-binding] the launch journals record no one working folder, so the listed checkout cannot "
-                "be compared"]
+        return [f"[{DRIVER_RECORD_FAULT}] the launch journals record no one working folder, so the listed checkout "
+                f"cannot be compared"]
     return [f"[checkout-binding] the session context ({where}) lists the directory {root!r}, not the launch folder "
             f"{folder!r}" for where, root in ((w, gemini_context_facts(t)["root"]) for w, t in versions)
             if root != folder]
@@ -7513,9 +7564,12 @@ def transcript_content_problems(path: Path) -> list[str]:
 # evidence instead). So every API-error record of a turn stream needs its twin: a main-thread one a session-file
 # API-error record with the same words in the same turn (the session split at its operator lines), a sub-agent's one
 # in its own sub-agent file, and an error result (the session file holds no result record) at least one session-file
-# API-error record in its turn. Otherwise [transcript-mismatch]: aborted after the first turn. The road left is two
-# records the agent's uid can write, a stream line and a session-file line, which /box_residuals/9 names; a forged
-# error result line needs a session-file API-error record beside it, the same two-record road.
+# API-error record in its turn, unless it is the stream's one and last record and the host recorded a non-zero exit
+# (the CLI's own fault, which stays harness-error: the lane review of 8d71ae0d, MINOR 4). Otherwise
+# [transcript-mismatch]: aborted after the first turn, and routing.json's rate-limit row yields to it (its none_of), so
+# a stream-only rate limit is aborted, never a pause. The roads left, which /box_residuals/9 names: two records the
+# agent's uid can write, a stream line and a session-file line; and a forged error result written as the stream's last
+# line by an agent that also ends its own CLI non-zero.
 def _api_words(rec: dict) -> str:
     return "\n".join(t for t in _cca._texts(rec) if t)
 
@@ -7538,10 +7592,18 @@ def api_error_record_problems(path: Path, texts=None, session=None) -> list[str]
             turns.append([])
         elif rec.get("type") == "assistant" and (rec.get("isApiErrorMessage") is True or _cca._is_api_error(rec)):
             turns[-1].append(_api_words(rec))
+    exits = []
+    try:
+        rows = json.loads((path.parent / "driver-ledger.json").read_text(encoding="utf-8")).get("turns") or []
+        exits = [r.get("exit") if isinstance(r, dict) else None for r in rows]
+    except (OSError, ValueError, AttributeError):
+        pass
     out, sub_stream = [], collections.Counter()
     for k, text in enumerate(texts, 1):
         main, error_result = collections.Counter(), False
-        for rec in _cca._content_records(text):
+        recs = _cca._content_records(text)
+        results = [i for i, rec in enumerate(recs) if rec.get("type") == "result"]
+        for i, rec in enumerate(recs):
             if rec.get("type") == "assistant" and _cca._is_api_error(rec):
                 if rec.get("parent_tool_use_id") is None:
                     main[_api_words(rec)] += 1
@@ -7549,7 +7611,12 @@ def api_error_record_problems(path: Path, texts=None, session=None) -> list[str]
                     sub_stream[(rec.get("agent_id"), _api_words(rec))] += 1
             elif rec.get("type") == "result" and (rec.get("is_error") is True
                                                   or str(rec.get("subtype") or "").startswith("error")):
-                error_result = True
+                # the lane review of 8d71ae0d, MINOR 4: the CLI writes its own error result last and then exits
+                # non-zero; only a result that is not the stream's one and last record, or one in a turn the host
+                # recorded exiting 0, is the records disagreeing (else the CLI's fault stays harness-error)
+                exit_code = exits[k - 1] if k - 1 < len(exits) else None
+                if results != [i] or i != len(recs) - 1 or exit_code == 0:
+                    error_result = True
         had = collections.Counter(turns[k] if k < len(turns) else [])
         if main - had:
             out.append(f"[{TRANSCRIPT_MISMATCH}] turn {k}: {sum((main - had).values())} API-error record(s) of the "

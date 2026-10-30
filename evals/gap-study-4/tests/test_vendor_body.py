@@ -656,7 +656,7 @@ CASES = {
                                               None),
     "a turn with no launch journal": (("codex", "gemini"), case_no_journal,
                                       {"codex": {"inherited-context": 1},
-                                       "gemini": {"inherited-context": 3, "checkout-binding": 1,
+                                       "gemini": {"inherited-context": 3, "driver-record-fault": 1,   # pf2 L-A1 review
                                                   "constant-binding": 1}}, None),
     # gemini constant-binding 1: T-24's S10 registered-invocation reading, argv_mode (glitch-f1 ruling 22 Oct, merge 5)
     "a launch journal naming another turn's stream": (("codex", "gemini"), case_journal_of_another_turn,

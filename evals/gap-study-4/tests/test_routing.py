@@ -359,6 +359,13 @@ def grid_problems(table: dict) -> list[str]:
                     p.append(f"grid {row['id']} x {name}: {got['route']}")
                 continue
             want = higher(alone["route"], mod_route["route"], table)
+            # pre-freeze review 2, MAJOR 1 (the lane review of 8d71ae0d, MAJOR 2): a terminal state's winning rows whose
+            # none_of the witness's own records hold (rate-limit's none_of transcript-mismatch) do not match the
+            # combined take, so the witness's route stands
+            rows_by_id = {r["id"]: r for r in table["rows"]}
+            if all(any(routing.holds(c, rec, table) for c in rows_by_id[w].get("none_of", []))
+                   for w in mod_route["rows"]):
+                want = alone["route"]
             if want is None:
                 if not isinstance(got, Exception):
                     p.append(f"grid {row['id']} x {name}: tie not refused")
@@ -1689,7 +1696,8 @@ ROUND4_ADDED_REASONS = ("harness-condition-violated", "transcript-unreadable",  
                         "subagent-records",                                        # + the Agent parity ruling
                         "nested-agent",                                            # + W-3b (glitch-b5, 16 Oct)
                         "transcript-mismatch",                                     # + pf1-l3 (MAJOR 7, 24 Oct)
-                        "nested-agent-session", "subagent-unbound")                # + pf2 L-A1 (MAJOR 1, 29 Oct)
+                        "nested-agent-session", "subagent-unbound",                # + pf2 L-A1 (MAJOR 1, 29 Oct)
+                        "driver-record-fault")                                     # + its review, 29 Oct
 CHECK_TAKE4 = "evals/gap-study-4/check_take.py"
 
 
@@ -3227,7 +3235,7 @@ SCENARIOS.update({
     "transcript-mismatch after the first turn is aborted, never re-run (pf1-l3, 24 Oct 2026)":
         Sc(_sc(A, [_tm]), "aborted", ["transcript-mismatch"]),
     "transcript-mismatch beside readers-disagree is still aborted (pf1-l3)":
-        Sc(_sc(A, [_tm_rd]), "aborted", ["transcript-mismatch", "agent-reachable-reason"]),   # pf2: readers-disagree aborts too
+        Sc(_sc(A, [_tm_rd]), "aborted", ["transcript-mismatch"]),
     "transcript-mismatch beside harness-condition-violated keeps ruling 3, harness-error (pf1-l3)":
         Sc(_sc(A, [_tm_hcv]), "harness-error", ["operator-reason-after-first-turn"]),
     "transcript-mismatch before the first turn is a rehearsal (pf1-l3)":
@@ -3268,15 +3276,26 @@ SCENARIOS.update({
 
 # glitch-45's ruling 2 on lane L-A1 (29 Oct 2026): the round-3 reasons every raise site of which reads a record the
 # agent can write route aborted after the first turn by agent-reachable-reason; finalize-abort is aborted too.
-for _rid in ("readers-disagree", "unknown-harness-origin", "operator-lines", "stop-at-held-marker",
+for _rid in ("unknown-harness-origin", "operator-lines", "stop-at-held-marker",
              "continued-past-unheld-marker", "leak-in-loaded-context", "checkout-binding"):
     SCENARIOS[f"{_rid} after the first turn is aborted, never re-run (pf2 L-A1, the producer rule)"] = \
         Sc(_sc(A, [_reasons(_rid)]), "aborted", ["agent-reachable-reason"])
 SCENARIOS["finalize abort beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)"] = \
     Sc(_sc(A, [_set("ledger.finalize_abort", True), _reasons(HCV_RULED)]), "harness-error",
        ["operator-reason-after-first-turn"])
-SCENARIOS["readers-disagree beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)"] = \
-    Sc(_sc(A, [_reasons("readers-disagree", HCV_RULED)]), "harness-error", ["operator-reason-after-first-turn"])
+def _rate_text(r):
+    set_api(r, [{"status": None, "type": None,
+                 "text": f"API Error: {REAL['rate_limit_markers'][TEST_HARNESS]['text'][0]} reached"}])
+
+
+SCENARIOS["a rate limit beside transcript-mismatch is aborted, never a pause (pf2 L-A1 review, MAJOR 2)"] = \
+    Sc(_sc(A, [_rate_text, _reasons("transcript-mismatch")]), "aborted", ["transcript-mismatch"])
+SCENARIOS["a rate limit with its records agreeing still pauses (pf2 L-A1 review, MAJOR 2)"] = \
+    Sc(_sc(A, [_rate_text]), "pause", ["rate-limit"])
+SCENARIOS["unknown-harness-origin beside harness-condition-violated keeps ruling 3, harness-error (pf2 L-A1)"] = \
+    Sc(_sc(A, [_reasons("unknown-harness-origin", HCV_RULED)]), "harness-error", ["operator-reason-after-first-turn"])
+SCENARIOS["readers-disagree after the first turn is mixed, harness-error (pf2 L-A1 review, MAJOR 3)"] = \
+    Sc(_sc(A, [_reasons("readers-disagree")]), "harness-error", ["operator-reason-after-first-turn"])
 
 
 class TestHarnessConditionVoided(unittest.TestCase):
