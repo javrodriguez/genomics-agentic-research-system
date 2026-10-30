@@ -33,6 +33,11 @@ ORDER     (glitch-45's item 1, the m3 residual's closing check) check_results.ta
           reach the recompute; any mismatch with the recorded seed or order is refused.
 OD160     (glitch-45's item 2) Javier's recorded T199 answer, owner_decisions.jsonl's only row, byte-identical to
           decision.jsonl line 160, binds round 33496978's prepared entry through a simulated swap commit.
+ORCH      glitch-45's review of bc207c0a (fold2-lb-REVIEW-orch.md), its reproductions as red tests: MJ-1 (a merge that
+          puts the abandoned outcome first), MJ-2 (the witness wired into publication, its record and count), MJ-3 (a
+          loose or second ruling-like line), mn-1 (the reading bound to the registered round), mn-2 (the recompute's
+          verdict in a standalone isolated file), mn-3 (a superseded, re-answered or expired decision), mn-5 (the
+          section lints in the local publication gate).
 """
 
 from __future__ import annotations
@@ -956,6 +961,232 @@ class TestOD160(unittest.TestCase):
             got = witness(sc, reg, [(T0 - 7200, reg0), (T0 + 1000, swap)], self.rows())
         self.assertIsInstance(got, dict, got)
         self.assertEqual(got["superseded"][0]["decision"], "OD160")
+
+
+# ------------------------------------------------------------------------------------------------ the orchestrator
+class TestOrchMJ3LooseRuling(unittest.TestCase):
+    """The review's probe1 shapes: a refusing line that is not byte-canonical beside a canonical DO FREEZE line (often
+    in a fence quoting the gate) read DO FREEZE. Each must read anything but DO FREEZE."""
+
+    SHAPES = {
+        "trailing space": f"x\n{DO_NOT} \n```\n{DO}\n```\n",
+        "emphasis moved": f"x\nRuling: **DO NOT FREEZE.**\n```\n{DO}\n```\n",
+        "heading": f"## Ruling: DO NOT FREEZE\n```\n{DO}\n```\n",
+        "NBSP": f"**Ruling: DO NOT\u00a0FREEZE.**\n```\n{DO}\n```\n",
+        "zero-width": f"**Ruling: DO NOT\u200b FREEZE.**\n{DO}\n",
+        "lower case": f"**Ruling: do not freeze.**\n{DO}\n",
+        "an earlier report's line quoted": f"> {DO_NOT}\n{DO}\n",
+        "two DO FREEZE-like lines": f"{DO}\nRuling: DO FREEZE\n",
+    }
+
+    def test_each_loose_shape_is_not_do_freeze(self):
+        for name, text in self.SHAPES.items():
+            with self.subTest(shape=name):
+                self.assertEqual(freeze.read_ruling(text), freeze.AMBIGUOUS, f"MJ-3: {name}")
+
+    def test_the_canonical_lines_alone_still_read(self):
+        self.assertEqual(freeze.read_ruling(f"x\n{DO}\nThe freeze may proceed.\n"), "DO FREEZE")
+        self.assertEqual(freeze.read_ruling(f"x\n{DO_NOT}\n"), "DO NOT FREEZE")
+        # a sentence about freezing that is no ruling line does not count
+        self.assertEqual(freeze.read_ruling(f"{DO}\nNothing found blocks the freeze; do not delay it.\n"),
+                         "DO FREEZE")
+
+    def test_the_quoted_shape_is_now_ambiguous(self):
+        self.assertEqual(freeze.read_ruling(report("0" * 64, *QUOTED)), freeze.AMBIGUOUS)
+
+
+class TestOrchMJ1MergeFirstParent(unittest.TestCase):
+    """The review's probe5: commit-tree <T's tree> -p X -p T puts the pushed, abandoned outcome X on HEAD's first-parent
+    line and resets the ledger to T, so the re-run Y read as the only outcome."""
+
+    def scratch(self):
+        sc = LedgerScratch()
+        t = sc.append("takes.json", {"slot": "s1", "attempt": 1}, "reg")
+        x = sc.append("outcomes.json", {"o": "bad"}, "outcome X (pushed)")
+        tree = git(sc.repo, "rev-parse", f"{t}^{{tree}}")
+        m = git(sc.repo, "commit-tree", tree, "-p", x, "-p", t, "-m", "merge: tree of T, X first parent")
+        git(sc.repo, "reset", "-q", "--hard", m)
+        y = sc.append("outcomes.json", {"o": "good"}, "rerun Y")
+        return sc, x, y
+
+    def test_the_witness_refuses_it(self):
+        sc, x, y = self.scratch()
+        problems, _, _ = sc.check([(1, x), (2, y)])
+        self.assertTrue(problems, "MJ-1: the first-parent reset merge passes the witness")
+
+    def test_read_history_refuses_it(self):
+        import takes
+        sc, x, y = self.scratch()
+        # batch's record-shape check stood in: the git reading is under test, and these records are synthetic
+        with mock.patch.object(takes.batch.Batch, "history_problems", staticmethod(lambda history: [])):
+            with self.assertRaises(ValueError, msg="MJ-1: read_history reads the re-run as the only outcome"):
+                takes.read_history(root=sc.dir, repo=sc.repo)
+            # a plain append-only history still reads
+            plain = LedgerScratch()
+            plain.append("takes.json", {"slot": "s1", "attempt": 1}, "reg")
+            plain.append("outcomes.json", {"o": 1}, "outcome")
+            self.assertEqual(takes.read_history(root=plain.dir, repo=plain.repo), [{"o": 1}])
+
+    def test_a_linear_rewrite_on_the_run_line_is_refused_by_the_witness(self):
+        sc = LedgerScratch()
+        x = sc.append("outcomes.json", {"o": "bad"}, "outcome X")
+        (sc.dir / "outcomes.json").write_text('[{"o": "good"}]\n')
+        git(sc.repo, "commit", "-qam", "rewrite in place")
+        problems, _, _ = sc.check([(1, x)])
+        self.assertTrue(problems and any("append-only" in p for p in problems), problems)
+
+    def test_a_merge_that_does_not_touch_the_ledger_passes(self):
+        sc = LedgerScratch()
+        r1 = sc.append("takes.json", {"slot": "s1", "attempt": 1}, "reg")
+        git(sc.repo, "checkout", "-q", "-b", "side")
+        (sc.dir / "notes.txt").write_text("side\n")
+        git(sc.repo, "add", "-A")
+        git(sc.repo, "commit", "-qm", "side note")
+        git(sc.repo, "checkout", "-q", "main")
+        git(sc.repo, "merge", "-q", "--no-ff", "-m", "merge side", "side")
+        problems, _, _ = sc.check([(1, git(sc.repo, "rev-parse", "HEAD"))])
+        self.assertEqual(problems, [])
+
+
+class TestOrchMN3Decision(unittest.TestCase):
+    def rows(self, *extra):
+        import json
+        base = [json.loads(ln) for ln in (HERE / ob.OWNER_DECISIONS).read_text().splitlines() if ln.strip()]
+        return base + list(extra)
+
+    def test_a_later_supersession_or_answer_or_expiry_refuses(self):
+        od160 = self.rows()[0]
+        later = dict(od160, id="OD161", outcome="c", principal_match="beacon-r4 c", supersedes_id="OD160",
+                     created_at="2026-10-30T09:00:00Z")
+        reanswer = dict(od160, id="OD162", outcome="a", principal_match="beacon-r4 a",
+                        created_at="2026-10-30T10:00:00Z")
+        withdraw = dict(od160, id="OD163", action="ask.supersede", actor_role="chief_of_staff", outcome=None,
+                        principal_match=None, created_at="2026-10-30T11:00:00Z")
+        for name, rows in (("superseded by a later row", self.rows(later)),
+                           ("the ask answered again later", self.rows(reanswer)),
+                           ("the ask withdrawn later", self.rows(withdraw))):
+            with self.subTest(case=name):
+                self.assertIsNotNone(ob.decision_problem(ENTRY_33496978, rows, (ENTRY_33496978,)), f"mn-3: {name}")
+        expired = [dict(od160, expires_at="2026-10-30T00:00:00Z")]
+        self.assertIsNotNone(ob.decision_problem(ENTRY_33496978, expired, (ENTRY_33496978,),
+                                                 now=ob._utc("2026-10-31T00:00:00Z")), "mn-3: expired")
+        self.assertIsNone(ob.decision_problem(ENTRY_33496978, self.rows(), (ENTRY_33496978,)))
+
+
+def registered_beacon(round_no=READING_ROUND):
+    return {"round": round_no, "chain_hash": ob.CHAIN["chain_hash"], "genesis_time": ob.CHAIN["genesis_time"],
+            "period_s": ob.CHAIN["period_s"]}
+
+
+class TestOrchMN1MN2Recompute(unittest.TestCase):
+    def frozen(self, **edits):
+        f = dict(frozen_with(), take_order_beacon=registered_beacon())
+        f.update(edits)
+        return f
+
+    def test_a_reading_of_another_round_is_refused(self):
+        import copy
+        import hashlib as h
+        import check_results as cr
+        sig = "ab" * 48
+        other = dict(READING, round=READING_ROUND + 7, round_time=READING["round_time"] + 21, signature=sig,
+                     randomness=h.sha256(bytes.fromhex(sig)).hexdigest())
+        seed = ob.seed(other)
+        rows = self.frozen()["rows"]
+        forged = self.frozen(take_order_beacon_reading=other, take_order_seed=seed,
+                             take_order=freeze.planned_order({"rows": copy.deepcopy(rows)}, seed))
+        self.assertTrue(cr.take_order_problems(forged), "mn-1: a reading of another round passes")
+        for key, value in (("chain_hash", "0" * 64), ("round_time", READING["round_time"] + 1)):
+            with self.subTest(field=key):
+                bad = self.frozen(take_order_beacon_reading=dict(READING, **{key: value}))
+                self.assertTrue(cr.take_order_problems(bad), f"mn-1: a reading with another {key} passes")
+        self.assertEqual(cr.take_order_problems(self.frozen()), [])
+
+    def test_the_verdict_is_a_standalone_isolated_file(self):
+        import ast
+        import json
+        src = (HERE / "order_reference.py").read_text()
+        imports = {a.name for n in ast.walk(ast.parse(src)) if isinstance(n, (ast.Import, ast.ImportFrom))
+                   for a in getattr(n, "names", [])}
+        self.assertLessEqual(imports, {"hashlib", "json", "sys"}, imports)
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, frozen, want in (("honest", self.frozen(), 0),
+                                       ("reversed", self.frozen(take_order=list(reversed(frozen_with()["take_order"]))),
+                                        1)):
+                f = Path(tmp) / f"{name}.json"
+                f.write_text(json.dumps(frozen))
+                got = subprocess.run([sys.executable, "-I", "-S", str(HERE / "order_reference.py"), str(f)],
+                                     capture_output=True, text=True)
+                self.assertEqual(got.returncode, want, got.stdout + got.stderr)
+                self.assertIn("order_reference:", got.stdout)
+
+
+class TestOrchMJ2PublicationWitness(unittest.TestCase):
+    def setup(self, *, problems=(), stale=False, record=True):
+        import json
+        sc = LedgerScratch()
+        r1 = sc.append("takes.json", {"slot": "s1", "attempt": 1}, "reg")
+        if record:
+            entry = {"at": "2026-10-30T12:00:00Z", "head": r1, "ledger_head": r1, "ledger_commits": 1,
+                     "unwitnessed": [], "problems": list(problems)}
+            (sc.dir / "witness-record.json").write_text(json.dumps([entry]) + "\n")
+            git(sc.repo, "add", "-A")
+            git(sc.repo, "commit", "-qm", "witness record")
+        if stale:
+            sc.append("outcomes.json", {"slot": "s1"}, "outcome after the record")
+        return sc
+
+    def problems(self, sc):
+        import check_results as cr
+        with mock.patch.object(cr, "REPO", sc.repo), mock.patch.object(cr, "HERE", sc.dir):
+            return cr.witness_publication_problems()
+
+    def test_publication_needs_a_current_clean_record(self):
+        self.assertEqual(self.problems(self.setup())[0], [])
+        for name, kw in (("no record", {"record": False}), ("a record with problems", {"problems": ["x"]}),
+                         ("a ledger commit after the record", {"stale": True})):
+            with self.subTest(case=name):
+                self.assertTrue(self.problems(self.setup(**kw))[0], f"MJ-2: publication passes with {name}")
+
+    def test_witness_record_appends_a_run_and_fails_closed(self):
+        import json
+        import check_results as cr
+        sc = LedgerScratch()
+        r1 = sc.append("takes.json", {"slot": "s1", "attempt": 1}, "reg")
+        for pushes, code in (([(1, r1)], 0), ([(1, "1" * 40)], 1)):
+            out = io.StringIO()
+            with mock.patch.object(cr, "REPO", sc.repo), mock.patch.object(cr, "HERE", sc.dir), \
+                    mock.patch.object(freeze, "push_records", lambda p=pushes: p), contextlib.redirect_stdout(out):
+                self.assertEqual(cr.main(["--witness", "--record"]), code, out.getvalue())
+        runs = json.loads((sc.dir / "witness-record.json").read_text())
+        self.assertEqual(len(runs), 2)
+        self.assertEqual((runs[0]["problems"], runs[0]["ledger_head"]), ([], r1))
+        self.assertTrue(runs[1]["problems"])
+
+    def test_result_prints_the_count_and_publication_reads_the_gate(self):
+        import inspect
+        import result
+        text = result.render_witness({"at": "2026-10-30T12:00:00Z", "ledger_commits": 9,
+                                      "unwitnessed": ["a" * 40, "b" * 40], "problems": []})
+        self.assertIn("9 take-ledger commit(s)", text)
+        self.assertIn("2 unwitnessed", text)
+        self.assertIn("witness_publication_problems", inspect.getsource(result.main))
+        import check_results as cr
+        self.assertIn("witness_publication_problems", inspect.getsource(cr.main))
+        self.assertIn("witness-record.json", " ".join(str(p) for p in cr.RUNTIME_PATHS))
+
+
+class TestOrchMN5LocalLint(unittest.TestCase):
+    def test_the_publication_check_runs_the_section_lints_without_allow_absent(self):
+        import inspect
+        import check_results as cr
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "EVALS.md"
+            page.write_text("no section\n")
+            self.assertTrue(cr.section_lint_problems(page), "mn-5: an absent section passes publication")
+            page.write_text(f"{study.SUMMARY_START}\nA plain sentence.\n{study.SUMMARY_END}\n")
+            self.assertEqual(cr.section_lint_problems(page), [])
+        self.assertIn("section_lint_problems(", inspect.getsource(cr.main))
 
 
 if __name__ == "__main__":
