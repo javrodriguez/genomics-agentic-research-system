@@ -133,6 +133,14 @@ agent_event_reasons, never in operator_reasons, so the generic operator-reason r
 its own graded row (has) routes the take graded, an agent event of the record. `check_table` refuses an id in both lists
 or with no such row, and `check_records` refuses one before the first turn.
 
+THE CLASS TABLE (pre-freeze review 2, MAJOR 1, step 1; fold plan prefreeze-2, the lane orchestrator's approval, 29 Oct
+2026). routing.json's agent_reach answers, for every row that does not route graded after the first turn, the two
+refusal rules and every reason routing reads, whether the agent can produce the record it reads, and how. `check_table`
+requires the key; `reach_problems` (load_table, and so --check, runs it after check_table) refuses a missing or extra
+entry, a stated route
+that is not the table's own (`reason_route` for a reason), and an agent-reachable entry whose route re-runs or refuses
+its take with no stated call (a named exception or a ruling owed).
+
 THE NO-MATCH PROOF (pre-freeze review 1, m17; the same approval). `--check` enumerates the table's closed input
 classes for every pin harness (`no_match_classes`: each condition's truth read through PROOF_CONDITIONS, each variable
 through PROOF_DOMAINS, a branch closed once a row surely matches) and lists every class no row matches by its phase and
@@ -260,6 +268,12 @@ AGENT_EVENT_IDS = ("nonzero-exec-exit", "quiescence-cap-reached", "store-variabl
 # Pre-freeze review 2, MAJOR 1 (F1-2): the checker reasons that route graded with an agent event, apart from
 # operator_reasons (AGENT EVENT REASONS, above).
 AGENT_EVENT_REASONS_KEY = "agent_event_reasons"
+# Pre-freeze review 2, MAJOR 1, step 1: the class table (THE CLASS TABLE, below).
+AGENT_REACH_KEY = "agent_reach"
+REACH_KINDS = ("row", "rule", "reason")
+REACH_ENTRY_KEYS = ("reachable", "how", "route", "call")
+REACH_REFUSED = "refused"
+REACH_FINAL = ("aborted", "graded")
 
 
 class TableError(ValueError):
@@ -387,7 +401,7 @@ def check_table(table: dict) -> list[str]:
                 "operator_reasons_status", "driver_decided_reasons", "reasons_only_before_first_turn",
                 "checker_reasons_become_events", "pin_profiles", "pin_profiles_status", "pin_refusal", "rows",
                 "annotations", "spend_cap_markers", "spend_cap_markers_status", "spend_cap_refusal",
-                AGENT_EVENTS_KEY, NO_MATCH_KEY, AGENT_EVENT_REASONS_KEY):
+                AGENT_EVENTS_KEY, NO_MATCH_KEY, AGENT_EVENT_REASONS_KEY, AGENT_REACH_KEY):
         if key not in table:
             p.append(f"missing {key}")
     if p:
@@ -705,6 +719,66 @@ def _agent_event_reason_problems(table: dict, listed: set) -> list[str]:
     return p
 
 
+def reason_route(table: dict, rid: str) -> str:
+    """THE CLASS TABLE: the route a clean after-first-turn take (last turn end_turn) carrying the checker reason `rid`
+    alone gets, read from the rows: REACH_REFUSED for a reason only before the first turn, else the highest-precedence
+    route among the after-first-turn rows whose any_of reads it (has, or in_operator_reasons) and whose none_of does
+    not, and graded (the end-turn row) when none does."""
+    if rid in table["reasons_only_before_first_turn"]["ids"]:
+        return REACH_REFUSED
+    level = {r: i for i, lvl in enumerate(table["precedence"]) for r in lvl}
+
+    def reads(c):
+        return isinstance(c, dict) and c.get("path") == HAS_PATH and (
+            (c.get("op") == "has" and c.get("value") == rid)
+            or (c.get("op") == "in_operator_reasons" and rid in table["operator_reasons"]))
+    routes = [r["route"] for r in table["rows"] if r.get("when") in (labels4.AFTER_FIRST_TURN, labels4.ANY_TIME)
+              and not r.get("all_of") and any(reads(c) for c in r.get("any_of", []))
+              and not any(reads(c) for c in r.get("none_of", []))]
+    return min(routes, key=lambda x: level[x]) if routes else labels4.GRADED
+
+
+def reach_required(table: dict) -> dict:
+    """THE CLASS TABLE's keys ("<kind>:<id>") and the route each must state."""
+    out = {f"row:{r['id']}": r["route"] for r in table["rows"]
+           if r.get("when") in (labels4.AFTER_FIRST_TURN, labels4.ANY_TIME) and r.get("route") != labels4.GRADED}
+    for rule in ("pin_refusal", "spend_cap_refusal"):
+        out[f"rule:{table[rule]['id']}"] = REACH_REFUSED
+    for rid in list(table["operator_reasons"]) + list(agent_event_reasons(table)):
+        out[f"reason:{rid}"] = reason_route(table, rid)
+    return out
+
+
+def reach_problems(table: dict) -> list[str]:
+    """THE CLASS TABLE against the table it sits in (load_table and --check run it after check_table). Kept out of
+    check_table so a synthetic table built in memory from the live one (tests/test_walk_cover_strict.py's derivation
+    cases) is checked for its routing alone; the table that routes takes is always read through load_table."""
+    if AGENT_REACH_KEY not in table:
+        return [f"missing {AGENT_REACH_KEY}"]
+    sub = table[AGENT_REACH_KEY]
+    if not isinstance(sub, dict) or set(sub) != {"source", "entries"} or not (_is_str(sub["source"]) and sub["source"]) \
+            or not isinstance(sub["entries"], dict):
+        return [f"{AGENT_REACH_KEY} must give its source and its entries"]
+    want, got = reach_required(table), sub["entries"]
+    p = [f"{AGENT_REACH_KEY}: no entry for {k}" for k in sorted(set(want) - set(got))]
+    p += [f"{AGENT_REACH_KEY}: {k} is no row, rule or reason this table must answer" for k in sorted(set(got) - set(want))]
+    for k in sorted(set(want) & set(got)):
+        e = got[k]
+        if not isinstance(e, dict) or set(e) != set(REACH_ENTRY_KEYS):
+            p.append(f"{AGENT_REACH_KEY} {k} must hold exactly {list(REACH_ENTRY_KEYS)}")
+            continue
+        if not _is_bool(e["reachable"]) or not (_is_str(e["how"]) and e["how"].strip()):
+            p.append(f"{AGENT_REACH_KEY} {k}: reachable is a bool and how says how, from code")
+        if e["route"] != want[k]:
+            p.append(f"{AGENT_REACH_KEY} {k} states route {e['route']!r}; the table gives {want[k]!r}")
+        if e["call"] is not None and not (_is_str(e["call"]) and e["call"].strip()):
+            p.append(f"{AGENT_REACH_KEY} {k}: call is None or a stated call")
+        if e["reachable"] is True and want[k] not in REACH_FINAL and e["call"] is None:
+            p.append(f"{AGENT_REACH_KEY} {k}: the agent can reach it and it routes {want[k]!r} (re-run or refused): "
+                     f"a named exception or a ruling owed must be stated in call")
+    return p
+
+
 def agent_event_rows(table: dict) -> tuple:
     """MAJOR 5: the ids of the graded after-first-turn rows whose records the agent itself can produce, in table
     order (routing.json's agent_event_rows)."""
@@ -769,6 +843,7 @@ def load_table(path: str | None = None) -> dict:
     with open(path or TABLE_PATH, encoding="utf-8") as fh:   # W7C: TABLE_PATH read at call time
         table = json.load(fh)
     problems = check_table(table)
+    problems = problems or reach_problems(table)        # THE CLASS TABLE, on the table as it stands
     if problems:
         raise TableError("; ".join(problems))
     return table

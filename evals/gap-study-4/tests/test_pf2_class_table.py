@@ -4,7 +4,7 @@
 routing.json's agent_reach answers, for every row that does not route graded after the agent's first turn, the two
 rules above the rows and every checker reason routing reads, "can the agent produce the record this reads? how?", with
 the route it then takes and, where the agent can reach a route that re-runs or refuses its take, the stated call
-(a named exception, or a ruling owed). routing.check_table holds it to the table: its keys are exactly that set, each
+(a named exception, or a ruling owed). routing.reach_problems (run by load_table and --check) holds it to the table: its keys are exactly that set, each
 stated route is the table's own, and a reachable re-running or refusing route carries its call.
 
   C.keys       the entries are exactly the rows, rules and reasons named above, derived here independently
@@ -15,7 +15,7 @@ stated route is the table's own, and a reachable re-running or refusing route ca
   C.forgery    a two-record forged rate limit beside nested-agent-session routes pause, and a forged spend-cap line is
                refused for a human, before and after the fold; the table names both roads reachable
   C.mutants    an entry dropped, a reachable re-running entry's call removed, a stated route changed, an extra key: each
-               refused by check_table
+               refused by check_table or reach_problems
 
 Synthetic records only.
 """
@@ -40,9 +40,10 @@ FINAL = (labels4.ABORTED, labels4.GRADED)
 
 
 def required(table) -> set:
-    rows = {r["id"] for r in table["rows"] if r["when"] in (AFTER, labels4.ANY_TIME) and r["route"] != labels4.GRADED}
-    rules = {table["pin_refusal"]["id"], table["spend_cap_refusal"]["id"]}
-    return rows | rules | set(table["operator_reasons"]) | set(table["agent_event_reasons"]["ids"])
+    rows = {f"row:{r['id']}" for r in table["rows"] if r["when"] in (AFTER, labels4.ANY_TIME)
+            and r["route"] != labels4.GRADED}
+    rules = {f"rule:{table['pin_refusal']['id']}", f"rule:{table['spend_cap_refusal']['id']}"}
+    return rows | rules | {f"reason:{r}" for r in table["operator_reasons"] + table["agent_event_reasons"]["ids"]}
 
 
 def entries(table=None) -> dict:
@@ -65,7 +66,7 @@ class ClassTable(unittest.TestCase):
         self.assertEqual(set(entries(t)), required(t))
         for rid, e in entries(t).items():
             with self.subTest(entry=rid):
-                self.assertEqual(set(e), {"kind", "reachable", "how", "route", "call"})
+                self.assertEqual(set(e), {"reachable", "how", "route", "call"})
                 self.assertIsInstance(e["reachable"], bool)
                 self.assertTrue(isinstance(e["how"], str) and e["how"].strip())
 
@@ -73,13 +74,14 @@ class ClassTable(unittest.TestCase):
         t = routing.load_table()
         rows = {r["id"]: r for r in t["rows"]}
         for rid, e in entries(t).items():
+            kind, _, name = rid.partition(":")
             with self.subTest(entry=rid):
-                if e["kind"] == "row":
-                    self.assertEqual(e["route"], rows[rid]["route"])
-                elif e["kind"] == "rule":
+                if kind == "row":
+                    self.assertEqual(e["route"], rows[name]["route"])
+                elif kind == "rule":
                     self.assertEqual(e["route"], "refused")
                 else:
-                    self.assertEqual(e["route"], routed(rid))
+                    self.assertEqual(e["route"], routed(name))
 
     def test_c_calls(self):
         t = routing.load_table()
@@ -88,15 +90,17 @@ class ClassTable(unittest.TestCase):
                 if e["reachable"] and e["route"] not in FINAL:
                     self.assertTrue(isinstance(e["call"], str) and e["call"].strip(), rid)
         got = entries(t)
-        for rid in ("rate-limit", "spend-cap-reached", "api-error-after-first-turn", "init-mismatch", "watcher-gap"):
+        for rid in ("row:rate-limit", "rule:spend-cap-reached", "row:api-error-after-first-turn", "row:init-mismatch",
+                    "row:watcher-gap"):
             self.assertTrue(got[rid]["reachable"], rid)
-        self.assertIn("named exception", got["watcher-gap"]["call"])
-        self.assertIn("forbidden-change count", got["watcher-gap"]["call"])
-        self.assertFalse(got["container-exit-after-first-turn"]["reachable"])
-        self.assertIn("10003", got["container-exit-after-first-turn"]["how"])
+        self.assertIn("named exception", got["row:watcher-gap"]["call"])
+        self.assertIn("forbidden-change count", got["row:watcher-gap"]["call"])
+        self.assertFalse(got["row:container-exit-after-first-turn"]["reachable"])
+        self.assertIn("10003", got["row:container-exit-after-first-turn"]["how"])
         for rid in ("nested-agent-session", "subagent-unbound", "transcript-mismatch"):
-            self.assertEqual(got[rid]["route"], labels4.ABORTED)
-        self.assertEqual(got["store-variable-assigned"]["route"], labels4.GRADED)
+            self.assertEqual(got[f"row:{rid}"]["route"], labels4.ABORTED)
+            self.assertEqual(got[f"reason:{rid}"]["route"], labels4.ABORTED)
+        self.assertEqual(got["reason:store-variable-assigned"]["route"], labels4.GRADED)
 
     def test_c_forgery(self):
         t = tr.test_table()
@@ -105,7 +109,7 @@ class ClassTable(unittest.TestCase):
         rec["checker_reasons"] = ["nested-agent-session"]
         rec["api_errors"] = [{"status": None, "type": None, "text": f"API Error: {marker}"}]
         self.assertEqual(routing.route(rec, t)["route"], labels4.PAUSE)
-        self.assertTrue(entries()["rate-limit"]["reachable"])
+        self.assertTrue(entries()["row:rate-limit"]["reachable"])
         spend = {k: v for k, v in t["spend_cap_markers"].items()}
         spend[tr.TEST_HARNESS] = dict(spend[tr.TEST_HARNESS], text=["spend cap test"])
         t2 = dict(t, spend_cap_markers=spend)
@@ -113,34 +117,34 @@ class ClassTable(unittest.TestCase):
         rec2["api_errors"] = [{"status": None, "type": None, "text": "spend cap test reached"}]
         with self.assertRaises(routing.RoutingRefused):
             routing.route(rec2, t2)
-        self.assertTrue(entries()["spend-cap-reached"]["reachable"])
+        self.assertTrue(entries()["rule:spend-cap-reached"]["reachable"])
 
     def test_c_mutants(self):
         base = routing.load_table()
-        self.assertEqual(routing.check_table(base), [])
+        self.assertEqual(routing.check_table(base) + routing.reach_problems(base), [])
         some = next(r for r, e in entries(base).items() if e["reachable"] and e["route"] not in FINAL)
         muts = {}
         t = copy.deepcopy(base)
-        del t[KEY]["entries"]["watcher-gap"]
+        del t[KEY]["entries"]["row:watcher-gap"]
         muts["an entry dropped"] = t
         t = copy.deepcopy(base)
         t[KEY]["entries"][some]["call"] = None
         muts["a reachable re-running entry's call removed"] = t
         t = copy.deepcopy(base)
-        t[KEY]["entries"]["nested-agent-session"]["route"] = labels4.HARNESS_ERROR
+        t[KEY]["entries"]["row:nested-agent-session"]["route"] = labels4.HARNESS_ERROR
         muts["a stated route changed"] = t
         t = copy.deepcopy(base)
-        t[KEY]["entries"]["no-such-row"] = dict(t[KEY]["entries"]["watcher-gap"])
+        t[KEY]["entries"]["row:no-such-row"] = dict(t[KEY]["entries"]["row:watcher-gap"])
         muts["an extra key"] = t
         t = copy.deepcopy(base)
-        t[KEY]["entries"]["watcher-gap"]["reachable"] = "yes"
+        t[KEY]["entries"]["row:watcher-gap"]["reachable"] = "yes"
         muts["reachable not a bool"] = t
         t = copy.deepcopy(base)
         del t[KEY]
         muts["no table"] = t
         for name, t in muts.items():
             with self.subTest(mutant=name):
-                self.assertTrue(routing.check_table(t), name)
+                self.assertTrue(routing.check_table(t) or routing.reach_problems(t), name)
 
 
 if __name__ == "__main__":
