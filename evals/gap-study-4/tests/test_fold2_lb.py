@@ -38,6 +38,10 @@ ORCH      glitch-45's review of bc207c0a (fold2-lb-REVIEW-orch.md), its reproduc
           loose or second ruling-like line), mn-1 (the reading bound to the registered round), mn-2 (the recompute's
           verdict in a standalone isolated file), mn-3 (a superseded, re-answered or expired decision), mn-5 (the
           section lints in the local publication gate).
+RECHECK   glitch-45's re-check of 24fa9be6 (PASS, four items): R-1 (the witness record read from HEAD, its counts
+          recomputed), R-2 (quicknet pinned in order_reference.py, the round held to the committed draft's), R-3 (a
+          canonical ruling line in a fence or behind '>' never counts and makes the report ambiguous), R-4 (a same-ask
+          row with no readable time refuses).
 """
 
 from __future__ import annotations
@@ -870,10 +874,18 @@ def frozen_with(order_fn=None):
             "take_order_beacon": registered_beacon()}
 
 
+DRAFT_STUB = {"take_order_beacon": {"round": READING_ROUND}}    # R-2: the draft whose round these frozen files hold
+
+
+def top(frozen):
+    import check_results as cr
+    return cr.take_order_problems(frozen, draft=DRAFT_STUB)
+
+
 class TestTakeOrderRecompute(unittest.TestCase):
     def test_an_honest_order_passes(self):
         import check_results as cr
-        self.assertEqual(cr.take_order_problems(frozen_with()), [])
+        self.assertEqual(top(frozen_with()), [])
 
     def test_a_monkey_patched_helper_is_caught_while_the_hash_stands(self):
         import json
@@ -885,21 +897,21 @@ class TestTakeOrderRecompute(unittest.TestCase):
         with mock.patch.object(json, "dumps", lambda v, **k: real(v, **dict(k, sort_keys=True, indent=1))):
             frozen = frozen_with()
             self.assertEqual(freeze.take_order_function_sha256(), before, "the hash does not see the patch")
-            got = cr.take_order_problems(frozen)
+            got = top(frozen)
         self.assertNotEqual(frozen["take_order"], frozen_with()["take_order"], "the patch changed the order")
         self.assertTrue(got and "take_order" in got[0], f"ORDER: a patched order passes: {got}")
 
     def test_the_seed_and_reading_are_recomputed_too(self):
         import check_results as cr
         bad = dict(frozen_with(), take_order_seed="0" * 40)
-        self.assertTrue(cr.take_order_problems(bad))
+        self.assertTrue(top(bad))
         bad = frozen_with()
         bad["take_order_beacon_reading"] = dict(READING, randomness="0" * 64)
-        self.assertTrue(cr.take_order_problems(bad))
+        self.assertTrue(top(bad))
         bad = frozen_with()
         bad["take_order"] = list(reversed(bad["take_order"]))
-        self.assertTrue(cr.take_order_problems(bad))
-        self.assertTrue(cr.take_order_problems({"rows": []}), "a frozen file with no order is refused")
+        self.assertTrue(top(bad))
+        self.assertTrue(top({"rows": []}), "a frozen file with no order is refused")
 
     def test_the_recompute_reads_no_study_module(self):
         import check_results as cr
@@ -1097,12 +1109,12 @@ class TestOrchMN1MN2Recompute(unittest.TestCase):
         rows = self.frozen()["rows"]
         forged = self.frozen(take_order_beacon_reading=other, take_order_seed=seed,
                              take_order=freeze.planned_order({"rows": copy.deepcopy(rows)}, seed))
-        self.assertTrue(cr.take_order_problems(forged), "mn-1: a reading of another round passes")
+        self.assertTrue(top(forged), "mn-1: a reading of another round passes")
         for key, value in (("chain_hash", "0" * 64), ("round_time", READING["round_time"] + 1)):
             with self.subTest(field=key):
                 bad = self.frozen(take_order_beacon_reading=dict(READING, **{key: value}))
-                self.assertTrue(cr.take_order_problems(bad), f"mn-1: a reading with another {key} passes")
-        self.assertEqual(cr.take_order_problems(self.frozen()), [])
+                self.assertTrue(top(bad), f"mn-1: a reading with another {key} passes")
+        self.assertEqual(top(self.frozen()), [])
 
     def test_the_verdict_is_a_standalone_isolated_file(self):
         import ast
@@ -1117,7 +1129,9 @@ class TestOrchMN1MN2Recompute(unittest.TestCase):
                                         1)):
                 f = Path(tmp) / f"{name}.json"
                 f.write_text(json.dumps(frozen))
-                got = subprocess.run([sys.executable, "-I", "-S", str(HERE / "order_reference.py"), str(f)],
+                d = Path(tmp) / "draft.json"
+                d.write_text(json.dumps(DRAFT_STUB))
+                got = subprocess.run([sys.executable, "-I", "-S", str(HERE / "order_reference.py"), str(f), str(d)],
                                      capture_output=True, text=True)
                 self.assertEqual(got.returncode, want, got.stdout + got.stderr)
                 self.assertIn("order_reference:", got.stdout)
@@ -1189,6 +1203,113 @@ class TestOrchMN5LocalLint(unittest.TestCase):
             page.write_text(f"{study.SUMMARY_START}\nA plain sentence.\n{study.SUMMARY_END}\n")
             self.assertEqual(cr.section_lint_problems(page), [])
         self.assertIn("section_lint_problems(", inspect.getsource(cr.main))
+
+
+class TestRecheckR1WitnessRecord(TestOrchMJ2PublicationWitness):
+    """probe7: a hand-written clean record with false counts passed, and so did one only in the working tree."""
+
+    def test_false_counts_are_refused(self):
+        import json
+        sc = LedgerScratch()
+        r1 = sc.append("takes.json", {"slot": "s1", "attempt": 1}, "reg")
+        x = sc.append("outcomes.json", {"o": 1}, "X")
+        for name, edits in (("ledger_commits 0", {"ledger_commits": 0}),
+                            ("an unwitnessed sha not on the ledger", {"unwitnessed": ["1" * 40]})):
+            with self.subTest(case=name):
+                entry = dict({"at": "2026-10-30T12:00:00Z", "head": x, "ledger_head": x, "ledger_commits": 2,
+                              "unwitnessed": [], "problems": []}, **edits)
+                (sc.dir / "witness-record.json").write_text(json.dumps([entry]) + "\n")
+                git(sc.repo, "add", "-A")
+                git(sc.repo, "commit", "-qm", f"record: {name}")
+                self.assertTrue(self.problems(sc)[0], f"R-1: a record with {name} passes")
+        entry = {"at": "2026-10-30T12:00:00Z", "head": x, "ledger_head": x, "ledger_commits": 2,
+                 "unwitnessed": [r1], "problems": []}
+        (sc.dir / "witness-record.json").write_text(json.dumps([entry]) + "\n")
+        git(sc.repo, "add", "-A")
+        git(sc.repo, "commit", "-qm", "record: true counts")
+        self.assertEqual(self.problems(sc)[0], [])
+
+    def test_a_record_only_in_the_working_tree_is_not_read(self):
+        import json
+        sc = self.setup(record=False)
+        r1 = git(sc.repo, "rev-parse", "HEAD")
+        entry = {"at": "2026-10-30T12:00:00Z", "head": r1, "ledger_head": r1, "ledger_commits": 1,
+                 "unwitnessed": [], "problems": []}
+        (sc.dir / "witness-record.json").write_text(json.dumps([entry]) + "\n")     # never committed
+        self.assertTrue(self.problems(sc)[0], "R-1: an uncommitted record passes")
+
+
+class TestRecheckR2PinnedChain(TestOrchMN1MN2Recompute):
+    def run_ref(self, frozen, draft):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            f, d = Path(tmp) / "frozen.json", Path(tmp) / "draft.json"
+            f.write_text(json.dumps(frozen))
+            d.write_text(json.dumps(draft))
+            return subprocess.run([sys.executable, "-I", "-S", str(HERE / "order_reference.py"), str(f), str(d)],
+                                  capture_output=True, text=True)
+
+    def consistent(self, beacon_edits, reading_edits):
+        import copy
+        reading = dict(READING, **reading_edits)
+        seed = ob.seed(reading)
+        rows = frozen_with()["rows"]
+        return dict(frozen_with(), take_order_beacon=dict(registered_beacon(), **beacon_edits),
+                    take_order_beacon_reading=reading, take_order_seed=seed,
+                    take_order=freeze.planned_order({"rows": copy.deepcopy(rows)}, seed))
+
+    def test_a_self_consistent_frozen_file_off_quicknet_or_the_draft_is_refused(self):
+        draft = {"take_order_beacon": {"round": READING_ROUND}}
+        self.assertEqual(self.run_ref(self.frozen(), draft).returncode, 0)
+        cases = {
+            "another chain": self.consistent({"chain_hash": "0" * 64}, {"chain_hash": "0" * 64}),
+            "a shifted genesis": self.consistent({"genesis_time": ob.CHAIN["genesis_time"] + 3},
+                                                 {"round_time": READING["round_time"] + 3}),
+            "round and reading moved together": self.consistent({"round": READING_ROUND + 1},
+                                                                {"round": READING_ROUND + 1,
+                                                                 "round_time": READING["round_time"] + 3}),
+        }
+        for name, frozen in cases.items():
+            with self.subTest(case=name):
+                got = self.run_ref(frozen, draft)
+                self.assertEqual(got.returncode, 1, f"R-2: {name} passes: {got.stdout}")
+
+    def test_the_pinned_chain_is_quicknet(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("order_reference_t", HERE / "order_reference.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertEqual((mod.CHAIN_HASH, mod.GENESIS_TIME, mod.PERIOD_S),
+                         (ob.CHAIN["chain_hash"], ob.CHAIN["genesis_time"], ob.CHAIN["period_s"]))
+
+
+class TestRecheckR3FencedRuling(unittest.TestCase):
+    WORDINGS = ("Ruling is: DO NOT FREEZE.", "The ruling here is DO NOT FREEZE.", "**Verdict: DO NOT FREEZE.**",
+                "**Rule: DO NOT FREEZE.**", "**Ruling: DON'T FREEZE.**", "**Ruling:**\nDO NOT FREEZE.",
+                "**Ruling: DO N\u041eT FREEZE.**", "**Ruling: DO NOT\u2028FREEZE.**")
+
+    def test_a_refusal_beside_a_fenced_or_quoted_canonical_line_is_ambiguous(self):
+        for wording in self.WORDINGS:
+            for carrier in (f"```\n{DO}\n```", f"~~~\n{DO}\n~~~", f"> {DO}", f">{DO}", f"> > {DO}"):
+                with self.subTest(wording=wording, carrier=carrier):
+                    text = f"x\n{wording}\n\nThe gate reads:\n{carrier}\n"
+                    self.assertEqual(freeze.read_ruling(text), freeze.AMBIGUOUS, "R-3")
+
+    def test_a_genuine_line_beside_prose_still_reads(self):
+        self.assertEqual(freeze.read_ruling(f"{DO}\nRound 2's ruling was DO NOT FREEZE.\n"), "DO FREEZE")
+        self.assertEqual(freeze.read_ruling(f"{DO}\nRound 2 ruled: DO NOT FREEZE.\n"), "DO FREEZE")
+        self.assertEqual(freeze.read_ruling(f"x\n{DO}\n"), "DO FREEZE")
+        self.assertEqual(freeze.read_ruling(f"x\n{DO_NOT}\n"), "DO NOT FREEZE")
+
+
+class TestRecheckR4TimelessRow(TestOrchMN3Decision):
+    def test_a_same_ask_row_with_no_readable_time_refuses(self):
+        od160 = self.rows()[0]
+        for created in (None, "", "not a time"):
+            with self.subTest(created_at=created):
+                other = dict(od160, id="OD170", created_at=created)
+                self.assertIsNotNone(ob.decision_problem(ENTRY_33496978, self.rows(other), (ENTRY_33496978,)),
+                                     "R-4")
 
 
 if __name__ == "__main__":
