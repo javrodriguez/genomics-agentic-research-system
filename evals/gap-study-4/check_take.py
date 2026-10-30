@@ -3523,12 +3523,18 @@ def subagent_problems(path: Path) -> list[str]:
                 if isinstance(model, str):
                     out += _model_problem(f"sub-agent {aid}'s file", model, pin)
     # MAJOR 1 of pre-freeze review 2 (the class table's harness-condition-violated entry): a denied call is a harness
-    # condition only where the host-captured stream shows it; one only the agent-writable sub-agent file holds is a
+    # condition only where the host-captured stream shows it too; one only the agent-writable sub-agent file holds is a
     # disagreement between the records, which the stream-and-file comparison above already refuses as subagent-unbound
     # (aborted), so the agent's own write never voids its take (harness-condition-violated outranks every aborted row)
+    # (the lane review of b62445c4, finding 2) the stream too can be forged through the CLI's stdout pipe, so a denied
+    # call counts only where both records hold it; one on either side alone is a disagreement, subagent-unbound above
     every = set()
     for recs in stream_recs.values():
         every |= _calls_of(recs)
+    in_files = set()
+    for recs in file_recs.values():
+        in_files |= _calls_of(recs)
+    every &= in_files
     denied = sorted({name for _, name in every if name in ISOLATION_DENIED_TOOLS})
     if denied:
         out.append(f"[{HARNESS_CONDITION_VIOLATED}] a sub-agent called {denied}: the isolation denials did not hold")
@@ -4055,18 +4061,22 @@ def _admitted_session_files(listing_entries, own: str) -> set:
                                                             and rel.split("/")[3] == "subagents"))}
 
 
-# MAJOR 1 of pre-freeze review 2: the sweep findings only the driver or the runtime produces (sweep_violations' own
-# sentences, by their opening words; tests/test_pf2_agent_routes.py binds each sentence to its side). Every other
-# finding of a sweep is the agent's to produce, [nested-agent-session].
-SWEEP_DRIVER_FINDINGS = ("the take's run tree is not known", "the sweep's recorded expected set",
-                         "is a read-write mount of the take container outside the expected set",
-                         "is not among the swept read-write mounts")
+# MAJOR 1 of pre-freeze review 2: a sweep finding is the driver's or the runtime's when sweep_violations gives it with
+# every field the agent's uid can write emptied (files, unreadable, escapes, truncated): the run tree, the expected
+# set and the mount table alone. Every other finding is the agent's to produce, [nested-agent-session]. By branch,
+# never by the sentence's words, which carry paths the agent names (the lane review of b62445c4, finding 1).
+SWEEP_AGENT_FIELDS = {"files": [], "unreadable": [], "escapes": [], "truncated": False}
 
 
-def sweep_finding_id(finding: str) -> str:
-    """The reason id of one sweep_violations sentence: [nested-agent] for a driver or runtime finding, else
-    [nested-agent-session]."""
-    return NESTED_AGENT if any(k in finding for k in SWEEP_DRIVER_FINDINGS) else NESTED_AGENT_SESSION
+def sweep_driver_findings(sweep: dict, run_tree=None) -> set:
+    """The findings of one sweep that only the driver or the runtime produces (above)."""
+    return set(sweep_violations(dict(sweep, **SWEEP_AGENT_FIELDS), set(), None, run_tree))
+
+
+def sweep_finding_id(finding: str, driver: set) -> str:
+    """The reason id of one sweep_violations sentence: [nested-agent] when it is one of `driver`
+    (sweep_driver_findings of the same sweep), else [nested-agent-session]."""
+    return NESTED_AGENT if finding in driver else NESTED_AGENT_SESSION
 
 
 def session_store_problems(path: Path) -> list:
@@ -4113,7 +4123,8 @@ def session_store_problems(path: Path) -> list:
         if set(x) != {"at", "files", "unreadable", "escapes", "mounts", "scanned", "truncated", "expected"}:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: off its shape")
             continue
-        out += [f"[{sweep_finding_id(v)}] the sweep at {x['at']}: {v}"
+        driver = sweep_driver_findings(x, _take_run_tree(path))
+        out += [f"[{sweep_finding_id(v, driver)}] the sweep at {x['at']}: {v}"
                 for v in sweep_violations(x, admitted, own, _take_run_tree(path))][:5]
     return out
 
@@ -6004,10 +6015,11 @@ def vendor_session_store_problems(path, harness) -> list:
             # Claude Code's sweep admits its own path (review d-7c774ad finding 2); any other record there is a finding
             seen = sweep_violations(dict(x, files=[f for f in x["files"] if f != [own_path, harness, vid]]), set(),
                                     None, _take_run_tree(path))
+            driver = sweep_driver_findings(x, _take_run_tree(path))
         except (TypeError, ValueError, IndexError, KeyError) as e:
             out.append(f"[{NESTED_AGENT}] the take container could not be swept at {x['at']}: {e}")
             continue
-        out += [f"[{sweep_finding_id(v)}] the sweep at {x['at']}: {v}" for v in seen][:5]
+        out += [f"[{sweep_finding_id(v, driver)}] the sweep at {x['at']}: {v}" for v in seen][:5]
     cmds, unread = vendor_shell_commands(path.parent, harness)
     calls = sum(len(nested_cli_mentions(c)) for c in cmds)
     if (doc["nested_cli_calls"], doc["unread_stream_lines"]) != (calls, len(unread)):

@@ -280,7 +280,7 @@ P4_WITNESSES = {
     "the snapshot's id unread": (("    if snap_ids != {vid}:\n", "    if False:\n"), binding_problems),
     "the envelopes' ids unread": (("    if ids != {vid}:\n", "    if False:\n"), binding_problems),
     "the turn-1 resume admitted": (("        if k == 1 and token in argv:\n", "        if False:\n"), binding_problems),
-    "the sweeps unread": (("        out += [f\"[{sweep_finding_id(v)}] the sweep at {x['at']}: {v}\" for v in seen][:5]\n", ""),
+    "the sweeps unread": (("        out += [f\"[{sweep_finding_id(v, driver)}] the sweep at {x['at']}: {v}\" for v in seen][:5]\n", ""),
                           store_problems),
     "the counts trusted": (("    if (doc[\"nested_cli_calls\"], doc[\"unread_stream_lines\"]) != (calls, len(unread)):\n",
                             "    if False:\n"), store_problems),
