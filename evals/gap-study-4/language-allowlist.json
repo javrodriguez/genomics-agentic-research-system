@@ -546,6 +546,20 @@
       "line_text": "   Reviewer probe: with `test_codex_agents_off.CHECKS['table']` red and no mutant applied, `witnesses()` returns `key-dropped table True` and `key-set-true table True`, and the CLI would print `witnesses: 3/3 red` and exit 0.",
       "ruled": "2026-10-27",
       "why": "Bound record, never edited: lanes/REVIEW-t104-mutation-baseline-fcf3401.md is the fresh round-1 review of lane t104-mutation-baseline at fcf3401d (VERDICT CHANGES), committed at e205a256 as its reviewer wrote it, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation), who ruled these entries on Tue 27 Oct 2026 at the L6e merge. The slash shapes are quoted witness tallies from the runner's output, never a rate."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-2.md",
+      "pattern": "out-of",
+      "line_text": "**Out of scope (limitations the draft must name):**",
+      "ruled": "2026-10-30",
+      "why": "Bound record, never edited: review_kit/prefreeze-2.md is pre-freeze review 2 as its reviewer wrote it, committed at 0f634fc3 ('review: pre-freeze review 2, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold2/fix brief of Fri 30 Oct 2026. 'Out of scope' is a section heading naming what the review left to the draft's limitations, never a rate in words."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-2.md",
+      "pattern": "ratio-slash",
+      "line_text": "- **Walks (step 10).** Arm A is covered 126/126 by rechecked rewalks and arm O 36/36, counting only graded walks. Tampering with one grade, regrade, check or recheck turns a gate red (tried in a copy). Review 1's m6 and m7 are closed.",
+      "ruled": "2026-10-30",
+      "why": "Bound record, never edited: review_kit/prefreeze-2.md is pre-freeze review 2 as its reviewer wrote it, committed at 0f634fc3 ('review: pre-freeze review 2, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold2/fix brief of Fri 30 Oct 2026. 126/126 and 36/36 are the reviewer's coverage tallies of required walks (arm A, arm O) quoted from the walk-coverage output, never a rate; the study's own texts write 'k of n'."
     }
   ]
 }
