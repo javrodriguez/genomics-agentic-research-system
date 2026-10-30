@@ -534,7 +534,7 @@ def description_problems(d):
     old = b.prior_metadata()
     need(len(old["limitations_lines"]) == 11 and d["limitations"] == [
         dict({"text": line, "round_4_reading": reading},
-             **({"prefreeze_reading": expected_prefreeze_reading(i)} if i in (3, 6, 9, 10, 11) else {}))
+             **({"prefreeze_reading": expected_prefreeze_reading(i)} if i in (1, 3, 6, 9, 10, 11) else {}))
         for i, (line, reading) in enumerate(zip(old["limitations_lines"], expected_readings()), 1)], "R8.carried")
     # lane d8-furniture fold 2 (glitch-f1, 22 Oct 2026): the token finding filled from walk evidence, and the arm G
     # project tier residual (D8 mitigation 1) added
@@ -1649,7 +1649,7 @@ class PrefreezeClose(unittest.TestCase):
                          (586, "def outside_temp_reads("), (1910, "def event_counts("),
                          (1971, "    reasons, kept, lifted = [], [], set()"),
                          (1984, '    return {"reasons": reasons, "problems": kept, "events": counts'),
-                         (2389, "def check4_walk("), (5819, "def check4_vendor(")):
+                         (2389, "def check4_walk("), (5901, "def check4_vendor(")):
             self.assertTrue(ck[n - 1].startswith(start), f"C11.lines: check_take.py {n}")
         self.assertIn("EVENT_OUTSIDE: len(outside_checkout_reads(path)) + len(outside_home_reads(path))",
                       "\n".join(ck[1909:1915]), "C11.lines")
@@ -1663,8 +1663,13 @@ class PrefreezeClose(unittest.TestCase):
         self.assertEqual((ann["event"], ann["mask"], ann["any_of"]),
                          (True, True, [{"path": "events.outside_reach", "op": "gt", "value": 0}]), "C11.event")
         rj = lines_of("routing.json")
-        self.assertTrue(rj[87].startswith('  "checker_reasons_become_events"'), "C11.lines")
-        self.assertIn('"id": "outside-reach"', rj[294], "C11.lines")
+        self.assertTrue(rj[88].startswith('  "checker_reasons_become_events"'), "C11.lines")
+        self.assertIn('"id": "outside-reach"', rj[329], "C11.lines")
+        rs = lines_of("result.py")         # pre-freeze review 2, m10 (lane fold2/ld): the per-half-cell count
+        self.assertTrue(rs[168].startswith("def outside_reach_counts("), "C11.lines")
+        self.assertTrue(rs[192].startswith("def render_outside_reach("), "C11.lines")
+        self.assertTrue(lines_of("agent_adapter.py")[385].lstrip().startswith('"events": {"outside_reach"'),
+                        "C11.lines")
         dr = lines_of("drive.py")
         self.assertIn('reach = scan["events"]', dr[2980], "C11.lines")
         self.assertIn('"outside_reach_events": reach', dr[2985], "C11.lines")
@@ -1716,6 +1721,7 @@ class PrefreezeClose(unittest.TestCase):
     def test_the_round_4_limitations_rest_on_the_code(self):
         """Section 5 step 5: what L1-L3 built, named, each citing lines that hold what it says."""
         import result, routing as _routing
+        import freeze as freeze_mod
         d = b.build()
         names = [e["name"] for e in d["round_4_limitations"]]
         self.assertEqual(names, ["fake walk", "seed review line 1", "agent-caused routes", "stopped takes in the views",
@@ -1723,7 +1729,12 @@ class PrefreezeClose(unittest.TestCase):
                                  "what a vendor serves",
                                  # lane gap-subagent-cost (28 Oct 2026): the D8 claude-code read's findings 2 and 4;
                                  # tests/test_pf1_cost_vendors.py V19 reads their figures from the records
-                                 "arm A turn cost is a running total", "arm A thinking is not observable"],
+                                 "arm A turn cost is a running total", "arm A thinking is not observable",
+                                 # lane fold2/lc (30 Oct 2026): pre-freeze review 2's findings named
+                                 "review shopping and the ruling line", "the take ledger's push witness",
+                                 "the order function", "rulings on a take of unknown phase", "arm O agent output",
+                                 "the gars tree of a walk", "held walks", "harness versions",
+                                 "the three legs of a vendor arm", "a recheck's machine"],
                          "C5.limitations")
         for e in d["round_4_limitations"]:
             self.assertEqual(set(e), {"name", "text", "source"}, f"C5.limitations: {e['name']}")
@@ -1735,11 +1746,30 @@ class PrefreezeClose(unittest.TestCase):
         rj = lines_of("routing.json")
         # agent-caused routes (MAJOR 5, lane pf1-l2a)
         self.assertEqual(table["agent_event_rows"]["ids"], list(stats.AGENT_EVENTS), "C5.agent")
-        for rid, line in (("nonzero-exec-exit", 234), ("quiescence-cap-reached", 264)):
+        for rid, line in (("nonzero-exec-exit", 261), ("quiescence-cap-reached", 298), ("store-variable-assigned", 269)):
             (row,) = [r for r in table["rows"] if r["id"] == rid]
             self.assertEqual((row["when"], row["route"]), ("after-first-turn", "graded"), f"C5.agent: {rid}")
             self.assertIn(f'"id": "{rid}"', rj[line - 1], f"C5.agent: {rid}")
-        self.assertTrue(rj[118].startswith('  "agent_event_rows"'), "C5.agent")
+        self.assertTrue(rj[119].startswith('  "agent_event_rows"'), "C5.agent")
+        # pre-freeze review 2, MAJOR 1 (lane fold2/la1): the aborted rows and the class table the entry cites
+        for rid, line in (("transcript-mismatch", 201), ("nested-agent-session", 209), ("subagent-unbound", 217),
+                          ("agent-reachable-reason", 225), ("finalize-abort-after-first-turn", 305)):
+            (row,) = [r for r in table["rows"] if r["id"] == rid]
+            self.assertEqual((row["when"], row["route"]), ("after-first-turn", "aborted"), f"C5.agent: {rid}")
+            self.assertIn(f'"id": "{rid}"', rj[line - 1], f"C5.agent: {rid}")
+        self.assertTrue(rj[86].startswith('  "agent_event_reasons"'), "C5.agent")
+        self.assertTrue(rj[120].startswith('  "agent_reach"'), "C5.agent")
+        (reach_row,) = [r for r in table["rows"] if r["id"] == "agent-reachable-reason"]
+        reach_ids = [c["value"] for c in reach_row["any_of"]]
+        mixed = sorted(k.split(":", 1)[1] for k, v in table["agent_reach"]["entries"].items()
+                       if (v["call"] or "").startswith("mixed"))
+        text = by["agent-caused routes"]["text"]
+        self.assertIn("six round-3 reasons", text, "C5.agent")
+        self.assertEqual(len(reach_ids), 6, "C5.agent")
+        self.assertIn("eleven mixed reasons", text, "C5.agent")
+        self.assertEqual(len(mixed), 11, "C5.agent")
+        for rid in reach_ids + mixed:
+            self.assertIn(rid, text, f"C5.agent: {rid}")
         self.assertIn("no try is ever discarded or re-run for something the agent did", table["caps"]["graded"]["source"],
                       "C5.agent")
         rn = lines_of("run.py")
@@ -1750,9 +1780,13 @@ class PrefreezeClose(unittest.TestCase):
         self.assertTrue(st[438].startswith("def route_events_table("), "C5.agent")
         # stopped takes (m13, lane pf1-l2b)
         rs = lines_of("result.py")
-        self.assertTrue(rs[126].startswith("def render_stopped("), "C5.stopped")
-        self.assertTrue(rs[112].startswith("def stopped_counts("), "C5.stopped")
-        self.assertTrue(rn[457].startswith("def stopped_counts("), "C5.stopped")
+        self.assertTrue(rs[135].startswith("def render_stopped("), "C5.stopped")
+        self.assertTrue(rs[121].startswith("def stopped_counts("), "C5.stopped")
+        self.assertTrue(rn[460].startswith("def stopped_counts("), "C5.stopped")
+        self.assertTrue(rn[410].startswith("STOPPED_ROUTES = (labels4.PAUSE, labels4.ABORTED, labels4.HARNESS_ERROR)"),
+                        "C5.stopped")
+        self.assertTrue(rs[150] == "" and rs[149].startswith("    return "), "C5.stopped: render_stopped ends at line 150")
+        self.assertIn("Harness-error attempts with a forbidden change", "\n".join(rs[135:150]), "C5.stopped")
         page = result.render_stopped([])
         self.assertIn("is in none of the three views", page, "C5.stopped")
         self.assertIn("A take with no end state to read is named, never counted clean", page, "C5.stopped")
@@ -1768,15 +1802,47 @@ class PrefreezeClose(unittest.TestCase):
         self.assertIn("nothing the operator commits enters it", d["take_order_beacon"]["seed_rule"], "C5.seed")
         # the fabricated record set and the vendor (m11, L2)
         ck = lines_of("check_take.py")
-        self.assertTrue(ck[7420].startswith("def transcript_content_problems("), "C5.m11")
+        self.assertTrue(ck[7538].startswith("def transcript_content_problems("), "C5.m11")
         (one_uid,) = [r for r in d["box_residuals"] if r.get("name") == "transcript content and the one uid"]
         self.assertIn("/proc/<the CLI's pid>/fd/1", one_uid["text"], "C5.m11")
         self.assertIn("as a complete fabricated record set does", one_uid["text"], "C5.m11")
-        self.assertTrue(lines_of("routing.py")[197].startswith("SERVED_MODEL_LIMIT = "), "C5.m11")
+        self.assertTrue(lines_of("routing.py")[218].startswith("SERVED_MODEL_LIMIT = "), "C5.m11")
         self.assertIn("verified only when the CLI reports a reroute", _routing.SERVED_MODEL_LIMIT, "C5.m11")
         self.assertIn("by name only", d["served_model_rule"][GEMINI], "C5.m11")
         self.assertIn("verified on every turn", d["served_model_rule"][CLAUDE], "C5.m11")
         self.assertIn({"text": "model weights behind an id are not pinnable"}, d["box_residuals"], "C5.m11")
+        # lane fold2/lc (30 Oct 2026): every line the ten entries of pre-freeze review 2 cite holds what it names
+        for rel, n, start in (("check_results.py", 624, "def take_ledger_witness("),
+                              ("check_results.py", 681, "def run_line_ledger_problems("),
+                              ("check_results.py", 712, "def witness_main("),
+                              ("check_results.py", 739, "def witness_publication_problems("),
+                              ("check_results.py", 863, "def take_order_problems("),
+                              ("check_results.py", 141, "def unread_cite("), ("check_results.py", 147, "def unread_cite_holds("),
+                              ("check_results.py", 153, "def ruled_route_problems("), ("freeze.py", 690, "RULING = "),
+                              ("freeze.py", 700, "RULING_LIKE = "), ("freeze.py", 709, "def read_ruling("),
+                              ("freeze.py", 184, "def order_function_sources("),
+                              ("freeze.py", 233, "def take_order_function_sha256("), ("freeze.py", 876, "SHAPES_ADAPTERS = "),
+                              ("freeze.py", 880, "def unrecorded_shapes_problem("), ("takes.py", 79, "def read_history("),
+                              ("codex_adapter.py", 130, "def read_stream("), ("codex_adapter.py", 209, "def turn_identity("),
+                              ("codex_adapter.py", 259, "def read_rollout("),
+                              ("transcript_codex.py", 128, "STARTED_ITEM_TYPES = "),
+                              ("run_builders.py", 667, "def exported_gars_tree("), ("run_builders.py", 685, "def prepare_take("),
+                              ("walk_builders.py", 1372, "def walk_driver_for("), ("batch.py", 423, "def ruled_phase("),
+                              ("claude_code_adapter.py", 88, "INIT_FIELD_KEYS = "),
+                              ("gemini_adapter.py", 236, "def turn_identity("), ("walk_regrade.py", 510, "def _machine("),
+                              ("result.py", 361, "def render_witness("),
+                              ("routing.py", 1104, '    if op == "differs_from_pin":')):
+            self.assertTrue(lines_of(rel)[n - 1].startswith(start), f"C5.prefreeze-2: {rel} {n}")
+        for rel, n, part in (("codex_adapter.py", 198, "m7"), ("agent_adapter.py", 60, "m7"),
+                             ("walk_builders.py", 1383, "check_take.GARS_TREE_SHA"), ("walk_pins.py", 66, "PINNED_TREE"),
+                             ("routing.json", 254, '"id": "init-mismatch"'), ("routing.json", 122, '"no_match_defaults"'),
+                             ("freeze.py", 907, "ruling Q-3; T4 plan section 7")):
+            self.assertIn(part, lines_of(rel)[n - 1], f"C5.prefreeze-2: {rel} {n}")
+        self.assertEqual(freeze_mod.SHAPES_ADAPTERS, {"codex": "codex_adapter", "gemini": "gemini_adapter"},
+                         "C5.prefreeze-2: the three legs exempt claude-code")
+        self.assertEqual(sum(1 for _ in (HERE / "rehearsals").glob("w-g*/preflight.json")), 36, "C5.prefreeze-2")
+        self.assertFalse([p for p in (HERE / "rehearsals").glob("w-g*/preflight.json")
+                          if "egress-gateway-refused" in p.read_text()], "C5.prefreeze-2: no arm G box ran the probes")
 
     def test_the_overflow_residual_rests_on_routing(self):
         """MAJOR 5's owed box_residuals line: each routing fact it states, read from routing.json."""
@@ -1785,7 +1851,7 @@ class PrefreezeClose(unittest.TestCase):
         (row,) = [r for r in table["rows"] if r["id"] == "watcher-gap"]
         self.assertEqual((row["when"], row["route"]), ("after-first-turn", "harness-error"), "C5.overflow")
         self.assertIn({"path": "sidecar.queue_overflow", "op": "truthy"}, row["any_of"], "C5.overflow")
-        self.assertIn('"id": "watcher-gap"', rj[219], "C5.overflow")
+        self.assertIn('"id": "watcher-gap"', rj[246], "C5.overflow")
         order = [route for group in table["precedence"] for route in group]
         self.assertLess(order.index("harness-error"), order.index("graded"), "C5.overflow")
         self.assertTrue(rj[3].startswith('  "precedence"'), "C5.overflow")
@@ -1793,7 +1859,7 @@ class PrefreezeClose(unittest.TestCase):
         self.assertEqual((cap["reruns_per_slot"], cap["reruns_per_half_cell"]), (1, 2), "C5.overflow")
         self.assertIn("published as harness-error in its own column; leaves the denominator", cap["beyond_cap"],
                       "C5.overflow")
-        self.assertTrue(rj[106].startswith('    "harness-error": {"reruns_per_slot"'), "C5.overflow")
+        self.assertTrue(rj[107].startswith('    "harness-error": {"reruns_per_slot"'), "C5.overflow")
         self.assertNotIn("watcher-gap", table["agent_event_rows"]["ids"], "C5.overflow")
         self.assertIn("that road is owed a line in the draft's box_residuals", table["agent_event_rows"]["source"],
                       "C5.overflow")
@@ -2995,10 +3061,25 @@ PREFREEZE_BY = ("pre-freeze review 1's fold, lane pf1-l4a, 25 Oct 2026 (FOLD-PLA
 PREFREEZE_CLOSE_BY = ("pre-freeze review 1's fold, lane pf1-l4-close, 25 Oct 2026 (FOLD-PLAN-prefreeze-1.md section 2 rows "
                       "10 and 11); the accepted reading beside it stays byte-identical under its source hash")
 
+# Lane fold2/lc (30 Oct 2026; pre-freeze review 2, m9 and m10): V8-L1's printed-mode clause and V8-L10's count.
+PREFREEZE_2_BY = ("pre-freeze review 2's fold, lane fold2/lc, 30 Oct 2026 (FOLD-PLAN-prefreeze-2.md section 3, m9 and "
+                  "m10); the accepted reading beside it stays byte-identical under its source hash")
+
 
 def expected_prefreeze_reading(i):
     """Pre-freeze review 1 (lane pf1-l4a, 25 Oct 2026), folded on review cc83aac6 MINOR 2: the round-4 reading of V8-L3,
     V8-L9 and V8-L11, one representation, a sibling of the accepted round_4_reading (never written into it)."""
+    if i == 1:
+        return {"disposition": "reword", "by": PREFREEZE_2_BY, "read": (
+            "pre-freeze review 2, m9: the accepted words say each take prints the permission mode its own transcript "
+            "records. No publication code prints a mode (stats.TAKE_FIELDS carries no mode field), and arm G has no "
+            "mode record: its mode is read from the launch argv (mode_binding.ARGV_ONLY_HARNESSES), so the words are "
+            "reworded to what the code checks, and \"prints\" is dropped."), "words": (
+            "The condition is the box: each harness runs inside it in the permission mode its pin profile names, with "
+            "no list of admitted commands. Each take is held to the permission mode its own records show, for arm A "
+            "the transcript's permissionMode, for arm O the turn_context Codex writes into its rollout, and for arm G "
+            "the launch argv (limitation 9's reading, mode_binding.py); the mode is checked, not printed in the "
+            "published take record.")}
     if i == 3:
         return {"disposition": "retire", "by": PREFREEZE_BY, "read": (
             "V8-L3's condition holds. No Codex or Gemini launch or config passes a list of admitted tools "
@@ -3044,23 +3125,26 @@ def expected_prefreeze_reading(i):
             "absolute path outside the take's own run tree that a tool call or its result names (outside_checkout_reads "
             "at line 325, outside_home_reads at line 440, outside_temp_reads at line 586) is counted as the "
             "read-outside-the-checkout event (event_counts, lines 1910-1915) and lifted from the reasons check4 hands "
-            "to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5819 return the same "
-            "shape), so routing never sees it as a refusal (routing.json checker_reasons_become_events, line 88). The "
-            "take is graded as usual, its text masked: routing.json's outside-reach annotation (line 295) marks the "
+            "to routing (lines 1971-1984; check4_walk at line 2389 and check4_vendor at line 5901 return the same "
+            "shape), so routing never sees it as a refusal (routing.json checker_reasons_become_events, line 89). The "
+            "take is graded as usual, its text masked: routing.json's outside-reach annotation (line 330) marks the "
             "take's committed outcome, and the drive step adds the count into the take's events.outside_reach "
             "(drive.py lines 2981 and 2986). No attempt is refused for it, so neither capped nor harness-error is its "
             "route: the accepted words' refusal and its quoted refused path do not describe round 4's checker, and "
-            "\"Ruling 3 ... byte-identical\" is round 3's history, as V8-L10's own reason says. No published table "
-            "counts the event per half-cell, and the published take record (stats.TAKE_FIELDS, run.record_for) does not "
-            "carry it: its count is in the take's routed records, events.outside_reach (agent_adapter.py line 385, from "
-            "drive.py line 2986)."), "words": (
+            "\"Ruling 3 ... byte-identical\" is round 3's history, as V8-L10's own reason says. The published take "
+            "record (stats.TAKE_FIELDS, run.record_for) does not carry it: its count is in the take's routed records, "
+            "events.outside_reach (agent_adapter.py line 386, from drive.py line 2986). Since pre-freeze review 2's m10 "
+            "(lane fold2/ld), result.py's \"Outside-reach events\" section prints it per half-cell over every "
+            "committed attempt, re-runs included (outside_reach_counts at line 169, render_outside_reach at line 193): "
+            "the takes, the takes carrying an outside-reach event, the events.outside_reach total and the takes whose "
+            "records give no count, named and never counted as none."), "words": (
             "The take checker counts every absolute path outside its own run tree in the box that a tool call or its "
             "result names (the checkout, the home folder and the temporary roots) as a read-outside-the-checkout "
             "event, and it cannot tell a path that carries information from one that does not. A harness's own scratch "
             "file or background-task output file is one that does not. No attempt is refused for it: the take is "
             "graded as usual, its text masked, and the event's count is kept in the take's routed records "
-            "(events.outside_reach), not in the published take record, so an event there is not by itself a reading of "
-            "the model.")}
+            "(events.outside_reach), not in the published take record, and printed per half-cell beside the views, so "
+            "an event there is not by itself a reading of the model.")}
     raise KeyError(i)
 
 
