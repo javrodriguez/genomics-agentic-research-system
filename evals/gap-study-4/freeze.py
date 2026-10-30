@@ -112,10 +112,14 @@ def planned_order(draft, seed):
 # hashes, for every function it reaches, its source with its decorators and every module-level statement of a parsed
 # module that binds a name the function reads or the function's own name (a rebinding such as `json_bytes = ...`, at
 # top level or inside a module-level if, try, with or loop), and every module-level assignment to an attribute named
-# like a reached function (`check_results.validate_ledger = ...`); the fold's review, m-1. What it cannot see, named:
-# a function reached only through a value it does not resolve (a dict of functions, getattr, a parameter); prepare's
-# glue that hands the seed to planned_order (freeze.prepare, read by every review); and anything outside this study's
-# own .py files (the standard library).
+# like a reached function (`check_results.validate_ledger = ...`); the fold's review, m-1. What it cannot see, named
+# (the review's re-check, each reproduced): a module-level patch, in any study file, of the standard library or the
+# builtins the order reads (json.dumps, sorted, hashlib), by assignment or setattr; a patch of a function object
+# (`planned_order.__code__ = ...`); a function reached only through a value the walk does not resolve (a dict of
+# functions, getattr, a parameter); prepare's hand-off of the seed to planned_order (freeze.prepare); and anything
+# outside this study's own .py files. Each is a code edit after the draft's push, visible in the diff a later review
+# reads; the closing check, check_results recomputing take_order from the draft and take_order_seed at publication,
+# is not built here.
 ORDER_FUNCTION_HASH_KEY = "take_order_function_sha256"
 ORDER_FUNCTION_START = ("freeze", "planned_order")
 ORDER_FUNCTION_STARTS = (ORDER_FUNCTION_START, ("order_beacon", "seed"))
@@ -183,8 +187,9 @@ def order_function_sources(root=None) -> list[tuple[str, str]]:
     its decorators; plus, labelled "module.name=", every module-level statement binding a name such a function reads
     or its own name, and every module-level attribute assignment named like a reached function (ORDER_FUNCTION_HASH_KEY's
     comment). Sorted, each once, with no line numbers, so an edit elsewhere in a file moves nothing. `root` is the
-    study folder whose .py files are read (HERE by default)."""
-    root = HERE if root is None else Path(root)
+    study folder whose .py files are read: by default the folder this freeze.py runs from (not HERE, which a scratch
+    study may stand in for while the modules still import from here), so the hash is of the code that runs."""
+    root = Path(__file__).resolve().parent if root is None else Path(root)
     parsed: dict = {}
 
     def module(name):

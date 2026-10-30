@@ -243,23 +243,23 @@ def superseded_value(source: str) -> tuple:
         tree = ast.parse(source)
     except SyntaxError as e:
         raise BeaconRefused(f"this version of order_beacon.py does not parse ({e.msg})") from None
-    found = []
+    bound = []
     for node in tree.body:
         targets = [node.target] if isinstance(node, ast.AnnAssign) else node.targets if isinstance(node, ast.Assign) \
             else []
         if any(isinstance(t, ast.Name) and t.id == "SUPERSEDED_ROUNDS" for t in targets):
-            found.append(node.value)
+            bound.append(node.value)
     # the fold's review (NIT): a second binding anywhere (inside an if, a def, a loop) could hide an entry at run time
     stores = sum(1 for n in ast.walk(tree) if isinstance(n, ast.Name) and n.id == "SUPERSEDED_ROUNDS"
                  and isinstance(n.ctx, (ast.Store, ast.Del)))
-    if stores != len(found):
+    if stores != len(bound):
         raise BeaconRefused("SUPERSEDED_ROUNDS is bound somewhere other than one module-level assignment")
-    if not found:
+    if not bound:
         return ()
-    if len(found) != 1:
-        raise BeaconRefused(f"this version of order_beacon.py assigns SUPERSEDED_ROUNDS {len(found)} times, not once")
+    if len(bound) != 1:
+        raise BeaconRefused(f"this version of order_beacon.py assigns SUPERSEDED_ROUNDS {len(bound)} times, not once")
     try:
-        value = ast.literal_eval(found[0])
+        value = ast.literal_eval(bound[0])
     except ValueError:
         raise BeaconRefused("SUPERSEDED_ROUNDS is not a literal") from None
     if not (isinstance(value, tuple) and all(isinstance(e, dict) for e in value)):
