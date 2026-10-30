@@ -135,12 +135,27 @@ class NestedAgentSplit(unittest.TestCase):
             got = ct.sweep_violations(sweep, admitted, OWN, "/run/t")
             with self.subTest(side="agent", case=name):
                 self.assertTrue(got)
-                self.assertEqual({ct.sweep_finding_id(v) for v in got}, {ct.NESTED_AGENT_SESSION}, got)
+                found = ct.sweep_driver_findings(sweep, "/run/t")
+                self.assertEqual({ct.sweep_finding_id(v, found) for v in got}, {ct.NESTED_AGENT_SESSION}, got)
         for name, (sweep, tree) in driver.items():
             got = ct.sweep_violations(sweep, admitted, OWN, tree)
             with self.subTest(side="driver", case=name):
                 self.assertTrue(got)
-                self.assertEqual({ct.sweep_finding_id(v) for v in got}, {ct.NESTED_AGENT}, got)
+                found = ct.sweep_driver_findings(sweep, tree)
+                self.assertEqual({ct.sweep_finding_id(v, found) for v in got}, {ct.NESTED_AGENT}, got)
+
+
+    def test_a_path_the_agent_names_never_picks_the_id(self):
+        """The lane review of b62445c4, finding 1: a session file at a path whose words are a driver finding's still
+        routes nested-agent-session (by branch, never by the sentence's words)."""
+        bait = f"{ct.SWEEP_CONFIG_MOUNT}/x is not among the swept read-write mounts/s.jsonl"
+        listings = [{"at": "post-1", "entries": CLEAN}, {"at": "publish", "entries": CLEAN}]
+        for extra in ([[bait, "claude", "zz"]],):
+            got = ct.session_store_problems(with_store(take_folder(), listings, [own_sweep("post-1", extra=extra)]))
+            self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT_SESSION}, got)
+        sweep = dict(own_sweep("post-1"), unreadable=[["/tmp/the take's run tree is not known", "dir"]])
+        got = ct.session_store_problems(with_store(take_folder(), listings, [sweep]))
+        self.assertEqual(set(ct.reason_ids(got)), {ct.NESTED_AGENT_SESSION}, got)
 
 
 class SubagentSplit(unittest.TestCase):
@@ -171,6 +186,12 @@ class SubagentSplit(unittest.TestCase):
                                files=at.pair(at.jl(at.side_record(message={"role": "assistant", "model": at.PIN,
                                                                           "content": [denied]}))))
         self.assertIn(ct.HARNESS_CONDITION_VIOLATED, ct.reason_ids(ct.subagent_problems(shown)))
+        # the lane review of b62445c4, finding 2: a denied call only a (forgeable) stream record holds is no harness
+        # condition either; the disagreement is subagent-unbound
+        stream_only = at.take_folder(stream_recs=[at.sub(tool=denied)])
+        got = ct.subagent_problems(stream_only)
+        self.assertNotIn(ct.HARNESS_CONDITION_VIOLATED, ct.reason_ids(got), got)
+        self.assertIn(ct.SUBAGENT_UNBOUND, ct.reason_ids(got), got)
 
 
 class StoppedCounts(unittest.TestCase):

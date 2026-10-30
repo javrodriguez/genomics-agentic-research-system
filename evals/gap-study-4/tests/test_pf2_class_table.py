@@ -94,6 +94,9 @@ class ClassTable(unittest.TestCase):
                     "row:watcher-gap"):
             self.assertTrue(got[rid]["reachable"], rid)
         self.assertIn("named exception", got["row:watcher-gap"]["call"])
+        # the lane review of b62445c4, finding 2: a forgeable two-record road to harness-condition-violated
+        self.assertTrue(got["reason:harness-condition-violated"]["reachable"])
+        self.assertIn("ruling 3", got["reason:harness-condition-violated"]["call"])
         self.assertIn("forbidden-change count", got["row:watcher-gap"]["call"])
         self.assertFalse(got["row:container-exit-after-first-turn"]["reachable"])
         self.assertIn("10003", got["row:container-exit-after-first-turn"]["how"])
