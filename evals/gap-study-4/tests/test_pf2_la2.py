@@ -47,6 +47,7 @@ sys.path[:] = _PATH
 A, B = labels4.AFTER_FIRST_TURN, labels4.BEFORE_FIRST_TURN
 UNLISTED = {"checker_reasons": ["not-in-routing-json"]}
 CITE = getattr(batch, "END_STATE_UNREAD_CITE", "end state unreadable")
+CITED = f"{CITE}: ValueError, the take's evidence folder cannot be loaded"   # the phrase, then the reading's type
 
 
 def standing(word, calls=None):
@@ -76,15 +77,29 @@ class M6Criterion(unittest.TestCase):
     def test_an_aborted_ruling_on_a_readable_end_state_is_refused(self):
         for word in ("right", "wrong", "out"):
             with self.subTest(word=word):
-                bad = route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite=f"{CITE}: x")], word)
+                bad = route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite=CITED)], word)
                 self.assertTrue(bad, f"an aborted ruling on an end state its grader reads {word} was accepted")
 
     def test_an_aborted_ruling_on_an_unreadable_end_state_stands_with_the_reading_cited(self):
-        ok = route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite=f"{CITE}: no evidence folder")],
+        ok = route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite=CITED)],
                             "raise")
         self.assertEqual(ok, [])
         bad = route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite="synthetic cite")], "raise")
         self.assertTrue(bad, "an aborted ruling that does not cite the unreadable reading was accepted")
+
+    def test_the_cite_carries_the_reading_not_only_the_phrase(self):
+        """Review of fold2/la2, m-a: the phrase alone, a negated phrase, or another exception type is refused."""
+        for cite in (CITE, f"{CITE}.", f"NOT {CITE}; it read fine", f"NOT {CITE}: ValueError",
+                     f"{CITE}: KeyError", f"see the log, {CITE}: ValueError"):
+            with self.subTest(cite=cite):
+                bad = route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite=cite)], "raise")
+                self.assertTrue(bad, f"an aborted ruling citing {cite!r} was accepted")
+
+    def test_a_missing_registered_row_is_its_own_error(self):
+        """Review of fold2/la2, n-a: a missing row is never read as an unreadable end state."""
+        bad = check_results.ruled_route_problems([self.after, rr.ruling(*rr.rt(labels4.ABORTED), cite=CITED)], {},
+                                                 standing("raise"), rr.REAL)
+        self.assertTrue(bad and "no registered row" in bad[0], bad)
 
     def test_a_graded_ruling_needs_a_readable_end_state(self):
         self.assertEqual(route_problems([self.after, rr.ruling(*rr.rt(labels4.GRADED))], "wrong"), [])
@@ -104,11 +119,11 @@ class M6Criterion(unittest.TestCase):
 
     def test_the_door_refuses_an_aborted_ruling_on_a_readable_end_state(self):
         regs = [dict(rr.ROW, attempt=1)]
-        bad = takes.ruling_door_problems(rr.ruling(*rr.rt(labels4.ABORTED), cite=f"{CITE}: x"), [self.after], regs,
+        bad = takes.ruling_door_problems(rr.ruling(*rr.rt(labels4.ABORTED), cite=CITED), [self.after], regs,
                                          table=rr.REAL, standing=standing("right"),
                                          driver_refusal=lambda row, o: None)
         self.assertTrue(bad, "the door accepted an aborted ruling on a readable end state")
-        ok = takes.ruling_door_problems(rr.ruling(*rr.rt(labels4.ABORTED), cite=f"{CITE}: x"), [self.after], regs,
+        ok = takes.ruling_door_problems(rr.ruling(*rr.rt(labels4.ABORTED), cite=CITED), [self.after], regs,
                                         table=rr.REAL, standing=standing("raise"),
                                         driver_refusal=lambda row, o: None)
         self.assertEqual(ok, [])
@@ -125,8 +140,23 @@ class M6Criterion(unittest.TestCase):
                 mock.patch.object(takes, "ruling_door_problems", door):
             with self.assertRaisesRegex(ValueError, "stop here"):
                 takes.commit_ruling(slot="s1", attempt=1, word=labels4.RULE_ROUTE, route=labels4.ABORTED,
-                                    by="synthetic-person", why="w", cite=f"{CITE}: x")
+                                    by="synthetic-person", why="w", cite=CITED)
         self.assertEqual(seen.get("rows"), [dict(rr.ROW)])
+
+    def test_commit_ruling_reads_no_rows_where_no_end_state_is_read(self):
+        """Review of fold2/la2, M1: an aborted ruling on a take with no records, or before its first turn, reads no
+        row, so it never needs a readable takes.json (tests/test_pipeline.py RulingDoor)."""
+        def no_rows(**kw):
+            raise AssertionError("load_rows was called for a ruling that reads no end state")
+        for take in (self.no_records, self.before):
+            with self.subTest(phase=batch.ruled_phase(take, rr.REAL)), \
+                    mock.patch.object(takes, "read_history", lambda **kw: [take]), \
+                    mock.patch.object(takes, "validate_ruling", lambda r, h: None), \
+                    mock.patch.object(takes, "load_rows", no_rows), \
+                    mock.patch.object(takes, "ruling_door_problems", lambda *a, **kw: ["stop here"]):
+                with self.assertRaisesRegex(ValueError, "stop here"):
+                    takes.commit_ruling(slot="s1", attempt=1, word=labels4.RULE_ROUTE, route=labels4.ABORTED,
+                                        by="synthetic-person", why="w", cite=CITED)
 
     def test_publication_runs_the_criterion(self):
         self.assertIn("ruled_route_problems", inspect.getsource(run.produce))
@@ -135,6 +165,7 @@ class M6Criterion(unittest.TestCase):
         text = batch.RULING_RULE["text"]
         self.assertIn("reads whole", text)
         self.assertIn(CITE, text)
+        self.assertIn("exception type", text)
         self.assertTrue(hasattr(batch, "END_STATE_UNREAD_CITE"))
         enforced = " ".join(batch.RULING_RULE["enforced_by"])
         self.assertIn("ruled_route_problems", enforced)
