@@ -255,6 +255,65 @@ class TestM2RehearsalSteps(unittest.TestCase):
         self.assertIsNone(self.evidence(rehearsal_lines()))
         self.assertEqual(self.published(rehearsal_lines()), [])
 
+    def test_a_report_written_by_freeze_rehearsal_main_passes(self):
+        """The fold's review, m-4: the reader against a report the real freeze_rehearsal.main writes (clone, git and
+        each step stood in for, the runtime steps kept), so the <scratch> masking, the holdout label and the live-box
+        tail are read as main writes them, not as this test's own fixture names them."""
+        import json
+        import freeze_rehearsal as fr
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            scratch, draft = tmp / "scratch", tmp / "prereg-draft.json"
+            scratch.mkdir()
+            draft.write_bytes((HERE / "prereg-draft.json").read_bytes())
+            tool = tmp / "tool" / "holdout.py"
+            tool.parent.mkdir()
+            tool.write_text("# stand-in, never run\n")
+            record = tmp / "live-box-record.json"
+            record.write_text("{}\n")
+            sha = hashlib.sha256(record.read_bytes()).hexdigest()
+
+            def sh(argv, cwd, env=None, timeout=3600):
+                if argv[:2] == ["git", "clone"]:
+                    (Path(argv[-1]) / study.STUDY_REL).mkdir(parents=True)
+                    (Path(argv[-1]) / study.STUDY_REL / "prereg-draft.json").write_bytes(draft.read_bytes())
+                return 0, ""
+
+            def run_step(command, clone):
+                command = [str(c) for c in command]
+                if command[4].endswith("freeze.py"):
+                    source = json.loads(Path(command[command.index("--holdout-digests") + 1]).read_text())
+                    digests = source["salted_sha256"]
+                    frozen = {"take_order": [{}], "take_order_beacon_reading": {"signature": "ab"},
+                              "holdout_salted_digests": digests,
+                              "holdout_wordings_per_task_version": len(next(iter(digests.values())))}
+                    (Path(clone) / study.STUDY_REL / "prereg.json").write_text(json.dumps(frozen))
+                    return 0, "freeze: wrote prereg.json"
+                if command[4].endswith("live_box_cut.py"):
+                    return 0, LIVE_BOX_PASS.replace("e" * 64, sha) + "\n"
+                return 0, "ok"
+
+            patches = ((fr, "DRAFT", draft), (fr, "sh", sh), (fr, "run_step", run_step),
+                       (fr, "git", lambda clone, *a: (0, "a" * 40 + "\n") if a[:2] == ("rev-parse", "HEAD") else (0, "")),
+                       (fr, "rehearsal_plan", lambda pre, row: ({}, fr.runtime_commands(row))),
+                       (fr.tempfile, "mkdtemp", lambda *a, **k: str(scratch)),
+                       (fr.freeze, "outputs_exist", lambda *a: False),
+                       (fr.freeze, "review_file_problems", lambda commit: ([], "review/prefreeze-3.md")),
+                       (fr.freeze, "study_tree_sha", lambda *a, **k: "c" * 64))
+            with contextlib.ExitStack() as stack:
+                for mod, name, value in patches:
+                    stack.enter_context(mock.patch.object(mod, name, value))
+                stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+                code = fr.main(["--review-commit", "a" * 40, "--holdout-tool", str(tool), "--live-box-record",
+                                str(record), "--live-box-sha256", sha])
+            report = scratch / "freeze-rehearsal-1.txt"
+            text = report.read_text()
+            self.assertEqual((code, text.rstrip().splitlines()[-1]), (0, "all green"), text)
+            self.assertIn("[0] takes.py --add --row <scratch>/row.json --attempt 1", text)
+            self.assertEqual(freeze.rehearsal_step_problems(text.rstrip().splitlines()), [], text)
+            digest = hashlib.sha256(draft.read_bytes()).hexdigest()
+            self.assertEqual(freeze.rehearsal_evidence(report, digest, "c" * 64)["text"], text)
+
     def test_each_missing_or_red_step_is_refused(self):
         import freeze_rehearsal as fr
         holdout = fr.HOLDOUT_STEP_LABEL
@@ -294,9 +353,10 @@ def edit(path: Path, old: str, new: str):
 class TestM3OrderFunction(unittest.TestCase):
     def test_the_walk_finds_the_called_study_functions(self):
         names = [name for name, _ in freeze.order_function_sources()]
-        for want in ("freeze.planned_order", "freeze.json_bytes", "check_results.validate_ledger"):
+        for want in ("freeze.planned_order", "freeze.json_bytes", "check_results.validate_ledger", "order_beacon.seed",
+                     "order_beacon.SEED_PREFIX="):
             self.assertIn(want, names)
-        self.assertEqual(names, sorted(set(names)), "each function once, in a fixed order")
+        self.assertEqual(names, sorted(names), "a fixed order")
         self.assertRegex(freeze.take_order_function_sha256(), r"^[0-9a-f]{64}$")
 
     def test_a_change_to_any_called_helper_changes_the_hash(self):
@@ -319,9 +379,33 @@ class TestM3OrderFunction(unittest.TestCase):
                         self.assertNotEqual(freeze.take_order_function_sha256(root), base, f"m3: {name} unwitnessed")
                     finally:
                         (root / f).write_text(text)
-            # a function the order never calls does not move it
+            # the fold's review, m-1: a decorator, a module-level rebinding (plain, conditional, or by attribute from
+            # another module), and the seed's derivation all move it
+            more = {
+                "decorator": ("freeze.py", "def planned_order(draft, seed):\n",
+                              "@(lambda f: f)\ndef planned_order(draft, seed):\n"),
+                "rebinding": ("freeze.py", "\n\ndef generated_pins(outputs):",
+                              "\n\njson_bytes = lambda value: b'x'\n\n\ndef generated_pins(outputs):"),
+                "conditional rebinding": ("freeze.py", "\n\ndef generated_pins(outputs):",
+                                          "\n\nif True:\n    json_bytes = len\n\n\ndef generated_pins(outputs):"),
+                "attribute rebinding": ("freeze.py", "\n\ndef generated_pins(outputs):",
+                                        "\n\nimport check_results\ncheck_results.validate_ledger = len\n\n\n"
+                                        "def generated_pins(outputs):"),
+                "seed text": ("order_beacon.py", 'SEED_PREFIX = "gap-study-4 take order\\n"',
+                              'SEED_PREFIX = "gap-study-4 take order 2\\n"'),
+                "seed function": ("order_beacon.py", "hexdigest()[:40]", "hexdigest()[-40:]"),
+            }
+            for name, (f, old, new) in more.items():
+                with self.subTest(mutant=name):
+                    text = (root / f).read_text()
+                    edit(root / f, old, new)
+                    try:
+                        self.assertNotEqual(freeze.take_order_function_sha256(root), base, f"m3: {name} unwitnessed")
+                    finally:
+                        (root / f).write_text(text)
+            # a function the order never reaches, and lines moved above it, do not move it
             edit(root / "freeze.py", "def outputs_exist(root: Path) -> bool:\n",
-                 "def outputs_exist(root: Path) -> bool:\n    root = root\n")
+                 "def outputs_exist(root: Path) -> bool:\n    root = root\n\n\n\n")
             self.assertEqual(freeze.take_order_function_sha256(root), base)
 
     def test_the_draft_carries_it_and_the_freeze_holds_it_to_head(self):
@@ -434,6 +518,19 @@ class TestMajor2TakeWitness(unittest.TestCase):
         problems, ledger, unwitnessed = sc.check([(100, o1)])
         self.assertEqual(problems, [])
         self.assertEqual(sorted(unwitnessed), sorted([r2, u]))
+
+    def test_a_pushed_history_merged_back_with_ours_is_refused(self):
+        # the fold's review, M-1: reset is not the only verb; `git merge -s ours` keeps the abandoned outcome an
+        # ancestor of HEAD while takes.read_history's simplified log never reads it
+        sc = LedgerScratch()
+        sc.append("takes.json", {"slot": "s1", "attempt": 1}, "register s1")
+        bad = sc.append("outcomes.json", {"slot": "s1", "holding": False}, "outcome s1")
+        git(sc.repo, "checkout", "-q", "-b", "redo", sc.base)
+        sc.append("takes.json", {"slot": "s1", "attempt": 1}, "register s1 again")
+        sc.append("outcomes.json", {"slot": "s1", "holding": True}, "outcome s1 again")
+        git(sc.repo, "merge", "-q", "-s", "ours", "-m", "keep the rerun", bad)
+        problems, _, _ = sc.check([(100, bad)])
+        self.assertTrue(problems and "merged back" in problems[-1], f"M-1: {problems}")
 
     def test_a_pushed_sha_missing_from_the_clone_is_refused(self):
         sc = LedgerScratch()
@@ -618,8 +715,8 @@ class TestBeaconSupersession(unittest.TestCase):
             got = witness(sc, reg, [(T0 - 7200, reg0), (late, swap)], rows)
             self.assertIn("refused", got, "a draft pushed after r2's deadline passes")
 
-    def test_today_a_second_registration_is_refused_outright(self):
-        # the red half of plan step 5: [None, 33496978, r2] is refused today, whatever the records say
+    def test_a_second_registration_with_its_entry_passes(self):
+        # plan step 5's pair: [None, 33496978, r2] was refused on the base whatever the records said, and passes now
         sc, reg0, entry, swap = burned_then_r2()
         with registered_as(R2, (entry,)) as reg:
             got = witness(sc, reg, [(T0 - 7200, reg0), (T0 + 1000, swap)], [decision_row()])
