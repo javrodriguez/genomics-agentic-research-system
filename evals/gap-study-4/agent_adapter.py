@@ -56,7 +56,8 @@ THE RECORD. `TurnResult` carries, for one turn:
                     turn's start and end; never defaulted (review round 3, W1B3-6: they defaulted to 0.0), and
                     finite (W1B4-4: NaN and the infinities are refused)
     agent_output    REQUIRED bool: True when the host-captured stream holds at least one completed
-                    agent message (text or tool call) for this turn. It is read from the stream's
+                    agent message (text or tool call) for this turn, or, for codex, a started tool
+                    item (the call issued; pre-freeze review 2, m7). It is read from the stream's
                     event types, never from their content. A turn that produced no completed agent
                     output (an API error on the first call, a container that died first, a turn
                     that timed out silently) has not started the agent's first turn.

@@ -1084,9 +1084,11 @@ def b7_blank(mod, p):
         want = [] if what == "agent_message" else [rec["item"]["id"]]
         if r["tool_ids"] != want:
             out.append(f"{p}: a completed {what} gives tool ids {r['tool_ids']}")
+    # Pre-freeze review 2, m7 (lane fold2/la2): a call the agent started is its output, though it never completed;
+    # it is still no completed tool id.
     started = {"type": "item.started", "item": {"id": "c1", "type": "command_execution", "command": "ls"}}
     r = mod.read_stream(jl(T_START, started, DONE))
-    if r["agent_output"] or r["tool_ids"]:
+    if r["agent_output"] is not True or r["tool_ids"]:
         out.append(f"{p}: a call started and never completed reads output {r['agent_output']}, ids {r['tool_ids']}")
     r = mod.read_stream(jl(T_START, say("a"), say("", "m2"), say("b", "m3"), DONE))
     if r["agent_text"] != "a\nb":

@@ -201,7 +201,27 @@ def ruling_door_problems(record: dict, history: list, rows: list, *, table=None,
             p.append(f"slot {key[0]} attempt {key[1]}: no registered row, so its end state cannot be read")
         else:
             p += check_results.ruled_rerun_problems([taken, record], {key: row}, standing, table)
+    final = record.get("ruling") == labels4.RULE_ROUTE and record.get("route") in check_results.FINAL_RULED_ROUTES
+    if final and phase == labels4.AFTER_FIRST_TURN:    # pre-freeze review 2, m6: graded or aborted, by the end state
+        if row is None:
+            p.append(f"slot {key[0]} attempt {key[1]}: no registered row, so its end state cannot be read")
+        else:
+            p += check_results.ruled_route_problems([taken, record], {key: row}, standing, table)
     return p
+
+
+def _ruling_reads_row(record: dict, history: list) -> bool:
+    """Whether the door reads the ruled take's registered row: every re-running ruling does; a graded or aborted
+    one only after the take's first turn, where its end state is read (pre-freeze review 2, m6; the review of
+    fold2/la2, M1: a ruling that reads no end state needs no readable takes.json)."""
+    if batch.reruns(record):
+        return True
+    if record.get("ruling") != labels4.RULE_ROUTE or record.get("route") not in (labels4.GRADED, labels4.ABORTED):
+        return False
+    key = (record.get("slot"), record.get("attempt"))
+    taken = next((o for o in reversed(history) if batch.is_outcome(o) and (o.get("slot"), o.get("attempt")) == key),
+                 None)
+    return taken is not None and batch.ruled_phase(taken, routing.load_table()) == labels4.AFTER_FIRST_TURN
 
 
 def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: str, cite: str, root=HERE,
@@ -219,7 +239,7 @@ def commit_ruling(*, slot: str, attempt: int, word: str, route, by: str, why: st
     record.update(why=why, cite=cite)
     history = read_history(root=root, repo=repo)
     validate_ruling(record, history)
-    rows = load_rows(root=root, repo=repo) if batch.reruns(record) else []    # a re-running ruling reads its row
+    rows = load_rows(root=root, repo=repo) if _ruling_reads_row(record, history) else []
     bad = ruling_door_problems(record, history, rows, standing=standing,
                                driver_refusal=lambda r, o: driver_refusal_record(r, o, root=root, repo=repo))
     if bad:
