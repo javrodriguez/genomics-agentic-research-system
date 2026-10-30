@@ -682,11 +682,12 @@ def witness_publication_problems(pre: dict | None = None) -> tuple[list[str], di
     records: ([], {"disposable": True})."""
     if pre is not None and pre.get("rehearsal_record") == DISPOSABLE_PLACEHOLDER:
         return [], {"disposable": True}
-    path = HERE / WITNESS_RECORD
+    # glitch-45's re-check, R-1: the record as HEAD commits it, never the working file
+    code, text = git("show", f"HEAD:{(HERE / WITNESS_RECORD).relative_to(REPO).as_posix()}")
     try:
-        runs = json.loads(path.read_text()) if path.is_file() else []
+        runs = json.loads(text) if code == 0 else []
     except ValueError:
-        return [f"{WITNESS_RECORD} cannot be read"], None
+        return [f"{WITNESS_RECORD} at HEAD cannot be read"], None
     if not isinstance(runs, list) or not runs or not isinstance(runs[-1], dict):
         return [f"no run of check_results.py --witness --record is on record ({WITNESS_RECORD}): the push records "
                 f"were never read for this publication"], None
@@ -696,6 +697,20 @@ def witness_publication_problems(pre: dict | None = None) -> tuple[list[str], di
     problems = []
     if run.get("problems"):
         problems.append(f"the latest witness run ({run.get('at')}) refused: " + "; ".join(run["problems"])[:300])
+    # R-1: the run's counts recomputed offline at its ledger head: every ledger commit there, and its unwitnessed
+    # shas a subset of them (a hand-written clean record with false counts no longer passes)
+    at = run.get("ledger_head")
+    if isinstance(at, str):
+        code, listed = git("rev-list", "--full-history", at, "--", *rels)
+        ledger = set(listed.split()) if code == 0 else None
+    else:
+        ledger = set()
+    if ledger is None or run.get("ledger_commits") != len(ledger):
+        problems.append(f"the latest witness run counts {run.get('ledger_commits')!r} take-ledger commit(s), and its "
+                        f"ledger head holds {'an unreadable number' if ledger is None else len(ledger)}")
+    unwitnessed = run.get("unwitnessed")
+    if not (isinstance(unwitnessed, list) and ledger is not None and set(unwitnessed) <= ledger):
+        problems.append("the latest witness run's unwitnessed shas are not all take-ledger commits at its ledger head")
     if run.get("ledger_head") != (now or None):
         problems.append(f"the latest witness run read the ledger at {str(run.get('ledger_head'))[:12]}, and HEAD's "
                         f"ledger is at {now[:12] or 'none'}: run check_results.py --witness --record again")
@@ -780,12 +795,25 @@ ORDER_REFERENCE_FILE = HERE / "order_reference.py"
 ORDER_REFERENCE_ARGV = (sys.executable, "-I", "-S", str(ORDER_REFERENCE_FILE), "-")
 
 
-def take_order_problems(frozen: dict) -> list[str]:
-    """order_reference.py's problems for `frozen` (the frozen file as a dict), run in an isolated interpreter; []
-    when it exits 0."""
+def take_order_problems(frozen: dict, draft: dict | None = None) -> list[str]:
+    """order_reference.py's problems for `frozen` (the frozen file as a dict) against `draft` (the committed
+    prereg-draft.json at HEAD by default; glitch-45's re-check, R-2), run in an isolated interpreter; [] when it exits
+    0."""
+    import tempfile
+    if draft is None:
+        code, text = git("show", f"HEAD:{study.rel('prereg-draft.json')}")
+        try:
+            draft = json.loads(text) if code == 0 else None
+        except ValueError:
+            draft = None
+        if draft is None:
+            return ["the committed prereg-draft.json cannot be read at HEAD, so the registered round is unknown"]
     try:
-        got = subprocess.run(ORDER_REFERENCE_ARGV, input=json.dumps(frozen), capture_output=True, text=True,
-                             timeout=600)
+        with tempfile.NamedTemporaryFile("w", suffix=".json") as d:
+            d.write(json.dumps({"take_order_beacon": {"round": (draft.get("take_order_beacon") or {}).get("round")}}))
+            d.flush()
+            got = subprocess.run((*ORDER_REFERENCE_ARGV, d.name), input=json.dumps(frozen), capture_output=True,
+                                 text=True, timeout=600)
     except (OSError, subprocess.TimeoutExpired) as e:
         return [f"the take order could not be recomputed ({type(e).__name__})"]
     lines = got.stdout.splitlines()
