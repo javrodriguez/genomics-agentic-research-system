@@ -785,6 +785,11 @@ WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutant
 # the manifest's own road.
 
 
+# One mutant child's limit (lane fold4/records, after gap4-fold4-battery-eefd321's holdout-witness timeout): measured on
+# the Mac, 31 Oct 2026, the slowest child took 224 s (fragment-record-admitted), past the old 110 s; 4x that, rounded up.
+CHILD_TIMEOUT_S = 900
+
+
 def run_witnesses(names) -> int:
     red = 0
     chosen = names or sorted(WITNESSES)
@@ -794,7 +799,7 @@ def run_witnesses(names) -> int:
     for name in chosen:
         method, clause = WITNESSES[name]
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
-                              method], capture_output=True, text=True, timeout=110)
+                              method], capture_output=True, text=True, timeout=CHILD_TIMEOUT_S)
         record = re.findall(r"^test_walk_layout outcomes: (\{.*\})$", got.stdout, re.M)
         outcome = json.loads(record[-1]) if record else None
         blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", got.stderr,

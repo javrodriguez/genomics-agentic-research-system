@@ -3506,6 +3506,11 @@ def mutant_outcomes(result):
     return {"failures": ids(result.failures), "errors": ids(result.errors), "skipped": ids(result.skipped)}
 
 
+# One mutant child's limit (lane fold4/records, after gap4-fold4-battery-eefd321's holdout-witness timeout): measured on
+# the Mac, 31 Oct 2026, a child (agent) took 872 s, past the old 180 s; 4x that, rounded up.
+CHILD_TIMEOUT_S = 3600
+
+
 def run_witnesses(group):
     # Rule B (Javier, 11 Oct 2026, "gap4 witness rule B"): RED only when the bound
     # method fails by an AssertionError carrying the whole clause token; an error or
@@ -3518,7 +3523,7 @@ def run_witnesses(group):
     names = witness_groups()[group - 1]
     # Lane gap-prebeacon-fix (glitch-45's ruling on review 200ceab MAJOR 1): every mutant child builds the draft, and so
     # reads walk_plan.coverage_report through walk_counts; the isolated store child reads it once for this exact tree
-    # first, so the baseline and each mutant child take that reading instead of paying the read under the 180 s limit.
+    # first, so the baseline and each mutant child take that reading instead of paying the read under the child limit.
     # Its line says whether it stored, found or stood down; a child that misses still reads the report itself.
     import walk_counts
     print(walk_counts.prime_store(), flush=True)
@@ -3529,7 +3534,7 @@ def run_witnesses(group):
     collateral = {}
     for name in names:
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name],
-                             capture_output=True, text=True, timeout=180)
+                             capture_output=True, text=True, timeout=CHILD_TIMEOUT_S)
         lines = got.stdout + got.stderr
         # W5C-R4-3: the protocol lines are printed to stdout; read them from stdout only, the last match of each.
         summary = ([*re.finditer(r"^test_build_draft: (\d+) run, (\d+) failures, (\d+) errors, (\d+) skipped$",

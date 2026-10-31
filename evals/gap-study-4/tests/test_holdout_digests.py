@@ -549,6 +549,11 @@ BOUND = {"H1.draft": "H1Draft.test_no_pre_freeze_draft_carries_the_holdout",
 WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutants().items()}
 
 
+# One mutant child's limit. 110 s timed out on a loaded athena (gap4-fold4-battery-eefd321, w8b-holdout-digests.txt:5).
+# Measured on the Mac, 31 Oct 2026: the slowest child took 701 s (pending-stand-in), so the limit is 4x that, rounded up.
+CHILD_TIMEOUT_S = 3000
+
+
 def run_witnesses(names) -> int:
     red = 0
     chosen = names or sorted(WITNESSES)
@@ -558,7 +563,7 @@ def run_witnesses(names) -> int:
     for name in chosen:
         method, clause = WITNESSES[name]
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
-                              method], capture_output=True, text=True, timeout=110)
+                              method], capture_output=True, text=True, timeout=CHILD_TIMEOUT_S)
         record = re.findall(r"^test_holdout_digests outcomes: (\{.*\})$", got.stdout, re.M)
         outcome = json.loads(record[-1]) if record else None
         blocks = re.findall(r"^FAIL: (\w+) \(__main__\.(\w+)\.\w+\)[^\n]*\n(.*?)(?=^=|^Ran |\Z)", got.stderr,
