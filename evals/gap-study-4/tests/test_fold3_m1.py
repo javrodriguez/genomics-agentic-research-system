@@ -248,6 +248,163 @@ class M1Claude(unittest.TestCase):
                           rec["unplaced_paths"]), ("claude-code", 1, 1, "unplaced", [SCRATCH]), "M1-claude")
 
 
+# glitch-45's rulings R1 and R2 (fold3 brief, Fri 30 Oct 2026): the vendor walks' recorded exceptions, bound here by
+# (walk, path, file, lines); each line's bytes are bound by its sha256 in fixture_walk.py itself.
+VENDOR_EXCEPTIONS = (
+    ("w-o8", "/home/<user", "turn-1.jsonl", (7,)),
+    ("w-g47", "/opt/cfg", "turn-1.jsonl", (23, 24, 152, 155)),
+    ("w-g47", "/opt/cfg/.gemini", "turn-1.jsonl", (23, 24, 155)),
+    ("w-g47", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (155,)),
+    ("w-g17", "/opt/cfg", "turn-1.jsonl", (64, 95)),
+    ("w-o21", "/home/<user", "turn-1.jsonl", (9,)),
+    ("w-o22", "/home/<user", "turn-1.jsonl", (9,)),
+    ("w-o30", "/tmp/gars-finalize-run-2f4e55c1.json", "turn-4.jsonl", (5, 6)),
+    ("w-o37", "/home/<user", "turn-1.jsonl", (17,)),
+    ("w-g15", "/opt/cfg/.gemini", "turn-1.jsonl", (95, 97)),
+    ("w-g15", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (97,)),
+    ("w-g16", "/opt/cfg/", "turn-1.jsonl", (78, 80, 82, 83, 85, 86)),
+    ("w-g16", "/opt/cfg/.gemini", "turn-1.jsonl", (80, 82, 83, 85, 86)),
+    ("w-g16", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (82, 83, 86)),
+    ("w-g16", "/opt/cfg/.gemini/tmp/run-aae85f4c", "turn-1.jsonl", (83,)),
+    ("w-g18", "/opt/cfg", "turn-1.jsonl", (48, 57, 59, 85, 86)),
+    ("w-g18", "/opt/cfg/.gemini", "turn-1.jsonl", (57, 59, 85, 86)),
+    ("w-g18", "/opt/cfg/.gemini/**/*", "turn-1.jsonl", (85,)),
+    ("w-g18", "/opt/cfg/.gemini/history", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/history/run-0c20adf8", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/projects.json", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (59, 86)),
+    ("w-g18", "/opt/cfg/.gemini/tmp", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/tmp/run-0c20adf8", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/tmp/run-0c20adf8/chats", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/tmp/run-0c20adf8/chats/session-2026-10-20T21-13-7e2862a0.jsonl", "turn-1.jsonl", (86,)),
+    ("w-g18", "/opt/cfg/.gemini/tmp/run-0c20adf8/logs", "turn-1.jsonl", (86,)),
+    ("w-g12", "/opt/cfg", "turn-1.jsonl", (62,)),
+    ("w-g14", "/opt/cfg", "turn-2.jsonl", (42, 43, 45, 48)),
+    ("w-g14", "/opt/cfg/.gemini", "turn-2.jsonl", (43, 45, 48)),
+    ("w-g14", "/opt/cfg/.gemini/settings.json", "turn-2.jsonl", (45,)),
+    ("w-g14", "/opt/cfg/.gemini/tmp/run-44b0dd67", "turn-2.jsonl", (48,)),
+    ("w-g14", "/tmp/test1234", "turn-2.jsonl", (27,)),
+    ("w-g19", "/opt/cfg/.gemini", "turn-1.jsonl", (106, 107, 108)),
+    ("w-g19", "/opt/cfg/.gemini/tmp/run-808ea85a", "turn-1.jsonl", (106, 108)),
+    ("w-o47", "/home/<user", "turn-1.jsonl", (12,)),
+    ("w-g20", "/opt/cfg", "turn-1.jsonl", (78, 79)),
+    ("w-g20", "/tmp/", "transcript.jsonl", (1,)),
+    ("w-g20", "/tmp/", "turn-1.jsonl", (2, 3, 7, 20, 43, 44, 45, 52, 55, 71, 73, 75, 78, 112, 131, 134, 135, 138, 145, 148, 152, 154, 171, 176)),
+    ("w-g20", "/tmp/PLAN.md.approved", "turn-1.jsonl", (52,)),
+    ("w-g20", "/tmp/forge/PLAN.md.approved", "turn-1.jsonl", (52,)),
+    ("w-g20", "/tmp/rec", "turn-1.jsonl", (52,)),
+    ("w-g20", "/tmp/res.json", "turn-1.jsonl", (52,)),
+    ("w-g24", "/opt/cfg", "turn-1.jsonl", (30, 43, 45, 56, 60, 101, 103, 145, 147, 148, 176)),
+    ("w-g24", "/opt/cfg/.gemini", "turn-1.jsonl", (43, 45, 56, 60, 148)),
+    ("w-g24", "/opt/cfg/.gemini/history/run-db0c1000/.project_root", "turn-1.jsonl", (148,)),
+    ("w-g24", "/opt/cfg/.gemini/projects.json", "turn-1.jsonl", (148,)),
+    ("w-g24", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (45, 148)),
+    ("w-g24", "/opt/cfg/.gemini/tmp/run-db0c1000", "turn-1.jsonl", (56, 60, 148)),
+    ("w-g24", "/opt/cfg/.gemini/tmp/run-db0c1000/.project_root", "turn-1.jsonl", (148,)),
+    ("w-g24", "/opt/cfg/.gemini/tmp/run-db0c1000/chats/session-2026-10-21T04-13-d1f056dc.jsonl", "turn-1.jsonl", (56, 148)),
+    ("w-g26", "/opt/cfg", "turn-1.jsonl", (59, 61, 68, 74)),
+    ("w-g26", "/opt/cfg/.gemini/", "turn-1.jsonl", (59, 61, 74)),
+    ("w-g26", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (61,)),
+    ("w-g26", "/opt/cfg/.gemini/tmp/run-e8816fcd", "turn-1.jsonl", (74,)),
+    ("w-g26", "/tmp/", "transcript.jsonl", (1,)),
+    ("w-g26", "/tmp/", "turn-1.jsonl", (2, 3, 6, 12, 18, 19, 21, 31, 33, 50, 55, 68, 74, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127, 131, 135, 139, 143, 147, 151, 155, 159, 163, 167, 170, 171, 174, 175, 178, 179, 183, 187, 190, 191, 194, 195, 199, 203, 206, 212, 219, 223)),
+    ("w-g26", "/tmp/PLAN.md.approved", "turn-1.jsonl", (50,)),
+    ("w-g26", "/tmp/evil", "turn-1.jsonl", (50,)),
+    ("w-g26", "/tmp/evil.py", "turn-1.jsonl", (50,)),
+    ("w-g26", "/tmp/forge/PLAN.md.approved", "turn-1.jsonl", (50,)),
+    ("w-g26", "/tmp/rec", "turn-1.jsonl", (50,)),
+    ("w-g26", "/tmp/res.json", "turn-1.jsonl", (50,)),
+    ("w-g27", "/opt/cfg/.gemini", "turn-1.jsonl", (59, 61, 90, 141, 142, 143, 144, 193, 195, 198)),
+    ("w-g27", "/opt/cfg/.gemini/history/run-db4adf32/.project_root", "turn-1.jsonl", (142,)),
+    ("w-g27", "/opt/cfg/.gemini/projects.json", "turn-1.jsonl", (142,)),
+    ("w-g27", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (61, 142, 144)),
+    ("w-g27", "/opt/cfg/.gemini/tmp/run-db4adf32", "turn-1.jsonl", (90, 142, 143, 195, 198)),
+    ("w-g27", "/opt/cfg/.gemini/tmp/run-db4adf32/.project_root", "turn-1.jsonl", (142,)),
+    ("w-g27", "/opt/cfg/.gemini/tmp/run-db4adf32/chats/session-*.jsonl", "turn-1.jsonl", (143,)),
+    ("w-g27", "/opt/cfg/.gemini/tmp/run-db4adf32/chats/session-2026-10-21T04-59-a17a7473.jsonl", "turn-1.jsonl", (142, 195)),
+    ("w-g28", "/opt/cfg", "turn-1.jsonl", (50, 51, 53, 74, 233)),
+    ("w-g28", "/opt/cfg/.gemini", "turn-1.jsonl", (51, 53, 74, 233)),
+    ("w-g28", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (53,)),
+    ("w-g28", "/opt/cfg/.gemini/tmp/run-9a3a57f3", "turn-1.jsonl", (74,)),
+    ("w-g28", "/tmp/res.json", "turn-1.jsonl", (48,)),
+    ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz", "turn-3.jsonl", (81,)),
+    ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz", "turn-3.jsonl", (81, 91)),
+    ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/derived", "turn-3.jsonl", (81,)),
+    ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0", "turn-3.jsonl", (81,)),
+    ("w-g38", "/tmp/run-45887f96\\", "turn-1.jsonl", (63, 69, 71, 73, 75, 79, 81, 87, 93, 95, 97)),
+    ("w-g41", "/tmp/run-a7e936e6\\", "turn-1.jsonl", (45, 49, 55)),
+    ("w-g42", "/tmp/run-7d41e1b4\\", "turn-1.jsonl", (22, 61)),
+    ("w-g45", "/opt/cfg", "turn-1.jsonl", (80, 92)),
+    ("w-g45", "/opt/cfg/.gemini/tmp/run-5eec5273", "turn-1.jsonl", (92,)),
+    ("w-g45", "/tmp/payload.json", "turn-1.jsonl", (91, 92)),
+    ("w-g48", "/opt/cfg/.gemini", "turn-1.jsonl", (59, 61, 62, 63)),
+    ("w-g48", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (61, 62, 63)),
+    ("w-g48", "/opt/cfg/.gemini/tmp/run-aef5d6d9", "turn-1.jsonl", (62,)),
+    ("w-g40", "/home/dana\\", "turn-2.jsonl", (87,)),
+    ("w-o59", "/home/<user", "turn-1.jsonl", (13,)),
+    ("w-o66", "/home/<user", "turn-1.jsonl", (5,)),
+    ("w-o77", "/home/<user", "turn-1.jsonl", (16,)),
+    ("w-o77", "/tmp/sample-pca-header\\n\\", "turn-2.jsonl", (19, 20)),
+    ("w-o77", "/tmp/sample-pca-header\\ncat", "turn-2.jsonl", (19, 20)),
+    ("w-o90", "/home/<user", "turn-1.jsonl", (9,)),
+)
+VENDOR_CLASSES = ("w142/w158", "w023", "harness config mount", "run-tree fragment", "w142", "agent's guess")
+
+
+class R2VendorExceptions(unittest.TestCase):
+    def test_the_vendor_exceptions_are_the_ruled_ones(self):
+        got = tuple((e["walk"], e["path"], e["file"], tuple(sorted(e["lines"]))) for e in fw.VENDOR_RECORDED_EXCEPTIONS)
+        self.assertEqual(got, VENDOR_EXCEPTIONS, "R2")
+        self.assertEqual(fw.RECORDED_EXCEPTIONS[8:], fw.VENDOR_RECORDED_EXCEPTIONS, "R2")
+
+    def test_each_names_one_ruled_class_and_no_study_path(self):
+        for e in fw.VENDOR_RECORDED_EXCEPTIONS:
+            cls = [c for c in VENDOR_CLASSES if e["ruling"].endswith(f": the {c} class")]
+            self.assertEqual(len(cls), 1, f"R2: {e['walk']} {e['path']}: {e['ruling']}")
+            self.assertIn("glitch-45, fold3 brief, 30 Oct 2026", e["ruling"], "R2")
+            self.assertNotEqual(fw.classify_path(e["path"], None), "study", f"R2: {e['path']}")
+
+    def test_every_vendor_exception_applies_to_its_committed_walk(self):
+        walks = [fw.WALKS / w / "transcript.jsonl" for w in sorted({e["walk"] for e in fw.VENDOR_RECORDED_EXCEPTIONS})]
+        self.assertEqual([p for p in fw.stale_exception_problems(walks) if "w-" in p], [], "R2")
+
+
+class R3PoolingExemption(unittest.TestCase):
+    """glitch-45's ruling R3: lint_pooling skips exactly the listed bound review records; the same line anywhere else,
+    including a file of the same name in another folder, still fails."""
+    LINT = HERE / "lint_pooling.py"
+    RECORD = HERE / "review_kit" / "prefreeze-3.md"
+
+    def run_lint(self, path):
+        got = subprocess.run([sys.executable, "-B", str(self.LINT), str(path)], capture_output=True, text=True,
+                             timeout=120)
+        return got.returncode, got.stdout
+
+    def test_the_listed_record_is_named_and_not_scanned(self):
+        code, out = self.run_lint(self.RECORD)
+        self.assertIn("not scanned: evals/gap-study-4/review_kit/prefreeze-3.md", out, "R3")
+        self.assertEqual(code, 2, f"R3: the record alone scans nothing, which is never a pass: {out}")
+
+    def test_the_same_line_elsewhere_still_fails(self):
+        line = next(ln for ln in self.RECORD.read_text().split("\n") if "pooled" in ln)
+        with tempfile.TemporaryDirectory() as d:
+            for rel in ("notes.md", "review_kit/prefreeze-3.md"):
+                f = Path(d) / rel
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text(line + "\n")
+                code, out = self.run_lint(f)
+                self.assertEqual(code, 1, f"R3: {rel} with the record's line passed: {out}")
+                self.assertIn("[pooled]", out, "R3")
+
+    def test_the_list_is_exact(self):
+        sys.path.insert(0, str(HERE))
+        try:
+            import lint_pooling
+        finally:
+            sys.path.remove(str(HERE))
+        self.assertEqual(lint_pooling.BOUND_REVIEW_RECORDS, ("evals/gap-study-4/review_kit/prefreeze-3.md",), "R3")
+
+
 def git(repo: Path, *args: str) -> str:
     out = subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
                           "-c", "commit.gpgsign=false", *args], capture_output=True, text=True)

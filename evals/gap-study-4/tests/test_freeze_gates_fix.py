@@ -223,7 +223,9 @@ class TestFreezeGatesFix(unittest.TestCase):
     def test_f4_the_committed_exceptions_are_w023s_w142s_and_w158s(self):
         # lane prefreeze-road (the Lane-orchestrator's ruling 1, 24 Oct 2026): the two placeholder exceptions join w023's;
         # lane gap-rewalk-fix (glitch-45, 27 Oct 2026): the rewalk merge's five, two in w023's class, three in w142's
-        self.assertEqual([(e["walk"], e["path"], sorted(e["lines"])) for e in fw.RECORDED_EXCEPTIONS],
+        # lane fold3/m1 (glitch-45, fold3 brief): the vendor walks' entries follow these eight; tests/test_fold3_m1.py
+        # binds them
+        self.assertEqual([(e["walk"], e["path"], sorted(e["lines"])) for e in fw.RECORDED_EXCEPTIONS[:8]],
                          [("w023", "/tmp/finalize.log", [74]), ("w142", "/home/<user", [11, 86]),
                           ("w158", "/home/<user", [11, 49]),
                           ("w172", "/tmp/run-e680031a-finalize.json", [86, 93, 94]),
