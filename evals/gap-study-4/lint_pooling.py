@@ -53,8 +53,10 @@ NEVER_SCANNED = {"lint_pooling.py"}
 # reviewer of this guard has to name the shortcut to discuss it: pre-freeze review 3's m8 and n6 discuss pooling and
 # report no pooled figure. So the records listed here, by exact path under the repository and nothing broader, are not
 # scanned, and each run says so. Every other file, review records included, is scanned as before; a listed record's
-# lines in any other file still fail. No line, pattern or flag is excusable anywhere else.
-BOUND_REVIEW_RECORDS = ("evals/gap-study-4/review_kit/prefreeze-3.md",)
+# lines in any other file still fail. No line, pattern or flag is excusable anywhere else. Each record is bound to the
+# sha256 of its committed bytes (the review of 1cb4ee64, NIT 4): an edited copy is no longer the record, and is scanned.
+BOUND_REVIEW_RECORDS = {"evals/gap-study-4/review_kit/prefreeze-3.md":
+                        "d789e6f9dce586f307fc88bef471fe2ef72f5799c23e6a39fdb316a20c6ba048"}
 
 # TWO KINDS OF PATTERN, AND WHY THEY ARE NOT ONE LIST.
 #
@@ -211,8 +213,11 @@ def main() -> int:
         except ValueError:
             rel = str(f)
         if rel in BOUND_REVIEW_RECORDS:          # lane fold3/m1, ruling R3: named, never silent
-            print(f"not scanned: {rel}, a bound review record (BOUND_REVIEW_RECORDS)")
-            continue
+            import hashlib
+            if hashlib.sha256(f.read_bytes()).hexdigest() == BOUND_REVIEW_RECORDS[rel]:
+                print(f"not scanned: {rel}, a bound review record (BOUND_REVIEW_RECORDS)")
+                continue
+            print(f"scanned: {rel} is listed in BOUND_REVIEW_RECORDS but its bytes are not the bound record's")
         scanned += 1
         findings.extend(scan_text(f.read_text(errors="replace"), rel))
 

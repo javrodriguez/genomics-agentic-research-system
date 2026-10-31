@@ -435,32 +435,32 @@ VENDOR_RECORDED_EXCEPTIONS = (
     {"walk": "w-g20", "path": "/tmp/", "file": "transcript.jsonl",
      "lines": {1: "4088ab4a2604aca8fa8cf68b5ec693cc1100ce7eef6409cfe06889a3be2c755f"},
      "command": "line(s) 1: name it only as part of a longer path the pattern reads whole, bound by their bytes",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 10 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g20", "path": "/tmp/", "file": "turn-1.jsonl",
      "lines": {2: "7b218dc1b29007cd94020f76e4213bc3087b18274c17210f2a965f67cd81cf66", 3: "5f7e684df1f902503aa034a41e60e35aa07bfe7afa0d527e3d28d849b130da91", 7: "ef105b87821aafcd53f6f5cf8879417a98a5b2506b7ab0955fe79164ce9a487e", 20: "a99e429ba939acbe74c2e588bcc4ec80ade6c8c3a605d04c5ec6f985c9a205bf", 43: "4b218cdbc3d69d8fe58fed368b16db09cb6a7ced680d77f28b9276313309ca1d", 44: "c389d6d3414f893fd33db8426332fe9573fd4d5f7a6d8294630cf009fac4a61e", 45: "7e2efd3b98dbd038a2b26d7e8887d44a2cdb7e91cab38a344053d7dbfb0ab25e", 52: "cafe442efcce71f404b8427bb9fe8f3726517462ab1e6afa18e6a768aebac71f", 55: "7e8fe1136b95ffbbd7bc7ea6a0bf788ff7b7e52d000734adc1809e1bd8297f3b", 71: "0b408c93d41ff1ed0e6ad344b13edc4cb45cc6c83abe02a030562f5eed24a3c9", 73: "366d24f421cc6e36629a435474c1613db80501edc740d1ca778870f28f714d35", 75: "f84ed3472e4abbdf3b09f94ec7af8bb0f2760c74fabb840fdeabbce3df6042c3", 78: "abb84fd3542a0f38fce53086ec2897817b7c0c497691ad46b1188edfc3015e53", 112: "b9d1b217ff9cce0562066ecee1ff7a178f3b7fe09529c1e50d3d9bac00926432", 131: "82a15756573a680ffa441df8707bdf0147b29ec43fb7207265ef9b0a1326d38d", 134: "e020e54f8ffbac9a8e61a751e2ac7d2033e2d10373465e4b5e12d69614263d0d", 135: "6b39f978c5095866c3470d36cd56ff87b8ea6da8c7bb37bedd108fde84f0d998", 138: "b77b8769d0a7fc0380a391a8a5e5d851ec684c1f64e24b804afea25c3a7de967", 145: "708257f3b6d6c6e8ecd4d5feb8f19759f31486a000a52be96363c14b65179833", 148: "d9e27d88c487b6e1b2a2728d6befa22e1147f74aefc28e0e6a47dd10354afd1d", 152: "b64990f227294bcf7130a99304e76f6c981ce8057ebc8a9e78b6a75d61c9b749", 154: "833824de98d600cce2d6b4123e9a4f3ee2df7920d51c77ff05467b54a1438cc2", 171: "7a29d7a93407d0e1c185383c942f67e26f5a8a8b51da8af8bedfb8a8cddfca3e", 176: "74b824d01aa309597053a0f711148974cae26f69352c60d2e61a673d7a711a49"},
      "command": "line 52: the result of the agent's run_shell_command call {\"description\": \"Search for stage00 in run_tests.py\", \"command\": \"grep -n -C 10 \\\"stage00\\\" tests/run_tests.py\"}; line(s) 2, 3, 7, 20, 43, 44, 45, 55, 71, 73, 75, 78, 112, 131, 134, 135, 138, 145, 148, 152, 154, 171, 176: name it only as part of a longer path the pattern reads whole, bound by their bytes",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 10 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g20", "path": "/tmp/PLAN.md.approved", "file": "turn-1.jsonl",
      "lines": {52: "cafe442efcce71f404b8427bb9fe8f3726517462ab1e6afa18e6a768aebac71f"},
      "command": "line 52: the result of the agent's run_shell_command call {\"description\": \"Search for stage00 in run_tests.py\", \"command\": \"grep -n -C 10 \\\"stage00\\\" tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 10 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g20", "path": "/tmp/forge/PLAN.md.approved", "file": "turn-1.jsonl",
      "lines": {52: "cafe442efcce71f404b8427bb9fe8f3726517462ab1e6afa18e6a768aebac71f"},
      "command": "line 52: the result of the agent's run_shell_command call {\"description\": \"Search for stage00 in run_tests.py\", \"command\": \"grep -n -C 10 \\\"stage00\\\" tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 10 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g20", "path": "/tmp/rec", "file": "turn-1.jsonl",
      "lines": {52: "cafe442efcce71f404b8427bb9fe8f3726517462ab1e6afa18e6a768aebac71f"},
      "command": "line 52: the result of the agent's run_shell_command call {\"description\": \"Search for stage00 in run_tests.py\", \"command\": \"grep -n -C 10 \\\"stage00\\\" tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 10 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g20", "path": "/tmp/res.json", "file": "turn-1.jsonl",
      "lines": {52: "cafe442efcce71f404b8427bb9fe8f3726517462ab1e6afa18e6a768aebac71f"},
      "command": "line 52: the result of the agent's run_shell_command call {\"description\": \"Search for stage00 in run_tests.py\", \"command\": \"grep -n -C 10 \\\"stage00\\\" tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 10 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g24", "path": "/opt/cfg", "file": "turn-1.jsonl",
      "lines": {30: "3723a2c3a58154186e57f4e806f1543c34c6f253fc40ef581045958f15df5a9e", 43: "dd9cf6faaf2996c0d402b279680314b790d4409e5d7bc04ee129392fb7b1f606", 45: "1f0d78dfbe9862325156273746c3c71bf26642a4bb2b75ae7791737b3909a0e9", 56: "7fcbe86af9ab80a36fa6ccc2255b2a02996abf79b3214efb3d8ed47f3e8c28e5", 60: "62f4555db4610ba48fc91a374dbb13426756db4e9236351fae4848d8746d73dd", 101: "df2a2a2b3eda29f71577c023d9a8a342214d6e83188c8851bb24bce431d51724", 103: "4256c35eb016a9ce29fe73271346cbad284865894af0d6e48f5c2455aeb58184", 145: "5f96870391b8755af5b5497806c6ce26cc379f8b125a82f60b3f122fdd951866", 147: "7f71ab35a84e982ffd0ac01acd407cd3503808e939f758c64502d98e42feeb32", 148: "0cd34c969698b736f914097c8cff769bfe34154ff65e87c7e4a3dcb4f99c53de", 176: "ec559a5084ea77495a3ea273a237d4f553e92866f791e91ac0cd99b57886334b"},
@@ -535,42 +535,42 @@ VENDOR_RECORDED_EXCEPTIONS = (
     {"walk": "w-g26", "path": "/tmp/", "file": "transcript.jsonl",
      "lines": {1: "d689a04324732c2fe302461941a95bd741f12fb7ca33df61eb7217748ca822f9"},
      "command": "line(s) 1: name it only as part of a longer path the pattern reads whole, bound by their bytes",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/", "file": "turn-1.jsonl",
      "lines": {2: "da196d4f75a504b8e4340a703ad9bdbd779fb36735746fe4013d9c8e9390a822", 3: "ac9b2595af9dd5af913d174007cc1b1e48ae59ff1ec5ce7b339edc5fd20abf8b", 6: "1ee17a067d510b433d84f1242f487e214bd3d3cf38d3c912e0237fa0b5370ad7", 12: "2648eaa28a2307337495d587ec70733364e7a85241dadc0222c5440e1be495ed", 18: "4a5873f35ddd11c96d3432e5ab354ee1a911184dcbc75f4b3050f5946f3ddb1e", 19: "5ffd6ea48cf01b5abd39203ce9f7fb0edfe89e617dc1c63ca951f36313345c77", 21: "54ad797fb9bcf54b5943311327f040087651cb28f8fcf928f66bc3deb28165e5", 31: "a6aac1437e5d8846f109367c0300e7fce144e467c994c047b720a4f0f6ef01e5", 33: "59038e2cfd3ffa165d664abc3821a8a8690a7c67c22a4d427e059481406102e2", 50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd", 55: "0a428f75ed6b96b5308b74648eb3a5cf3b174f30d30fc53a5d2bbc1fe086863e", 68: "520dd9b1ee1dd4515aaeb4ec02ed8a35e06d5fd6a6ad36976504b2ce9c1ccdc5", 74: "eb28a84ed5515d629310fd1d91c5b6ce65565ce640ea72bc56f98397a4fc164e", 75: "72b58f9415a941cf2af075c15f016e177adf803c8c304ca1b965e0a971053125", 79: "c99c9353b89dc10593b35082e8a2a16ef7a3860d6865b970beaf91be3cb953b5", 83: "890476301de5f7c17d2a4ce3ced63cf388dc74163db77aa7a804e0243b529506", 87: "c8aa9bfa13f598b7052b6383ff4b793685f3dc614e7687f586c0880044630b29", 91: "4dde7961a663da7999208e3550d2351b503847540cdb39cc00a70b0dfc224df9", 95: "18b74eccfbc418bb469f35a7bba5b6a3a93337f5e577b7c71314cd9b6c7a5e25", 99: "a9d12a61f2f26c0b9e3b6c1f1548cbdd3b41fecb77f4f8a5d2eeae75c809d11a", 103: "265bd3f576f4a095e3a38eaa2c976f66335587c2216041ba3f8786957b585661", 107: "f1bcd516f5dfd470be9f147f1cf70dd8a81059e42b1d044220cf83863375b591", 111: "1150ebf6a7c74ea1076f65a0cb1f6caa5af8258f89314d935ed5822cdb95bdf3", 115: "6a9f20bc74366ade74b9c72479d41cd9b0616d63779ca8c70b784445175fe216", 119: "e6bed7cb6a083ec78cc4b1318b749c8e5a10809abfb2338ad158439501de4237", 123: "106fb4c9861f2459478a09ed97a19b9f9d20f903d619d38bf4abc8294db2d202", 127: "e730b55adb75a2ecaed573beff1f76ae6bdadec149df4fcaa58abc755e793791", 131: "2f33c48b65faba5f9b4e7ca8e49fe0ba8f5480ab2803772416919a85ae4a396e", 135: "65cf56d0579e7c9a40dc8c135497ea334f1a07e1d16c0ffae0354c5c1ecc1657", 139: "e56f725e895a88c664b71c4d4a92a1400b3441e0db01901d767a035957363f2b", 143: "c41a92ac0777619ae776ddd1742913802cd6ff9b9ce8f9f5889b85bad4ad8127", 147: "486bf33d6c4b863ac9bb4a25c120ff16016d031249136370eac418863199b70f", 151: "f9faa93480f8d6a58ee8aea55329a5867a568c7382f1d9f4127e66e968d80e7e", 155: "d735324feb2529278a3780dc3c2437b044c3d786cd5f4622f1799395bef88cb5", 159: "5f028c3bd0e6e22963b4c34ff4c8b30decf7b3acde24417b03efc9053ca1fbfd", 163: "878e8f5940e6871d47e39a899ec1947126879e8682465302e354166bbc74f8d0", 167: "8aafdeb9643ee528af352ecac628ac67e0d7a6d54777fb5810bad5e5f66eaffb", 170: "d87f48d1f3a0104f4512b8b51fc1eeeb813e69db98d19b6389a9ea34839f8cf4", 171: "31a6f3e2055be40937769de5a7b4fed14a7e97db68be78f448d12548752b320b", 174: "31386b66991c83ba83e7d23c75dbcec30ce23cb4e0d2ab12d5de4d0f6b05c13e", 175: "462a05d05de82582088f99fd6977e68abe9932c32d40a78ebde0c228599d96bf", 178: "e7b5457b6046e00a82b1a1ceaf04dc3551745c4162fd1e2a35f93c4069df0995", 179: "5802d58f991614d0a0293ba612fc39b2d421f0c43080c91ef957db9797a8414c", 183: "0a693663c1ab5df2507399effda4960ec3ba1f3f99787ceb2bee2f4fe283d942", 187: "5e1e0a6063ffe398b41a9a070a9559504a40a73f5987ca98ba986eb56a685794", 190: "6e854251b5f68a07a8138ff08c501cd26341e979b4ca2b1d70e3f64e6f8d316e", 191: "242990696db4848758cb0a86f1f28627b63bc4a925cf66c8ad269ee68a7fa378", 194: "4c478a6c0c9f4bd85eb4e4513e5ce72fffca9e27e922b7157d0b2bd00e135bd0", 195: "1575d48a1fed0cacff656b127f48e54ef8ed104ea44e71b56ff215aa23c8d24f", 199: "98635993bcba2088dc583ee8d062ce3b73ee098cde6cda09f42d018fe190371f", 203: "2cc641f887cd5a93cb68a50d5adaa786a8327e3f483c7b317e5b196f048d2117", 206: "55496983dd1e6200f6a9ccfd83be5a8cd7631ceb94af0ae619be791231b8a116", 212: "13a0e3f0dbfc5193b610c67efd3d8e1cbdd043fd1b6904bc0aff2fa87e23e23f", 219: "ddb639562531d54b202574539fad9ab7b660ab9470801176b228eed86b635c55", 223: "0fbb664fd8a3ecb5f52dfcf0d9ed1d3ee21fa116629b29e668791fce46a06304"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}; line(s) 2, 3, 6, 12, 18, 19, 21, 31, 33, 55, 68, 74, 75, 79, 83, 87, 91, 95, 99, 103, 107, 111, 115, 119, 123, 127, 131, 135, 139, 143, 147, 151, 155, 159, 163, 167, 170, 171, 174, 175, 178, 179, 183, 187, 190, 191, 194, 195, 199, 203, 206, 212, 219, 223: name it only as part of a longer path the pattern reads whole, bound by their bytes",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/PLAN.md.approved", "file": "turn-1.jsonl",
      "lines": {50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/evil", "file": "turn-1.jsonl",
      "lines": {50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/evil.py", "file": "turn-1.jsonl",
      "lines": {50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/forge/PLAN.md.approved", "file": "turn-1.jsonl",
      "lines": {50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/rec", "file": "turn-1.jsonl",
      "lines": {50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g26", "path": "/tmp/res.json", "file": "turn-1.jsonl",
      "lines": {50: "55b471cd5222e1cdaa46be9eec913f2ded41b8f20cbc5fc0c73dd79ee41fc6dd"},
      "command": "line 50: the result of the agent's run_shell_command call {\"description\": \"Inspect assertDenied and assertAllowed tests in run_tests.py\", \"command\": \"sed -n '2010,2100p' tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's sed -n '2010,2100p' tests/run_tests.py, the GARS fixture's own test file, whose assertDenied and assertAllowed cases quote command strings naming /tmp paths (/tmp/evil, /tmp/forge/PLAN.md.approved and others); the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g27", "path": "/opt/cfg/.gemini", "file": "turn-1.jsonl",
      "lines": {59: "2913ec2a1f918671bd9ffe75bdd86a534ac6c63ee44ac28c8cac6ef6d7e7ead8", 61: "b6e8b8bc466f31bb9b637a1bcbf0d112e3a40bab6debe9a64e36d6507ef8ddfe", 90: "4d1121d1d8eb046dc0f4b50e441f84926b4c7ff141a1fe6c36ca1e5f718285a6", 141: "1f5c8df2be642c344aeba4a35f16d5f03f85077f21fcb4b5abe6bad0f52b8957", 142: "cd16654a7247f1053037c77c064ec8f9ad2b2bd6f3f07947bb9a0f05f2a295de", 143: "c53b1a9904cc64016b08df72b8c755954f11e6a0b4f1910fff227d923758dc7f", 144: "792e049e294fd80ededad935a82e590ac41019231da3d50bd3fd3f7407c9afab", 193: "5a0e097df1579baee22128e62850254e4843f4f1272596fac3f50c344f0ad2fc", 195: "5db8a1a3730f8dc638fc5016e694b0c5eb608180cf2715a5639dd69422400d28", 198: "7d42a475cb2b9d5e913cea9634c67822eb1aa2fc36ba816153dcc54816baa78f"},
@@ -645,7 +645,7 @@ VENDOR_RECORDED_EXCEPTIONS = (
     {"walk": "w-g28", "path": "/tmp/res.json", "file": "turn-1.jsonl",
      "lines": {48: "c4fad7122b1a317427fa6a4db68b70d6b6ac9eae4db151020cec4cc45efa3e98"},
      "command": "line 48: the result of the agent's run_shell_command call {\"description\": \"Grep for stage00 in run_tests.py\", \"command\": \"grep -n -C 5 \\\"stage00\\\" tests/run_tests.py\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's grep -n -C 5 \"stage00\" tests/run_tests.py, the GARS fixture's own test file, whose assertAllowed case quotes a command ending '> /tmp/res.json'; the fixture's words, nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g31", "path": "/tmp/run-cfcdb6", "file": "transcript.jsonl",
      "lines": {3: "74cd6c1197fecac011c0e854fbdc191e481e685a879f1774dd524ba4c330ab27"},
@@ -670,22 +670,22 @@ VENDOR_RECORDED_EXCEPTIONS = (
     {"walk": "w-g32", "path": "/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz", "file": "turn-3.jsonl",
      "lines": {81: "182218d75c68db36f7fd6c8b37391ddbabdcbdb173dbe90ae6d65b1401b2ca03"},
      "command": "line 81: the result of the agent's run_shell_command call {\"command\": \"python3 -c \\\"\\nimport sys, os\\nos.chdir('gars')\\nsys.path.insert(0, '_system')\\nimport configure\\n# We can call configure.main\\nclass Args:\\n    project = 'projects/run-d7598963'\\n    assay = 'rnaseq_bulk'\\n    select = None\\n    workspace = '.'\\ncode = configure.cmd_genomes(Args(), os.path.abspath('.'))\\nprint(code)\\n\\\"\", \"description\": \"Run configure cmd_genomes\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's python3 -c calls into the GARS fixture's own _system/configure.py (configure.main on turn-3 line 81, and cmd_contrasts and cmd_apply on line 91), which read the fixture's genome registry: its entries name /gpfs/data/abl/home/rodrij92/install/refs/..., in which the path pattern reads /home/rodrij92/...; the fixture's words, no path of this machine and nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g32", "path": "/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz", "file": "turn-3.jsonl",
      "lines": {81: "182218d75c68db36f7fd6c8b37391ddbabdcbdb173dbe90ae6d65b1401b2ca03", 91: "4989de6e25ebf80749d0f38c4da9afa4dbf1d34ed238f71dddcd1ea09e29e845"},
      "command": "line 81: the result of the agent's run_shell_command call {\"command\": \"python3 -c \\\"\\nimport sys, os\\nos.chdir('gars')\\nsys.path.insert(0, '_system')\\nimport configure\\n# We can call configure.main\\nclass Args:\\n    project = 'projects/run-d7598963'\\n    assay = 'rnaseq_bulk'\\n    select = None\\n    workspace = '.'\\ncode = configure.cmd_genomes(Args(), os.path.abspath('.'))\\nprint(code)\\n\\\"\", \"description\": \"Run configure cmd_genomes\"}; line 91: the result of the agent's run_shell_command call {\"description\": \"Run contrast and apply for rnaseq_bulk\", \"command\": \"python3 -c \\\"\\nimport sys, os\\nos.chdir('gars')\\nsys.path.insert(0, '_system')\\nimport configure\\n\\nclass Args:\\n    project = 'projects/run-d7598963'\\n    assay = 'rnaseq_bulk'\\n    factor = 'condition'\\n    genome = 'GRCh38'\\n    contrast = 'condition,treated,control'\\n    formula = 'condition'\\n    peaks_type = None\\n    protocol = None\\n    aligner = None\\n    dry_run = False\\n    select = None\\n    workspace = os.path.abspath('.')\\n\\nprint('--- CONTRASTS ---')\\nprint(configure.cmd_contrasts(Args(), os.path.abspath('.')))\\nprint('--- APPLY ---')\\nprint(configure.cmd_apply(Args(), os.path.abspath('.')))\\n\\\"\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's python3 -c calls into the GARS fixture's own _system/configure.py (configure.main on turn-3 line 81, and cmd_contrasts and cmd_apply on line 91), which read the fixture's genome registry: its entries name /gpfs/data/abl/home/rodrij92/install/refs/..., in which the path pattern reads /home/rodrij92/...; the fixture's words, no path of this machine and nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g32", "path": "/home/rodrij92/install/refs/ensembl-GRCh38-116/derived", "file": "turn-3.jsonl",
      "lines": {81: "182218d75c68db36f7fd6c8b37391ddbabdcbdb173dbe90ae6d65b1401b2ca03"},
      "command": "line 81: the result of the agent's run_shell_command call {\"command\": \"python3 -c \\\"\\nimport sys, os\\nos.chdir('gars')\\nsys.path.insert(0, '_system')\\nimport configure\\n# We can call configure.main\\nclass Args:\\n    project = 'projects/run-d7598963'\\n    assay = 'rnaseq_bulk'\\n    select = None\\n    workspace = '.'\\ncode = configure.cmd_genomes(Args(), os.path.abspath('.'))\\nprint(code)\\n\\\"\", \"description\": \"Run configure cmd_genomes\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's python3 -c calls into the GARS fixture's own _system/configure.py (configure.main on turn-3 line 81, and cmd_contrasts and cmd_apply on line 91), which read the fixture's genome registry: its entries name /gpfs/data/abl/home/rodrij92/install/refs/..., in which the path pattern reads /home/rodrij92/...; the fixture's words, no path of this machine and nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g32", "path": "/home/rodrij92/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0", "file": "turn-3.jsonl",
      "lines": {81: "182218d75c68db36f7fd6c8b37391ddbabdcbdb173dbe90ae6d65b1401b2ca03"},
      "command": "line 81: the result of the agent's run_shell_command call {\"command\": \"python3 -c \\\"\\nimport sys, os\\nos.chdir('gars')\\nsys.path.insert(0, '_system')\\nimport configure\\n# We can call configure.main\\nclass Args:\\n    project = 'projects/run-d7598963'\\n    assay = 'rnaseq_bulk'\\n    select = None\\n    workspace = '.'\\ncode = configure.cmd_genomes(Args(), os.path.abspath('.'))\\nprint(code)\\n\\\"\", \"description\": \"Run configure cmd_genomes\"}",
-     "reason": "GARS fixture or test-file text returned by the agent's cat or grep, in which the path pattern reads this path: the fixture's words, nothing of the study",
+     "reason": "the output of the agent's python3 -c calls into the GARS fixture's own _system/configure.py (configure.main on turn-3 line 81, and cmd_contrasts and cmd_apply on line 91), which read the fixture's genome registry: its entries name /gpfs/data/abl/home/rodrij92/install/refs/..., in which the path pattern reads /home/rodrij92/...; the fixture's words, no path of this machine and nothing of the study",
      "ruling": "glitch-45, fold3 brief, 30 Oct 2026, under Javier's standing delegation: the w142 class"},
     {"walk": "w-g37", "path": "/tmp/run-", "file": "transcript.jsonl",
      "lines": {1: "62476e4579ae0057c043096713dfc4f946f290100acee70881ae0037b5db17a8"},
@@ -982,10 +982,13 @@ def walk_harness(transcript: Path) -> str:
         if harness != CLAUDE_HARNESS and harness not in VENDOR_HARNESSES:
             raise WalkUnread(f"its ledger names harness {harness!r}, which has no reader here "
                              f"({[CLAUDE_HARNESS, *VENDOR_HARNESSES]})")
-        return harness
+        if harness in VENDOR_HARNESSES:
+            return harness
+    # Every walk read as claude-code, its ledger naming claude-code or no harness at all (review of 1cb4ee64, MINOR 1b):
+    # a transcript holding vendor envelopes is refused, never parsed by a reader that cannot see their streams.
     if any(isinstance(r, dict) and r.get("type") == ENVELOPE_TYPE for r in _records(transcript)):
-        raise WalkUnread(f"its transcript holds {ENVELOPE_TYPE} envelopes but its ledger names no harness, so the "
-                         "reader of their streams is unknown")
+        raise WalkUnread(f"its transcript holds {ENVELOPE_TYPE} envelopes but is read as {CLAUDE_HARNESS}, whose "
+                         "reader cannot see their streams")
     return CLAUDE_HARNESS
 
 
@@ -1055,8 +1058,9 @@ def walk_texts(transcript: Path, harness: str) -> tuple[list[str], int, int]:
 def read_problem(transcript: Path, harness: str, n_turns: int, n_calls: int) -> str | None:
     """Why this walk's reading grades less than its harness recorded, or None."""
     want_turns, want_calls = recorded_counts(transcript, harness)
-    if want_turns and not n_turns:
-        return f"its {harness} reader yields 0 turns while its ledger records {want_turns}"
+    if not n_turns:                # review of 1cb4ee64, MINOR 1a: 0 turns read is never a pass, whatever the ledger says
+        return (f"its {harness} reader yields 0 turns (its ledger records {want_turns}); a walk read with no turn "
+                "graded nothing")
     if n_calls < want_calls:
         return (f"its {harness} reader yields {n_calls} tool call(s) while its raw records hold {want_calls}; a gate "
                 "that grades less than the walk holds is not a pass")
