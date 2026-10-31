@@ -560,6 +560,34 @@
       "line_text": "- **Walks (step 10).** Arm A is covered 126/126 by rechecked rewalks and arm O 36/36, counting only graded walks. Tampering with one grade, regrade, check or recheck turns a gate red (tried in a copy). Review 1's m6 and m7 are closed.",
       "ruled": "2026-10-30",
       "why": "Bound record, never edited: review_kit/prefreeze-2.md is pre-freeze review 2 as its reviewer wrote it, committed at 0f634fc3 ('review: pre-freeze review 2, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold2/fix brief of Fri 30 Oct 2026. 126/126 and 36/36 are the reviewer's coverage tallies of required walks (arm A, arm O) quoted from the walk-coverage output, never a rate; the study's own texts write 'k of n'."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-3.md",
+      "pattern": "out-of",
+      "line_text": "One correction. The statement in the brief puts choices among seeds and reviews only \"after the takes exist\". In this design the take order and the seed review are fixed **before** any take, and both are operator choices that the freeze itself must bind: a beacon round superseded after it published, and a review run with no row in the register. So I rule pre-freeze choices among seeds and reviews as in scope too. Out of scope, as the brief says: a complete, coherent fabrication across every ledger; what a vendor serves beyond its client's records; the honesty of the machine and the runner. Records written only by the operator, such as the decision log and the witness record, rest on the same trust as the machine.",
+      "ruled": "2026-10-30",
+      "why": "Bound record, never edited: review_kit/prefreeze-3.md is pre-freeze review 3 as its reviewer wrote it, committed at 23e02275 ('review: pre-freeze review 3, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold3 brief of Fri 30 Oct 2026. 'Out of scope' names what the review leaves outside its threat model, never a rate in words."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-3.md",
+      "pattern": "stronger",
+      "line_text": "Three statements read stronger than the code. Each is listed below: m2 (review registration), m3 (beacon swaps) and n1 (the vendor leg's \"re-tested\").",
+      "ruled": "2026-10-30",
+      "why": "Bound record, never edited: review_kit/prefreeze-3.md is pre-freeze review 3 as its reviewer wrote it, committed at 23e02275 ('review: pre-freeze review 3, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold3 brief of Fri 30 Oct 2026. 'read stronger than the code' says three draft statements claim more than the code enforces, never a comparison of models."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-3.md",
+      "pattern": "ratio-slash",
+      "line_text": "- Arm O runs at this freeze, and its 36/36 walk coverage is one of the things the freeze rests on.",
+      "ruled": "2026-10-30",
+      "why": "Bound record, never edited: review_kit/prefreeze-3.md is pre-freeze review 3 as its reviewer wrote it, committed at 23e02275 ('review: pre-freeze review 3, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold3 brief of Fri 30 Oct 2026. 36/36 is the reviewer's coverage tally of arm O's required walks quoted from the walk-coverage output, never a rate; the study's own texts write 'k of n'."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-3.md",
+      "pattern": "stronger",
+      "line_text": "- **n1.** Two pieces of wording in \"The three legs of a vendor arm\" read stronger than the code:",
+      "ruled": "2026-10-30",
+      "why": "Bound record, never edited: review_kit/prefreeze-3.md is pre-freeze review 3 as its reviewer wrote it, committed at 23e02275 ('review: pre-freeze review 3, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold3 brief of Fri 30 Oct 2026. 'read stronger than the code' says two pieces of draft wording claim more than the freeze runs, never a comparison of models."
     }
   ]
 }
