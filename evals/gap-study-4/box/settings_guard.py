@@ -31,8 +31,8 @@ fallbacks (an `env` block, `model`, `fallbackModel`, `switchModelsOnFlag`, `avai
         but a folder. The snapshot holds hashes, not contents, so ANY change to a settings file refuses, not only a
         forbidden key (the stricter reading; the sidecar copies contents only for the pre-registered consequential
         paths, and adding these would change the instrument).
-        A non-empty list refuses the turn: before turn 1 a rehearsal, after it harness-error (routing's rows), the
-        problems recorded. NAMED RESIDUAL (hot reload): Claude Code reloads a settings file when it changes, so a
+        A non-empty list refuses the turn: before turn 1 a rehearsal, after it a stop for a human ruling (drive.py's
+        DriveRefused), the problems recorded. NAMED RESIDUAL (hot reload): Claude Code reloads a settings file when it changes, so a
         write takes effect inside the turn that makes it; the guard detects it at the next snapshot (that turn's
         post-k), never prevents it within the turn.
 

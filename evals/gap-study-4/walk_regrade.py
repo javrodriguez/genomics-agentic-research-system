@@ -310,7 +310,7 @@ NOT_A_REPOSITORY = ("{study} is not inside a git repository: a regrade, a rechec
 
 
 def new_counts() -> dict:
-    return {"walks": 0, "regrades": 0, "recheck_walks": 0, "counts": 0, "pending": 0, "pending_unregraded": []}
+    return {"walks": 0, "regrades": 0, "recheck_walks": 0, "counts": 0, "pending": 0, "pending_unregraded": [], "unnudged": 0}
 
 
 def regrade_report(study: Path = HERE, *, readers=None, grade=None) -> tuple[list, dict]:
@@ -375,7 +375,7 @@ def regrade_problems(study: Path = HERE, *, readers=None, grade=None, counts=Non
         except (ValueError, nrr.RegistrationRefused):
             continue                      # check.json's own shape is pending_walk's and the register's to judge
         if not isinstance(check, dict) or not isinstance(check.get("no_output_nudges"), int):
-            continue
+            counts["unnudged"] += 1; continue     # pre-freeze review 3, m9 (lane fold3/m1): counted and printed
         with tempfile.TemporaryDirectory() as tmp:  # review r12 R12-1: the whole walk folder, as recheck_doc reads it
             base = Path(tmp) / parts[0]
             try:
@@ -413,7 +413,7 @@ def counts_line(counts: dict) -> str:
     return (f"re-derived {counts['regrades']} {REGRADE_FILE} file(s), {counts['recheck_walks']} walk(s)' recheck "
             f"chains and {counts['counts']} check.json count(s), over {counts['walks']} committed walk(s); "
             f"{counts['pending']} walk(s) graded pending, {len(counts['pending_unregraded'])} of them with no "
-            f"{REGRADE_FILE}")
+            f"{REGRADE_FILE}; {counts.get('unnudged', 0)} check.json file(s) carry no integer count to re-derive (not read)")
 
 
 def materialize_walk(root, walk_rel: str, into: Path) -> None:

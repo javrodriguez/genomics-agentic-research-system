@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Does anything the agent reads name the study's checkout? Decided by code, at path boundaries.
 
-    python3 evals/gap-study-3/fixture_walk.py --static      the static half: the fixture's own bytes and
+    python3 evals/gap-study-4/fixture_walk.py --static      the static half: the fixture's own bytes and
                                                             every operator line, before any session runs
-    python3 evals/gap-study-3/fixture_walk.py --replay <transcript> --task <id> --half <h>
+    python3 evals/gap-study-4/fixture_walk.py --replay <transcript> --task <id> --half <h>
                                                             the verdict on one recorded session
-    python3 evals/gap-study-4/fixture_walk.py --check       every registered walk under rehearsals/, re-derived
+    python3 evals/gap-study-4/fixture_walk.py --check       every registered walk under rehearsals/, re-derived,
+                                                            each read through its own harness's reader (lane
+                                                            fold3/m1; see "each walk is read through ITS OWN
+                                                            harness's reader" below)
 
 ROUND 4 (lane w8a, ruling W8-layout-1; this file moved from lane w1a to lane w8a under ruling W8A-gap4-1): the walks
 are read through the walk register (rehearsals/register.json), one walk per folder, rehearsals/<walk>/, the folder
@@ -64,6 +67,10 @@ import prereg  # noqa: E402
 import round2  # noqa: E402
 import study  # noqa: E402
 import transcript as tx  # noqa: E402
+import transcript_view as tv  # noqa: E402  (lane fold3/m1: the vendor walks' own readers, all loaded here, while
+import transcript_codex  # noqa: E402,F401  this file's folder is on sys.path: transcript_view imports the bound
+import transcript_gemini  # noqa: E402,F401  road lazily, and a caller that restores sys.path would otherwise
+import vendor_record_binding  # noqa: E402,F401  find it missing)
 
 # An absolute path as it appears in a tool call or its result. Deliberately greedy about the roots that
 # matter on this machine and permissive about the tail; what makes a hit a leak is decided below, not here.
@@ -208,27 +215,46 @@ RECORDED_EXCEPTIONS = (
 )
 
 
-def _exception_for(transcript: Path, path: str) -> dict | None:
+def _exception_for(transcript: Path, path: str, files=None) -> dict | None:
     """The recorded exception covering `path` in this walk's transcript, or None. Every line naming the path must be
     one of the exception's lines, with the recorded bytes (which carry the recorded command; S10, review n2: the
-    sha256 binds it, so no separate text check is kept)."""
+    sha256 binds it, so no separate text check is kept).
+
+    Lane fold3/m1: a vendor walk's reader reads its streams too, so `files` names every file read (default: the
+    transcript alone) and an exception may name its `file` (default transcript.jsonl). The walk's exceptions for one
+    path are taken together: every line of every read file naming the path must be one of their (file, line) pairs,
+    with its recorded bytes. The result is the first such exception with `at`: its lines (line numbers when all are
+    in the transcript, as before; `<file>:<line>` otherwise)."""
     walk = transcript.parent.name
+    files = [transcript.name] if files is None else list(files)
+    first, want = None, {}
     for exc in RECORDED_EXCEPTIONS:
         if exc["walk"] != walk or exc["path"] != path:
             continue
+        first = first or exc
+        want.update({(exc.get("file", transcript.name), n): sha for n, sha in exc["lines"].items()})
+    if first is None:
+        return None
+    seen = set()
+    for name in files:
         try:
-            lines = transcript.read_bytes().split(b"\n")
+            lines = (transcript.parent / name).read_bytes().split(b"\n")
         except OSError:
             return None
-        naming = {n for n, raw in enumerate(lines, 1) if path.encode() in raw}
-        if not naming or naming != set(exc["lines"]):
-            return None
-        for n, sha in exc["lines"].items():
-            raw = lines[n - 1]
+        for n, raw in enumerate(lines, 1):
+            if not _names(raw, path):
+                continue
+            sha = want.get((name, n))
+            if sha is None:                                   # a naming line no exception records
+                return None
             if hashlib.sha256(raw).hexdigest() != sha:       # the line's bytes, and so the command on it
                 return None
-        return exc
-    return None
+            seen.add((name, n))
+    if not seen or seen != set(want):
+        return None
+    at = (sorted(n for _, n in want) if all(f == transcript.name for f, _ in want)
+          else [f"{f}:{n}" for f, n in sorted(want)])
+    return dict(first, at=at)
 
 
 def stale_exception_problems(walks) -> list[str]:
@@ -237,7 +263,11 @@ def stale_exception_problems(walks) -> list[str]:
     out = []
     for exc in RECORDED_EXCEPTIONS:
         t = by_walk.get(exc["walk"])
-        if t is None or _exception_for(t, exc["path"]) is None:
+        try:
+            files = walk_files(t, walk_harness(t)) if t is not None else None
+        except WalkUnread:
+            files = None
+        if t is None or files is None or _exception_for(t, exc["path"], files) is None:
             out.append(f"the recorded exception for {exc['walk']} {exc['path']} matches no committed transcript line; "
                        f"the walk, the path, the line or its bytes have changed")
     return out
@@ -309,29 +339,198 @@ def run_tree_of(transcript: Path) -> str | None:
     return tree if PurePosixPath(os.path.normpath(tree)).name == project else None
 
 
-def replay(transcript: Path) -> dict:
-    """Every absolute path this session named, classified.
+# ---------------------------------------------------------------------------------------------
+# Lane fold3/m1 (pre-freeze review 3, MAJOR 1; glitch-45's ruling 1, Fri 30 Oct 2026, under Javier's standing
+# delegation): each walk is read through ITS OWN harness's reader. Until this lane every walk was parsed with the
+# Claude Code parser (transcript.py), which keeps only `assistant` and `user` records; a codex or gemini walk's
+# transcript.jsonl holds only `harness-turn` envelopes (vendor_record_binding), its agent's calls and their output
+# live in the turn-N.jsonl streams the envelopes name, and so all 110 vendor walks read 0 paths and printed clean.
+#
+#   claude-code  transcript.py's parser, as before (the harness-neutral claude-code view reads FEWER paths than it on
+#                20 committed walks -- the background task-output names, tool-result blocks it maps differently -- so
+#                moving the Claude walks onto the view would loosen this gate, and they stay on the parser that reads
+#                more; measured at 23e02275, lane fold3-m1 report)
+#   codex/gemini transcript_view.events(harness, transcript): the bound vendor road, which reads each envelope's
+#                stream through transcript_codex / transcript_gemini and refuses a stream whose bytes are not the
+#                envelope's. Read here: the operator lines, the agent's words, each tool call's args (the view's closed
+#                shape) and each tool result's text -- the same four things the Claude road reads. Not read, on either
+#                road: the agent's reasoning blocks and the harness's own records.
+#
+# A walk is read by the harness its driver ledger names (agent.harness). A ledger with no `agent` is round 3's shape,
+# Claude Code's (transcript_view.ROUND3_HARNESS), unless its transcript carries a vendor envelope, which is refused
+# rather than read with a parser that cannot see it. Any other harness name is refused.
+#
+# A GATE THAT GRADES NOTHING GOES RED. Beside the reading, each walk's tool calls are counted straight off its raw
+# records, by no parser: a claude-code walk's `tool_use` blocks in its transcript's assistant records, a codex walk's
+# distinct tool items (TOOL_ITEM_TYPES) in the streams its ledger names, a gemini walk's `tool_use` records there. A
+# walk whose reader yields 0 turns while its ledger records turns, or fewer tool calls than its raw records hold (0 of
+# N among them), or that its reader refuses, is `unread`: a failure, named, never clean.
+CLAUDE_HARNESS = tv.ROUND3_HARNESS
+VENDOR_HARNESSES = tuple(h for h in tv.PARSERS if h != CLAUDE_HARNESS)
+ENVELOPE_TYPE = "harness-turn"          # vendor_record_binding's envelope record type
 
-    The verdict is `leaks` on a `study` hit, `unplaced` on an `elsewhere` hit (a path the verdict cannot
-    place is not evidence of a clean walk), and `clean` otherwise.
+
+class WalkUnread(Exception):
+    """A walk this gate cannot read through its own harness's reader: named as a failure, never graded clean."""
+
+
+def _ledger(transcript: Path) -> dict | None:
+    p = transcript.parent / "driver-ledger.json"
+    if not p.is_file():
+        return None
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as e:
+        raise WalkUnread(f"its driver-ledger.json cannot be read ({type(e).__name__}), so its harness is unknown")
+    if not isinstance(doc, dict):
+        raise WalkUnread("its driver-ledger.json is not one JSON object, so its harness is unknown")
+    return doc
+
+
+def _records(path: Path) -> list:
+    """The JSON records of one file, one per newline-framed line; an undecodable line is None (counted, never read)."""
+    out = []
+    for line in tv.jsonl_lines(path.read_text(encoding="utf-8", errors="replace")):
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:
+            out.append(None)
+    return out
+
+
+def walk_harness(transcript: Path) -> str:
+    """The harness whose reader reads this walk (see above)."""
+    ledger = _ledger(transcript)
+    if ledger is not None and "agent" in ledger:
+        harness = (ledger.get("agent") or {}).get("harness") if isinstance(ledger.get("agent"), dict) else None
+        if harness != CLAUDE_HARNESS and harness not in VENDOR_HARNESSES:
+            raise WalkUnread(f"its ledger names harness {harness!r}, which has no reader here "
+                             f"({[CLAUDE_HARNESS, *VENDOR_HARNESSES]})")
+        return harness
+    if any(isinstance(r, dict) and r.get("type") == ENVELOPE_TYPE for r in _records(transcript)):
+        raise WalkUnread(f"its transcript holds {ENVELOPE_TYPE} envelopes but its ledger names no harness, so the "
+                         "reader of their streams is unknown")
+    return CLAUDE_HARNESS
+
+
+def walk_files(transcript: Path, harness: str) -> list[str]:
+    """The files of the walk folder its reader reads: the transcript, and for a vendor walk the streams its ledger
+    names (ledger `streams`; the bound road refuses a walk whose envelopes name others)."""
+    names = [transcript.name]
+    if harness in VENDOR_HARNESSES:
+        streams = (_ledger(transcript) or {}).get("streams")
+        if not isinstance(streams, list) or not all(isinstance(s, str) and s and Path(s).name == s for s in streams):
+            raise WalkUnread("its ledger names no list of stream basenames")
+        names += streams
+    return names
+
+
+def recorded_counts(transcript: Path, harness: str) -> tuple[int, int]:
+    """(turns the ledger records, tool calls the raw records hold), by no parser (see above)."""
+    ledger = _ledger(transcript) or {}
+    turns = len(ledger["turns"]) if isinstance(ledger.get("turns"), list) else 0
+    calls = 0
+    if harness == CLAUDE_HARNESS:
+        for r in _records(transcript):
+            content = ((r.get("message") or {}) if isinstance(r, dict) and r.get("type") == "assistant"
+                       and isinstance(r.get("message"), dict) else {}).get("content")
+            if isinstance(content, list):
+                calls += sum(isinstance(b, dict) and b.get("type") == "tool_use" for b in content)
+        return turns, calls
+    for name in walk_files(transcript, harness)[1:]:
+        try:
+            recs = _records(transcript.parent / name)
+        except OSError as e:
+            raise WalkUnread(f"its stream {name} cannot be read ({type(e).__name__})")
+        if harness == "codex":
+            calls += len({(r["item"].get("id")) for r in recs if isinstance(r, dict)
+                          and r.get("type") in transcript_codex.ITEM_EVENTS and isinstance(r.get("item"), dict)
+                          and r["item"].get("type") in transcript_codex.TOOL_ITEM_TYPES})
+        else:
+            calls += sum(isinstance(r, dict) and r.get("type") == transcript_gemini.TOOL_USE for r in recs)
+    return turns, calls
+
+
+def walk_texts(transcript: Path, harness: str) -> tuple[list[str], int, int]:
+    """(the texts this walk's reader yields, the operator turns it read, the tool calls it read)."""
+    texts: list[str] = []
+    if harness == CLAUDE_HARNESS:
+        turns = tx.parse(transcript)
+        calls = 0
+        for turn in turns:
+            texts.append(turn.get("text") or "")
+            for tu in turn.get("tool_uses", []):
+                calls += 1
+                texts.append(json.dumps(tu.get("input") or {}))
+                texts.append(tu.get("stdout") or "")
+        return texts, sum(t.get("role") == "user" for t in turns), calls
+    try:
+        evs = tv.events(harness, transcript)
+    except tv.ViewError as e:
+        raise WalkUnread(f"the {harness} view refuses it: {str(e)[:240]}")
+    for e in evs:
+        if e.kind in (tv.OPERATOR, tv.AGENT_TEXT, tv.TOOL_RESULT):
+            texts.append(e.text or "")
+        elif e.kind == tv.TOOL_CALL:
+            texts.append(json.dumps(e.args or {}))
+    return (texts, sum(e.kind == tv.OPERATOR for e in evs), sum(e.kind == tv.TOOL_CALL for e in evs))
+
+
+def read_problem(transcript: Path, harness: str, n_turns: int, n_calls: int) -> str | None:
+    """Why this walk's reading grades less than its harness recorded, or None."""
+    want_turns, want_calls = recorded_counts(transcript, harness)
+    if want_turns and not n_turns:
+        return f"its {harness} reader yields 0 turns while its ledger records {want_turns}"
+    if n_calls < want_calls:
+        return (f"its {harness} reader yields {n_calls} tool call(s) while its raw records hold {want_calls}; a gate "
+                "that grades less than the walk holds is not a pass")
+    return None
+
+
+def locate(transcript: Path, files, path: str) -> list[str]:
+    """Where each read file names `path`: `<file>:<line>` (1-based), by its bytes (either spelling, raw or as a JSON
+    string carries it)."""
+    out = []
+    for name in files:
+        try:
+            lines = (transcript.parent / name).read_bytes().split(b"\n")
+        except OSError:
+            continue
+        out += [f"{name}:{n}" for n, raw in enumerate(lines, 1) if _names(raw, path)]
+    return out
+
+
+def _names(raw: bytes, path: str) -> bool:
+    return path.encode() in raw or json.dumps(path)[1:-1].encode() in raw
+
+
+def replay(transcript: Path) -> dict:
+    """Every absolute path this session named, classified, read through its own harness's reader.
+
+    The verdict is `leaks` on a `study` hit, `unread` when its reader refuses it or reads less than it recorded (lane
+    fold3/m1), `unplaced` on an `elsewhere` hit (a path the verdict cannot place is not evidence of a clean walk), and
+    `clean` otherwise.
     """
     run_tree = run_tree_of(transcript)
     seen: dict[str, dict] = {}
-    for turn in tx.parse(transcript):
-        texts = [turn.get("text") or ""]
-        for tu in turn.get("tool_uses", []):
-            texts.append(json.dumps(tu.get("input") or {}))
-            texts.append(tu.get("stdout") or "")
-        for t in texts:
-            for p in paths_in(t):
-                row = seen.setdefault(p, {"path": p, "kind": classify_path(p, run_tree), "times": 0})
-                row["times"] += 1
+    harness, files, problem, n_turns, n_calls = None, [transcript.name], None, 0, 0
+    try:
+        harness = walk_harness(transcript)
+        files = walk_files(transcript, harness)
+        texts, n_turns, n_calls = walk_texts(transcript, harness)
+        problem = read_problem(transcript, harness, n_turns, n_calls)
+    except WalkUnread as e:
+        texts, problem = [], str(e)
+    for t in texts:
+        for p in paths_in(t):
+            row = seen.setdefault(p, {"path": p, "kind": classify_path(p, run_tree), "times": 0})
+            row["times"] += 1
     leaks = [r for r in seen.values() if r["kind"] == "study"]
     excepted = []
     for r in seen.values():                  # lane freeze-gates-fix S8: a recorded per-walk exception, printed
-        if r["kind"] == "elsewhere" and (exc := _exception_for(transcript, r["path"])) is not None:
+        if r["kind"] == "elsewhere" and (exc := _exception_for(transcript, r["path"], files)) is not None:
             r["kind"] = "excepted"
-            excepted.append({"path": r["path"], "lines": sorted(exc["lines"]), "command": exc["command"],
+            excepted.append({"path": r["path"], "lines": exc["at"], "command": exc["command"],
                              "reason": exc["reason"], "ruling": exc["ruling"]})
     unplaced = [r for r in seen.values() if r["kind"] == "elsewhere"]
     by_kind: dict[str, int] = {}
@@ -340,13 +539,19 @@ def replay(transcript: Path) -> dict:
     return {
         "transcript": str(transcript.relative_to(REPO)) if str(transcript).startswith(str(REPO))
                       else transcript.name,
+        "harness": harness,
+        "turns_read": n_turns,
+        "tool_calls_read": n_calls,
+        "unread": problem,
         "run_tree_recorded": run_tree is not None,
         "distinct_absolute_paths": len(seen),
         "by_kind": by_kind,
-        "verdict": "leaks" if leaks else "unplaced" if unplaced else "excepted" if excepted else "clean",
+        "verdict": ("leaks" if leaks else "unread" if problem else "unplaced" if unplaced
+                    else "excepted" if excepted else "clean"),
         "recorded_exceptions": excepted,
         "leaking_paths": sorted(r["path"] for r in leaks),
         "unplaced_paths": sorted(r["path"] for r in unplaced),
+        "unplaced_at": {r["path"]: locate(transcript, files, r["path"]) for r in unplaced},
         "outside_the_run_tree_but_not_the_study": sorted(
             r["path"] for r in seen.values() if r["kind"] in ("harness", "elsewhere")),
     }
@@ -586,26 +791,41 @@ def main() -> int:
               f"nothing here is evidence about any half. Not a pass for criterion 4.")
         return 0
     bad, n_exc = [], 0
+    read: dict[str, list[int]] = {}          # lane fold3/m1: harness -> [walks, turns read, tool calls read]
     for w in walks:
         rec = replay(w)
         n_exc += rec["verdict"] == "excepted"
+        tally = read.setdefault(str(rec["harness"]), [0, 0, 0])
+        tally[0] += 1
+        tally[1] += rec["turns_read"]
+        tally[2] += rec["tool_calls_read"]
         print(f"{rec['transcript']}: {rec['verdict']} — {rec['distinct_absolute_paths']} absolute path(s), "
-              f"{rec['by_kind']}")
+              f"{rec['by_kind']}; read as {rec['harness']}: {rec['turns_read']} turn(s), "
+              f"{rec['tool_calls_read']} tool call(s)")
         for e in rec["recorded_exceptions"]:
             print(f"  EXCEPTED {e['path']} at transcript line(s) {e['lines']}: the agent ran {e['command']!r}; "
                   f"{e['reason']} ({e['ruling']})")
         if rec["verdict"] == "leaks":
             bad.append((rec["transcript"], "names this checkout", rec["leaking_paths"]))
+        elif rec["verdict"] == "unread":
+            bad.append((rec["transcript"], "is unread, never graded clean:", [rec["unread"]]))
         elif rec["verdict"] not in ("clean", "excepted"):
             bad.append((rec["transcript"], "names a path this verdict cannot place, which is not a clean "
-                        "walk wherever the check runs", rec["unplaced_paths"]))
+                        "walk wherever the check runs",
+                        [f"{p} at {', '.join(rec['unplaced_at'][p]) or 'no line found'}"
+                         for p in rec["unplaced_paths"]]))
     for problem in stale_exception_problems(walks):
         bad.append(("fixture_walk.py", "RECORDED_EXCEPTIONS:", [problem]))
     for t, what, paths in bad:
         print(f"FAIL {t} {what}: {paths}")
+    tallies = "; ".join(f"{h} {n} walk(s), {t} turn(s), {c} tool call(s)" for h, (n, t, c) in sorted(read.items()))
+    print(f"read, each walk through its own harness's reader: {tallies}")
     if not bad:
-        print(f"ok: {len(walks)} committed walk(s) graded, none names this checkout and every path each "
-              f"named is placed" + (f"; {n_exc} by a recorded per-walk exception, printed above" if n_exc else ""))
+        print(f"ok: {len(walks)} committed walk(s) graded, each read through its own harness's reader, none names this "
+              f"checkout and every path each named is placed"
+              + (f"; {n_exc} by a recorded per-walk exception, printed above" if n_exc else ""))
+    else:
+        print(f"FAIL: {len(bad)} problem(s) across {len(walks)} committed walk(s), named above")
     return 1 if bad else 0
 
 

@@ -1109,7 +1109,57 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     if numbers and n != max(numbers):
         return [f"{reports[0]} is not the latest review committed (prefreeze-{max(numbers)}.md is): the freeze seeds "
                 f"from the last ruling, not a chosen one"], None
+    problem = registered_review_problem(reports[0], n)        # pre-freeze review 3, m2 (lane fold3/m1)
+    if problem:
+        return [problem], None
     return [], reports[0]
+
+
+def registered_review_problem(report: str, n: int) -> str | None:
+    """Pre-freeze review 3, m2 (lane fold3/m1; glitch-45's ruling 3, Fri 30 Oct 2026): why the seed review is not a
+    registered round, or None. review_file_problems never read review_kit/rounds.json, and rounds.py --check grades the
+    registered rows only, so a committed prefreeze-N.md with no row N could seed the freeze. Now, at HEAD: the register
+    holds exactly one prefreeze row numbered N, neither voided nor spent; that row was introduced by a commit of the
+    register (the first commit whose register holds it, rounds.row_commits' reading); and the report's committed
+    blindness record names the session id that commit derives (takes.session_id_for, rounds.check's binding). So a
+    review run with no row registered before it opened never seeds a freeze."""
+    reg = f"{study.rel(study.REVIEW_DIR)}/rounds.json"
+    code, text = git("show", f"HEAD:{reg}")
+    try:
+        rows = json.loads(text)["rows"] if code == 0 else None
+    except (ValueError, KeyError, TypeError):
+        rows = None
+    if not isinstance(rows, list):
+        return f"{reg} cannot be read at HEAD, so {report} is no registered round: the freeze seeds only from one"
+    idx = [i for i, r in enumerate(rows) if isinstance(r, dict) and r.get("kind") == "prefreeze" and r.get("n") == n]
+    if len(idx) != 1:
+        return (f"{report} has {len(idx)} prefreeze row(s) numbered {n} in {reg}, not exactly one: a review with no "
+                f"registered round never seeds the freeze")
+    i = idx[0]
+    if rows[i].get("voided_by") or rows[i].get("spent_without_work"):
+        return f"{report}'s round (row {i} of {reg}) is voided or spent without work, so it seeds no freeze"
+    code, shas = git("log", "--reverse", "--format=%H", "--", reg)
+    row_commit = None
+    for sha in shas.split() if code == 0 else []:
+        c, blob = git("show", f"{sha}:{reg}")
+        try:
+            if c == 0 and len(json.loads(blob)["rows"]) > i:
+                row_commit = sha
+                break
+        except (ValueError, KeyError, TypeError):
+            continue
+    if row_commit is None:
+        return f"row {i} of {reg} was introduced by no commit, so no session id can be derived for {report}"
+    import takes
+    want = takes.session_id_for(row_commit)
+    blind = report[:-len(".md")] + "-blindness.txt"
+    code, btext = git("show", f"HEAD:{blind}")
+    if code != 0:
+        return f"{blind} is not committed: nothing binds {report} to its registered round (row {i})"
+    if want not in btext:
+        return (f"{blind} does not name the session id row {i} derives ({want}): the reviewer it read was not the one "
+                f"that round registered")
+    return None
 
 
 DUMMY_REVIEW = "0" * 40

@@ -133,8 +133,9 @@ def main(argv=None) -> int:
     if n == 0:
         print("walk_pins: the register lists no walk; nothing here is evidence about any walk")
         return 0 if not problems else 1
-    print(f"walk_pins: {n} registered walk(s) read; " + ("every one on the draft's version pins, image ids and pinned "
-          "gars tree" if not problems else f"{len(problems)} problem(s)"))
+    print(f"walk_pins: {n} registered walk(s) read; " + ("every one on the draft's version pins and image ids, its ledger "
+          "naming the pinned gars tree (a walk records the pin, so this compares the pin with itself: pre-freeze review "
+          "3, m9; the draft's limitation 'the gars tree of a walk')" if not problems else f"{len(problems)} problem(s)"))
     return 1 if problems else 0
 
 
