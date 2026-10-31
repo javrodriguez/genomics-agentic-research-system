@@ -1,0 +1,158 @@
+blindness check, read from the reviewer's own session file (219 records, 21 attachment records, 37 tool calls) and its 4 sub-agent session files
+session id: 126ad808-af61-50dd-bc4e-34c9d1a29bf5
+
+1. Operator material in the loaded context (attachment records).
+   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:
+   the review folder's own path, which the harness echoes through its own furniture, and the
+   reviewer's own report, which it wrote and the harness attached back into its context. The
+   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read
+   on the totals could never pass, because both causes are present before the reviewer starts.
+   A sub-agent's hand-back is not counted here: section 4 reads it. An operator row is never
+   explained (lane blindness-sidechains, 24 October 2026).
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the study's folder name                19           8           11            0
+   the round's name                        0           0            0            0
+   the round's shorthand                   0           0            0            0
+   round 3's goal id                       0           0            0            0
+   round 3's folder name                   0           0            0            0
+   round 3's name                          0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          0           0            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's coordinating session      0           0            0            0
+   the operator's lane board               0           0            0            0
+   the operator's list system              0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the operator's Brain, by path           0           0            0            0
+   the account email                      20                             tolerated
+
+2. The reviewer's sub-agents: 4 sidechain session files read
+   launched agents with no session file: 0
+   session files no launch names: 0
+   Agent results that name no agent: 0
+   - agent a3e563d744a85241d: 158 records, 11 attachment records, 52 tool calls
+   - agent a611ef55bc29dff48: 209 records, 11 attachment records, 71 tool calls
+   - agent a8e679322ae612017: 170 records, 11 attachment records, 57 tool calls
+   - agent a997a2f0c79c3b70f: 187 records, 11 attachment records, 62 tool calls
+
+3. Operator material in the sub-agents' own loaded context, all sessions together, by the rules of 1.
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the study's folder name                 0           0            0            0
+   the round's name                        0           0            0            0
+   the round's shorthand                   0           0            0            0
+   round 3's goal id                       0           0            0            0
+   round 3's folder name                   0           0            0            0
+   round 3's name                          0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          0           0            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's coordinating session      0           0            0            0
+   the operator's lane board               0           0            0            0
+   the operator's list system              0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the operator's Brain, by path           0           0            0            0
+
+4. Sub-agent hand-backs carrying a report: 5, from 5 agents.
+   Task notifications, listed apart: 8, from 8 agents; their
+   text is read by the same rule, so any hit in one is in the table below.
+   A hit is explained only when its text (the word or path it sits in) is in a file of the folder as
+   it stood at launch, and in a tool result that sub-agent received (or a report a nested agent of
+   its own handed it and read the same way): it read it there. Any other hit is UNEXPLAINED, and an
+   operator row is never explained. A study word is traced by its word alone, so a word the study's
+   own files also hold passes even when the sub-agent met it elsewhere; that is why the operator
+   rows are refused outright. The count that binds is UNEXPLAINED, and it must be 0.
+   A hit is traced via brief when the sub-agent did not read it but its brief holds it and it is in
+   the folder at launch. What the brief's author read outside the folder lends no cover.
+   The folder as it stood at launch: the per-file manifest written before the round row was hashed: 17702 of its 17702 files, those whose bytes are unchanged since; its digest 330340a78a44 is the input_sha256 of round row 3.
+
+   marker                              total  traced, direct  traced via brief  UNEXPLAINED
+   the study's folder name                16               6                 0           10
+   the round's name                        0               0                 0            0
+   the round's shorthand                   0               0                 0            0
+   round 3's goal id                       0               0                 0            0
+   round 3's folder name                   1               1                 0            0
+   round 3's name                          3               3                 0            0
+   round 2's goal id                       0               0                 0            0
+   round 2's folder name                   0               0                 0            0
+   round 2's name                          0               0                 0            0
+   the pre-study's goal id                 0               0                 0            0
+   the pre-study's folder name             0               0                 0            0
+   the operator's coordinating session      0               0                 0            0
+   the operator's lane board               0               0                 0            0
+   the operator's list system              0               0                 0            0
+   the operator's open-items list          0               0                 0            0
+   the assistant's memory folder           0               0                 0            0
+   the assistant's identity file           0               0                 0            0
+   the operator's objective line           0               0                 0            0
+   the operator's memory file              0               0                 0            0
+   this repository, by path                0               0                 0            0
+   the operator's Brain, by path           0               0                 0            0
+   UNEXPLAINED hits, each quoted to its first 120 characters:
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/box/run_take.py - <review folder>/study/evals/gap-study-4/box/sideca
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/box/sidecar.py - <review folder>/study/evals/gap-study-4/box/setting
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/box/settings_guard.py - <review folder>/study/evals/gap-study-4/box/
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/box/egress/proxy_conf.py - <review folder>/study/evals/gap-study-4/d
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/drive.py - <review folder>/study/evals/gap-study-4/check_take.py - <
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/run_builders.py - <review folder>/study/evals/gap-study-4/variants.p
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/variants.py - <review folder>/study/evals/gap-study-4/COPIED.d/fold2
+   - agent a8e679322ae612017, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4/COPIED.d/fold2-lb.json </agent-message> That "other Claude session" 
+   - agent bx245pokl, the study's folder name: amp; git status --short | head; G=evals/gap-study-4; out=/tmp/r3checks; mkdir -p $out; run(){ n=$1; shift; echo "\$ $*" 
+   - agent b83fr0n58, the study's folder name: -builds/pfr-20261030/round3/study/evals/gap-study-4 &amp;&amp; grep -n "\-\-check" build_draft.py | head; timeout 300 py
+
+5. Absolute paths in the reviewer's tool inputs that are not inside its folder: 14
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /Users/
+   - /opt/cfg
+   - /tmp,
+   - /tmp/r3checks
+   - /tmp/r3checks/02.txt
+   - /tmp/r3checks/10-build_draft.txt
+   - /tmp/r3checks/11-leak_grep.txt
+   - /tmp/r3checks/33.txt
+   - /tmp/r3checks/33.txt;
+   - /tmp/r3checks;
+   - /tmp/sample-pca-header
+   - <harness task folder>
+   - <home>/.claude/projects/-Users-<account>-aegis-builds-pfr-20261030-round3/126ad808-af61-50dd-bc4e-34c9d1a29bf5/tool-resu
+   agent a3e563d744a85241d, in its tool inputs: 1
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   agent a611ef55bc29dff48, in its tool inputs: 0
+   agent a8e679322ae612017, in its tool inputs: 3
+   - /opt/cfg
+   - /tmp
+   - /var/tmp
+   agent a997a2f0c79c3b70f, in its tool inputs: 8
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /home/<account>.{80}
+   - /home/<user
+   - /opt/cfg
+   - /tmp/
+   - /tmp/evil.py
+   - /tmp/run-
+   - /tmp/sample-pca-header
+
+6. Writes outside the folder: 0 paths, by the Write and Edit tools' own paths and by the paths
+   a shell command that writes names. Listed, not ruled: a write outside does not void a round by itself.
+
+7. The reviewer's isolation, as the sub-agents' own records show it. The launch flags are process
+   flags and no sidechain record carries them, nor the environment it ran with.
+   - agent a3e563d744a85241d: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent a611ef55bc29dff48: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent a8e679322ae612017: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
+   - agent a997a2f0c79c3b70f: skills offered the reviewer's; Workflow tool named 0; MCP tools named 0; instruction files from outside the folder 0
