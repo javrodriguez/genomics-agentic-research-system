@@ -248,10 +248,12 @@ class M1Claude(unittest.TestCase):
                           rec["unplaced_paths"]), ("claude-code", 1, 1, "unplaced", [SCRATCH]), "M1-claude")
 
 
-# glitch-45's rulings R1 and R2 (fold3 brief, Fri 30 Oct 2026): the vendor walks' recorded exceptions, bound here by
+# glitch-45's rulings R1, R2 and the STOP rulings (fold3 brief, Fri 30 Oct 2026): the vendor walks' recorded exceptions, bound here by
 # (walk, path, file, lines); each line's bytes are bound by its sha256 in fixture_walk.py itself.
 VENDOR_EXCEPTIONS = (
     ("w-o8", "/home/<user", "turn-1.jsonl", (7,)),
+    ("w-g47", "/opt/", "turn-1.jsonl", (23, 24, 152, 155)),
+    ("w-g47", "/opt/", "turn-2.jsonl", (57,)),
     ("w-g47", "/opt/cfg", "turn-1.jsonl", (23, 24, 152, 155)),
     ("w-g47", "/opt/cfg/.gemini", "turn-1.jsonl", (23, 24, 155)),
     ("w-g47", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (155,)),
@@ -286,6 +288,8 @@ VENDOR_EXCEPTIONS = (
     ("w-g14", "/tmp/test1234", "turn-2.jsonl", (27,)),
     ("w-g19", "/opt/cfg/.gemini", "turn-1.jsonl", (106, 107, 108)),
     ("w-g19", "/opt/cfg/.gemini/tmp/run-808ea85a", "turn-1.jsonl", (106, 108)),
+    ("w-g19", "/tmp/run-808ea", "transcript.jsonl", (1,)),
+    ("w-g19", "/tmp/run-808ea", "turn-1.jsonl", (2, 3, 6, 7, 9, 49, 51, 72, 106, 108, 114, 135, 138, 148, 150, 160, 168, 171, 172, 175)),
     ("w-o47", "/home/<user", "turn-1.jsonl", (12,)),
     ("w-g20", "/opt/cfg", "turn-1.jsonl", (78, 79)),
     ("w-g20", "/tmp/", "transcript.jsonl", (1,)),
@@ -302,6 +306,8 @@ VENDOR_EXCEPTIONS = (
     ("w-g24", "/opt/cfg/.gemini/tmp/run-db0c1000", "turn-1.jsonl", (56, 60, 148)),
     ("w-g24", "/opt/cfg/.gemini/tmp/run-db0c1000/.project_root", "turn-1.jsonl", (148,)),
     ("w-g24", "/opt/cfg/.gemini/tmp/run-db0c1000/chats/session-2026-10-21T04-13-d1f056dc.jsonl", "turn-1.jsonl", (56, 148)),
+    ("w-g24", "/tmp/", "transcript.jsonl", (1,)),
+    ("w-g24", "/tmp/", "turn-1.jsonl", (2, 3, 7, 26, 28, 56, 60, 120, 148, 149, 152, 176, 177, 179, 212)),
     ("w-g26", "/opt/cfg", "turn-1.jsonl", (59, 61, 68, 74)),
     ("w-g26", "/opt/cfg/.gemini/", "turn-1.jsonl", (59, 61, 74)),
     ("w-g26", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (61,)),
@@ -326,17 +332,27 @@ VENDOR_EXCEPTIONS = (
     ("w-g28", "/opt/cfg/.gemini", "turn-1.jsonl", (51, 53, 74, 233)),
     ("w-g28", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (53,)),
     ("w-g28", "/opt/cfg/.gemini/tmp/run-9a3a57f3", "turn-1.jsonl", (74,)),
+    ("w-g28", "/tmp/", "transcript.jsonl", (1,)),
+    ("w-g28", "/tmp/", "turn-1.jsonl", (2, 3, 6, 14, 48, 50, 60, 74, 77, 79, 208, 233, 245, 249, 252, 253, 256, 266, 268, 284, 285)),
     ("w-g28", "/tmp/res.json", "turn-1.jsonl", (48,)),
+    ("w-g31", "/tmp/run-cfcdb6", "transcript.jsonl", (3,)),
+    ("w-g31", "/tmp/run-cfcdb6", "turn-1.jsonl", (32, 44)),
+    ("w-g31", "/tmp/run-cfcdb6", "turn-2.jsonl", (41, 45, 47, 49, 51, 63, 68)),
+    ("w-g31", "/tmp/run-cfcdb6", "turn-3.jsonl", (2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 14, 20)),
     ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.116.gtf.gz", "turn-3.jsonl", (81,)),
     ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz", "turn-3.jsonl", (81, 91)),
     ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/derived", "turn-3.jsonl", (81,)),
     ("w-g32", "/home/rodrij92/install/refs/ensembl-GRCh38-116/derived/nf-core-rnaseq-3.26.0", "turn-3.jsonl", (81,)),
+    ("w-g37", "/tmp/run-", "transcript.jsonl", (1,)),
+    ("w-g37", "/tmp/run-", "turn-1.jsonl", (2, 30, 38, 42, 52, 76, 85, 98, 99, 100, 108, 113)),
     ("w-g38", "/tmp/run-45887f96\\", "turn-1.jsonl", (63, 69, 71, 73, 75, 79, 81, 87, 93, 95, 97)),
     ("w-g41", "/tmp/run-a7e936e6\\", "turn-1.jsonl", (45, 49, 55)),
     ("w-g42", "/tmp/run-7d41e1b4\\", "turn-1.jsonl", (22, 61)),
     ("w-g45", "/opt/cfg", "turn-1.jsonl", (80, 92)),
     ("w-g45", "/opt/cfg/.gemini/tmp/run-5eec5273", "turn-1.jsonl", (92,)),
     ("w-g45", "/tmp/payload.json", "turn-1.jsonl", (91, 92)),
+    ("w-g46", "/tmp/", "transcript.jsonl", (1,)),
+    ("w-g46", "/tmp/", "turn-1.jsonl", (2, 58, 59, 60, 61, 62, 64, 70, 82, 90, 93, 94, 96)),
     ("w-g48", "/opt/cfg/.gemini", "turn-1.jsonl", (59, 61, 62, 63)),
     ("w-g48", "/opt/cfg/.gemini/settings.json", "turn-1.jsonl", (61, 62, 63)),
     ("w-g48", "/opt/cfg/.gemini/tmp/run-aef5d6d9", "turn-1.jsonl", (62,)),
@@ -471,6 +487,28 @@ class M2Register(unittest.TestCase):
     def test_another_session_never_seeds(self):
         bad, _ = self.problems(blindness="other")
         self.assertTrue(bad and "does not name the session id" in bad[0], f"m2-register: {bad}")
+
+
+
+class StopRulings(unittest.TestCase):
+    """glitch-45's STOP rulings: each of the 16 entries' why names its ruling."""
+    WANT = {("w-g47", "/opt/"): "the agent probing the mount's parent",
+            ("w-g24", "/tmp/"): "harness text naming its own config folder, not the checkout",
+            ("w-g28", "/tmp/"): "harness text naming its own config folder, not the checkout",
+            ("w-g19", "/tmp/run-808ea"): "line 175 ends with it and line 176",
+            ("w-g31", "/tmp/run-cfcdb6"): "line 20 ends with it and line 21",
+            ("w-g37", "/tmp/run-"): "line 113 ends with it and line 114",
+            ("w-g46", "/tmp/"): "line 96 ends with it and line 97"}
+
+    def test_each_why_names_its_ruling(self):
+        got = {}
+        for e in fw.VENDOR_RECORDED_EXCEPTIONS:
+            if (e["walk"], e["path"]) in self.WANT:
+                got.setdefault((e["walk"], e["path"]), []).append(e)
+                self.assertIn(self.WANT[(e["walk"], e["path"])], e["reason"], f"STOP: {e['walk']} {e['path']}")
+                self.assertIn("(the STOP rulings)", e["ruling"], "STOP")
+        self.assertEqual(sorted(got), sorted(self.WANT), "STOP")
+        self.assertEqual(sum(map(len, got.values())), 16, "STOP")
 
 
 if __name__ == "__main__":
