@@ -41,7 +41,7 @@ _spec.loader.exec_module(blindness)
 # Pre-freeze review 5, M1 (lane fold5/report-binding, glitch-45's ruling 2): a host path names a real segment after its
 # root. A placeholder segment (one that starts with "<", as /home/<user or /gpfs/home/<user>) and a root alone (a bare
 # search pattern such as `/Users/`) are no path of any machine, and refusing them is what made a report be masked.
-ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/(?![<\s`'\")\]]|$)")
+ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/(?![< \t\n`'\")\]]|$)")
 PERSON = re.compile(r"javrodher|rodrij92|javier|@gmail", re.I)
 
 
@@ -80,6 +80,19 @@ def main() -> int:
     # Pre-freeze review 5, M1 (lane fold5/report-binding, glitch-45's ruling 1): the report is committed only as the
     # reviewer's own session wrote it, the bytes whose sha256 its blindness record rebuilds from the session file.
     report_sha = hashlib.sha256(report.read_bytes()).hexdigest()
+    # The review of f3ae7772, MAJOR: the record is re-derived here, never trusted. The record committed is the one
+    # blindness.report writes now from the reviewer's own session file, byte for byte, so a forged digest line (or any
+    # other edit of the record) is refused, and the digest it states is the session's own.
+    sid_file = side / "SESSION"
+    sid = sid_file.read_text().strip() if sid_file.is_file() else ""
+    try:
+        rebuilt = blindness.report(folder, sid, blindness.PROJECTS) if sid else None
+    except SystemExit as e:                       # blindness.session_file refuses a missing or ambiguous session file
+        rebuilt, problems = None, problems + [f"the reviewer's session cannot be read again: {e}"]
+    if rebuilt is None and not sid:
+        problems.append(f"no session id in {sid_file.name}, so the blindness record cannot be re-derived")
+    elif rebuilt is not None and rebuilt != blind.read_text():
+        problems.append("the blindness record is not the one blindness.py writes from the reviewer's session now")
     session_sha = blindness.recorded_report_digest(blind.read_text())
     if session_sha is None:
         problems.append("the blindness record states no sha256 of the report as the reviewer's session wrote it")

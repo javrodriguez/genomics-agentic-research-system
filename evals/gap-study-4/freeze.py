@@ -1180,6 +1180,8 @@ def registered_review_problem(report: str, n: int) -> str | None:
 # Rounds whose blindness records predate the report digest (pre-freeze review 5, M1): review 4's report was masked by
 # the Lane-orchestrator before commit (its as-written bytes are review_kit/prefreeze-4.as-written.md), and rounds 1-3
 # were committed before the rule existed. None of them can seed a freeze now: freeze seeds only from the latest review.
+# Round 5 is not grandfathered: its committed blindness record predates section 8 and states no report digest, so
+# registered_review_problem refuses it as a seed, and it ruled DO NOT FREEZE, which never seeds a freeze either way.
 REPORT_DIGEST_GRANDFATHERED = (1, 2, 3, 4)
 
 

@@ -510,8 +510,10 @@ def read_sessions(main: Path, folder: Path) -> tuple[Session, dict[str, Session]
 # report rebuilt from the session file alone: its Write of the report, then its Edits and MultiEdits in order, each one
 # the session's result names a success. Nothing is recorded, and the record says why, when the rebuild is not exact: a
 # write the session file does not show whole (a content or edit text that is not a string, a NotebookEdit, a result it
-# does not hold, an Edit whose old text is not in the report exactly once), a shell step that writes the report, or a
-# sub-agent that writes it. commit_review.py and freeze.registered_review_problem read the line by REPORT_DIGEST.
+# does not hold, an Edit whose old text is not in the report exactly once), any shell step that names the report and is
+# not a recognised pure read (PURE_READS, sed -n), a shell write the text cannot place in its folder, or a sub-agent that
+# writes it. commit_review.py re-runs the record from the session itself and freeze.registered_review_problem reads the
+# line by REPORT_DIGEST; the record also states the session file's sha256, so a later audit can re-read the same bytes.
 REPORT_DIGEST = "report sha256, as the reviewer's session wrote it: "
 REPORT_UNBOUND = "report sha256, as the reviewer's session wrote it: NOT RECORDED, "
 REPORT_NAME = re.compile(r"prefreeze-(\d+)\.md")
@@ -533,6 +535,41 @@ def _names_report(p: str, cwd: str | None, report: Path) -> bool:
     p = os.path.normpath(p)
     r = os.path.normpath(str(report))
     return p in (r, "/private" + r) or os.path.realpath(p) == os.path.realpath(r)
+
+
+# The shell steps that only read a file they name (the review of f3ae7772, m1: fail closed). Any other step that names the
+# report's file name, and any step whose writes the text cannot place (a glob, a variable, no known cwd) into the
+# report's folder, leaves the report NOT RECORDED: python3 -c open(...,'a'), perl -pi, dd of=, truncate, git checkout,
+# bash -c '... >>' and an mv of a glob into the folder all write it in ways the text alone does not show.
+PURE_READS = {"cat", "head", "tail", "grep", "egrep", "fgrep", "rg", "wc", "shasum", "sha256sum", "ls", "diff"}
+
+
+def shell_touches_report(cmd: str, cwd: str | None, report: Path) -> str | None:
+    """Why one Bash command may write the report (fail closed), or None when every step that names it only reads."""
+    name, folder = report.name, os.path.normpath(str(report.parent))
+    steps = shell_steps(cmd)
+    if not steps:
+        return "a shell command the shell's own rules cannot split names the report" if name in cmd else None
+    for words, redirected in steps:
+        if words[:1] in (["cd"], ["pushd"]):
+            to = words[1] if len(words) > 1 else ""
+            cwd = (to if to.startswith("/") else os.path.normpath(os.path.join(cwd, to)) if cwd and to
+                   and not to.startswith(("~", "-", "$")) else None)
+            continue
+        for t, _is_dir in shell_targets(list(words), list(redirected)):
+            if _names_report(t, cwd, report):
+                return "a shell step writes the report"
+            if any(c in t for c in "*?$[") or (not t.startswith("/") and cwd is None):
+                where = os.path.dirname(t) or "."
+                where = where if where.startswith("/") else (os.path.normpath(os.path.join(cwd, where)) if cwd else None)
+                if where is None or os.path.normpath(where) == folder or name.split(".")[0] in t:
+                    return "a shell step writes a name the text does not place, in the report's folder"
+        if any(name in w for w in words) or any(name in w for w in redirected):
+            verb = os.path.basename(words[0]) if words else ""
+            pure = verb in PURE_READS or (verb == "sed" and "-n" in words and not any(w.startswith("-i") for w in words))
+            if not pure:
+                return f"a shell step that is not a recognised read ({verb or 'a redirect'}) names the report"
+    return None
 
 
 def written_report(lines: list[str], report: Path, side_writes: set[str] | None = None) -> tuple[str | None, str]:
@@ -573,17 +610,9 @@ def written_report(lines: list[str], report: Path, side_writes: set[str] | None 
                     return None, "a sub-agent's record writes the report"
                 ops.append((name, inp, tid))
             elif name == "Bash":
-                cwd = rec.get("cwd")
-                for words, redirected in shell_steps(str(inp.get("command") or "")):
-                    if words[:1] in (["cd"], ["pushd"]):
-                        to = words[1] if len(words) > 1 else ""
-                        cwd = (to if to.startswith("/") else os.path.normpath(os.path.join(cwd, to)) if cwd and to
-                               and not to.startswith(("~", "-", "$")) else None)
-                        continue
-                    for t, _is_dir in shell_targets(words, redirected):
-                        if _names_report(t, cwd, report) or (("$" in t or "*" in t or cwd is None)
-                                                            and report.name.split(".")[0] in t):
-                            return None, "a shell step writes the report"
+                why = shell_touches_report(str(inp.get("command") or ""), rec.get("cwd"), report)
+                if why:
+                    return None, why
     text = None
     for name, inp, tid in ops:
         if tid not in results:
@@ -605,9 +634,9 @@ def written_report(lines: list[str], report: Path, side_writes: set[str] | None 
             if not (isinstance(old, str) and isinstance(new, str)) or not old:
                 return None, f"an {name} of the report the session file does not show whole"
             count = text.count(old)
-            if count == 0 or (count > 1 and not e.get("replace_all")):
+            if count == 0 or (count > 1 and e.get("replace_all") is not True):
                 return None, f"an {name} of the report whose old text is not in it exactly once"
-            text = text.replace(old, new) if e.get("replace_all") else text.replace(old, new, 1)
+            text = text.replace(old, new) if e.get("replace_all") is True else text.replace(old, new, 1)
     if text is None:
         return None, "the session file holds no Write of the report"
     return text, ""
@@ -623,6 +652,9 @@ def report_digest_line(main: Path, folder: Path, side: dict) -> str:
     if text is None:
         return REPORT_UNBOUND + why
     return REPORT_DIGEST + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+SESSION_DIGEST = "the reviewer's session file sha256: "
 
 
 def regular_files(top: Path) -> list[Path]:
@@ -843,6 +875,7 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
                       for aid, s in side.items()},
         "email": len(EMAIL.findall("\n".join(reviewer.ctx + side_ctx))),
         "report_line": report_digest_line(main, folder, side),
+        "session_sha": hashlib.sha256(main.read_bytes()).hexdigest(),
     }
 
 
@@ -918,7 +951,7 @@ def render(a: dict, folder: Path) -> str:
                    f"{iso['mcp']}; instruction files from outside the folder {iso['memory_outside']}")
     out += ["", "8. The report as the reviewer's session wrote it, rebuilt from the session file alone (its Write, then its",
             "   Edits in order); commit_review.py and the freeze refuse a committed report with other bytes.",
-            a["report_line"]]
+            a["report_line"], SESSION_DIGEST + a["session_sha"]]
     return "\n".join(out) + "\n"
 
 
