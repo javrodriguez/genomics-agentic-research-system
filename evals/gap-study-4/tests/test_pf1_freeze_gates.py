@@ -211,6 +211,19 @@ def g2_pins(fz, p="G2.pins") -> list:
     return out
 
 
+def register_round(repo: Path, review_dir: Path, n: int) -> None:
+    """Lane fold3/m1 (pre-freeze review 3, m2): the round's row committed alone in review_kit/rounds.json, then its
+    blindness record naming the session id that commit derives, written for the review's own commit to carry."""
+    import takes
+    reg = review_dir / "rounds.json"
+    rows = json.loads(reg.read_text())["rows"] if reg.is_file() else []
+    reg.write_text(json.dumps({"rows": rows + [{"n": n, "kind": "prefreeze", "voids": None}]}) + "\n")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", f"register round {n}")
+    sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
+    (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session {sid}\n")
+
+
 def g3_review(fz, p="G3.review") -> list:
     out = []
     try:
@@ -225,6 +238,7 @@ def g3_review(fz, p="G3.review") -> list:
             here = hashlib.sha256(draft.read_bytes()).hexdigest()
             report = study_dir / "review_kit" / "prefreeze-1.md"
             for n, digest in ((1, other), (2, here)):
+                register_round(repo, study_dir / "review_kit", n)     # lane fold3/m1 (review 3, m2): its row first
                 report = study_dir / "review_kit" / f"prefreeze-{n}.md"
                 report.write_text(f"prereg.json sha256: {digest}\n\n# synthetic review\n\n{fz.RULING_LINE}\n")
                 git(repo, "add", "-A")
