@@ -64,7 +64,7 @@ def visit(fd):
  if stat.S_ISDIR(st.st_mode):
   for name in os.listdir(fd):
    lst=os.stat(name,dir_fd=fd,follow_symlinks=False)
-   if stat.S_ISLNK(lst.st_mode):
+   if stat.S_ISLNK(lst.st_mode) or (restore and stat.S_ISSOCK(lst.st_mode)):
     os.chown(name,uid,uid,dir_fd=fd,follow_symlinks=False)
     continue
    child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
