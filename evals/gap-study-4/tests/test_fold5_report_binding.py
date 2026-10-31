@@ -1,0 +1,290 @@
+#!/usr/bin/env python3
+"""Lane fold5/report-binding (Gap Study round 4; pre-freeze review 5, MAJOR 1; glitch-45's rulings 1 and 2, Sat 31 Oct
+2026, under Javier's standing delegation): a committed review report is bound to the bytes its reviewer's session wrote.
+
+  B1-rebuild  blindness.written_report rebuilds the report from the reviewer's session file alone: its Write, then its
+              Edits and MultiEdits in order, a failed one skipped. It records nothing, and says why, for a write the
+              session file does not show whole (no result, an Edit whose old text is not in the report exactly once, a
+              NotebookEdit, a content that is not a string), a shell step that writes the report, or a sub-agent's
+              write. The committed rounds read back: review 5's session rebuilds the committed prefreeze-5.md, and
+              review 4's rebuilds the as-written 27f6afb8..., not the masked prefreeze-4.md (Mac only: the sessions
+              live under the operator's ~/.claude/projects and are skipped, named, where they are absent).
+  B1-commit   commit_review.py refuses a report whose sha256 is not the digest its blindness record states, or whose
+              record states none (a one-line edit of the ruling line after the reviewer wrote it is refused), and
+              commits one that matches, its message stating the digest.
+  B1-freeze   freeze.registered_review_problem refuses a seed review (round 5 on) whose committed bytes are not its
+              committed record's digest, or whose record states none; rounds 1-4 are grandfathered by number.
+  B2-paths    commit_review.ABS_PATH no longer reads a placeholder segment (/home/<user, /gpfs/home/<user>) or a bare
+              root (`/Users/`) as a host path, and still refuses a real one (/Users/somebody/..., /home/javier/...,
+              /private/tmp/..., /var/folders/...).
+
+Synthetic folders and scratch git repositories in temporary directories, plus read-only reads of two review sessions
+when they exist. No model, network or container.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import hashlib
+import importlib.util
+import io
+import json
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+HERE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(HERE))
+
+import freeze  # noqa: E402
+import study  # noqa: E402
+import takes  # noqa: E402
+
+
+def load(name: str, rel: str):
+    spec = importlib.util.spec_from_file_location(name, HERE / rel)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+bl = load("fold5_blindness", "review_kit/blindness.py")
+cr = load("fold5_commit_review", "review_kit/commit_review.py")
+
+
+def git(repo: Path, *args: str) -> str:
+    out = subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                          "-c", "commit.gpgsign=false", *args], capture_output=True, text=True)
+    if out.returncode != 0:
+        raise AssertionError(f"git {args}: {out.stderr}")
+    return out.stdout.strip()
+
+
+def use(tid: str, name: str, inp: dict, cwd: str = "/r", sidechain: bool = False) -> str:
+    rec = {"type": "assistant", "cwd": cwd, "message": {"content": [{"type": "tool_use", "id": tid, "name": name,
+                                                                     "input": inp}]}}
+    if sidechain:
+        rec["isSidechain"] = True
+    return json.dumps(rec)
+
+
+def result(tid: str, error: bool = False) -> str:
+    return json.dumps({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": tid,
+                                                                "is_error": error, "content": "ok"}]}})
+
+
+REPORT = Path("/r/prefreeze-6.md")
+W = {"file_path": str(REPORT), "content": "line 1\n**Ruling: DO NOT FREEZE.**\nend\n"}
+
+
+class B1Rebuild(unittest.TestCase):
+    def rebuild(self, *lines, side=None):
+        return bl.written_report(list(lines), REPORT, side)
+
+    def test_a_write_then_edits_in_order(self):
+        e1 = {"file_path": str(REPORT), "old_string": "end", "new_string": "the end"}
+        e2 = {"file_path": "prefreeze-6.md", "edits": [{"old_string": "line 1", "new_string": "first"}]}
+        text, why = self.rebuild(use("a", "Write", W), result("a"), use("b", "Edit", e1), result("b"),
+                                 use("c", "MultiEdit", e2), result("c"))
+        self.assertEqual((text, why), ("first\n**Ruling: DO NOT FREEZE.**\nthe end\n", ""), "B1-rebuild")
+
+    def test_a_failed_edit_changes_nothing(self):
+        e1 = {"file_path": str(REPORT), "old_string": "end", "new_string": "the end"}
+        text, _ = self.rebuild(use("a", "Write", W), result("a"), use("b", "Edit", e1), result("b", error=True))
+        self.assertEqual(text, W["content"], "B1-rebuild")
+
+    def test_what_cannot_be_rebuilt_exactly_records_nothing(self):
+        cases = {
+            "no result": (use("a", "Write", W),),
+            "edit text absent": (use("a", "Write", W), result("a"),
+                                 use("b", "Edit", {"file_path": str(REPORT), "old_string": "zzz", "new_string": "y"}),
+                                 result("b")),
+            "edit text twice": (use("a", "Write", dict(W, content="x x\n")), result("a"),
+                                use("b", "Edit", {"file_path": str(REPORT), "old_string": "x", "new_string": "y"}),
+                                result("b")),
+            "content not whole": (use("a", "Write", {"file_path": str(REPORT), "content": None}), result("a")),
+            "notebook edit": (use("a", "Write", W), result("a"),
+                              use("b", "NotebookEdit", {"notebook_path": str(REPORT), "new_source": "x"}), result("b")),
+            "a shell redirect": (use("a", "Write", W), result("a"),
+                                 use("b", "Bash", {"command": "cd /r && sed -n 1p x > prefreeze-6.md"}), result("b")),
+            "a shell sed -i": (use("a", "Write", W), result("a"),
+                               use("b", "Bash", {"command": "sed -i '' s/NOT// /r/prefreeze-6.md"}), result("b")),
+            "a sidechain record": (use("a", "Write", W, sidechain=True), result("a")),
+            "no write at all": (use("b", "Bash", {"command": "grep -n Ruling /r/prefreeze-6.md"}), result("b")),
+        }
+        for what, lines in cases.items():
+            with self.subTest(case=what):
+                text, why = self.rebuild(*lines)
+                self.assertIsNone(text, f"B1-rebuild: {what} rebuilt {text!r}")
+                self.assertTrue(why, f"B1-rebuild: {what} names no reason")
+        text, why = self.rebuild(use("a", "Write", W), result("a"), side={str(REPORT)})
+        self.assertEqual((text, "sub-agent" in why), (None, True), "B1-rebuild: a sub-agent's session wrote it")
+
+    def test_a_shell_read_is_no_write(self):
+        text, _ = self.rebuild(use("a", "Write", W), result("a"),
+                               use("b", "Bash", {"command": "cd /r && grep -nE '/(Users|home)/' prefreeze-6.md"}),
+                               result("b"))
+        self.assertEqual(text, W["content"], "B1-rebuild")
+
+    def test_the_record_line_reads_back(self):
+        d = "a" * 64
+        self.assertEqual(bl.recorded_report_digest(f"x\n{bl.REPORT_DIGEST}{d}\n"), d, "B1-rebuild")
+        self.assertIsNone(bl.recorded_report_digest(f"{bl.REPORT_UNBOUND}why\n"), "B1-rebuild")
+        self.assertIsNone(bl.recorded_report_digest(f"{bl.REPORT_DIGEST}{d}\n{bl.REPORT_DIGEST}{d}\n"), "B1-rebuild")
+
+
+SESSIONS = {5: ("pfr-20261031b", "66023ce5-1b0d-587f-a06a-f2ede76dd39f"),
+            4: ("pfr-20261031", "46b6dc63-28c9-5e8c-8e06-1f5c363efa0f")}
+
+
+class B1CommittedRounds(unittest.TestCase):
+    def rebuilt(self, n):
+        side, sid = SESSIONS[n]
+        hits = sorted(bl.PROJECTS.glob(f"*/{sid}.jsonl"))
+        folder = Path("/Users") / Path.home().name / "aegis-builds" / side / f"round{n}"
+        if len(hits) != 1 or not folder.is_dir():
+            self.skipTest(f"review {n}'s session file and folder live on the operator's Mac only")
+        reviewer, sides = bl.read_sessions(hits[0], folder)
+        return bl.report_digest_line(hits[0], folder, sides)
+
+    def test_review_5_rebuilds_its_committed_report(self):
+        want = hashlib.sha256((HERE / study.REVIEW_DIR / "prefreeze-5.md").read_bytes()).hexdigest()
+        self.assertEqual(self.rebuilt(5), bl.REPORT_DIGEST + want, "B1-rebuild")
+
+    def test_review_4_rebuilds_the_as_written_bytes_not_the_masked_ones(self):
+        line = self.rebuilt(4)
+        self.assertEqual(line, bl.REPORT_DIGEST + "27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8")
+        self.assertEqual(hashlib.sha256((HERE / study.REVIEW_DIR / "prefreeze-4.as-written.md").read_bytes()).hexdigest(),
+                         line.split()[-1], "B1-rebuild: the committed as-written record is the session's bytes")
+        self.assertNotEqual(hashlib.sha256((HERE / study.REVIEW_DIR / "prefreeze-4.md").read_bytes()).hexdigest(),
+                            line.split()[-1], "B1-rebuild")
+
+
+DO = "**Ruling: DO FREEZE.**"
+
+
+def report_text(kit_sha: str, ruling: str = DO) -> str:
+    return f"prereg.json sha256: {kit_sha}\n\n# synthetic review\n\n{ruling}\n"
+
+
+class B1Commit(unittest.TestCase):
+    def run_commit(self, *, digest: str | None, edit=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            study_dir = repo / study.STUDY_REL
+            (study_dir / study.REVIEW_DIR).mkdir(parents=True)
+            git(repo, "init", "-q")
+            (study_dir / "commit_msg.py").symlink_to(HERE / "commit_msg.py")
+            (study_dir / "prereg-draft.json").write_bytes(b'{"synthetic": "draft"}\n')
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "base")
+            folder, launch = Path(tmp) / "round", Path(tmp) / "round-launch"
+            folder.mkdir()
+            launch.mkdir()
+            kit = b'{"synthetic": "kit"}\n'
+            (folder / "prereg.json").write_bytes(kit)
+            written = report_text(hashlib.sha256(kit).hexdigest())
+            line = (bl.REPORT_DIGEST + hashlib.sha256(written.encode()).hexdigest() if digest == "session"
+                    else bl.REPORT_UNBOUND + "synthetic" if digest is None else bl.REPORT_DIGEST + digest)
+            (launch / "blindness.txt").write_text("synthetic blindness\n" + line + "\n")
+            (folder / "prefreeze-6.md").write_text(edit(written) if edit else written)
+            out = io.StringIO()
+            with mock.patch.object(cr, "STUDY_DIR", study_dir), mock.patch.object(cr, "REPO", repo), \
+                    mock.patch.object(sys, "argv", ["commit_review.py", str(folder), "6"]), \
+                    contextlib.redirect_stdout(out):
+                code = cr.main()
+            msg = git(repo, "log", "-1", "--format=%B") if code == 0 else ""
+            return code, out.getvalue(), msg, written
+
+    def test_the_session_bytes_are_committed_and_named(self):
+        code, out, msg, written = self.run_commit(digest="session")
+        self.assertEqual(code, 0, out)
+        self.assertIn(hashlib.sha256(written.encode()).hexdigest(), msg, "B1-commit: the message states the digest")
+        self.assertNotIn("committed unedited", msg, "B1-commit")
+
+    def test_an_edited_ruling_line_is_refused(self):
+        code, out, _, _ = self.run_commit(digest="session",
+                                          edit=lambda t: t.replace(DO, "**Ruling: DO NOT FREEZE.**"))
+        self.assertEqual(code, 1, out)
+        self.assertIn("changed after the reviewer wrote it", out, "B1-commit")
+
+    def test_a_record_with_no_digest_is_refused(self):
+        code, out, _, _ = self.run_commit(digest=None)
+        self.assertEqual(code, 1, out)
+        self.assertIn("states no sha256", out, "B1-commit")
+
+
+@contextlib.contextmanager
+def seed(n: int, *, record: str, edit: bool = False):
+    """A scratch repository whose round n is registered and committed with a DO FREEZE report; `record` is "session"
+    (the record states the report's digest), "none" (it states none) or "other" (another digest)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp)
+        git(repo, "init", "-q")
+        review_dir = repo / study.STUDY_REL / study.REVIEW_DIR
+        review_dir.mkdir(parents=True)
+        draft = review_dir.parent / "prereg-draft.json"
+        draft.write_bytes(b'{"synthetic": "draft"}\n')
+        (review_dir / "rounds.json").write_text(json.dumps({"rows": [{"n": k, "kind": "prefreeze", "voids": None}
+                                                                     for k in range(1, n + 1)]}) + "\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "register")
+        sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
+        written = report_text(hashlib.sha256(draft.read_bytes()).hexdigest())
+        digest = {"session": bl.REPORT_DIGEST + hashlib.sha256(written.encode()).hexdigest(),
+                  "none": bl.REPORT_UNBOUND + "synthetic", "other": bl.REPORT_DIGEST + "0" * 64}[record]
+        (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session {sid}\n{digest}\n")
+        (review_dir / f"prefreeze-{n}.md").write_text(written.replace("synthetic review", "edited") if edit else written)
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", f"review {n}")
+        with mock.patch.object(freeze, "REPO", repo), mock.patch.object(freeze, "DRAFT", draft):
+            yield f"{study.STUDY_REL}/{study.REVIEW_DIR}/prefreeze-{n}.md"
+
+
+class B1Freeze(unittest.TestCase):
+    def test_the_session_bytes_seed(self):
+        with seed(6, record="session") as rel:
+            self.assertIsNone(freeze.registered_review_problem(rel, 6), "B1-freeze")
+
+    def test_other_bytes_never_seed(self):
+        for kw in ({"record": "session", "edit": True}, {"record": "other"}, {"record": "none"}):
+            with self.subTest(**kw), seed(6, **kw) as rel:
+                got = freeze.registered_review_problem(rel, 6)
+                self.assertTrue(got and ("reviewer's session wrote" in got), f"B1-freeze: {kw}: {got}")
+
+    def test_rounds_1_to_4_are_grandfathered_by_number(self):
+        self.assertEqual(freeze.REPORT_DIGEST_GRANDFATHERED, (1, 2, 3, 4), "B1-freeze")
+        with seed(4, record="none") as rel:
+            self.assertIsNone(freeze.registered_review_problem(rel, 4), "B1-freeze")
+        with seed(5, record="none") as rel:
+            self.assertIsNotNone(freeze.registered_review_problem(rel, 5), "B1-freeze: round 5 is after the rule")
+
+    def test_freeze_reads_the_record_with_blindness_own_reader(self):
+        self.assertEqual(freeze._blindness().REPORT_DIGEST, bl.REPORT_DIGEST, "B1-freeze")
+
+
+class B2Paths(unittest.TestCase):
+    def test_placeholders_and_bare_roots_are_no_host_path(self):
+        for t in ("the fixture's `/gpfs/home/<user>` placeholder", ".../agent.jsonl:/home/<user",
+                  "grepped for checkout-shaped strings (`/Users/`, `gap-study`)", "a path under /home/ alone",
+                  "(/private/)"):
+            with self.subTest(text=t):
+                self.assertIsNone(cr.ABS_PATH.search(t), f"B2-paths: {t!r} read as a host path")
+
+    def test_a_real_host_path_still_refuses(self):
+        for t in ("/Users/somebody/aegis/x.md", "see /home/javier/repo", "/private/tmp/run-1/x",
+                  "/var/folders/ab/T/tmp1", "`/Users/someone/`"):
+            with self.subTest(text=t):
+                self.assertIsNotNone(cr.ABS_PATH.search(t), f"B2-paths: {t!r} passed")
+                self.assertIn("absolute path", " ".join(cr.report_problems("x\n" + t, "0")), "B2-paths")
+
+    def test_review_4_as_written_needs_no_mask_now(self):
+        text = (HERE / study.REVIEW_DIR / "prefreeze-4.as-written.md").read_text()
+        self.assertIsNone(cr.ABS_PATH.search(text), "B2-paths: the as-written report would still be refused")
+
+
+if __name__ == "__main__":
+    unittest.main()

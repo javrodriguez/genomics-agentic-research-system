@@ -213,7 +213,10 @@ class TestMajor3Ruling(unittest.TestCase):
             (folder / "prereg.json").write_bytes(kit)
             text = report(hashlib.sha256(kit).hexdigest(), *body)
             (folder / "prefreeze-3.md").write_text(text)
-            (launch / "blindness.txt").write_text("synthetic blindness\n")
+            # lane fold5/report-binding (pre-freeze review 5, M1): the record states the report's digest as the
+            # reviewer's session wrote it, which commit_review now requires the folder's report to match
+            (launch / "blindness.txt").write_text("synthetic blindness\n" + cr.blindness.REPORT_DIGEST
+                                                  + hashlib.sha256(text.encode()).hexdigest() + "\n")
             out = io.StringIO()
             with mock.patch.object(cr, "STUDY_DIR", study_dir), mock.patch.object(cr, "REPO", repo), \
                     mock.patch.object(sys, "argv", ["commit_review.py", str(folder), "3"]), \
