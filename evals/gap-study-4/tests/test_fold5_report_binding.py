@@ -113,6 +113,22 @@ class B1Rebuild(unittest.TestCase):
             "a shell sed -i": (use("a", "Write", W), result("a"),
                                use("b", "Bash", {"command": "sed -i '' s/NOT// /r/prefreeze-6.md"}), result("b")),
             "a sidechain record": (use("a", "Write", W, sidechain=True), result("a")),
+            # the review of f3ae7772, m1: fail closed on any step that names the report and is not a pure read
+            "python3 -c open": (use("a", "Write", W), result("a"),
+                                use("b", "Bash", {"command": "python3 -c \"open('prefreeze-6.md','a').write('x')\""}),
+                                result("b")),
+            "perl -pi": (use("a", "Write", W), result("a"),
+                         use("b", "Bash", {"command": "perl -pi -e 's/NOT //' prefreeze-6.md"}), result("b")),
+            "dd of=": (use("a", "Write", W), result("a"),
+                       use("b", "Bash", {"command": "dd if=/tmp/x of=/r/prefreeze-6.md"}), result("b")),
+            "truncate": (use("a", "Write", W), result("a"),
+                         use("b", "Bash", {"command": "truncate -s 0 prefreeze-6.md"}), result("b")),
+            "git checkout --": (use("a", "Write", W), result("a"),
+                                use("b", "Bash", {"command": "git checkout -- prefreeze-6.md"}), result("b")),
+            "bash -c >>": (use("a", "Write", W), result("a"),
+                           use("b", "Bash", {"command": "bash -c 'echo x >> prefreeze-6.md'"}), result("b")),
+            "mv of a glob into the folder": (use("a", "Write", W), result("a"),
+                                             use("b", "Bash", {"command": "mv /tmp/staged* /r/"}), result("b")),
             "no write at all": (use("b", "Bash", {"command": "grep -n Ruling /r/prefreeze-6.md"}), result("b")),
         }
         for what, lines in cases.items():
@@ -124,10 +140,13 @@ class B1Rebuild(unittest.TestCase):
         self.assertEqual((text, "sub-agent" in why), (None, True), "B1-rebuild: a sub-agent's session wrote it")
 
     def test_a_shell_read_is_no_write(self):
-        text, _ = self.rebuild(use("a", "Write", W), result("a"),
-                               use("b", "Bash", {"command": "cd /r && grep -nE '/(Users|home)/' prefreeze-6.md"}),
-                               result("b"))
-        self.assertEqual(text, W["content"], "B1-rebuild")
+        for cmd in ("cd /r && grep -nE '/(Users|home)/' prefreeze-6.md", "sed -n 1,5p /r/prefreeze-6.md",
+                    "shasum -a 256 prefreeze-6.md && wc -l prefreeze-6.md", "ls -l /r/prefreeze-6.md | head -1",
+                    "cat prefreeze-6.md > /tmp/copy.md"):
+            with self.subTest(cmd=cmd):
+                text, why = self.rebuild(use("a", "Write", W), result("a"), use("b", "Bash", {"command": cmd}),
+                                         result("b"))
+                self.assertEqual((text, why), (W["content"], ""), "B1-rebuild: a pure read")
 
     def test_the_record_line_reads_back(self):
         d = "a" * 64
@@ -170,10 +189,27 @@ def report_text(kit_sha: str, ruling: str = DO) -> str:
     return f"prereg.json sha256: {kit_sha}\n\n# synthetic review\n\n{ruling}\n"
 
 
+def session_rig(tmp: Path, written: str, n: int = 6):
+    """A review folder holding the kit and the report, its launch side folder with SESSION, and a projects folder
+    holding the reviewer's session file, whose one Write is the report. Returns (folder, launch, projects, sid)."""
+    folder, launch, projects = tmp / "round", tmp / "round-launch", tmp / "projects" / "-round"
+    for d in (folder, launch, projects):
+        d.mkdir(parents=True)
+    folder = folder.resolve()
+    sid = "00000000-0000-5000-8000-0000000000ab"
+    (launch / "SESSION").write_text(sid + "\n")
+    path = str(folder / f"prefreeze-{n}.md")
+    lines = [use("w1", "Write", {"file_path": path, "content": written}, cwd=str(folder)), result("w1")]
+    (projects / f"{sid}.jsonl").write_text("\n".join(lines) + "\n")
+    (folder / f"prefreeze-{n}.md").write_text(written)
+    return folder, launch, projects.parent, sid
+
+
 class B1Commit(unittest.TestCase):
-    def run_commit(self, *, digest: str | None, edit=None):
+    def run_commit(self, *, tamper=None, session=True):
         with tempfile.TemporaryDirectory() as tmp:
-            repo = Path(tmp) / "repo"
+            tmp = Path(tmp)
+            repo = tmp / "repo"
             study_dir = repo / study.STUDY_REL
             (study_dir / study.REVIEW_DIR).mkdir(parents=True)
             git(repo, "init", "-q")
@@ -181,18 +217,18 @@ class B1Commit(unittest.TestCase):
             (study_dir / "prereg-draft.json").write_bytes(b'{"synthetic": "draft"}\n')
             git(repo, "add", "-A")
             git(repo, "commit", "-q", "-m", "base")
-            folder, launch = Path(tmp) / "round", Path(tmp) / "round-launch"
-            folder.mkdir()
-            launch.mkdir()
             kit = b'{"synthetic": "kit"}\n'
-            (folder / "prereg.json").write_bytes(kit)
             written = report_text(hashlib.sha256(kit).hexdigest())
-            line = (bl.REPORT_DIGEST + hashlib.sha256(written.encode()).hexdigest() if digest == "session"
-                    else bl.REPORT_UNBOUND + "synthetic" if digest is None else bl.REPORT_DIGEST + digest)
-            (launch / "blindness.txt").write_text("synthetic blindness\n" + line + "\n")
-            (folder / "prefreeze-6.md").write_text(edit(written) if edit else written)
+            folder, launch, projects, sid = session_rig(tmp, written)
+            (folder / "prereg.json").write_bytes(kit)
+            (launch / "blindness.txt").write_text(cr.blindness.report(folder, sid, projects))
+            if tamper:
+                tamper(folder, launch)
+            if not session:
+                (launch / "SESSION").unlink()
             out = io.StringIO()
             with mock.patch.object(cr, "STUDY_DIR", study_dir), mock.patch.object(cr, "REPO", repo), \
+                    mock.patch.object(cr.blindness, "PROJECTS", projects), \
                     mock.patch.object(sys, "argv", ["commit_review.py", str(folder), "6"]), \
                     contextlib.redirect_stdout(out):
                 code = cr.main()
@@ -200,21 +236,51 @@ class B1Commit(unittest.TestCase):
             return code, out.getvalue(), msg, written
 
     def test_the_session_bytes_are_committed_and_named(self):
-        code, out, msg, written = self.run_commit(digest="session")
+        code, out, msg, written = self.run_commit()
         self.assertEqual(code, 0, out)
         self.assertIn(hashlib.sha256(written.encode()).hexdigest(), msg, "B1-commit: the message states the digest")
         self.assertNotIn("committed unedited", msg, "B1-commit")
 
     def test_an_edited_ruling_line_is_refused(self):
-        code, out, _, _ = self.run_commit(digest="session",
-                                          edit=lambda t: t.replace(DO, "**Ruling: DO NOT FREEZE.**"))
+        def edit(folder, launch):
+            p = folder / "prefreeze-6.md"
+            p.write_text(p.read_text().replace(DO, "**Ruling: DO NOT FREEZE.**"))
+        code, out, _, _ = self.run_commit(tamper=edit)
         self.assertEqual(code, 1, out)
         self.assertIn("changed after the reviewer wrote it", out, "B1-commit")
 
-    def test_a_record_with_no_digest_is_refused(self):
-        code, out, _, _ = self.run_commit(digest=None)
+    def test_a_forged_report_and_digest_line_are_refused(self):
+        # the review of f3ae7772, MAJOR: both forged, the record's digest line made to match the forged report
+        def forge(folder, launch):
+            p = folder / "prefreeze-6.md"
+            p.write_text(p.read_text().replace(DO, "**Ruling: DO NOT FREEZE.**"))
+            forged = hashlib.sha256(p.read_bytes()).hexdigest()
+            rec = launch / "blindness.txt"
+            rec.write_text("\n".join(bl.REPORT_DIGEST + forged if ln.startswith(bl.REPORT_DIGEST) else ln
+                                     for ln in rec.read_text().split("\n")))
+        code, out, _, _ = self.run_commit(tamper=forge)
         self.assertEqual(code, 1, out)
-        self.assertIn("states no sha256", out, "B1-commit")
+        self.assertIn("not the one blindness.py writes from the reviewer's session now", out, "B1-commit")
+
+    def test_a_record_edited_anywhere_is_refused(self):
+        def edit(folder, launch):
+            rec = launch / "blindness.txt"
+            rec.write_text(rec.read_text().replace("UNEXPLAINED", "UNEXPLAlNED", 1))
+        code, out, _, _ = self.run_commit(tamper=edit)
+        self.assertEqual(code, 1, out)
+        self.assertIn("not the one blindness.py writes", out, "B1-commit")
+
+    def test_no_session_id_is_refused(self):
+        code, out, _, _ = self.run_commit(session=False)
+        self.assertEqual(code, 1, out)
+        self.assertIn("no session id", out, "B1-commit")
+
+    def test_the_record_states_the_session_file_digest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder, launch, projects, sid = session_rig(Path(tmp), report_text("0" * 64))
+            text = bl.report(folder, sid, projects)
+            want = hashlib.sha256((projects / "-round" / f"{sid}.jsonl").read_bytes()).hexdigest()
+        self.assertIn(bl.SESSION_DIGEST + want, text, "B1-commit: section 8 names the session file's bytes")
 
 
 @contextlib.contextmanager
@@ -275,7 +341,7 @@ class B2Paths(unittest.TestCase):
                 self.assertIsNone(cr.ABS_PATH.search(t), f"B2-paths: {t!r} read as a host path")
 
     def test_a_real_host_path_still_refuses(self):
-        for t in ("/Users/somebody/aegis/x.md", "see /home/javier/repo", "/private/tmp/run-1/x",
+        for t in ("/Users/somebody/aegis/x.md", "/home/\u00e9l\u00e8ve/x", "see /home/javier/repo", "/private/tmp/run-1/x",
                   "/var/folders/ab/T/tmp1", "`/Users/someone/`"):
             with self.subTest(text=t):
                 self.assertIsNotNone(cr.ABS_PATH.search(t), f"B2-paths: {t!r} passed")

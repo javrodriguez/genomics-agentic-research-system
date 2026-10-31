@@ -213,12 +213,23 @@ class TestMajor3Ruling(unittest.TestCase):
             (folder / "prereg.json").write_bytes(kit)
             text = report(hashlib.sha256(kit).hexdigest(), *body)
             (folder / "prefreeze-3.md").write_text(text)
-            # lane fold5/report-binding (pre-freeze review 5, M1): the record states the report's digest as the
-            # reviewer's session wrote it, which commit_review now requires the folder's report to match
-            (launch / "blindness.txt").write_text("synthetic blindness\n" + cr.blindness.REPORT_DIGEST
-                                                  + hashlib.sha256(text.encode()).hexdigest() + "\n")
+            # lane fold5/report-binding (pre-freeze review 5, M1, and the review of f3ae7772): commit_review re-derives
+            # the record from the reviewer's session file, so the rig gives it one whose one Write is the report
+            import json
+            sid = "00000000-0000-5000-8000-0000000000cd"
+            projects = Path(tmp) / "projects"
+            (projects / "-round").mkdir(parents=True)
+            (launch / "SESSION").write_text(sid + "\n")
+            path = str(folder.resolve() / "prefreeze-3.md")
+            (projects / "-round" / f"{sid}.jsonl").write_text("\n".join((
+                json.dumps({"type": "assistant", "cwd": str(folder.resolve()), "message": {"content": [
+                    {"type": "tool_use", "id": "w1", "name": "Write", "input": {"file_path": path, "content": text}}]}}),
+                json.dumps({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "w1",
+                                                                     "is_error": False, "content": "ok"}]}}))) + "\n")
+            (launch / "blindness.txt").write_text(cr.blindness.report(folder.resolve(), sid, projects))
             out = io.StringIO()
             with mock.patch.object(cr, "STUDY_DIR", study_dir), mock.patch.object(cr, "REPO", repo), \
+                    mock.patch.object(cr.blindness, "PROJECTS", projects), \
                     mock.patch.object(sys, "argv", ["commit_review.py", str(folder), "3"]), \
                     contextlib.redirect_stdout(out):
                 code = cr.main()
