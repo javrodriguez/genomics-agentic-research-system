@@ -60,7 +60,10 @@ BOUND_REVIEW_RECORDS = {"evals/gap-study-4/review_kit/prefreeze-3.md":
                         # lane fold4/records (glitch-45's fold4 brief, Sat 31 Oct 2026): review 4's m8 discusses the
                         # same guard and reports no joined figure
                         "evals/gap-study-4/review_kit/prefreeze-4.md":
-                        "27fdd7252ec4c7e959609c553e57421dc8107af7c93c52e85ec3469c4f81df8c"}
+                        "27fdd7252ec4c7e959609c553e57421dc8107af7c93c52e85ec3469c4f81df8c",
+                        # lane fold5/report-binding (glitch-45's ruling 3): review 4 as its reviewer wrote it
+                        "evals/gap-study-4/review_kit/prefreeze-4.as-written.md":
+                        "27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8"}
 
 # TWO KINDS OF PATTERN, AND WHY THEY ARE NOT ONE LIST.
 #

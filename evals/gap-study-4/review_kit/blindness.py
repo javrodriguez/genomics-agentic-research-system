@@ -505,6 +505,126 @@ def read_sessions(main: Path, folder: Path) -> tuple[Session, dict[str, Session]
     return reviewer, side
 
 
+# PRE-FREEZE REVIEW 5, M1 (lane fold5/report-binding; glitch-45's ruling 1, Sat 31 Oct 2026, under Javier's standing
+# delegation): the report is bound to the bytes the reviewer's own session wrote. The record states the sha256 of the
+# report rebuilt from the session file alone: its Write of the report, then its Edits and MultiEdits in order, each one
+# the session's result names a success. Nothing is recorded, and the record says why, when the rebuild is not exact: a
+# write the session file does not show whole (a content or edit text that is not a string, a NotebookEdit, a result it
+# does not hold, an Edit whose old text is not in the report exactly once), a shell step that writes the report, or a
+# sub-agent that writes it. commit_review.py and freeze.registered_review_problem read the line by REPORT_DIGEST.
+REPORT_DIGEST = "report sha256, as the reviewer's session wrote it: "
+REPORT_UNBOUND = "report sha256, as the reviewer's session wrote it: NOT RECORDED, "
+REPORT_NAME = re.compile(r"prefreeze-(\d+)\.md")
+
+
+def recorded_report_digest(text: str) -> str | None:
+    """The 64-hex digest a blindness record states for its report, or None (none, several, or NOT RECORDED)."""
+    got = re.findall(rf"^{re.escape(REPORT_DIGEST)}([0-9a-f]{{64}})$", text, re.M)
+    return got[0] if len(got) == 1 else None
+
+
+def _names_report(p: str, cwd: str | None, report: Path) -> bool:
+    if not p:
+        return False
+    if not p.startswith("/"):
+        if not cwd:
+            return False
+        p = os.path.join(cwd, p)
+    p = os.path.normpath(p)
+    r = os.path.normpath(str(report))
+    return p in (r, "/private" + r) or os.path.realpath(p) == os.path.realpath(r)
+
+
+def written_report(lines: list[str], report: Path, side_writes: set[str] | None = None) -> tuple[str | None, str]:
+    """(the report's text as the session wrote it, "") or (None, why it cannot be rebuilt exactly). `lines` is the
+    reviewer's own session file; `side_writes` the paths its sub-agents' sessions wrote (Session.written_inside)."""
+    real = os.path.realpath(str(report))
+    if side_writes and any(os.path.realpath(w) == real for w in side_writes):
+        return None, "a sub-agent's session writes the report"
+    ops, results, seen = [], {}, set()
+    for line in lines:
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(rec, dict):
+            continue
+        key = rec.get("uuid")
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(str(key))
+        content = (rec.get("message") or {}).get("content") if isinstance(rec.get("message"), dict) else None
+        if rec.get("type") == "user" and isinstance(content, list):
+            for b in content:
+                if isinstance(b, dict) and b.get("type") == "tool_result":
+                    results[str(b.get("tool_use_id"))] = bool(b.get("is_error"))
+        if rec.get("type") != "assistant" or not isinstance(content, list):
+            continue
+        for b in content:
+            if not (isinstance(b, dict) and b.get("type") == "tool_use"):
+                continue
+            name, inp, tid = str(b.get("name") or ""), b.get("input") or {}, str(b.get("id"))
+            if not isinstance(inp, dict):
+                continue
+            if name in WRITE_TOOLS and _names_report(str(inp.get("file_path") or inp.get("notebook_path") or ""),
+                                                     rec.get("cwd"), report):
+                if rec.get("isSidechain"):
+                    return None, "a sub-agent's record writes the report"
+                ops.append((name, inp, tid))
+            elif name == "Bash":
+                cwd = rec.get("cwd")
+                for words, redirected in shell_steps(str(inp.get("command") or "")):
+                    if words[:1] in (["cd"], ["pushd"]):
+                        to = words[1] if len(words) > 1 else ""
+                        cwd = (to if to.startswith("/") else os.path.normpath(os.path.join(cwd, to)) if cwd and to
+                               and not to.startswith(("~", "-", "$")) else None)
+                        continue
+                    for t, _is_dir in shell_targets(words, redirected):
+                        if _names_report(t, cwd, report) or (("$" in t or "*" in t or cwd is None)
+                                                            and report.name.split(".")[0] in t):
+                            return None, "a shell step writes the report"
+    text = None
+    for name, inp, tid in ops:
+        if tid not in results:
+            return None, f"the session file holds no result for its {name} of the report"
+        if results[tid]:
+            continue                                         # a failed write changed nothing
+        if name == "Write":
+            if not isinstance(inp.get("content"), str):
+                return None, "a Write of the report the session file does not show whole"
+            text = inp["content"]
+            continue
+        if name not in ("Edit", "MultiEdit") or text is None:
+            return None, f"a {name} of the report the session file does not rebuild exactly"
+        edits = [inp] if name == "Edit" else inp.get("edits")
+        if not isinstance(edits, list):
+            return None, "a MultiEdit of the report the session file does not show whole"
+        for e in edits:
+            old, new = (e.get("old_string"), e.get("new_string")) if isinstance(e, dict) else (None, None)
+            if not (isinstance(old, str) and isinstance(new, str)) or not old:
+                return None, f"an {name} of the report the session file does not show whole"
+            count = text.count(old)
+            if count == 0 or (count > 1 and not e.get("replace_all")):
+                return None, f"an {name} of the report whose old text is not in it exactly once"
+            text = text.replace(old, new) if e.get("replace_all") else text.replace(old, new, 1)
+    if text is None:
+        return None, "the session file holds no Write of the report"
+    return text, ""
+
+
+def report_digest_line(main: Path, folder: Path, side: dict) -> str:
+    """The record's report line: the folder's one prefreeze-N.md rebuilt from the session, or why not."""
+    reports = sorted(p for p in folder.iterdir() if REPORT_NAME.fullmatch(p.name)) if folder.is_dir() else []
+    if len(reports) != 1:
+        return REPORT_UNBOUND + f"the folder holds {len(reports)} pre-freeze reports, not exactly one"
+    lines = main.read_text(errors="replace").splitlines()
+    text, why = written_report(lines, reports[0], set().union(*(s.written_inside for s in side.values())))
+    if text is None:
+        return REPORT_UNBOUND + why
+    return REPORT_DIGEST + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def regular_files(top: Path) -> list[Path]:
     """Every regular file under `top`, never inside a .git folder and never through a link."""
     if top.is_symlink() or not top.exists():
@@ -660,7 +780,8 @@ def table_of(ctx: list[str], folder: Path) -> list[dict]:
 
 def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
     """Everything the record states, as data. render() writes it; the tests read it."""
-    reviewer, side = read_sessions(session_file(sid, projects), folder)
+    main = session_file(sid, projects)
+    reviewer, side = read_sessions(main, folder)
     sessions = [reviewer, *side.values()]
     launched = {aid for s in sessions for aid in s.launches.values()}
     all_hb = [h for s in sessions for h in s.handbacks]
@@ -721,6 +842,7 @@ def analyse(folder: Path, sid: str, projects: Path = PROJECTS) -> dict:
                             "workflow": s.workflow, "mcp": s.mcp, "memory_outside": s.memory_outside}
                       for aid, s in side.items()},
         "email": len(EMAIL.findall("\n".join(reviewer.ctx + side_ctx))),
+        "report_line": report_digest_line(main, folder, side),
     }
 
 
@@ -794,6 +916,9 @@ def render(a: dict, folder: Path) -> str:
         sk = {True: "the reviewer's", False: "NOT the reviewer's", None: "none recorded"}[iso["skills_as_reviewer"]]
         out.append(f"   - agent {aid}: skills offered {sk}; Workflow tool named {iso['workflow']}; MCP tools named "
                    f"{iso['mcp']}; instruction files from outside the folder {iso['memory_outside']}")
+    out += ["", "8. The report as the reviewer's session wrote it, rebuilt from the session file alone (its Write, then its",
+            "   Edits in order); commit_review.py and the freeze refuse a committed report with other bytes.",
+            a["report_line"]]
     return "\n".join(out) + "\n"
 
 

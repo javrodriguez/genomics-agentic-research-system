@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Commit a finished pre-freeze review unedited, with its blindness record beside it.
+"""Commit a finished pre-freeze review as its reviewer's session wrote it, with its blindness record beside it.
 
     python3 evals/gap-study-4/review_kit/commit_review.py <review folder> <N>
 
 Asserts before anything is copied: line 1 of the report is `prereg.json sha256: <the sha256 of the kit's prereg.json, the bytes the reviewer read>`; the
-report carries no absolute path and names no person. Copies the report to
+report carries no absolute path and names no person; its sha256 is the one the blindness record rebuilds from the
+reviewer's own session (pre-freeze review 5, M1). Copies the report to
 review_kit/prefreeze-<N>.md and the blindness record beside it, lints the commit message, and commits with
 `git commit -F`. The commit lands exactly the two files, which is what freeze.py's review-commit rule reads.
 
@@ -32,8 +33,15 @@ REPO = STUDY_DIR.parent.parent
 sys.path.insert(0, str(STUDY_DIR))
 import study  # noqa: E402
 from freeze import AMBIGUOUS, RULING, read_ruling  # noqa: E402,F401  (MAJOR 3: the one reader)
+import importlib.util  # noqa: E402
+_spec = importlib.util.spec_from_file_location("review_kit_blindness_for_commit", HERE / "blindness.py")
+blindness = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(blindness)
 
-ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/")
+# Pre-freeze review 5, M1 (lane fold5/report-binding, glitch-45's ruling 2): a host path names a real segment after its
+# root. A placeholder segment (one that starts with "<", as /home/<user or /gpfs/home/<user>) and a root alone (a bare
+# search pattern such as `/Users/`) are no path of any machine, and refusing them is what made a report be masked.
+ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/(?![<\s`'\")\]]|$)")
 PERSON = re.compile(r"javrodher|rodrij92|javier|@gmail", re.I)
 
 
@@ -69,6 +77,15 @@ def main() -> int:
     draft_sha = hashlib.sha256((STUDY_DIR / "prereg-draft.json").read_bytes()).hexdigest()
     text = report.read_text()
     problems = report_problems(text, read_sha)
+    # Pre-freeze review 5, M1 (lane fold5/report-binding, glitch-45's ruling 1): the report is committed only as the
+    # reviewer's own session wrote it, the bytes whose sha256 its blindness record rebuilds from the session file.
+    report_sha = hashlib.sha256(report.read_bytes()).hexdigest()
+    session_sha = blindness.recorded_report_digest(blind.read_text())
+    if session_sha is None:
+        problems.append("the blindness record states no sha256 of the report as the reviewer's session wrote it")
+    elif session_sha != report_sha:
+        problems.append(f"the report's sha256 {report_sha[:12]} is not the {session_sha[:12]} the reviewer's session "
+                        "wrote: the report was changed after the reviewer wrote it")
     if problems:
         print("refusing to commit the report: " + "; ".join(problems))
         return 1
@@ -86,7 +103,9 @@ def main() -> int:
                    + (" (zero or several ruling lines; the freeze reads it as no DO FREEZE)" if ruling == AMBIGUOUS
                       else "") + ". "
                    + ("" if read_sha == draft_sha else f"The draft in force at this commit is {draft_sha[:12]}: it moved after the review, so this review cannot seed a freeze. ")
-                   + "The report and its blindness record are committed unedited.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
+                   + f"The report's sha256 is {report_sha}, the bytes its blindness record rebuilds from the "
+                   "reviewer's own session; the report and the record are committed as they are.\n\n"
+                   "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
     lint = subprocess.run([sys.executable, str(STUDY_DIR / "commit_msg.py"), str(msg)], capture_output=True, text=True)
     if lint.returncode != 0:
         print(lint.stdout)

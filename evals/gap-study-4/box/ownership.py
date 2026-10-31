@@ -14,9 +14,9 @@ the removal cannot read or delete what the agent wrote (measured in the stub tak
 
 Each step is one one-shot root container of the take image (by its full id), with only CHOWN and DAC_OVERRIDE, no
 network, no new privileges, the one folder bind-mounted at /scratch, running OWN_PROGRAM: measure_live.OWN's
-reviewed descriptor walk (never follows a link: every open is O_NOFOLLOW; a socket, fifo or device refuses), with one
-departure: a symbolic link the agent left is chowned itself (lchown, never followed) instead of refusing the whole
-walk. The folders are named by exact, normalised absolute paths; nothing is resolved or globbed.
+reviewed descriptor walk (never follows a link: every open is O_NOFOLLOW; a fifo or device refuses), with two
+departures: a symbolic link the agent left, and on a restore a Unix socket, is chowned itself (never opened or
+followed) instead of refusing the whole walk. The folders are named by exact, normalised absolute paths, never globbed.
 
 FAILING CLOSED. grant raises OwnershipError at the first failed step (the take must not launch). restore runs every
 step, verifies host-side that every entry of the three folders is owned by the host user (lstat, links never followed),
@@ -46,8 +46,8 @@ CAPS = ("CHOWN", "DAC_READ_SEARCH")
 STEP_TIMEOUT_S = 600
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}")
 
-# measure_live.OWN (the reviewed walk), plus the link branch: a link is lchowned through its parent's descriptor and
-# never opened. Every other non-folder, non-file entry still refuses. The STRICT block (review note 10, grant only):
+# measure_live.OWN (the reviewed walk), plus the link branch: a link, and on a restore a socket, is chowned through
+# its parent's descriptor, never opened; any other non-folder, non-file entry refuses. STRICT (note 10, grants only):
 # a regular file with another hard link, or any entry on another device, refuses, so a grant never chowns an inode
 # that may also live outside the folder. A restore is not strict: links the agent made inside the tree are its own.
 # The RESTORE block (glitch-06's ruling, 14 Oct 2026, on the athena probe's 0000 folder): after chowning, a restore

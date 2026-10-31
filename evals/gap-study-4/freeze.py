@@ -1159,7 +1159,37 @@ def registered_review_problem(report: str, n: int) -> str | None:
     if want not in btext:
         return (f"{blind} does not name the session id row {i} derives ({want}): the reviewer it read was not the one "
                 f"that round registered")
+    # Pre-freeze review 5, M1 (lane fold5/report-binding; glitch-45's ruling 1, Sat 31 Oct 2026): the committed report
+    # must be the bytes the reviewer's own session wrote, the sha256 its committed blindness record rebuilds from the
+    # session file (review_kit/blindness.py, REPORT_DIGEST). Rounds 1-4 were committed before any record stated that
+    # digest, so they are grandfathered by number, never by shape (REPORT_DIGEST_GRANDFATHERED).
+    if n in REPORT_DIGEST_GRANDFATHERED:
+        return None
+    digest = _blindness().recorded_report_digest(btext)
+    if digest is None:
+        return (f"{blind} states no sha256 of the report as the reviewer's session wrote it: round {n} is after the "
+                f"rule, so its report cannot seed the freeze unbound")
+    raw = subprocess.run(["git", "-C", str(REPO), "show", f"HEAD:{report}"], capture_output=True)
+    got = hashlib.sha256(raw.stdout).hexdigest() if raw.returncode == 0 else None
+    if got != digest:
+        return (f"{report} at HEAD has sha256 {str(got)[:12]}, not the {digest[:12]} the reviewer's session wrote "
+                f"({blind}): a report changed after its reviewer wrote it never seeds the freeze")
     return None
+
+
+# Rounds whose blindness records predate the report digest (pre-freeze review 5, M1): review 4's report was masked by
+# the Lane-orchestrator before commit (its as-written bytes are review_kit/prefreeze-4.as-written.md), and rounds 1-3
+# were committed before the rule existed. None of them can seed a freeze now: freeze seeds only from the latest review.
+REPORT_DIGEST_GRANDFATHERED = (1, 2, 3, 4)
+
+
+def _blindness():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("review_kit_blindness_for_freeze",
+                                                  Path(__file__).resolve().parent / study.REVIEW_DIR / "blindness.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 DUMMY_REVIEW = "0" * 40
