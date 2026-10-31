@@ -491,9 +491,9 @@ def seed_repo(*, register=True, voided=False, blindness="right", spent=False):
             git(repo, "commit", "-q", "-m", "register round 1")
             sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
         if blindness == "right":
-            (review_dir / "prefreeze-1-blindness.txt").write_text(f"session {sid}\n")
+            (review_dir / "prefreeze-1-blindness.txt").write_text(f"session id: {sid}\n")
         elif blindness == "other":
-            (review_dir / "prefreeze-1-blindness.txt").write_text(f"session {takes.session_id_for('0' * 40)}\n")
+            (review_dir / "prefreeze-1-blindness.txt").write_text(f"session id: {takes.session_id_for('0' * 40)}\n")
         digest = hashlib.sha256(draft.read_bytes()).hexdigest()
         (review_dir / "prefreeze-1.md").write_text(f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n# synthetic\n\n"
                                                    f"{freeze.RULING_LINE}\n")

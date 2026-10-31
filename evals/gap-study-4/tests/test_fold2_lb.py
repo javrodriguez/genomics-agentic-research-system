@@ -127,7 +127,7 @@ def register_round(repo: Path, review_dir: Path, n: int) -> None:
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", f"register round {n}")
     sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
-    (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session {sid}\n")
+    (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session id: {sid}\n")
 
 
 def seed_problems(body):
@@ -216,7 +216,13 @@ class TestMajor3Ruling(unittest.TestCase):
             # lane fold5/report-binding (pre-freeze review 5, M1, and the review of f3ae7772): commit_review re-derives
             # the record from the reviewer's session file, so the rig gives it one whose one Write is the report
             import json
-            sid = "00000000-0000-5000-8000-0000000000cd"
+            import takes
+            # the re-check of 0beda082, MINOR 1: SESSION must be round 3's registered session
+            (study_dir / study.REVIEW_DIR / "rounds.json").write_text(json.dumps(
+                {"rows": [{"n": k, "kind": "prefreeze", "voids": None} for k in (1, 2, 3)]}) + "\n")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "register")
+            sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
             projects = Path(tmp) / "projects"
             (projects / "-round").mkdir(parents=True)
             (launch / "SESSION").write_text(sid + "\n")

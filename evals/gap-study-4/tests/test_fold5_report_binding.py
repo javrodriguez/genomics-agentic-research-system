@@ -127,6 +127,11 @@ class B1Rebuild(unittest.TestCase):
                                 use("b", "Bash", {"command": "git checkout -- prefreeze-6.md"}), result("b")),
             "bash -c >>": (use("a", "Write", W), result("a"),
                            use("b", "Bash", {"command": "bash -c 'echo x >> prefreeze-6.md'"}), result("b")),
+            "awk writing with >": (use("a", "Write", W), result("a"),
+                                   use("b", "Bash", {"command": "awk '{print > \"prefreeze-6.md\"}' x"}), result("b")),
+            "awk -i inplace": (use("a", "Write", W), result("a"),
+                               use("b", "Bash", {"command": "awk -i inplace '{sub(/NOT /,\"\")}1' prefreeze-6.md"}),
+                               result("b")),
             "mv of a glob into the folder": (use("a", "Write", W), result("a"),
                                              use("b", "Bash", {"command": "mv /tmp/staged* /r/"}), result("b")),
             "no write at all": (use("b", "Bash", {"command": "grep -n Ruling /r/prefreeze-6.md"}), result("b")),
@@ -142,7 +147,11 @@ class B1Rebuild(unittest.TestCase):
     def test_a_shell_read_is_no_write(self):
         for cmd in ("cd /r && grep -nE '/(Users|home)/' prefreeze-6.md", "sed -n 1,5p /r/prefreeze-6.md",
                     "shasum -a 256 prefreeze-6.md && wc -l prefreeze-6.md", "ls -l /r/prefreeze-6.md | head -1",
-                    "cat prefreeze-6.md > /tmp/copy.md"):
+                    "cat prefreeze-6.md > /tmp/copy.md",
+                    # the re-check of 0beda082, MINOR 2: harmless reads never void a round
+                    "awk '{print $1}' prefreeze-6.md", "sort prefreeze-6.md | uniq -c", "less prefreeze-6.md",
+                    "more prefreeze-6.md", "cut -c1-40 prefreeze-6.md", "nl prefreeze-6.md", "stat prefreeze-6.md",
+                    "file prefreeze-6.md"):
             with self.subTest(cmd=cmd):
                 text, why = self.rebuild(use("a", "Write", W), result("a"), use("b", "Bash", {"command": cmd}),
                                          result("b"))
@@ -189,14 +198,13 @@ def report_text(kit_sha: str, ruling: str = DO) -> str:
     return f"prereg.json sha256: {kit_sha}\n\n# synthetic review\n\n{ruling}\n"
 
 
-def session_rig(tmp: Path, written: str, n: int = 6):
+def session_rig(tmp: Path, written: str, n: int = 6, sid: str = "00000000-0000-5000-8000-0000000000ab"):
     """A review folder holding the kit and the report, its launch side folder with SESSION, and a projects folder
     holding the reviewer's session file, whose one Write is the report. Returns (folder, launch, projects, sid)."""
     folder, launch, projects = tmp / "round", tmp / "round-launch", tmp / "projects" / "-round"
     for d in (folder, launch, projects):
         d.mkdir(parents=True)
     folder = folder.resolve()
-    sid = "00000000-0000-5000-8000-0000000000ab"
     (launch / "SESSION").write_text(sid + "\n")
     path = str(folder / f"prefreeze-{n}.md")
     lines = [use("w1", "Write", {"file_path": path, "content": written}, cwd=str(folder)), result("w1")]
@@ -206,7 +214,7 @@ def session_rig(tmp: Path, written: str, n: int = 6):
 
 
 class B1Commit(unittest.TestCase):
-    def run_commit(self, *, tamper=None, session=True):
+    def run_commit(self, *, tamper=None, session=True, sid=None):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             repo = tmp / "repo"
@@ -217,9 +225,15 @@ class B1Commit(unittest.TestCase):
             (study_dir / "prereg-draft.json").write_bytes(b'{"synthetic": "draft"}\n')
             git(repo, "add", "-A")
             git(repo, "commit", "-q", "-m", "base")
+            # the re-check of 0beda082, MINOR 1: the round is registered, and its session is the one its row derives
+            (study_dir / study.REVIEW_DIR / "rounds.json").write_text(json.dumps(
+                {"rows": [{"n": k, "kind": "prefreeze", "voids": None} for k in range(1, 7)]}) + "\n")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "-m", "register")
+            registered = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
             kit = b'{"synthetic": "kit"}\n'
             written = report_text(hashlib.sha256(kit).hexdigest())
-            folder, launch, projects, sid = session_rig(tmp, written)
+            folder, launch, projects, sid = session_rig(tmp, written, sid=sid or registered)
             (folder / "prereg.json").write_bytes(kit)
             (launch / "blindness.txt").write_text(cr.blindness.report(folder, sid, projects))
             if tamper:
@@ -270,6 +284,11 @@ class B1Commit(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("not the one blindness.py writes", out, "B1-commit")
 
+    def test_a_session_the_round_did_not_register_is_refused(self):
+        code, out, _, _ = self.run_commit(sid="00000000-0000-5000-8000-00000000dead")
+        self.assertEqual(code, 1, out)
+        self.assertIn("round 6's registered row derives", out, "MINOR 1: the session is the registered row's")
+
     def test_no_session_id_is_refused(self):
         code, out, _, _ = self.run_commit(session=False)
         self.assertEqual(code, 1, out)
@@ -302,7 +321,7 @@ def seed(n: int, *, record: str, edit: bool = False):
         written = report_text(hashlib.sha256(draft.read_bytes()).hexdigest())
         digest = {"session": bl.REPORT_DIGEST + hashlib.sha256(written.encode()).hexdigest(),
                   "none": bl.REPORT_UNBOUND + "synthetic", "other": bl.REPORT_DIGEST + "0" * 64}[record]
-        (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session {sid}\n{digest}\n")
+        (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session id: {sid}\n{digest}\n")
         (review_dir / f"prefreeze-{n}.md").write_text(written.replace("synthetic review", "edited") if edit else written)
         git(repo, "add", "-A")
         git(repo, "commit", "-q", "-m", f"review {n}")
@@ -327,6 +346,17 @@ class B1Freeze(unittest.TestCase):
             self.assertIsNone(freeze.registered_review_problem(rel, 4), "B1-freeze")
         with seed(5, record="none") as rel:
             self.assertIsNotNone(freeze.registered_review_problem(rel, 5), "B1-freeze: round 5 is after the rule")
+
+    def test_the_session_id_is_read_from_the_records_own_line(self):
+        # the re-check of 0beda082, MINOR 1: a record that holds the id only inside another line never binds
+        with seed(6, record="session") as rel:
+            blind = freeze.REPO / rel.replace(".md", "-blindness.txt")
+            text = blind.read_text()
+            sid = text.split("\n", 1)[0].removeprefix("session id: ")
+            blind.write_text(text.replace(f"session id: {sid}", f"not the session id: {sid} (quoted)"))
+            git(freeze.REPO, "commit", "-q", "-am", "requote")
+            got = freeze.registered_review_problem(rel, 6)
+            self.assertTrue(got and "does not name the session id" in got, f"MINOR 1: {got}")
 
     def test_freeze_reads_the_record_with_blindness_own_reader(self):
         self.assertEqual(freeze._blindness().REPORT_DIGEST, bl.REPORT_DIGEST, "B1-freeze")

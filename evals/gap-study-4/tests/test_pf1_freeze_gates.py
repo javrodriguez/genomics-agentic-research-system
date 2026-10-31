@@ -221,7 +221,7 @@ def register_round(repo: Path, review_dir: Path, n: int) -> None:
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", f"register round {n}")
     sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
-    (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session {sid}\n")
+    (review_dir / f"prefreeze-{n}-blindness.txt").write_text(f"session id: {sid}\n")
 
 
 def g3_review(fz, p="G3.review") -> list:
