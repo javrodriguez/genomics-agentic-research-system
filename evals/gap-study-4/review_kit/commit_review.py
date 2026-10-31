@@ -57,6 +57,31 @@ def report_problems(text: str, draft_sha: str) -> list[str]:
     return problems
 
 
+def registered_session_id(n: str) -> str | None:
+    """takes.session_id_for(the commit that introduced round n's prefreeze row), read from REPO, or None."""
+    import json
+    import takes
+    reg = str((STUDY_DIR / study.REVIEW_DIR / "rounds.json").relative_to(REPO))
+    log = subprocess.run(["git", "-C", str(REPO), "log", "--reverse", "--format=%H", "--", reg], capture_output=True,
+                         text=True)
+    head = subprocess.run(["git", "-C", str(REPO), "show", f"HEAD:{reg}"], capture_output=True, text=True)
+    try:
+        rows = json.loads(head.stdout)["rows"] if head.returncode == 0 else []
+    except (ValueError, KeyError, TypeError):
+        return None
+    idx = [i for i, r in enumerate(rows) if isinstance(r, dict) and r.get("kind") == "prefreeze" and str(r.get("n")) == str(n)]
+    if len(idx) != 1:
+        return None
+    for sha in log.stdout.split() if log.returncode == 0 else []:
+        blob = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{reg}"], capture_output=True, text=True)
+        try:
+            if blob.returncode == 0 and len(json.loads(blob.stdout)["rows"]) > idx[0]:
+                return takes.session_id_for(sha)
+        except (ValueError, KeyError, TypeError):
+            continue
+    return None
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print(__doc__.split("\n")[2].strip())
@@ -85,6 +110,13 @@ def main() -> int:
     # other edit of the record) is refused, and the digest it states is the session's own.
     sid_file = side / "SESSION"
     sid = sid_file.read_text().strip() if sid_file.is_file() else ""
+    # The re-check of 0beda082, MINOR 1: the session read is the one the registered round derives, never any session
+    # the side folder names (rounds.json's row N, its introducing commit, takes.session_id_for).
+    want_sid = registered_session_id(n)
+    if want_sid is None:
+        problems.append(f"round {n} has no registered prefreeze row committed in review_kit/rounds.json")
+    elif sid and sid != want_sid:
+        problems.append(f"{sid_file.name} names session {sid}, not the {want_sid} round {n}'s registered row derives")
     try:
         rebuilt = blindness.report(folder, sid, blindness.PROJECTS) if sid else None
     except SystemExit as e:                       # blindness.session_file refuses a missing or ambiguous session file

@@ -1156,7 +1156,7 @@ def registered_review_problem(report: str, n: int) -> str | None:
     code, btext = git("show", f"HEAD:{blind}")
     if code != 0:
         return f"{blind} is not committed: nothing binds {report} to its registered round (row {i})"
-    if want not in btext:
+    if not re.search(rf"^session id: {re.escape(want)}$", btext, re.M):   # the record's own line, never a substring
         return (f"{blind} does not name the session id row {i} derives ({want}): the reviewer it read was not the one "
                 f"that round registered")
     # Pre-freeze review 5, M1 (lane fold5/report-binding; glitch-45's ruling 1, Sat 31 Oct 2026): the committed report

@@ -511,7 +511,7 @@ def read_sessions(main: Path, folder: Path) -> tuple[Session, dict[str, Session]
 # the session's result names a success. Nothing is recorded, and the record says why, when the rebuild is not exact: a
 # write the session file does not show whole (a content or edit text that is not a string, a NotebookEdit, a result it
 # does not hold, an Edit whose old text is not in the report exactly once), any shell step that names the report and is
-# not a recognised pure read (PURE_READS, sed -n), a shell write the text cannot place in its folder, or a sub-agent that
+# not a recognised pure read (PURE_READS, sed -n, awk with no > or -i inplace), a shell write the text cannot place in its folder, or a sub-agent that
 # writes it. commit_review.py re-runs the record from the session itself and freeze.registered_review_problem reads the
 # line by REPORT_DIGEST; the record also states the session file's sha256, so a later audit can re-read the same bytes.
 REPORT_DIGEST = "report sha256, as the reviewer's session wrote it: "
@@ -541,7 +541,8 @@ def _names_report(p: str, cwd: str | None, report: Path) -> bool:
 # report's file name, and any step whose writes the text cannot place (a glob, a variable, no known cwd) into the
 # report's folder, leaves the report NOT RECORDED: python3 -c open(...,'a'), perl -pi, dd of=, truncate, git checkout,
 # bash -c '... >>' and an mv of a glob into the folder all write it in ways the text alone does not show.
-PURE_READS = {"cat", "head", "tail", "grep", "egrep", "fgrep", "rg", "wc", "shasum", "sha256sum", "ls", "diff"}
+PURE_READS = {"cat", "head", "tail", "grep", "egrep", "fgrep", "rg", "wc", "shasum", "sha256sum", "ls", "diff", "sort", "less",
+              "more", "uniq", "cut", "nl", "stat", "file"}   # and awk, when its command holds no > and no -i inplace
 
 
 def shell_touches_report(cmd: str, cwd: str | None, report: Path) -> str | None:
@@ -566,7 +567,8 @@ def shell_touches_report(cmd: str, cwd: str | None, report: Path) -> str | None:
                     return "a shell step writes a name the text does not place, in the report's folder"
         if any(name in w for w in words) or any(name in w for w in redirected):
             verb = os.path.basename(words[0]) if words else ""
-            pure = verb in PURE_READS or (verb == "sed" and "-n" in words and not any(w.startswith("-i") for w in words))
+            pure = (verb in PURE_READS or (verb == "sed" and "-n" in words and not any(w.startswith("-i") for w in words))
+                    or (verb in ("awk", "gawk") and ">" not in cmd and "inplace" not in cmd))
             if not pure:
                 return f"a shell step that is not a recognised read ({verb or 'a redirect'}) names the report"
     return None
