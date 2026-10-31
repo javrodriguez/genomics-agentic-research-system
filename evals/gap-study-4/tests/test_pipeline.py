@@ -1543,6 +1543,14 @@ class FreezeCoverage(unittest.TestCase):
             review_name = study.REVIEW_DIR + "/prefreeze-1.md"
             review = root / review_name
             review.parent.mkdir(parents=True, exist_ok=True)
+            # lane fold3/m1 (pre-freeze review 3, m2): the freeze seeds only from a registered round, so the round's
+            # row is committed alone first and the review carries the blindness record naming that commit's session id
+            rounds_name, blind_name = study.REVIEW_DIR + "/rounds.json", study.REVIEW_DIR + "/prefreeze-1-blindness.txt"
+            (root / rounds_name).write_text(json.dumps({"rows": [{"n": 1, "kind": "prefreeze", "voids": None}]}) + "\n")
+            row_commit = commit(repo, [study.rel(rounds_name)], "Register synthetic review round 1")
+            (root / blind_name).write_text(f"session {takes.session_id_for(row_commit)}\n")
+            for name in (rounds_name, blind_name):
+                entries[name] = {"path": name, "status": "new", "reason": "synthetic registered round"}
             digest = hashlib.sha256((root / "prereg-draft.json").read_bytes()).hexdigest()
             review.write_text(f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n" + freeze.RULING_LINE + "\n")
             entries[review_name] = {"path": review_name, "status": "new", "reason": "synthetic ruling"}
