@@ -176,7 +176,7 @@ class M1Refuse(unittest.TestCase):
                             ledger_harness="claude-code")
             rec = fw.replay(t)
         self.assertEqual((rec["verdict"], rec["turns_read"]), ("unread", 0), "M1-refuse")
-        self.assertIn("0 turns while its ledger records 1", rec["unread"], "M1-refuse")
+        self.assertIn("envelopes but is read as claude-code", rec["unread"], "M1-refuse")   # review of 1cb4ee64, 1b
 
     def test_envelopes_with_no_harness_named_are_unread(self):
         with tempfile.TemporaryDirectory() as d:
@@ -418,7 +418,25 @@ class R3PoolingExemption(unittest.TestCase):
             import lint_pooling
         finally:
             sys.path.remove(str(HERE))
-        self.assertEqual(lint_pooling.BOUND_REVIEW_RECORDS, ("evals/gap-study-4/review_kit/prefreeze-3.md",), "R3")
+        self.assertEqual(sorted(lint_pooling.BOUND_REVIEW_RECORDS), ["evals/gap-study-4/review_kit/prefreeze-3.md"], "R3")
+        self.assertEqual(lint_pooling.BOUND_REVIEW_RECORDS["evals/gap-study-4/review_kit/prefreeze-3.md"],
+                         hashlib.sha256(self.RECORD.read_bytes()).hexdigest(), "R3: bound to the record's bytes")
+
+    def test_an_edited_record_is_scanned(self):
+        # the review of 1cb4ee64, NIT 4: the exemption holds only the bound bytes; other bytes at the path are scanned
+        import io
+        sys.path.insert(0, str(HERE))
+        try:
+            import lint_pooling
+        finally:
+            sys.path.remove(str(HERE))
+        rel = "evals/gap-study-4/review_kit/prefreeze-3.md"
+        with mock.patch.object(lint_pooling, "BOUND_REVIEW_RECORDS", {rel: "0" * 64}), \
+                mock.patch.object(sys, "argv", ["lint_pooling.py", str(self.RECORD)]), \
+                contextlib.redirect_stdout(io.StringIO()) as said:
+            code = lint_pooling.main()
+        self.assertEqual(code, 1, f"NIT 4: other bytes at the listed path passed: {said.getvalue()[-300:]}")
+        self.assertIn("its bytes are not the bound record's", said.getvalue(), "NIT 4")
 
 
 def git(repo: Path, *args: str) -> str:
@@ -430,7 +448,7 @@ def git(repo: Path, *args: str) -> str:
 
 
 @contextlib.contextmanager
-def seed_repo(*, register=True, voided=False, blindness="right"):
+def seed_repo(*, register=True, voided=False, blindness="right", spent=False):
     """A scratch repository holding a draft and one DO FREEZE review of its bytes (prefreeze-1.md), its round's row
     committed alone first when `register`; yields the review commit with freeze.REPO and freeze.DRAFT pointed at it."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -447,6 +465,8 @@ def seed_repo(*, register=True, voided=False, blindness="right"):
             row = {"n": 1, "kind": "prefreeze", "voids": None}
             if voided:
                 row["voided_by"] = 2
+            if spent:
+                row["spent_without_work"] = "synthetic: the reviewer's session ended before it read the kit"
             (review_dir / "rounds.json").write_text(json.dumps({"rows": [row]}) + "\n")
             git(repo, "add", "-A")
             git(repo, "commit", "-q", "-m", "register round 1")
@@ -484,6 +504,16 @@ class M2Register(unittest.TestCase):
         bad, _ = self.problems(blindness=None)
         self.assertTrue(bad and "blindness" in bad[0], f"m2-register: {bad}")
 
+    def test_a_round_spent_without_work_never_seeds(self):
+        bad, _ = self.problems(spent=True)
+        self.assertTrue(bad and "spent without work" in bad[0], f"m2-register: {bad}")
+
+    def test_the_committed_rounds_1_to_3_are_registered(self):
+        for n in (1, 2, 3):
+            with self.subTest(round=n):
+                self.assertIsNone(freeze.registered_review_problem(
+                    f"{study.STUDY_REL}/{study.REVIEW_DIR}/prefreeze-{n}.md", n), "m2-register")
+
     def test_another_session_never_seeds(self):
         bad, _ = self.problems(blindness="other")
         self.assertTrue(bad and "does not name the session id" in bad[0], f"m2-register: {bad}")
@@ -509,6 +539,79 @@ class StopRulings(unittest.TestCase):
                 self.assertIn("(the STOP rulings)", e["ruling"], "STOP")
         self.assertEqual(sorted(got), sorted(self.WANT), "STOP")
         self.assertEqual(sum(map(len, got.values())), 16, "STOP")
+
+
+
+def relabelled_copy(root: Path, turns) -> Path:
+    """A scratch copy of the committed codex walk w-o20 whose ledger names agent.harness claude-code; `turns` is
+    DROP (the key removed) or the value written."""
+    import shutil
+    folder = root / "w-o20"
+    shutil.copytree(fw.WALKS / "w-o20", folder)
+    ledger = json.loads((folder / "driver-ledger.json").read_text())
+    ledger["agent"] = dict(ledger["agent"], harness="claude-code")
+    if turns is DROP:
+        ledger.pop("turns", None)
+    else:
+        ledger["turns"] = turns
+    (folder / "driver-ledger.json").write_text(json.dumps(ledger))
+    return folder / "transcript.jsonl"
+
+
+DROP = object()
+
+
+class Minor1GradesNothing(unittest.TestCase):
+    """The review of 1cb4ee64, MINOR 1: a claude-code walk that grades nothing never prints clean. (a) read_problem
+    refuses 0 turns read whatever the ledger records; (b) walk_harness refuses vendor envelopes on every walk read as
+    claude-code, its ledger naming claude-code or nothing."""
+
+    def test_a_empty_transcript_and_no_ledger(self):
+        with tempfile.TemporaryDirectory() as d:
+            t = Path(d) / "w999" / "transcript.jsonl"
+            t.parent.mkdir()
+            t.write_text("")
+            rec = fw.replay(t)
+        self.assertEqual((rec["harness"], rec["verdict"]), ("claude-code", "unread"), "MINOR 1a")
+        self.assertIn("0 turns", rec["unread"], "MINOR 1a")
+
+    def test_p2_p3_p4_a_vendor_walk_relabelled_claude_code(self):
+        for name, turns in (("P2 turns dropped", DROP), ("P3 turns=[]", []), ("P4 turns='[]'", "[]")):
+            with self.subTest(case=name), tempfile.TemporaryDirectory() as d:
+                rec = fw.replay(relabelled_copy(Path(d), turns))
+                self.assertEqual(rec["verdict"], "unread", f"MINOR 1: {name}")
+                self.assertIn("envelopes but is read as claude-code", rec["unread"], f"MINOR 1b: {name}")
+
+    def test_p5_envelopes_beside_a_claude_turn_are_refused(self):
+        # a turn the Claude parser can read beside the envelopes: only (b) stands between this and a clean verdict
+        with tempfile.TemporaryDirectory() as d:
+            t = relabelled_copy(Path(d), DROP)
+            with t.open("a") as fh:
+                fh.write(json.dumps({"type": "user", "message": {"content": "go"}}) + "\n")
+            rec = fw.replay(t)
+        self.assertEqual(rec["verdict"], "unread", "MINOR 1b")
+        self.assertIn("envelopes but is read as claude-code", rec["unread"], "MINOR 1b")
+
+    def test_every_committed_walk_still_reads(self):
+        bad = [(t.parent.name, r["verdict"]) for t in fw.committed_walks() for r in [fw.replay(t)]
+               if r["verdict"] not in ("clean", "excepted")]
+        self.assertEqual(bad, [], "MINOR 1: a committed walk no longer reads")
+        self.assertEqual(len(fw.committed_walks()), 387, "MINOR 1")
+
+
+class Nit2W142Whys(unittest.TestCase):
+    """The review of 1cb4ee64, NIT 2: each w142 entry's why says what its line is."""
+    WANT = {"w-g32": "configure.py", "w-g20": "grep -n -C 10", "w-g26": "sed -n '2010,2100p' tests/run_tests.py",
+            "w-g28": "grep -n -C 5"}
+
+    def test_each_w142_why_names_its_command(self):
+        seen = set()
+        for e in fw.VENDOR_RECORDED_EXCEPTIONS:
+            if e["ruling"].endswith(": the w142 class"):
+                seen.add(e["walk"])
+                self.assertIn(self.WANT[e["walk"]], e["reason"], f"NIT 2: {e['walk']} {e['path']}")
+                self.assertNotIn("cat or grep, in which", e["reason"], "NIT 2: the generic why")
+        self.assertEqual(seen, set(self.WANT), "NIT 2")
 
 
 if __name__ == "__main__":

@@ -59,6 +59,9 @@ def guarded(prefix):
     return wrap
 
 
+OPERATOR_LINE = json.dumps({"type": "user", "message": {"content": "go"}})   # lane fold3/m1: one operator turn
+
+
 def walk_folder(root: Path, name: str, *, ledger: dict, journals: dict, said: str) -> Path:
     """rehearsals/<name>/ with a driver ledger, launch journals {turn: cwd or raw text}, and a transcript whose one
     assistant line names `said`."""
@@ -76,7 +79,8 @@ def walk_folder(root: Path, name: str, *, ledger: dict, journals: dict, said: st
         else:
             (folder / f"turn-{k}.jsonl.launch.json").write_text(text.removeprefix("RAW:"))
     rec = {"type": "assistant", "message": {"content": [{"type": "text", "text": f"I read {said} next."}]}}
-    (folder / "transcript.jsonl").write_text(json.dumps(rec) + "\n")
+    # lane fold3/m1 (review of 1cb4ee64, MINOR 1a): a walk read with no turn is unread, so the rig's walk has one
+    (folder / "transcript.jsonl").write_text(json.dumps(rec) + "\n" + OPERATOR_LINE + "\n")
     return folder / "transcript.jsonl"
 
 
@@ -133,7 +137,7 @@ def f4_exception(mod, p):
                                                                    "input": {"command": cmd}}]}}]
             if extra_line:
                 recs.append({"type": "assistant", "message": {"content": [{"type": "text", "text": f"cat {scratch}"}]}})
-            lines = [json.dumps(r) for r in recs]
+            lines = [json.dumps(r) for r in recs] + [OPERATOR_LINE]     # lane fold3/m1: one operator turn, last
             sha = hashlib.sha256(lines[1].encode()).hexdigest()
             if edited:
                 lines[1] = lines[1].replace('"id": "t1"', '"id": "t2"')     # the bytes, not the command
@@ -164,7 +168,7 @@ def f4_exception(mod, p):
         (folder / "driver-ledger.json").write_text(json.dumps({"project": "run-0a1b2c3d"}))
         (folder / "turn-1.jsonl.launch.json").write_text(json.dumps({"cwd": tree}))
         line = json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": f"cat {leak} now"}]}})
-        (folder / "transcript.jsonl").write_text(line + "\n")
+        (folder / "transcript.jsonl").write_text(line + "\n" + OPERATOR_LINE + "\n")
         exc = {"walk": "w905", "path": leak, "lines": {1: hashlib.sha256(line.encode()).hexdigest()},
                "command": f"cat {leak}", "reason": "synthetic", "ruling": "synthetic"}
         with mock.patch.object(mod, "RECORDED_EXCEPTIONS", (exc,)):
