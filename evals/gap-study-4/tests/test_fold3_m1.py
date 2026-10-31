@@ -45,6 +45,7 @@ sys.path.insert(0, str(HERE))
 import freeze  # noqa: E402  (before fixture_walk, whose import puts evals/ first on sys.path: evals/freeze.py is
 import study  # noqa: E402    another study's)
 import takes  # noqa: E402
+import order_beacon  # noqa: E402
 import fixture_walk as fw  # noqa: E402
 
 sys.path[:] = _PATH
@@ -628,6 +629,28 @@ class Nit2W142Whys(unittest.TestCase):
                 self.assertIn(self.WANT[e["walk"]], e["reason"], f"NIT 2: {e['walk']} {e['path']}")
                 self.assertNotIn("cat or grep, in which", e["reason"], "NIT 2: the generic why")
         self.assertEqual(seen, set(self.WANT), "NIT 2")
+
+
+
+class BeaconUserAgent(unittest.TestCase):
+    """Lane fold4/records (glitch-45's fold4 brief, Sat 31 Oct 2026): drand.cloudflare.com answers 403 to Python's
+    default User-Agent, so order_beacon._open, the freeze's one network read of the beacon, names a fixed agent."""
+
+    def test_open_sends_the_named_user_agent(self):
+        import io
+        seen = []
+
+        def fake(req, timeout=None):
+            seen.append((req, timeout))
+            return io.BytesIO(b"{}")
+
+        with mock.patch.object(order_beacon.urllib.request, "urlopen", fake):
+            self.assertEqual(order_beacon._open("https://drand.cloudflare.com/public/1"), b"{}")
+        (req, timeout), = seen
+        self.assertIsInstance(req, order_beacon.urllib.request.Request, "the beacon read sends a Request, not a bare url")
+        self.assertEqual(req.full_url, "https://drand.cloudflare.com/public/1")
+        self.assertEqual(req.get_header("User-agent"), "gap-study-4-order-beacon", "the beacon read names its agent")
+        self.assertEqual(timeout, order_beacon.TIMEOUT_S)
 
 
 if __name__ == "__main__":
