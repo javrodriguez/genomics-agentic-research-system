@@ -453,7 +453,7 @@ def reading_problems(reading, round_no: int) -> list[str]:
 
 
 def _open(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=TIMEOUT_S) as got:     # noqa: S310 (a fixed https relay)
+    with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "gap-study-4-order-beacon"}), timeout=TIMEOUT_S) as got:  # noqa: S310 (a fixed https relay; drand.cloudflare.com answers 403 to the default agent)
         return got.read()
 
 
