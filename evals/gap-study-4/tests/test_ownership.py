@@ -240,7 +240,7 @@ class RestoreGuards(Base):
 class OwnProgram(unittest.TestCase):
     def test_it_is_the_reviewed_walk_plus_the_link_branch(self):
         branch = ('   lst=os.stat(name,dir_fd=fd,follow_symlinks=False)\n'
-                  '   if stat.S_ISLNK(lst.st_mode):\n'
+                  '   if stat.S_ISLNK(lst.st_mode) or (restore and stat.S_ISSOCK(lst.st_mode)):\n'
                   '    os.chown(name,uid,uid,dir_fd=fd,follow_symlinks=False)\n'
                   '    continue\n')
         strict = ('strict=sys.argv[2]=="strict"\n',
@@ -312,6 +312,33 @@ class OwnProgram(unittest.TestCase):
             os.mkfifo(os.path.join(root, "a", "fifo"))
             p = self.run_on(root)
             self.assertNotEqual(p.returncode, 0)
+            self.assertIn("nonregular refused", p.stderr)
+
+    def test_a_socket_is_chowned_in_place_by_a_restore_only(self):
+        # lane fold4/records (glitch-45's ruling): a claude-code take killed at its budget leaves Claude Code's Unix
+        # socket (.tmp/cc-socks/<n>.sock) in the run tree; opening it fails (ENXIO), so the restore chowns it in place,
+        # never opening it, as it does a link. A grant still refuses it, and a fifo still refuses either way.
+        import socket
+        with tempfile.TemporaryDirectory(dir="/tmp") as d:
+            root = os.path.join(d, "r")
+            os.makedirs(os.path.join(root, "cc-socks"))
+            path = os.path.join(root, "cc-socks", "1.sock")
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                sock.bind(path)
+                self.assertTrue(stat.S_ISSOCK(os.lstat(path).st_mode))
+                p = self.run_on(root, "restore")
+                self.assertEqual(p.returncode, 0, f"a restore over a socket failed: {p.stderr}")
+                self.assertEqual(os.lstat(path).st_uid, os.getuid())
+                self.assertTrue(stat.S_ISSOCK(os.lstat(path).st_mode), "the socket is left in place")
+                p = self.run_on(root, "strict")
+                self.assertNotEqual(p.returncode, 0, "a grant chowned a socket")
+            finally:
+                sock.close()
+            os.unlink(path)
+            os.mkfifo(os.path.join(root, "cc-socks", "fifo"))
+            p = self.run_on(root, "restore")
+            self.assertNotEqual(p.returncode, 0, "a restore chowned a fifo")
             self.assertIn("nonregular refused", p.stderr)
 
 
