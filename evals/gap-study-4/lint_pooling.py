@@ -56,7 +56,11 @@ NEVER_SCANNED = {"lint_pooling.py"}
 # lines in any other file still fail. No line, pattern or flag is excusable anywhere else. Each record is bound to the
 # sha256 of its committed bytes (the review of 1cb4ee64, NIT 4): an edited copy is no longer the record, and is scanned.
 BOUND_REVIEW_RECORDS = {"evals/gap-study-4/review_kit/prefreeze-3.md":
-                        "d789e6f9dce586f307fc88bef471fe2ef72f5799c23e6a39fdb316a20c6ba048"}
+                        "d789e6f9dce586f307fc88bef471fe2ef72f5799c23e6a39fdb316a20c6ba048",
+                        # lane fold4/records (glitch-45's fold4 brief, Sat 31 Oct 2026): review 4's m8 discusses the
+                        # same guard and reports no joined figure
+                        "evals/gap-study-4/review_kit/prefreeze-4.md":
+                        "27fdd7252ec4c7e959609c553e57421dc8107af7c93c52e85ec3469c4f81df8c"}
 
 # TWO KINDS OF PATTERN, AND WHY THEY ARE NOT ONE LIST.
 #
