@@ -418,9 +418,25 @@ class R3PoolingExemption(unittest.TestCase):
             import lint_pooling
         finally:
             sys.path.remove(str(HERE))
-        self.assertEqual(sorted(lint_pooling.BOUND_REVIEW_RECORDS), ["evals/gap-study-4/review_kit/prefreeze-3.md"], "R3")
-        self.assertEqual(lint_pooling.BOUND_REVIEW_RECORDS["evals/gap-study-4/review_kit/prefreeze-3.md"],
-                         hashlib.sha256(self.RECORD.read_bytes()).hexdigest(), "R3: bound to the record's bytes")
+        # lane fold4/records (glitch-45's fold4 brief, Sat 31 Oct 2026): review 4 joins review 3, each bound to its bytes
+        records = ["evals/gap-study-4/review_kit/prefreeze-3.md", "evals/gap-study-4/review_kit/prefreeze-4.md"]
+        self.assertEqual(sorted(lint_pooling.BOUND_REVIEW_RECORDS), records, "R3")
+        for rel in records:
+            self.assertEqual(lint_pooling.BOUND_REVIEW_RECORDS[rel],
+                             hashlib.sha256((fw.REPO / rel).read_bytes()).hexdigest(), f"R3: {rel} bound to its bytes")
+
+    def test_review_4_is_named_and_its_line_elsewhere_fails(self):
+        record = HERE / "review_kit" / "prefreeze-4.md"
+        code, out = self.run_lint(record)
+        self.assertIn("not scanned: evals/gap-study-4/review_kit/prefreeze-4.md", out, "fold4")
+        self.assertEqual(code, 2, f"fold4: the record alone scans nothing, never a pass: {out}")
+        line = next(ln for ln in record.read_text().split("\n") if "poole" in ln)
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "review_kit" / "prefreeze-4.md"
+            f.parent.mkdir()
+            f.write_text(line + "\n")
+            code, out = self.run_lint(f)
+        self.assertEqual(code, 1, f"fold4: review 4's line elsewhere passed: {out}")
 
     def test_an_edited_record_is_scanned(self):
         # the review of 1cb4ee64, NIT 4: the exemption holds only the bound bytes; other bytes at the path are scanned
