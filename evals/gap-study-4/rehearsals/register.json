@@ -7715,6 +7715,13 @@
       "n": 1,
       "checker_constants_sha256": "627fc956a41f28812b46f2b4a1599a16c88d30d1a0aad8724e140e7f00849164",
       "sha256": "7081ed41be412f84871c9caab2fd99f40059c92f1f8560202f08339cdeae1bd8"
+    },
+    {
+      "walk": "w073",
+      "file": "recheck-1.json",
+      "n": 1,
+      "checker_constants_sha256": "627fc956a41f28812b46f2b4a1599a16c88d30d1a0aad8724e140e7f00849164",
+      "sha256": "32f998366accba6b4522153eaf21b53f79bbadf331536f9c8be24ec19f405ce1"
     }
   ]
 }
