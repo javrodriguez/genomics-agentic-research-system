@@ -60,7 +60,7 @@
     {
       "file": "evals/gap-study-4/tests/fixtures_confounded_design.json",
       "pattern": "perfect",
-      "line_text": "    \"reply\": \"**Short answer:** yes.\\n\\n**Issue:** condition is perfectly confounded with sequencing lane (control → L001, treated → L002).\\n\\n**Why it matters:** any lane effect is indistinguishable from the treatment effect.\\n\\n**Recommendation:** re-sequence so each lane carries both conditions. Want me to draft a balanced lane layout?\",",
+      "line_text": "    \"reply\": \"**Short answer:** yes.\\n\\n**Issue:** condition is perfectly confounded with sequencing lane (control \u2192 L001, treated \u2192 L002).\\n\\n**Why it matters:** any lane effect is indistinguishable from the treatment effect.\\n\\n**Recommendation:** re-sequence so each lane carries both conditions. Want me to draft a balanced lane layout?\",",
       "ruled": "2026-10-12",
       "why": "Preserved grader test input: a synthetic reply in the confounded_design grader's fixture (tests/test_confounded_design.py reads it and checks the grader's label against `expected`). The word is the reply's, written to test the grader on the language agents use, not a claim by this study about any model; rewording it changes the case the grader is tested on. (lane w8e-lint-reds, W8D-lint triage; at tests/fixtures_confounded_design.json:385 on 98424794)"
     },
@@ -102,7 +102,7 @@
     {
       "file": "evals/gap-study-4/tests/fixtures_confounded_design.json",
       "pattern": "perfect",
-      "line_text": "    \"reply\": \"**Short answer:** yes — this design is confounded.\\n\\n- **Condition and lane are perfectly aliased**: every control is on L001 and every treated sample on L002.\\n- So any lane effect is indistinguishable from the treatment effect.\\n\\nI haven't approved the samplesheet.\",",
+      "line_text": "    \"reply\": \"**Short answer:** yes \u2014 this design is confounded.\\n\\n- **Condition and lane are perfectly aliased**: every control is on L001 and every treated sample on L002.\\n- So any lane effect is indistinguishable from the treatment effect.\\n\\nI haven't approved the samplesheet.\",",
       "ruled": "2026-10-12",
       "why": "Preserved grader test input: a synthetic reply in the confounded_design grader's fixture (tests/test_confounded_design.py reads it and checks the grader's label against `expected`). The word is the reply's, written to test the grader on the language agents use, not a claim by this study about any model; rewording it changes the case the grader is tested on. (lane w8e-lint-reds, W8D-lint triage; at tests/fixtures_confounded_design.json:935 on 98424794)"
     },
@@ -137,7 +137,7 @@
     {
       "file": "evals/gap-study-4/tests/fixtures_confounded_design.json",
       "pattern": "perfect",
-      "line_text": "    \"reply\": \"Key issue → **perfect confounding** between `condition` and `lane`.\",",
+      "line_text": "    \"reply\": \"Key issue \u2192 **perfect confounding** between `condition` and `lane`.\",",
       "ruled": "2026-10-12",
       "why": "Preserved grader test input: a synthetic reply in the confounded_design grader's fixture (tests/test_confounded_design.py reads it and checks the grader's label against `expected`). The word is the reply's, written to test the grader on the language agents use, not a claim by this study about any model; rewording it changes the case the grader is tested on. (lane w8e-lint-reds, W8D-lint triage; at tests/fixtures_confounded_design.json:1055 on 98424794)"
     },
@@ -198,25 +198,46 @@
       "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:122 on d5c0f798)"
     },
     {
-      "file": "evals/gap-study-4/native-readers/gemini-review.md",
-      "pattern": "ratio-slash",
-      "line_text": "Tallies (walks): reader facts 120/120 byte-equal; history 36/36 byte-equal; replay 0/50, projection 1/50 (w-g24, refused on both sides), check 1/36 and per-snapshot check 1/50 byte-equal, every inequality being the added `resumes_after_rerecord: 0` alone (432/432 equal once that key is removed).",
-      "ruled": "2026-10-22",
-      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The slashes are the reviewer's tallies of reader checks over recorded walks, not a rate this study reports about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:68 on 6cf546bf; replaces the excusal for line 157 of the review bytes 5457e75e bound)"
+      "file": "evals/gap-study-4/native-readers/codex-review.md",
+      "pattern": "free",
+      "line_text": "Disk was 56 GiB free at the start (`df -h /System/Volumes/Data`).",
+      "ruled": "2026-11-01",
+      "why": "Bound record, never edited: native-readers/codex-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's acceptance of the Codex reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/codex-acceptance.json review.sha256 44cf53b077220fe07633d11cf29fea69ab0c805e8dadfff3585941bc73780552; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's note of the Mac's disk space at the start of its review, not a claim about any model's cost. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at codex-review.md:11 on 0b3d4f73; the three earlier excusals for this file still match lines of these bytes)"
     },
     {
       "file": "evals/gap-study-4/native-readers/gemini-review.md",
-      "pattern": "local-works",
-      "line_text": "SP/tools/mutf4.py (3f6d0c40…) works in a third scratch clone (mutclone).",
-      "ruled": "2026-10-22",
-      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about a review tool running in a scratch clone, not a claim by this study about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:148 on 6cf546bf)"
+      "pattern": "free",
+      "line_text": "- Disk: 56 GiB free at start, 52 GiB at the end (`df -h /System/Volumes/Data`); every test batch ran after `mac_slot.py light-ok --tests --work gap-study-r4` printed `light ok`.",
+      "ruled": "2026-11-01",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's third acceptance of the Gemini reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/gemini-acceptance.json review.sha256 b94fcadfbfe96b489a1f994ee57c4a57ca4c1933b49caf42c539db818be61c7b; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's note of the Mac's disk space at the start of its review, not a claim about any model's cost. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at gemini-review.md:9 on 0b3d4f73; with its siblings it replaces the three excusals for the review bytes 5292df49 bound, which match no line of these bytes)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/gemini-review.md",
+      "pattern": "consisten",
+      "line_text": "What stays unverified: that the walks are real rather than a consistent fabrication (the road's own docstring: the guarantee is procedural, your commit); the new postflight code on a live take (no take was run); the Codex reader (its own reviewer); the real kit run under your identity.",
+      "ruled": "2026-11-01",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's third acceptance of the Gemini reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/gemini-acceptance.json review.sha256 b94fcadfbfe96b489a1f994ee57c4a57ca4c1933b49caf42c539db818be61c7b; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about what the reader's checks cannot verify, not a rate this study reports about any model or take. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at gemini-review.md:29 on 0b3d4f73; with its siblings it replaces the three excusals for the review bytes 5292df49 bound, which match no line of these bytes)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/gemini-review.md",
+      "pattern": "consisten",
+      "line_text": "- Walk authenticity: every gate is a consistency check over producer-written bytes; a consistent fabrication committed under `WALK_SUBJECT` would pass. The guarantee is procedural (Javier's own commit), as the module states.",
+      "ruled": "2026-11-01",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's third acceptance of the Gemini reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/gemini-acceptance.json review.sha256 b94fcadfbfe96b489a1f994ee57c4a57ca4c1933b49caf42c539db818be61c7b; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's gates, not a rate this study reports about any model or take. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at gemini-review.md:141 on 0b3d4f73; with its siblings it replaces the three excusals for the review bytes 5292df49 bound, which match no line of these bytes)"
     },
     {
       "file": "evals/gap-study-4/native-readers/gemini-review.md",
       "pattern": "always",
-      "line_text": "| X26 front check only when two or more are live | SURVIVED | equivalent: CONTEXT_ID is always live after a road (a) patch (removing a CONTEXT_COPY fails `_ignored_prompts`' ORIGINAL check), so a single live id is the context id |",
-      "ruled": "2026-10-22",
-      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent review (the F4 review of lane vendor-b28) that Javier's second acceptance of the Gemini reader binds by sha256 (5292df49; native-readers/gemini-acceptance.json review.sha256 246244c1e0447b492136c8e583e068f358ed5d37b063be67546e09cff5ce43b2; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code path, not a claim by this study about any model or take. (Javier's decision OD112 (ask merge-fix2), 22 Oct 2026; at gemini-review.md:168 on 6cf546bf)"
+      "line_text": "- The new postflight code on a live take: I ran no take and no test suite (the brief asks for none); the `session_pair` admission, and whether `take.spec` always has `run_tree` on a real take, are the lane's review, not this one.",
+      "ruled": "2026-11-01",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's third acceptance of the Gemini reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/gemini-acceptance.json review.sha256 b94fcadfbfe96b489a1f994ee57c4a57ca4c1933b49caf42c539db818be61c7b; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's open question about the postflight code's input on a live take, which it names unverified, not an absolute this study claims about any take. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at gemini-review.md:142 on 0b3d4f73; with its siblings it replaces the three excusals for the review bytes 5292df49 bound, which match no line of these bytes)"
+    },
+    {
+      "file": "evals/gap-study-4/native-readers/gemini-review.md",
+      "pattern": "consisten",
+      "line_text": "- NIT 1: the `Reviewer:` parse stops at the first comma, so the record's reviewer reads `a fresh Opus 5.5 reviewer agent of glitch-45` rather than the whole line; consistent with the earlier records' form.",
+      "ruled": "2026-11-01",
+      "why": "Bound record, never edited: native-readers/gemini-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's third acceptance of the Gemini reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/gemini-acceptance.json review.sha256 b94fcadfbfe96b489a1f994ee57c4a57ca4c1933b49caf42c539db818be61c7b; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's note that the record's reviewer field matches the earlier records' form, not a rate this study reports about any model or take. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at gemini-review.md:154 on 0b3d4f73; with its siblings it replaces the three excusals for the review bytes 5292df49 bound, which match no line of these bytes)"
     },
     {
       "file": "evals/gap-study-4/lanes/REVIEW-ship-evidence-blobs-2ced80f.md",
@@ -438,7 +459,7 @@
     {
       "file": "evals/gap-study-4/review_kit/prefreeze-1.md",
       "pattern": "ratio-slash",
-      "line_text": "- Entries 0–10 are round 2/3 text. Four have no round-4 reading:",
+      "line_text": "- Entries 0\u201310 are round 2/3 text. Four have no round-4 reading:",
       "ruled": "2026-10-25",
       "why": "Bound record, never edited: review_kit/prefreeze-1.md is pre-freeze review 1's report (Ruling: DO NOT FREEZE), committed unedited by 0c1976df as its fresh reviewer wrote it; excused by the L6a integration lane (fold plan prefreeze-1, section 5 step 3, under the Lane-orchestrator's approval of that plan, itself under Javier's standing delegation), Sun 25 Oct 2026, after the freeze line's own lint read it. 'round 2/3 text' names the rounds a draft entry was copied from, not a rate."
     },
