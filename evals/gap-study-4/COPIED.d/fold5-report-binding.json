@@ -9,7 +9,7 @@
     {
       "path": "tests/test_fold5_report_binding.py",
       "status": "new",
-      "reason": "Lane fold5/report-binding's tests (pre-freeze review 5, M1; glitch-45's rulings 1 and 2): blindness rebuilds a report from a session's Write and Edits in order and records nothing for a write it cannot rebuild exactly; the committed rounds read back (review 5's session rebuilds the committed report, review 4's rebuilds the as-written bytes, both read only where the sessions exist); commit_review refuses a report changed after its reviewer wrote it or a record with no digest, and states the digest; the freeze refuses such a seed review from round 5 on, rounds 1-4 grandfathered; ABS_PATH reads no placeholder or bare root as a host path and still refuses real ones. After the review of f3ae7772: a forged report with its record's digest line edited to match, and a record edited anywhere else, are refused; the record states the session file's sha256; and python3 -c open, perl -pi, dd of=, truncate, git checkout --, bash -c '... >>' and an mv of a glob into the folder each leave the report NOT RECORDED, while the pure reads do not."
+      "reason": "Lane fold5/report-binding's tests (pre-freeze review 5, M1; glitch-45's rulings 1 and 2): blindness rebuilds a report from a session's Write and Edits in order and records nothing for a write it cannot rebuild exactly; the committed rounds' real sessions are read by review_kit/check_real_sessions.py on the Mac, not here; commit_review refuses a report changed after its reviewer wrote it or a record with no digest, and states the digest; the freeze refuses such a seed review from round 5 on, rounds 1-4 grandfathered; ABS_PATH reads no placeholder or bare root as a host path and still refuses real ones. After the review of f3ae7772: a forged report with its record's digest line edited to match, and a record edited anywhere else, are refused; the record states the session file's sha256; and python3 -c open, perl -pi, dd of=, truncate, git checkout --, bash -c '... >>' and an mv of a glob into the folder each leave the report NOT RECORDED, while the pure reads do not."
     },
     {
       "path": "review_kit/prefreeze-4.as-written.md",
@@ -25,6 +25,11 @@
       "path": "review_kit/prefreeze-5-blindness.txt",
       "status": "new",
       "reason": "Pre-freeze review 5's blindness record, committed unedited by 6fdf803e; a bound record, never edited. It predates the report digest of section 8, so freeze.registered_review_problem does not admit round 5 as a seed (round 5 ruled DO NOT FREEZE). Claimed here by lane fold5/report-binding on glitch-45's ruling 7 (Sat 31 Oct 2026); its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/check_real_sessions.py",
+      "status": "new",
+      "reason": "Lane fold5/report-binding's Mac-only check (glitch-45's ruling of Sun 1 Nov 2026, under Javier's standing delegation): it rebuilds review 4's and review 5's reports from their reviewers' real session files with review_kit/blindness.py and prints each against the expected digest (review 4 as written, 27f6afb8..., and review 5's committed report, 2a03d9dc...), exiting 1 on a mismatch and 2 when a session is absent. The sessions live only under the operator's ~/.claude, so it is not a unittest: the battery bans skips (test_round4.SKIP_ALLOWED), and the two real-session tests left tests/test_fold5_report_binding.py for it. The orchestrator runs it on the Mac before each freeze step."
     }
   ]
 }
