@@ -221,6 +221,10 @@ class B1Commit(unittest.TestCase):
             study_dir = repo / study.STUDY_REL
             (study_dir / study.REVIEW_DIR).mkdir(parents=True)
             git(repo, "init", "-q")
+            # commit_review commits with the repository's own identity; a suite user with none (athena's battery,
+            # gap4-fold5-battery-a63a838) needs it set here, as test_fold2_lb's commit_review rig does
+            git(repo, "config", "user.name", "t")
+            git(repo, "config", "user.email", "t@example.invalid")
             (study_dir / "commit_msg.py").symlink_to(HERE / "commit_msg.py")
             (study_dir / "prereg-draft.json").write_bytes(b'{"synthetic": "draft"}\n')
             git(repo, "add", "-A")
