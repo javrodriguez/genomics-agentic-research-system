@@ -1,0 +1,15 @@
+{
+  "lane": "fold6-kill-leftovers",
+  "files": [
+    {
+      "path": "COPIED.d/fold6-kill-leftovers.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane fold6/kill-leftovers, on glitch-45's ruling (a) of Sun 1 Nov 2026 (under Javier's standing delegation), on branch fold6/kill-leftovers from the freeze line at 961e232d, after the lb5 live-box probe was held at postflight on a killed claude-code take's sessions/N.<64 hex>.key. Edits without transfer, in files other fragments claim. box/preflight.py (its claiming lane's entry): postflight gains optional session_id and run_tree; given both, a claude-code take's sessions/ pair (N.json and N.<64 hex>.key, regular, one link, under a size cap, nothing else in sessions/, N.json naming that session and the socket <run tree>/.tmp/cc-socks/N.sock) is admitted and recorded in postflight.json's admitted_session_pair (names, sizes, owners; never contents); without them nothing changes. CHECKER CODE CHANGE: drive.py, a CHECKER_CODE_FILES member, changes on one line (TakeDriver._postflight passes the take's identity session id and spec.run_tree), so check_take's checker digests move (claude 2bca7939 to 627fc956, codex 0fce8586 to 9189f309) and a recheck wave of the committed walks follows, run by the orchestrator. tests/test_walk_runner.py and tests/test_pending_codex_walk.py (their claiming lanes' entries): their postflight stand-ins accept the new keyword arguments. box/stub_take.py keeps the default call."
+    },
+    {
+      "path": "tests/test_fold6_kill_leftovers.py",
+      "status": "new",
+      "reason": "Lane fold6/kill-leftovers' tests: the producer-bound sessions/ pair is admitted and recorded; a .key alone, another take's session or socket, an extra file in sessions/, a symlinked or hard-linked member, a .key elsewhere in the config folder and any unbound call are refused or unchanged; and drive.TakeDriver._postflight passes the take's own session id and run tree."
+    }
+  ]
+}
