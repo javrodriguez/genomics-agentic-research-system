@@ -1329,10 +1329,49 @@ def _credential_names() -> set:
     return {n for files in CREDENTIAL_FILES.values() for n, _source in files}
 
 
-def postflight(config_dir: str, harness: str) -> dict:
+# Lane fold6/kill-leftovers (glitch-45's ruling (a), Sun 1 Nov 2026, under Javier's standing delegation): a claude-code
+# take killed at its budget leaves Claude Code's peer-messaging pair, sessions/N.json and sessions/N.<64 hex>.key, in its
+# config folder (a clean exit removes them; the lb5 live-box probe at 961e232d was held on the .key). postflight admits
+# exactly that pair, bound to its producer: given the take's own session id and run tree (drive.py passes both), N.json
+# must name that session and the take's own socket <run tree>/.tmp/cc-socks/N.sock. Without them nothing is admitted.
+SESSION_PAIR_DIR = "sessions"
+SESSION_PAIR_JSON = re.compile(r"(\d+)\.json")
+SESSION_PAIR_KEY = re.compile(r"(\d+)\.[0-9a-f]{64}\.key")
+SESSION_PAIR_MAX_BYTES = {"json": 64 * 1024, "key": 4 * 1024}
+
+
+def session_pair(config_dir: str, listing: list, session_id: str, run_tree: str) -> tuple[list, list]:
+    """(admitted [{name, size, uid, gid}], problems) for the config folder's sessions/ entries; never reads the key."""
+    inside = sorted(p for p in listing if p.split(os.sep)[0] == SESSION_PAIR_DIR and p != SESSION_PAIR_DIR)
+    jsons = [p for p in inside if SESSION_PAIR_JSON.fullmatch(os.path.basename(p)) and os.path.dirname(p) == SESSION_PAIR_DIR]
+    keys = [p for p in inside if SESSION_PAIR_KEY.fullmatch(os.path.basename(p)) and os.path.dirname(p) == SESSION_PAIR_DIR]
+    if len(jsons) != 1 or len(keys) != 1 or set(inside) != set(jsons + keys):
+        return [], [f"sessions/ is not exactly one N.json and one N.<64 hex>.key: {inside}"]
+    n = SESSION_PAIR_JSON.fullmatch(os.path.basename(jsons[0])).group(1)
+    if SESSION_PAIR_KEY.fullmatch(os.path.basename(keys[0])).group(1) != n:
+        return [], [f"the sessions/ pair names two processes: {inside}"]
+    admitted = []
+    for rel, kind in ((jsons[0], "json"), (keys[0], "key")):
+        st = os.lstat(os.path.join(config_dir, rel))
+        if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1 or st.st_size > SESSION_PAIR_MAX_BYTES[kind]:
+            return [], [f"{rel} is not one regular file of at most {SESSION_PAIR_MAX_BYTES[kind]} bytes with one link"]
+        admitted.append({"name": rel, "size": st.st_size, "uid": st.st_uid, "gid": st.st_gid})
+    try:
+        with open(os.path.join(config_dir, jsons[0]), encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, UnicodeError, ValueError) as e:
+        return [], [f"{jsons[0]} does not parse ({type(e).__name__})"]
+    sock = os.path.join(run_tree, ".tmp", "cc-socks", f"{n}.sock")
+    if not isinstance(doc, dict) or doc.get("sessionId") != session_id or doc.get("messagingSocketPath") != sock:
+        return [], [f"{jsons[0]} does not name this take's session and its socket .tmp/cc-socks/{n}.sock"]
+    return admitted, []
+
+
+def postflight(config_dir: str, harness: str, *, session_id: str | None = None, run_tree: str | None = None) -> dict:
     """The per-take config folder holds no credential file after a take; the full listing is recorded. A Codex lease
     home (LEASE_CREDENTIAL) holds exactly its one registered credential file, refusing it absent, and nothing else
-    credential-shaped."""
+    credential-shaped. Given the take's session id and run tree, a claude-code take's killed-process pair in sessions/
+    is admitted when it is exactly the producer-bound pair (session_pair), and recorded (names, sizes, owners)."""
     run_take._known_harness(harness)
     config_dir = run_take._abs_path(config_dir, "config_dir")
     listing, problems = [], []
@@ -1344,7 +1383,7 @@ def postflight(config_dir: str, harness: str) -> dict:
         for root, dirs, files in os.walk(config_dir, onerror=onerror, followlinks=False):
             for name in sorted(dirs) + sorted(files):
                 listing.append(os.path.relpath(os.path.join(root, name), config_dir))
-    admitted = []
+    admitted, session_admitted = [], []
     if harness in LEASE_CREDENTIAL and not problems:
         lease_problems, admitted = lease_credential_problems(config_dir, harness, sorted(listing))
         problems += lease_problems
@@ -1352,11 +1391,19 @@ def postflight(config_dir: str, harness: str) -> dict:
         names = {n for n, _ in CREDENTIAL_FILES[harness]}
         hits = sorted(p for p in listing if os.path.basename(p) in names
                       or CREDENTIAL_LIKE.search(os.path.basename(p)))
+        if session_id and run_tree and harness == "claude-code" and not problems and any(
+                p.split(os.sep)[0] == SESSION_PAIR_DIR and p != SESSION_PAIR_DIR for p in hits):
+            pair, pair_problems = session_pair(config_dir, listing, session_id, run_tree)
+            problems += pair_problems
+            session_admitted = pair
+            hits = [p for p in hits if p not in {a["name"] for a in pair}]
         if hits:
             problems.append(f"credential-like files present: {hits}")
     detail = "; ".join(problems) or ("only the registered credential " + admitted[0] if admitted
                                      else "no credential file")
     check = {"id": POSTFLIGHT_CHECKS[0], "ok": not problems, "detail": detail}
-    return {"ok": not problems, "checks": [check],
-            "recorded": {"listing": sorted(listing), "admitted_credential": admitted,
-                         "credential_files": [{"name": n, "source": s} for n, s in CREDENTIAL_FILES[harness]]}}
+    recorded = {"listing": sorted(listing), "admitted_credential": admitted,
+                "credential_files": [{"name": n, "source": s} for n, s in CREDENTIAL_FILES[harness]]}
+    if session_id is not None or run_tree is not None:
+        recorded["admitted_session_pair"] = session_admitted
+    return {"ok": not problems, "checks": [check], "recorded": recorded}

@@ -2435,7 +2435,7 @@ class TakeDriver:
         """S6b (e): preflight.postflight on the per-take config folder (still there: it goes only after the commit),
         written as postflight.json; a failure to run it is recorded in take.cleanup and returns None (a stop)."""
         try:
-            post = _preflight.postflight(take.config_dir, row["agent"]["harness"])
+            post = _preflight.postflight(take.config_dir, row["agent"]["harness"], session_id=(take.identity or {}).get("session_id"), run_tree=take.spec.run_tree if take.spec else None)  # noqa: E501  lane fold6/kill-leftovers
             self._write(take, POSTFLIGHT_RECORD, post)
             return post
         except Exception as e:  # noqa: BLE001 - never replaces the drive's own exception; read as a stop after
