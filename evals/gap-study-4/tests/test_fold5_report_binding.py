@@ -6,9 +6,8 @@
               Edits and MultiEdits in order, a failed one skipped. It records nothing, and says why, for a write the
               session file does not show whole (no result, an Edit whose old text is not in the report exactly once, a
               NotebookEdit, a content that is not a string), a shell step that writes the report, or a sub-agent's
-              write. The committed rounds read back: review 5's session rebuilds the committed prefreeze-5.md, and
-              review 4's rebuilds the as-written 27f6afb8..., not the masked prefreeze-4.md (Mac only: the sessions
-              live under the operator's ~/.claude/projects and are skipped, named, where they are absent).
+              write. The committed rounds' real sessions are read by review_kit/check_real_sessions.py on the Mac, not
+              here.
   B1-commit   commit_review.py refuses a report whose sha256 is not the digest its blindness record states, or whose
               record states none (a one-line edit of the ruling line after the reviewer wrote it is refused), and
               commits one that matches, its message stating the digest.
@@ -18,8 +17,7 @@
               root (`/Users/`) as a host path, and still refuses a real one (/Users/somebody/..., /home/javier/...,
               /private/tmp/..., /var/folders/...).
 
-Synthetic folders and scratch git repositories in temporary directories, plus read-only reads of two review sessions
-when they exist. No model, network or container.
+Synthetic folders and scratch git repositories in temporary directories only. No model, network or container.
 """
 
 from __future__ import annotations
@@ -164,31 +162,9 @@ class B1Rebuild(unittest.TestCase):
         self.assertIsNone(bl.recorded_report_digest(f"{bl.REPORT_DIGEST}{d}\n{bl.REPORT_DIGEST}{d}\n"), "B1-rebuild")
 
 
-SESSIONS = {5: ("pfr-20261031b", "66023ce5-1b0d-587f-a06a-f2ede76dd39f"),
-            4: ("pfr-20261031", "46b6dc63-28c9-5e8c-8e06-1f5c363efa0f")}
-
-
-class B1CommittedRounds(unittest.TestCase):
-    def rebuilt(self, n):
-        side, sid = SESSIONS[n]
-        hits = sorted(bl.PROJECTS.glob(f"*/{sid}.jsonl"))
-        folder = Path("/Users") / Path.home().name / "aegis-builds" / side / f"round{n}"
-        if len(hits) != 1 or not folder.is_dir():
-            self.skipTest(f"review {n}'s session file and folder live on the operator's Mac only")
-        reviewer, sides = bl.read_sessions(hits[0], folder)
-        return bl.report_digest_line(hits[0], folder, sides)
-
-    def test_review_5_rebuilds_its_committed_report(self):
-        want = hashlib.sha256((HERE / study.REVIEW_DIR / "prefreeze-5.md").read_bytes()).hexdigest()
-        self.assertEqual(self.rebuilt(5), bl.REPORT_DIGEST + want, "B1-rebuild")
-
-    def test_review_4_rebuilds_the_as_written_bytes_not_the_masked_ones(self):
-        line = self.rebuilt(4)
-        self.assertEqual(line, bl.REPORT_DIGEST + "27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8")
-        self.assertEqual(hashlib.sha256((HERE / study.REVIEW_DIR / "prefreeze-4.as-written.md").read_bytes()).hexdigest(),
-                         line.split()[-1], "B1-rebuild: the committed as-written record is the session's bytes")
-        self.assertNotEqual(hashlib.sha256((HERE / study.REVIEW_DIR / "prefreeze-4.md").read_bytes()).hexdigest(),
-                            line.split()[-1], "B1-rebuild")
+# The two real-session checks (review 4's and review 5's rebuilds) left this battery for
+# review_kit/check_real_sessions.py, which the orchestrator runs on the Mac before each freeze step: the sessions live
+# only under the operator's ~/.claude, and the battery bans skips (test_round4.SKIP_ALLOWED; glitch-45, 1 Nov 2026).
 
 
 DO = "**Ruling: DO FREEZE.**"
