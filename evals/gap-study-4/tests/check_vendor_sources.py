@@ -223,8 +223,40 @@ EDIT_F = (
 )
 
 
+# Edit G (lane fold6/kill-leftovers, glitch-45's ruling (a), Sun 1 Nov 2026, under Javier's standing delegation):
+# TakeDriver._postflight passes the take's own session id and run tree to preflight.postflight, which then admits a
+# killed claude-code take's producer-bound sessions/ pair. One line, edited in place; taken out first (it was made
+# last) by without_edit_f, and drive.py after it pinned whole (POST_EDIT_G_DRIVE_SHA256), so edit F's pin still holds
+# drive.py with G taken out. A checker-code change: the checker digests move and a recheck wave follows.
+EDIT_G_RULING = ("fold6 (a) (glitch-45, lane fold6/kill-leftovers): drive.TakeDriver._postflight passes "
+                 "session_id=take.identity's session id and run_tree=take.spec.run_tree to preflight.postflight")
+POST_EDIT_G_DRIVE_SHA256 = "59f8a9c17dc3d372c391f3d65382fb780507452d63dcf339176c80ae5d998190"
+EDIT_G = (
+    ('            post = _preflight.postflight(take.config_dir, row["agent"]["harness"])\n',
+     '            post = _preflight.postflight(take.config_dir, row["agent"]["harness"], session_id=(take.identity or {}).get("session_id"), run_tree=take.spec.run_tree if take.spec else None)  # noqa: E501  lane fold6/kill-leftovers\n'),
+)
+
+
+def without_edit_g(src: str) -> str:
+    """drive.py's text with edit G taken out; ValueError when its hunk is not there once."""
+    for k, (before, after) in enumerate(EDIT_G):
+        if src.count(after) != 1:
+            raise ValueError(f"edit G's hunk {k} is in drive.py {src.count(after)} times, not once")
+        src = src.replace(after, before)
+    return src
+
+
+def edit_g_problems(src: str) -> list:
+    """Edit G's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit G."""
+    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
+    return [] if got == POST_EDIT_G_DRIVE_SHA256 else [
+        f"edit G: drive.py's sha256 {got[:12]}... is not the one pinned after edit G ({POST_EDIT_G_DRIVE_SHA256[:12]}...)"]
+
+
 def without_edit_f(src: str) -> str:
-    """drive.py's text with edit F taken out, as without_edit_e does it; ValueError when a hunk is not there once."""
+    """drive.py's text with edits G (lane fold6) and F taken out, as without_edit_e does it; ValueError when a hunk is
+    not there once."""
+    src = without_edit_g(src)
     for k, (before, after) in enumerate(EDIT_F):
         if src.count(after) != 1:
             raise ValueError(f"edit F's hunk {k} is in drive.py {src.count(after)} times, not once")
@@ -234,7 +266,10 @@ def without_edit_f(src: str) -> str:
 
 def edit_f_problems(src: str) -> list:
     """Edit F's pin: drive.py with piece B17's exact lines taken out has the sha256 recorded after edit F."""
-    got = hashlib.sha256(without_b17(src).encode("utf-8")).hexdigest()
+    try:
+        got = hashlib.sha256(without_edit_g(without_b17(src)).encode("utf-8")).hexdigest()
+    except ValueError as e:
+        return [f"edit G: {e}"]
     return [] if got == POST_EDIT_F_DRIVE_SHA256 else [
         f"edit F: drive.py's sha256 {got[:12]}... is not the one pinned after edit F ({POST_EDIT_F_DRIVE_SHA256[:12]}...)"]
 
@@ -407,7 +442,8 @@ def problems(piece: str, files: list) -> list:
         text = (HERE / "drive.py").read_text(encoding="utf-8")
         if piece == "B17" and not b17_spans(text)[0]:
             out.append("piece B17: drive.py holds no B17 edit (scan_read_shapes and its three read_shapes lines)")
-        out += edit_b_problems(text) + edit_d_problems(text) + edit_e_problems(text) + edit_f_problems(text)
+        out += (edit_b_problems(text) + edit_d_problems(text) + edit_e_problems(text) + edit_f_problems(text)
+                + edit_g_problems(text))
     return out
 
 

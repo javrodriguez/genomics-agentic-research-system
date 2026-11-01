@@ -477,10 +477,23 @@ class EditF(unittest.TestCase):
         src = drive_source()
         self.assertTrue(isinstance(getattr(cvs, "EDIT_F", None), tuple) and cvs.EDIT_F)
         self.assertIn("B26-6", getattr(cvs, "EDIT_F_RULING", ""), "edit F does not name its ruling")
-        self.assertEqual(cvs.POST_EDIT_F_DRIVE_SHA256, hashlib.sha256(cvs.without_b17(src).encode("utf-8")).hexdigest(),
+        # lane fold6/kill-leftovers: edit G came after edit F, so edit F's pin holds drive.py with edit G taken out
+        self.assertEqual(cvs.POST_EDIT_F_DRIVE_SHA256,
+                         hashlib.sha256(cvs.without_edit_g(cvs.without_b17(src)).encode("utf-8")).hexdigest(),
                          "drive.py after edit F is not pinned")
         self.assertEqual(cvs.edit_f_problems(src), [])
         self.assertEqual(cvs.problems("EB", ["drive.py"]), [])
+
+    def test_eg_record_edit_g_is_pinned_and_named(self):
+        # lane fold6/kill-leftovers (glitch-45's ruling (a)): the one-line postflight call is edit G, pinned whole
+        src = drive_source()
+        self.assertIn("fold6 (a)", cvs.EDIT_G_RULING, "edit G does not name its ruling")
+        self.assertEqual(cvs.POST_EDIT_G_DRIVE_SHA256, hashlib.sha256(cvs.without_b17(src).encode("utf-8")).hexdigest(),
+                         "drive.py after edit G is not pinned")
+        self.assertEqual(cvs.edit_g_problems(src), [])
+        (before, after), = cvs.EDIT_G
+        self.assertEqual(src.count(after), 1, "edit G is not in drive.py exactly once")
+        self.assertNotEqual(cvs.edit_g_problems(src.replace(after, before)), [], "edit G's pin admitted drive.py without G")
 
     def test_ef_record_a_partial_or_moved_edit_f_fails_piece_eb(self):
         src = drive_source()
