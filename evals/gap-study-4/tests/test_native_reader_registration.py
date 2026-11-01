@@ -186,8 +186,12 @@ class ManifestClaim(unittest.TestCase):
 # pf1-codex-fcdelete reader at dc95f44b), merged here by lane L6f, so the last commit touching codex-acceptance.json
 # is that one. Read from git at the L6f merge 61a63419: `git log -- native-readers/codex-acceptance.json` lists
 # 46132ace then 5457e75e.
-ACCEPTED_AT = {"codex": "46132aceab447274cd6fc6e2b27473e514f89771",
-               "gemini": "5292df495a09c93bd589475e08e8170c98e78abd"}
+# Javier accepted both readers again in one commit, 63bb03e5 (Sun 1 Nov 2026 09:24, OD173), after lane
+# fold6/kill-leftovers' drive.py line at ec62dec8, so the last commit touching each acceptance record is that one. Read
+# from git at 63bb03e5: `git log -- native-readers/<harness>-acceptance.json` lists 63bb03e5, 46132ace, 5457e75e for
+# codex and 63bb03e5, 5292df49, 5457e75e for gemini.
+ACCEPTED_AT = {"codex": "63bb03e523ccc9e523c8a9251f761cd8406f28fd",
+               "gemini": "63bb03e523ccc9e523c8a9251f761cd8406f28fd"}
 
 
 class AcceptedRecords(unittest.TestCase):
