@@ -179,7 +179,7 @@ def lease_postflight(real):
     import ast
     head = "credential-like files present: "
 
-    def postflight(config_dir, harness):
+    def postflight(config_dir, harness, **_kw):     # lane fold6: drive passes session_id and run_tree
         post = real(config_dir, harness)
         kept = []
         for problem in ([] if post["ok"] else post["checks"][0]["detail"].split("; ")):

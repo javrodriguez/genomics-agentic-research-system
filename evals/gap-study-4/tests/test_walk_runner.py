@@ -924,7 +924,7 @@ class R4Held(Case):
             bad = {"ok": False, "checks": [{"id": "no-credential-file", "ok": False,
                                             "detail": "credential-like files present: ['synthetic']"}],
                    "recorded": {"listing": [], "credential_files": []}}
-            with mock.patch.object(w.mod._preflight, "postflight", lambda cfg, harness: bad):
+            with mock.patch.object(w.mod._preflight, "postflight", lambda cfg, harness, **_kw: bad):
                 got = self.must("R4.held", w.run_walks, [w.walk("w-0001"), w.walk("w-0002")])
             self.assertEqual([g.get("state") for g in got], ["held"], f"R4.held: {got}")
             self.assertIn("postflight", got[0].get("why", ""), "R4.held")
@@ -957,7 +957,7 @@ class R4Held(Case):
             self.assertEqual([g.get("state") for g in got], ["committed"], f"R4.held: {got}")
             bad = {"ok": False, "checks": [{"id": "no-credential-file", "ok": False, "detail": "synthetic"}],
                    "recorded": {"listing": [], "credential_files": []}}
-            with mock.patch.object(w.mod._preflight, "postflight", lambda cfg, harness: bad):
+            with mock.patch.object(w.mod._preflight, "postflight", lambda cfg, harness, **_kw: bad):
                 got = self.must("R4.held", w.run_walks, [w.walk("w-0001")])
             self.assertEqual([g.get("state") for g in got], ["held"], f"R4.held: {got}")
             self.assertEqual(len(list(w.cfg_parent.iterdir())), 1, "R4.held")
@@ -1027,7 +1027,7 @@ class R4Held(Case):
                     raise OSError(f"synthetic: {name} could not be written")
                 return write(take, name, doc)
             w.driver._write = refused
-            with mock.patch.object(w.mod._preflight, "postflight", lambda cfg, harness: bad):
+            with mock.patch.object(w.mod._preflight, "postflight", lambda cfg, harness, **_kw: bad):
                 got = self.must("R4.held", w.run_walks, [w.walk("w-0001")])
             self.assertEqual([g.get("state") for g in got], ["held"], f"R4.held: {got}")
             folder = folder_of(w, "w-0001")
