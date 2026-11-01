@@ -3304,7 +3304,9 @@ MODULE_ATTRS = {
     "agent_adapter": frozenset({"COUNTER_FIELDS"}), "dataclasses": frozenset({"replace"}),
     "harness_bookkeeping": frozenset({"CLAUDE_CODE"}), "hashlib": frozenset({"sha256"}),
     "image_lock": frozenset({"load", "require_ready"}),
-    "json": frozenset({"dump", "dumps", "loads"}),
+    # load: postflight's session_pair parses the take's own sessions/N.json, size-capped and lstat-checked first, to
+    # bind it to the take's session and socket (8c95a4fb; lane fold7/battery-reds, exactly this one name).
+    "json": frozenset({"dump", "dumps", "load", "loads"}),
     "preflight": frozenset({"expected_take_inspect", "inspect_mismatches"}),
     "re": frozenset({"IGNORECASE", "compile", "escape", "fullmatch", "search"}),
     # GEMINI_MODE_ROUTE_VARIABLES: preflight's image check of the Gemini mode-route names (0b6f60f9; glitch-06's
@@ -3650,6 +3652,17 @@ class TestAuditAllowlists(MutantCase):
                 self.assertEqual(got, [], name)
             else:
                 self.assertEqual(got, [f"box/preflight.py: run_take.{name} is not in MODULE_ATTRS"], name)
+
+    def test_an_unlisted_json_name_is_still_refused(self):
+        """Lane fold7/battery-reds: listing json.load (postflight's session_pair parses the size-capped, producer-bound
+        sessions/N.json, 8c95a4fb) admits that one name only; the module's other readers stay refused."""
+        for name in ("load", "JSONDecoder", "decoder", "loads"):
+            src = f"import json\nx = json.{name}\n"
+            got = [p for p in audit_source("box/preflight.py", src) if f"json.{name}" in p]
+            if name in ("load", "loads"):
+                self.assertEqual(got, [], name)
+            else:
+                self.assertEqual(got, [f"box/preflight.py: json.{name} is not in MODULE_ATTRS"], name)
 
     def test_module_keys_bound_to_imports(self):
         """W4B4-1: the keys are exactly the import-bound names, and an import-bound name with no entry is refused."""
