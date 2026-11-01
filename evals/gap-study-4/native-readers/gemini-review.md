@@ -1,241 +1,155 @@
 VERDICT: PASS
+Reviewer: a fresh Opus 5.5 reviewer agent of glitch-45, adversarial, under Javier's standing delegation; review only.
 
-# Gemini reader review (F4, item b28-gemini-review): lane/vendor-b28 at 854f6c3e against the accepted reader 5457e75e
+# Gemini native-session reader: re-review after lane fold6/kill-leftovers
 
-Reviewer: a fresh Opus 5.5 agent of glitch-f1, adversarial, under Javier's standing delegation.
-Written Thu 22 Oct 2026, 03:17 EDT (`date`).
-Head: 854f6c3ef0627e14df67abab5e3c5f3cf85976ee (code equal to e72279086192573db1bf7dea500def9d73e62659: `git diff --stat e7227908 854f6c3e` names only lane-reports/vendor-b28-LANE.md).
-gemini_session_replay.py at the head: sha256 f46b2cd2ffe26538aff6ad00dbf49e15aa4a142b0d000541dc80274912b30c2f (read with shasum), as the brief says.
-The lane clone was never written: all work ran in `git clone --shared` scratch clones (push URL no-push://disabled) and `git archive` trees under /private/tmp/claude-501/-Users-javrodher-glitch/de671dc9-9274-4a09-b079-1f80eb793658/scratchpad/review-b28-f4/ (called SP below).
-Every Mac batch waited for `mac_slot.py light-ok --work gap-study-r4` (SP/tools/gate.sh); the re-read ran under `mac_slot.py run --kind heavy` (acquired, 03:05:40-03:06:11 EDT, released, rc 0).
-No holdout data, no held-out wording, no login or credential file was opened; the tools print verdicts, counts, names and hashes only.
+- Candidate head: `ec62dec8b402375b2f27e8831dab25b9642b5765` on `fold6/kill-leftovers` (what `git -C /Users/javrodher/aegis-builds/fold3-20261030 rev-parse HEAD` printed; the brief's head, so no stop).
+- Accepted line: `961e232db150bd3ed55dbd50138e7d2da2e720c5` (Gemini sources `f58cfd1dee65…`, Javier's record holds there).
+- Clock: Sun Nov 1 08:33:23 EST 2026 (start) to about 08:45 EST (from `date`).
+- Disk: 56 GiB free at start, 52 GiB at the end (`df -h /System/Volumes/Data`); every test batch ran after `mac_slot.py light-ok --tests --work gap-study-r4` printed `light ok`.
+- Where I worked: my own scratch folder `/private/tmp/claude-501/-Users-javrodher-glitch/e81989c6-0378-4e91-8b73-fd844ef7d40f/scratchpad/gemrv/`: `git archive` copies of `evals/gap-study-4` at both heads (`acc/`, `cand/`), and three `git clone --no-local --no-hardlinks` copies with their `origin` remote removed (`accept-readers-both-dry.rv01/clone` at the candidate, `acc-clone-dir/clone` at the accepted line, `kitprobe/clone` at the candidate).
+- What I never wrote: nothing in `/Users/javrodher/aegis-builds/fold3-20261030` (still at `ec62dec8`, `git status --porcelain` empty at the end), nothing in gap4-walk-records or athena, nothing to any remote. I never typed ACCEPT and never ran the real kit. The only file I wrote outside my scratch folder is this review.
+- Python: `env -u CONDA_PREFIX -u CONDA_DEFAULT_ENV /usr/local/bin/python3.12 -I -B`, TMPDIR in the scratch folder.
 
-## The answer
+## In plain words, for Javier
 
-Yes.
-The new reader reads all 36 committed Gemini walks exactly as the accepted reader does.
-The facts the study uses are byte-equal on every walk: 120 of 120 per-interaction reader outputs and 36 of 36 history joins are byte-identical.
-The replay, projection and cross-check outputs differ on every walk by one thing only: the new properties key `resumes_after_rerecord`, which is 0 on all 36.
-With that key taken out, 432 of 432 walk-side compared outputs are byte-equal.
-Every difference on the probe snapshots is road (a) or F-B26-9, as designed.
-w-g24's regrade_doc bytes are byte-equal at 5457e75e and at the head (sha256 0290da3b…).
-No Codex reader file changed, and the Codex reader_sources_sha256 still equals codex-acceptance.json's value.
-One MINOR remains: four of my mutants on new default-deny conjuncts survive the lane's suite. The head code is right in each case (my witnesses pass on the head and kill each one), but the suite does not pin those conjuncts. It can be fixed with tests alone; tests/ is outside READER_SOURCES, so the hash the kit binds does not move.
+What changed: among the nine files the Gemini acceptance hashes, only drive.py moved, and by exactly one line.
+That line, in `TakeDriver._postflight`, now hands the take's own session id and run tree to the config-folder check that runs after a live take.
+It sits in code that only runs during a live take; nothing the Gemini reader, its stream join or its snapshot-history join reads goes through it.
+The other eight hashed files are byte-identical at both heads.
 
-## 1. The diff
+What you accept: the same walk, w-g21, with the same native snapshot, the same two turn streams and the same join (PASS, 2 interactions), bound to the new sources hash `267ac0e2bc56a7e86991f77886d95b4784c33f5325f3d8e4c9d2764c263a29e0` and to this review.
 
-- READER_SOURCES (native_reader_registration.py:85-87) and CODEX_SOURCES (:191-192), each diffed 5457e75e..854f6c3e: gemini_session_replay.py has 247 diff lines. Every other file has 0: gemini_projection.py, gemini_stream_join.py, vendor_record_binding.py, transcript_view.py, transcript_gemini.py, native_reader_registration.py, drive.py, vendor_provenance.py, codex_native.py and native_snapshot.py.
-- Outside tests/, box/, COPIED.d/, checks.d/ and lane-reports/, the only changed path is gemini_session_replay.py.
-  B27's box files (walk_launch.py, stub_model_*) are in no source list. The one COPIED.d line that changed (live-box-2026-10-14.json) only appends B27's reason text to walk_launch.py's entry.
-- reader_sources_sha256, computed with the study's own function: Gemini ec9c80e6… at 5457e75e, equal to the record; f58cfd1dee6591b676bc9f9c23b5b76d08cea183c7ecf3e335eb9580e1380079 at the head (the value the kit will bind). Codex c0121f0c… on both sides, equal to codex-acceptance.json.
-- Consumers of the replay output: gemini_projection reads `timeline` and passes `properties` through (gemini_projection.py:405, :456). check_take reads `timeline + copies + dead_results` (check_take.py:4104-4110). No production code tests the properties dict's key set, so the new key is inert.
+Every arm-G walk reads the same: all 36 committed arm-G practice walks in the register were read through the reader at both heads, and the output (every snapshot's facts and properties, the session metadata, the join, the floor and the snapshot history) is identical, byte for byte.
+35 join PASS; one, w-g24, refuses at both heads for the same reason (its native interaction is incomplete), as before.
+Every arm-G walk's regrade.json re-derives byte for byte at both heads (36 of 36).
 
-Each behaviour change, the shape that justifies it, and whether it admits only that shape:
+w-g21 still joins PASS with 2 interactions, clears the acceptance floor (34 tool round trips), and its snapshot history joins.
 
-| Change (head line) | Justifying shape (EN = evidence note) | Admits only it? |
-|---|---|---|
-| Re-entry: a retired CONTEXT_ID record inside an open window goes to `_context_reentry` (message, :556-558) | A-ctx: A1 r70 and r113, A2 r91, A3 r77, B2 r70, each the record right after S | Yes. The record must come straight after the last `$set {sessionId}` (resume_at). It must have exactly {id, timestamp, type, content}, type user, and one {text} part whose text opens with CONTEXT_OPEN (both wrapper lines) and ends with CONTEXT_CLOSE. It becomes CONTEXT_COPY and never a fact: `result` builds the timeline from frozen and live ORIGINALs only, and frozen[CONTEXT_ID] keeps record 2. A retired id other than the context turn, or the context turn outside a window, keeps the retired-id refusal. |
-| Live-copy guard (:553-555) | the writer patches an indexed id and appends it once | Stricter only; it fires only on a CONTEXT_COPY. |
-| `$set` refused while ctx_pending (replay, :634-636) | the re-entry and the patch are written in one initialize call | Stricter only. |
-| Pending patch rule (patch, :322-326) | P-resume {orderIds, removeIds, updates} | Inside the open window, only that key set consumes the re-entry. A re-record shape runs `_rerecord` first, so true compression keeps its name. Every other shape refuses as "not consumed". |
-| `_context_copies` (:428-442) and the skip in `_ignored_prompts` (:405-406) | removeIds = the re-recorded context copy, plus A2's "/" copy | Every removed re-recorded copy must be a user copy on text parts only whose trimmed text is ignored. Exactly one must start with "<session_context>", and none may stay live (O6). Removed originals still pass B26's own check. |
-| Context turn first after the reorder (:348-351) | orderIds lists the context id first | Yes. |
-| End of snapshot while pending (result) | the same one initialize call | Stricter only. |
-| F-B26-9: any message that is neither the context turn nor `_response` closes the window (:551-552) | inside a resume the writer appends only those two kinds (:287190-287196) | Yes, keyed on the producer: ids from sendMessageStream are fresh ids, never the stable context id or a `_response` id. See NIT 4 for what the close also changes. |
-| `resumes_after_rerecord` property | road (a)'s count | Inert: 0 on all 36 walks. |
+What stays unverified: that the walks are real rather than a consistent fabrication (the road's own docstring: the guarantee is procedural, your commit); the new postflight code on a live take (no take was run); the Codex reader (its own reviewer); the real kit run under your identity.
 
-The design's precedence and the review's rulings are as the build review and its closure found: re-entry first after $set; the M4 guard widened; the pre-call whatever the window; MINOR 3 dropped; the wrapper tags pinned equal to the projection's. I re-read each in the diff above and did not re-litigate them.
+## Evidence
 
-## 2. The full re-read (36 walks, and the B27 probe snapshots)
+### 1. Hashed sources at the two heads
 
-Tool: SP/tools/cmp_f4.py, my own, sha256 475d1632…. It runs each code folder in its own process (`python3.12 -I -B`, the code folder alone on sys.path, asserted).
-For every snapshot it records five things:
-- `replay`;
-- `project_with_properties`;
-- `gemini_reader` for ordinals 1..k+1;
-- `check_session` against the first k streams.
+Per-file sha256 of every READER_SOURCES file, computed in the archived trees, and `reader_sources_sha256` computed by `native_reader_registration` itself at each head (script `gemrv/q1.py`):
 
-For every unit it also records `check_session` of the last snapshot against all streams, and `gemini_history`.
-Each result is canonical JSON with sorted keys, or the refusal text.
-The comparison is SP/tools/compare_f4.py (375bc472…).
-Inputs:
-- the 36 w-g walks of dry/vendor-74 at 0554fd6a0c4729295d14e25ba12678449506e727, by `git archive` from /Users/javrodher/aegis-builds/vendor-b26-20261021 (50 native snapshots);
-- stub-probe-full1 (8 scenarios), stub-probe-full2 (A1, A1-fake) and stub-probe-smoke1 (A1): 32 snapshots in all.
+```
+file                          961e232d          ec62dec8
+gemini_projection.py          b80cdfaebf36…     b80cdfaebf36…   same
+gemini_stream_join.py         bd3803d275a2…     bd3803d275a2…   same
+gemini_session_replay.py      f46b2cd2ffe2…     f46b2cd2ffe2…   same
+vendor_record_binding.py      5db643b7521f…     5db643b7521f…   same
+transcript_view.py            fbf7ac6d2356…     fbf7ac6d2356…   same
+transcript_gemini.py          6856354dc5f3…     6856354dc5f3…   same
+native_reader_registration.py c9100df76a5b…     c9100df76a5b…   same
+drive.py                      a68b269e190f…     1a907aac2c5e…   MOVED
+vendor_provenance.py          067758fb8124…     067758fb8124…   same
+gemini reader_sources_sha256  f58cfd1dee6591b676bc9f9c23b5b76d08cea183c7ecf3e335eb9580e1380079
+                              267ac0e2bc56a7e86991f77886d95b4784c33f5325f3d8e4c9d2764c263a29e0
+codex  reader_sources_sha256  48540c455e1a…  ->  b7018ec53b040adcc5427c43e4eae50c4026330381eba085530352641c786851
+```
 
-Code: `git archive` of 5457e75e (replay sha256 c6e2d85e…, equal to `git show`) and of 854f6c3e (f46b2cd2…).
-Outputs: SP/out-base.jsonl (adad7718…) and SP/out-head.jsonl (d2ea2feb…). Rows: SP/table.txt and SP/compare.txt.
+The new Gemini hash is the one the brief, the kit (`GEMINI_SOURCES`) and the helper (`SOURCES_NEW`) name.
 
-Tallies (walks): reader facts 120/120 byte-equal; history 36/36 byte-equal; replay 0/50, projection 1/50 (w-g24, refused on both sides), check 1/36 and per-snapshot check 1/50 byte-equal, every inequality being the added `resumes_after_rerecord: 0` alone (432/432 equal once that key is removed).
+The whole diff between the heads: `git diff --shortstat 961e232d ec62dec8` gives `8 files changed, 261 insertions(+), 15 deletions(-)`, all under `evals/gap-study-4`: `COPIED.d/fold6-kill-leftovers.json`, `box/preflight.py`, `drive.py`, and five files under `tests/`.
+`diff drive.py` between the archives is 4 lines of output: one `2438c2438` hunk, one line out, one line in:
 
-Per unit: check is the cross-check verdict (last snapshot, all streams) and history the Gemini history join. "Bytes" means: facts = every gemini_reader output and the history output byte-equal; "+key" = the replay, projection and check outputs equal except for `resumes_after_rerecord: 0`.
+```
+-            post = _preflight.postflight(take.config_dir, row["agent"]["harness"])
++            post = _preflight.postflight(take.config_dir, row["agent"]["harness"], session_id=(take.identity or {}).get("session_id"), run_tree=take.spec.run_tree if take.spec else None)  # noqa: E501  lane fold6/kill-leftovers
+```
 
-| Unit | snaps | 5457e75e check / history | head check / history | head properties (non-zero), rar | Bytes |
-|---|---|---|---|---|---|
-| w-g12 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g13 | 3 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g14 | 4 | PASS / joined | PASS / joined | rewrites 1, masked 20, ignored-prompt resumes 1; 0 | facts equal, +key |
-| w-g15 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g16 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g17 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g18 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g19 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g20 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g21 | 2 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g23 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g24 | 1 | DISAGREE "native interaction is incomplete: its last model message ends on tool calls" / refused, same | the same / the same | n/a | check and history byte-equal; replay +key |
-| w-g25 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g26 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g27 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g28 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g29 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g30 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g31 | 3 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g32 | 3 | PASS / joined | PASS / joined | rewrites 1, masked 25, loop 1; 0 | facts equal, +key |
-| w-g33 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g34 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g35 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g36 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g37 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g38 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g39 | 2 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g40 | 2 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g41 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g42 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g43 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g44 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g45 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g46 | 1 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| w-g47 | 2 | PASS / joined | PASS / joined | rewrites 1, masked 40; 0 | facts equal, +key |
-| w-g48 | 2 | PASS / joined | PASS / joined | none, 0 | facts equal, +key |
-| full1/A1 | 3 | snap 1 PASS {1,2,0}; 2-3 retired-id name; check DISAGREE, history refused | {1,2,0,0} {2,5,0,1} {2,5,0,2}; PASS / joined | rewrites 2, masked 5; rar 2 | snapshot 1 facts equal; 2-3 differ: road (a) |
-| full1/A1-fake (defective folder) | 3 | as A1 | replay PASS {1,2,0,0} {5,11,0,1} {8,17,0,2}; check DISAGREE and history refused "native tool call id reused" (projection) | n/a | snapshot 1 equal; differs by road (a), then refused by the projection as the design predicts |
-| full1/A2 | 3 | {0,0,0} {1,2,0}; snap 3 retired-id; DISAGREE / refused | {0,0,0,0} {1,2,0,0} {2,5,0,1}; PASS / joined | rewrites 2, masked 5; rar 1 | snapshots 1-2 facts equal; 3 differs: road (a) |
-| full1/A3 | 3 | {0,0,0} {1,7,0}; snap 3 retired-id; DISAGREE / refused | {0,0,0,0} {1,7,0,0} {2,9,0,1}; PASS / joined | rewrites 2, masked 9; rar 1 | snapshots 1-2 facts equal; 3 differs: road (a) |
-| full1/B1 | 3 | snaps 2-3 "writer-possible resume shape {removeIds, updates} inside a resume" | snaps 2-3 "native chat compression (the context turn survives a re-record)" | n/a | name only: F-B26-9's close |
-| full1/B2 | 3 | snap 1 {1,2,0}; 2-3 retired-id | snap 1 {1,2,0,0}; 2-3 compression name | n/a | name only: road (a) re-entry, F-B26-9 close, pre-call |
-| full1/C1 | 3 | 2-3 truncation name | the same | n/a | facts equal, +key |
-| full1/C2 | 2 | {0,0,0} {1,0,0}; PASS / joined | {0,0,0,0} {1,0,0,0}; PASS / joined | rewrites 1; rar 0 | facts equal, +key |
-| full2/A1 | 3 | as full1/A1 | as full1/A1; PASS / joined | rar 2 | road (a) |
-| full2/A1-fake | 3 | as full1/A1 | {1,2,0,0} {2,5,0,1} {2,5,0,2}; PASS / joined (test 5) | rar 2 | road (a) |
-| smoke1/A1 | 3 | as full1/A1 | as full1/A1; PASS / joined | rar 2 | road (a) |
+The helper's own `line-check` on my dry clone agrees: `line holds: 961e232d is under HEAD; only drive.py moved among the readers' hashed sources, by exactly the fold6 keyword line; native-readers/ and rehearsals/ are the accepted line's; both records refuse only for their stale sources` (exit 0).
+`rehearsals/` is tree `63738925af51…` at both heads (`git rev-parse HEAD:evals/gap-study-4/rehearsals` in both clones), and `diff -rq` of the two archives shows no difference under `rehearsals/` or `native-readers/`.
 
-Properties are shown as {history_rewrites, tool_outputs_masked, ignored_prompt_resumes[, resumes_after_rerecord]}.
-On the probe side, every snapshot that the base admits keeps byte-equal facts at the head: 38 reader outputs.
-On the head, every interaction's facts are stable from one snapshot to the next wherever both read: 3 of 3 pairs in each road (a) unit.
-So road (a) changes no earlier interaction.
-Every count matches the lane's expectations (65c7cc55) and the build review's survey.
+Can it reach the reader?
+The three reader modules import only `gemini_session_replay`, `transcript_view`, `transcript_gemini` and `vendor_record_binding` (`grep` of their imports); none imports drive.py or `box/preflight.py`.
+`vendor_provenance.py` names preflight only in comments (lines 6, 103, 121).
+The acceptance road imports drive lazily and uses only `drive.walk_files`, `drive.DriveRefused`, `drive.LEDGER_FILE` and `drive.WALK_SUBJECT`, all unchanged; `drive.walk_files` checks file names and kinds and never parses postflight.json.
+The changed line runs only inside `TakeDriver._postflight` during a live take, after the turns; its only effect is on that take's postflight.json (for every harness, `recorded` now carries an `admitted_session_pair` key whenever a session id or run tree is passed, an empty list unless a Claude Code killed-take pair is admitted).
+The only other non-test change reaching the acceptance road is `box/preflight.py`, imported at module load through drive.py: it adds module constants, `session_pair` and the new keyword arguments, and changes no reader code.
 
-## 3. The w-g24 guard (freeze-path plan v2, line 189; ruling (1))
+### 2. Every committed arm-G walk, read at both heads
 
-Two scratch clones of vendor-b26-20261021:
-- rg-base: detached at 0554fd6a. Its code equals 5457e75e: `git diff --stat 5457e75e 0554fd6a` outside rehearsals/ is empty, and 5457e75e is an ancestor.
-- rg-head: the same commit with 854f6c3e merged by exact SHA (scratch merge 216a381b, parents 0554fd6a and 854f6c3e, clean; replay f46b2cd2…). This is the freeze-line shape.
+The register at the candidate holds 387 walks (A 277, O 74, G 36).
+The 36 arm-G walks: w-g12 to w-g21, w-g23 to w-g48 (no w-g22 entry in the register).
+For each one, `gemrv/survey.py` read every native snapshot the driver ledger names (sha256 re-checked against the ledger: all match), and recorded `gemini_projection.project` facts, `project_with_properties` properties, `gemini_session_replay.replay` metadata, `check_session` on the last snapshot against the ledger's streams, `floor_problem`, and `gemini_history` over all the ledger's snapshots, with the reader modules of each head in turn over the same committed walk bytes.
 
-SP/tools/rg_wg24.py (9804555e…) calls `walk_regrade.regrade_bytes(walk_regrade.regrade_doc("w-g24", study, readers=…))`:
+```
+survey-acc.json and survey-cand.json: 71410 lines each; `diff` shows only line 2 (reader_sources_sha256)
+sha256 of everything after that line: ecb30a0dbcfc90481ab9c6eca1d2a3000362ff77732c5c748cd3b55fb415f614 at both heads
+walks: 36, same set, 36 identical
+```
 
-| Tree | readers | Result |
-|---|---|---|
-| 5457e75e code | production_readers (equal to every profile's reader: True) | sha256 0290da3b7a2d756a8b2a41764f78964926a044a6c59640ed3ac215a58d1bb744, 559 bytes |
-| 5457e75e code | the profiles' readers, passed explicitly | 0290da3b…, 559 bytes |
-| head code | the profiles' readers, passed explicitly (Gemini registered, as after the kit) | 0290da3b…, 559 bytes; `cmp` equal to both above |
-| head code | production_readers | RegradeRefused "the reader registration refuses: the reader's sources changed since the record: a new acceptance is needed" (expected until the kit's commit: MAJOR 1's ruling, lane stage 5) |
+Per walk (identical at both heads):
 
-The document is graded false with the cross-check refused for the reason "native interaction is incomplete: its last model message ends on tool calls", walk_commit 27eef359….
-The guard holds on the ruled condition (Gemini registered when the regrade runs).
+- PASS, 1 interaction, below the floor (1 interaction, so acceptance-ineligible as before), history joins: w-g12, w-g15 to w-g20, w-g23, w-g25 to w-g30, w-g33 to w-g38, w-g41 to w-g46 (26 walks).
+- PASS, floor met, history joins: w-g13 (3), w-g14 (4), w-g21 (2), w-g31 (3), w-g32 (3), w-g39 (2), w-g40 (2), w-g47 (2), w-g48 (2) (9 walks).
+- DISAGREE: w-g24, `interaction 1: native: the Gemini projection refused the snapshot: native interaction is incomplete…`; its history join refuses for the same reason (1 walk).
 
-## 4. Mutants (my own, on the head replay)
+Regrade: every one of the 36 arm-G walks carries regrade.json, and `walk_regrade.regrade_doc(walk, study, readers={"gemini": gemini_reader})` re-derives it byte for byte in both clones (`Counter({'re-derives byte for byte': 36})`, output files `q3-961e232d.txt` and `q3-ec62dec8.txt` identical by `diff`).
 
-SP/tools/mutf4.py (3f6d0c40…) works in a third scratch clone (mutclone).
-Each mutant is one edit. Seven modules then run, each in its own process: test_b28_resume_after_rerecord, test_b26_rewrites, test_b25_real_shapes, test_b26_scanner, test_gemini_session_replay, test_gemini_projection and test_b27_reading.
-After each mutant the file is restored from a byte backup and its sha256 checked; the final value is f46b2cd2…, and `git status` is clean.
-The surviving mutants were then run against my witnesses (SP/tools/wit_f4.py 32431c84…, SP/tools/mutf4b.py 619bc4dd…). Every witness passes on the unmutated head.
+No walk differs.
 
-| Mutant | Lane suite | My witness |
-|---|---|---|
-| X1 re-entry kept as RERECORDED | RED (A1-A3, unmutated A1, …) | — |
-| X6 road (a) also counts ignored_prompt_resumes | RED (property tests) | — |
-| X8 `$set` guard only for sessionId | RED (m15b) | — |
-| X23 F-B26-9 close removed | RED (FB269 three walks, m14) | — |
-| X24 F-B26-9 close skipped on user records | RED (m14) | — |
-| X3 `len(heads) != 1` → `< 1` (two context copies allowed) | SURVIVED | killed by W3 (head refuses "exactly one") |
-| X13 ignored copy part may carry extra keys | SURVIVED | killed by W13 |
-| X19 while pending, `_ignored_prompts` skips every removed id (originals unchecked) | SURVIVED | killed by W19 (head refuses "not an ignored user prompt") |
-| X22 resume_at set on any `$set` (a `$set {lastUpdated}` between S and A-ctx admitted) | SURVIVED | killed by W22 (head refuses "not the first record …") |
-| X15 whitespace-only copy not ignored (stricter than isIgnoredUserContent) | SURVIVED | killed by W15 |
-| X17 re-entry text type unchecked (AttributeError instead of a refusal) | SURVIVED | killed by W17 |
-| X18 live-copy guard on any live context id (stricter than 5457e75e on an ORIGINAL upsert) | SURVIVED | killed by W18 |
-| X27 not-consumed refusal skipped for `{updates}` | SURVIVED | name only: W27 still refuses, under the `$set`-while-pending name; equivalent in verdict |
-| X26 front check only when two or more are live | SURVIVED | equivalent: CONTEXT_ID is always live after a road (a) patch (removing a CONTEXT_COPY fails `_ignored_prompts`' ORIGINAL check), so a single live id is the context id |
-| X25 (a third prefix variant) | not applied: its edit text was not unique | — |
+### 3. The anchor walk w-g21
 
-Tally: 15 written, 14 applied. 5 are red on the lane's suite. 7 survive the suite and are each killed by my witness (4 would widen admission, 3 are stricter or crash-only). 1 is equivalent in verdict (name only), 1 is equivalent, and 1 was not applied.
-Add the lane's 28 and the build reviewers' 14+5.
+At the candidate head, from the survey and from `acceptance_problems`:
 
-## 5. Tests
+```
+join: {"status": "PASS", "interactions": 2,
+       "shapes": {"interactions": 2, "tool_round_trips": 34, "tool_error_statuses": 1,
+                  "object_display_results": 8, "multi_segment_interactions": 0},
+       "properties": {"history_rewrites": 0, "tool_outputs_masked": 0, "ignored_prompt_resumes": 0,
+                      "loop_feedback_injected": 0, "resumes_after_rerecord": 0}}
+floor_problem: None
+native: session/native-turn-2.jsonl 92ca8f1eef4d636380920297b64728f98371acf3a441f80b78a4bb171256edb2
+streams: turn-1.jsonl e11b4c22a5fb…, turn-2.jsonl 64ec94e36a7e…
+```
 
-- Each module in its own process from the scratch clone's root, in checks.d's form (`python3.13 -B -W ignore evals/gap-study-4/tests/<m>.py`), 03:09:20-03:09:39 EDT. All OK:
-  - test_b28_resume_after_rerecord 45;
-  - test_b26_rewrites 43;
-  - test_b26_scanner 3;
-  - test_b25_real_shapes 18;
-  - test_gemini_session_replay 3;
-  - test_gemini_projection 8;
-  - test_b27_reading 16;
-  - test_stub_model_probe 51;
-  - test_stub_model_server 29.
-- The lane's one-process hazard set, with the lane's own hazard.py (c6a4391e…, copied unedited), python3.13:
-  - test_b27_reading, test_b28, test_batch: 179 run, 0 bad;
-  - test_stub_agents, test_stub_model_probe, test_stub_model_server: 98 run, 0 bad;
-  - my extra order (test_b26_rewrites, test_b28, test_b25_real_shapes, test_b26_scanner, test_b27_reading, test_gemini_session_replay): 128 run, 0 bad.
-  - In every set, sys.modules had nothing removed or replaced, and the environment and cwd were unchanged. test_b28 left sys.path unchanged. The other modules' sys.path changes are their pre-existing module-level inserts, as the lane recorded.
+The current `native-readers/gemini-acceptance.json` binds `{"status": "PASS", "interactions": 2}` and the same native and stream refs; same interactions.
+With the committed record changed only in its sources hash (set to the candidate's), `acceptance_problems(record, study, "gemini")` raises nothing in the candidate clone, and the same holds at the accepted line (`gemrv/q3.py`: `gemini record with only the sources hash swapped: HOLDS` at both).
+So every gate except the sources hash (walk commit, ledger, check and grade records, launch journals, regrade, snapshot prefix and history join, floor, the marker scan) already holds at the candidate with the old review.
+
+### 4. The record the kit would build, in my dry clone
+
+In `gemrv/accept-readers-both-dry.rv01/clone` (`gemrv/q4.sh`), with a draft of this review, then re-run on this file's final bytes before hand-off:
+
+- `build --acceptor ACCEPTOR-PLACEHOLDER --out gemrv/placeholder-out` (outside any repository): `built gemini-acceptance.json: walk w-g21, 2 stream(s), join PASS 2, reviewer 'a fresh Opus 5.5 reviewer agent of glitch-45', sources 267ac0e2bc56` (exit 0).
+- The same placeholder build aimed into the clone refuses: `STOP: a placeholder record is written only outside every git repository` (exit 1).
+- `build --acceptor javier` into the dry clone's `native-readers/`: the same line, exit 0; the placeholder and javier records differ only in `accepted_by`.
+- Against the committed record, the built one differs only in `reader_sources_sha256` (f58cfd1d… to 267ac0e2…) and the review's `sha256` and `reviewer`; walk, native, streams and join are the same.
+- Committed in the dry clone, `acceptance_problems` on the built Gemini record: none raised.
+- With only the Gemini record and review rebuilt and committed (Codex still the old record), `verify` prints `REFUSED: the reader's sources changed since the record: a new acceptance is needed` (exit 1): no reader registers, Gemini included.
+- After the Codex record is also built (on a stand-in Codex review in my dry clone only, never the Codex reviewer's file) and committed: `registered: ['codex', 'gemini']; …` (exit 0), the diff from `ec62dec8` is exactly the four reader files, all `M`, and the clone is clean.
+
+So `registered: ['codex', 'gemini'];` prints only once both records are rebuilt.
+
+### 5. The kit, read whole
+
+`/Users/javrodher/glitch/plans/gap-study-round-4/accept-readers-both-20261101.sh` (240 lines) and its helper `accept_readers_both_build.py` (326 lines), read whole.
+
+- Commits anything but the four files? No. The real commit stages only `FOUR`, refuses unless `git diff --cached --name-status` is exactly the four `M` lines, and `after` re-checks the commit's diff is exactly those four. The clone must be clean before (untracked included).
+- Commits without ACCEPT? No. The real section follows `[ "$word" = "ACCEPT" ] || no …`, and a rehearsal (either kit variable set) stops before it whatever is typed.
+- Sets a git identity? No. It reads `user.name`/`user.email` and refuses if either is missing; the only `-c user.name=` is on the throwaway dry clone's commit, per command, never written to any config.
+- Sends anything off the Mac? No. No push, fetch, remote, curl or ssh (`grep`); the dry clone is `git clone --no-local` of the local lane clone; `commit_msg.py` imports only `importlib.util`, `re`, `sys`, `pathlib`; the helper runs only local git.
+- Leaves the clone dirty on a failure? Probed: a copy of the kit in `gemrv/kitprobe/` pointed at my own clone, with an injected failure after the real commit (and with the ACCEPT line replaced by a no-op, so no ACCEPT was typed). It made the commit, verify printed `registered: ['codex', 'gemini']`, then the injected failure gave `NOT ACCEPTED: PROBE: injected failure after the real commit; un-committed d7741c4c… (recoverable from the reflog); the kit put back what it had changed; the clone is back at ec62dec8… and clean`; `git status --porcelain --untracked-files=all` empty, and the throwaway folder under TMPDIR removed.
+- One window it cannot fully undo: an interrupt during `git commit` itself (before `NEW` is set) would restore the four files against a HEAD that may have moved; the kit then prints the leftover state rather than claiming clean (MINOR 2).
+
+### 6. What stays unverified
+
+- Walk authenticity: every gate is a consistency check over producer-written bytes; a consistent fabrication committed under `WALK_SUBJECT` would pass. The guarantee is procedural (Javier's own commit), as the module states.
+- The new postflight code on a live take: I ran no take and no test suite (the brief asks for none); the `session_pair` admission, and whether `take.spec` always has `run_tree` on a real take, are the lane's review, not this one.
+- The Codex reader and w-o46 (the Codex reviewer); I used a stand-in Codex review only to show the both-records condition.
+- The real kit run, Javier's identity and `commit_msg.py` on his machine state; my probe ran a modified copy against my own clone.
+- The shapes the reader never counts (`NEVER_COUNTED`): parallel calls from one model message, a turn killed mid-tool, thoughts and thought signatures; and `multi_segment_interactions` is 0 in w-g21.
 
 ## Findings
 
-### MINOR 1: four default-deny conjuncts of the new code have no witness in the suite
+No BLOCKER, no MAJOR.
 
-X3, X13, X19 and X22 each widen admission and survive all seven modules:
-- X3, the upper bound of "exactly one context copy". The design's section 3 names "drops ... two" as a refusal; only M10's zero case is tested.
-- X13, `set(p) == {"text"}` in `_ignored_copy`.
-- X19, `_ignored_prompts` still checking removed originals inside a road (a) patch.
-- X22, `resume_at` set by `$set {sessionId}` only.
-
-The head behaves correctly on each (W3, W13, W19 and W22 pass on the head and fail under the mutant).
-Facts are unaffected in every case: removed originals are frozen as they stood, and copies are never facts.
-So no walk is read wrong and no claim is false: the lane's "28 mutants each red" holds for its own set.
-Fold: add the four witnesses (scratch versions in SP/tools/wit_f4.py) to test_b28_resume_after_rerecord.py, red first under each mutant.
-tests/ is not in READER_SOURCES, so reader_sources_sha256 (f58cfd1d…) and this review's tables stand. Re-run the module before the kit, or record the gap as accepted.
-
-### NIT 2
-
-X15, X17 and X18 are stricter or crash-only and the head is right: whitespace-only copies are ignored, as `isIgnoredUserContent` does; a non-string text part is refused by name; an upsert of the ORIGINAL context id is admitted exactly as at 5457e75e.
-Pinning them would guard against later drift; W15, W17 and W18 do it.
-
-### NIT 3
-
-X27 changes only the refusal's name (an `{updates}` patch while pending still ends refused).
-X26 is equivalent.
-Name both with the lane's equivalent mutants (R2, R5).
-
-### NIT 4 (residual wording)
-
-F-B26-9's close also means that a `<gemini id>_response` record written after the close becomes an ORIGINAL rather than an unverified RESUME_COPY.
-That is the same reading 5457e75e gives such an id outside any window, so it adds no new class of input.
-The writer never produces it, and no walk changes.
-One line in the residual list would make it explicit.
-
-## Commands run (abridged; SP = the scratch folder above)
-
-- `git clone -q --shared /Users/javrodher/aegis-builds/vendor-b28-20261021 SP/clone`, push URL set to no-push://disabled, detached at 854f6c3e. The same for SP/mutclone from SP/clone. SP/rg-base and SP/rg-head were cloned from vendor-b26-20261021 at 0554fd6a; rg-head then ran `git fetch` of 854f6c3e from the lane clone and `merge --no-ff` in scratch.
-- `git -C SP/clone diff 5457e75e 854f6c3e -- evals/gap-study-4/<each source>`, `--stat`, `--name-only`. `git archive` of 5457e75e and 854f6c3e (evals/gap-study-4, without rehearsals/) and of 0554fd6a (rehearsals/) into SP/base, SP/head and SP/walks.
-- `mac_slot.py run --kind heavy --work gap-study-r4 --owner review-b28-f4 --minutes 30 --needs-mac "…" --wait 1200 -- /bin/bash SP/tools/reread.sh`, which runs cmp_f4.py on each code folder. Then `python3.12 -I -B SP/tools/compare_f4.py SP/out-base.jsonl SP/out-head.jsonl`.
-- `gate.sh python3.12 -I -B SP/tools/rg_wg24.py SP/rg-{base,head}/evals/gap-study-4 …`, then `cmp`.
-- `gate.sh python3.13 -I -B SP/tools/mutf4.py SP/mutclone`, `… mutf4b.py SP/mutclone` and `… wit_f4.py SP/head/evals/gap-study-4`.
-- SP/tools/mods.sh (each module in its own process, light-ok before each), and `gate.sh python3.13 -B SP/tools/hazard.py SP/clone/evals/gap-study-4 <modules>` for the three sets.
-- The reader_sources_sha256 computation (inline python3.13 over SP/rg-base and SP/clone).
-
-## Not checked
-
-- athena's battery (it ran on e7227908, which has the same code; I did not re-read it).
-- Any walk outside the 36 at 0554fd6a, and the Codex walks (no Codex source changed).
-- Whether a real walk will ever show road (a) (residual R1: an unseen variant refuses by name).
-- The design review's and the build review's findings beyond what the diff above shows folded.
+- MINOR 1 (kit and helper): the review gate checks that some line of the review is exactly `VERDICT: PASS`, not that line 1 is. `review_fields(b"VERDICT: FAIL\nReviewer: x, y\n\nquoted:\n" + b"VERDICT" + b": PASS\n", "gemini", None)` returns `{'verdict': 'PASS', …}`, and the kit's `grep -Fxq` has the same gap. A failing review that quotes the passing line on its own would be recorded as a PASS. Not live here: this review holds that line once, as line 1. Fix: require line 1 to be exactly it (and no other `VERDICT:` line).
+- MINOR 2 (kit): an interrupt that lands during `git commit` itself, before `NEW=$(git rev-parse HEAD)`, leaves `undo` restoring the four files without un-committing; the kit then reports the leftover state (head and `git status`) instead of claiming clean, so nothing is silent, but the clone can be left needing a hand. Low exposure (Javier would have to press Ctrl-C in that instant).
+- MINOR 3 (pre-existing, not from this lane): `box/preflight.py` is imported by the acceptance road (through drive.py) but is not in READER_SOURCES, so a change to it never unregisters a reader. In this lane it changes nothing the reader reads (Q1), so it does not touch this acceptance; worth a line in the hash-coverage follow-ups.
+- NIT 1: the `Reviewer:` parse stops at the first comma, so the record's reviewer reads `a fresh Opus 5.5 reviewer agent of glitch-45` rather than the whole line; consistent with the earlier records' form.
+- NIT 2: from this lane on, every live take's postflight.json carries `recorded.admitted_session_pair` (an empty list unless a pair is admitted); no reader or walk check parses it, but anything that compares postflight records across the line should know.

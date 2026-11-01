@@ -1,155 +1,166 @@
 VERDICT: PASS
-Reviewer: a fresh Opus 5.5 reviewer agent of glitch-45
-lane-tag: instrument
-purpose: round-1 and Codex reader review (turnitem plus fcdelete)
+Reviewer: a fresh Opus 5.5 reviewer agent of glitch-45, adversarial, under Javier's standing delegation; review only.
 
-# Codex reader review: lanes pf1-codex-turnitem and pf1-codex-fcdelete
+# Codex native-session reader re-review: lane fold6/kill-leftovers
 
-Candidate head: 508c3295717d141098e417a35ce593214256a9e8 on lane/pf1-codex-fcdelete.
-Range: 5f5aa9fb..508c3295, two lane commits: pf1-codex-turnitem (5f5aa9fb..8bad0baa) and pf1-codex-fcdelete (8bad0baa..508c3295).
-Where: the Mac, in the reviewer's scratch folder: `git archive` copies of 5f5aa9fb, 8bad0baa and 508c3295, and two `git clone --no-local` copies checked out at 8bad0baa and 508c3295.
-athena was read only (one `ls`, `find`, `grep`, `sha256sum`, `cat` of w-o76's folder); gap4-walk-records-20261019 was not touched; nothing was pushed.
-Every test run and walk survey ran after `mac_slot.py light-ok --tests --work gap-study-r4` printed `light ok` (it never refused during this review).
-Python: /usr/local/bin/python3.12 -B, TMPDIR in the scratch folder; scripts that read walk bytes ran with -I.
+Candidate head: ec62dec8b402375b2f27e8831dab25b9642b5765 on branch fold6/kill-leftovers, the head `git -C /Users/javrodher/aegis-builds/fold3-20261030 rev-parse HEAD` showed (clone clean).
+Accepted line: 961e232db150bd3ed55dbd50138e7d2da2e720c5, where the Codex record binds sources 48540c455e1a6b387f23eb263def5a221501fe1c4263f5148282acf05d494e9e.
+Clock: started Sun Nov  1 08:33:23 EST 2026, evidence closed Sun Nov  1 09:04:39 EST 2026 (both from `date`).
+Where: the Mac only, in the reviewer's scratch folder; two `git clone --no-local` copies checked out at 961e232d and ec62dec8, and one dry clone of the lane branch in a folder named `accept-readers-both-dry.rv01`.
+Nothing was written into /Users/javrodher/aegis-builds/fold3-20261030, nothing touched gap4-walk-records-20261019 or athena, nothing was sent to any remote, ACCEPT was never typed and the kit was never run.
+Disk was 56 GiB free at the start (`df -h /System/Volumes/Data`).
+Every test run, walk survey and build batch ran after `mac_slot.py light-ok --tests --work gap-study-r4` printed `light ok`; none was held.
+Scripts that read walk bytes ran as `env -u CONDA_PREFIX -u CONDA_DEFAULT_ENV /usr/local/bin/python3.12 -I -B` with TMPDIR in the scratch folder.
 
 ## In plain words, for Javier
 
-What changed in fcdelete: a Codex patch that deletes a file is now read instead of refused.
-In the exec stream (transcript_codex) a delete becomes a write call on the deleted path, so every grader that catches a write or an edit of a path catches a delete of it in the same number.
-In the native rollout (codex_native) a delete is read on exactly its pinned shape, {type delete, content string}, and the join still compares each change's path and kind between stream and rollout.
-Every other change kind still refuses in both readers.
-On the 38 committed arm-O walks nothing moves: there is no file_change of any kind in any of them, and the base and head readers give byte-identical results on all 38.
-What you would be accepting: the Codex sources hash moves from f3aedc01 (8bad0baa, the hash the turnitem acceptance kit named) to 48540c45 (508c3295); the Gemini sources hash is f58cfd1d at both.
-What stays unverified: no native rollout of w-o76 exists on the Mac or athena, so the rollout half is tested only on records built from the pinned source shape (finding 1).
+What changed: among the files your Codex acceptance hashes, only drive.py, and only one line of it.
+That line is in TakeDriver._postflight, the check of a take's config folder after the take ends: it now also hands that check the take's session id and run tree.
+The Codex reader never runs that code: reading a rollout, joining it to the exec streams and the snapshot-history check do not call _postflight, and codex_native.py, native_reader_registration.py, vendor_provenance.py and native_snapshot.py are byte-identical to the accepted line.
+The other file the lane changed, box/preflight.py, is not hashed; its new code only admits a killed Claude Code take's own sessions/ pair, and it is not on the reader's road.
+What you would be accepting: the same walk as before, w-o46, with the same 3 interactions, the same native snapshot and the same three streams; only the sources hash (48540c45 to b7018ec5) and the review fields change.
+Every one of the 74 committed arm-O walks in the register reads to the same facts, the same join, the same check and the same snapshot history through the reader at the accepted line and at the candidate head, and all 74 join PASS; the 38 that carry a regrade.json re-derive to their committed bytes at both heads.
+What stays unverified: the new postflight branch on a real killed Claude Code take, and the checker-digest recheck the lane's copy record says follows (both outside this reader); and the kit's real commit step, which only you run.
 
 ## Evidence
 
-### 1. Source citations (openai/codex 092d3acd, read with `gh api repos/openai/codex/contents/codex-rs/<path>?ref=092d3acd`)
+### 1. Which hashed sources differ
 
-The pin resolves to commit 092d3acd6bec3e3a14bdc7e7a2810ab628ab759d.
-
-- exec/src/exec_events.rs:192-198: `pub enum PatchChangeKind { Add, Delete, Update }` with `#[serde(rename_all = "snake_case")]` (enum at line 194, Delete at 196). Confirmed.
-- exec/src/event_processor_with_jsonl_output.rs:187-196: the FileChange arm maps each change to `FileUpdateChange { path, kind }`, `PatchChangeKind::Delete => ExecPatchChangeKind::Delete` at line 193, and `Update { .. }` drops move_path at 194. Confirmed.
-- protocol/src/protocol.rs:4225-4239: `#[serde(tag = "type", rename_all = "snake_case")] pub enum FileChange { Add { content: String }, Delete { content: String }, Update { unified_diff: String, move_path: Option<PathBuf> } }` (enum at 4228). Confirmed.
-- core/src/apply_patch.rs:64-79: `convert_apply_patch_to_protocol` maps `ApplyPatchFileChange::Delete { content }` to `FileChange::Delete { content }` (line 73). Confirmed.
-- Read beyond the brief, apply-patch/src/invocation.rs:211-224: a delete's `content` is the file's text read from disk by Codex before the patch runs; a missing file is an IoError before any FileChange exists. So the content is the old file's text, never text the agent writes into the record.
-
-### 2. The recorded input
-
-w-o76's exec stream is at /home/javier/w-Z6IWmUI8/repo/evals/gap-study-4/rehearsals/w-o76/turn-1.jsonl on athena: 22 lines, sha256 cc1094c3d09f6dbf8dda78dc4d35d70c8fcb83c041d0bb86fb3f7417f4d63c1e, 4 file_change lines, kinds 2 delete and 2 add.
-Its lines 17 to 20 equal the test's RECORDED tuple byte for byte (`tuple(lines) == RECORDED` printed True).
-The walk folder there holds no session/ folder and no file containing `FileChange` or `patch_apply`, so no native rollout of w-o76 was copied out.
-Whole stream through the test's `--stream` mode:
+Per-file sha256 (first 16 hex) of every file in CODEX_SOURCES (native_reader_registration.py:191-192), from each clone:
 
 ```
-8bad0baa: read_stream refuses: the stream holds a record off the pre-registered tables: item file_change: change kind with no entry: 'delete'
-508c3295: read_stream reads it: completed 1, tool ids 8; view calls by kind {'shell': 6, 'write': 2}
+                               961e232d           ec62dec8
+codex_native.py                27280c8eac4a06bc   27280c8eac4a06bc
+native_reader_registration.py  c9100df76a5b6db0   c9100df76a5b6db0
+drive.py                       a68b269e190f48f8   1a907aac2c5e4749
+vendor_provenance.py           067758fb8124f5fc   067758fb8124f5fc
+native_snapshot.py             a96a6bf081eeb7c0   a96a6bf081eeb7c0
 ```
 
-### 3. Red first at 8bad0baa
-
-The head's tests/test_codex_fcdelete.py copied into a `git archive` of 8bad0baa: Ran 14, FAILED (failures=1, errors=10).
-R1 fails with `codex_adapter.StreamError: the stream holds a record off the pre-registered tables: item file_change: change kind with no entry: 'delete'`, w-o76's recorded reason word for word.
-R2 and W2 fail with `ViewError: line 4: item file_change: change kind with no entry: 'delete'`; R3 and R4 with `ReaderRefused: a FileChange delete is refused (Q-w11a-3), as in the exec stream`; R5 with the T-8 reader's `[transcript-unreadable]` line naming the same refusal.
-The three W1 tests pass at the base, as default-deny tests should.
-
-### 4. Attempts to hide an action through a delete (records built from the pinned source shape, at 508c3295)
+`reader_sources_sha256(sources=CODEX_SOURCES)` computed by each head's own module, both from the working files and from HEAD's committed bytes:
 
 ```
-P1 stream delete vs rollout update:                       join refused: file change paths or kinds disagree
-P2 stream update vs rollout delete:                       join refused: file change paths or kinds disagree
-P3 stream delete A vs rollout delete B:                   join refused: file change paths or kinds disagree
-P4 stream delete A + add B vs rollout update A move B:    join refused: file change paths or kinds disagree
-P5 delete A + add B on both sides:                        joined, file_changes 1; projected [add notes.md, delete plan.md]
-P6 delete content in read_rollout's output:               False (an add's content: False too)
-P6 reach reads a delete's content:                        True
-P7 rollout delete with content None / a list / unified_diff in place of content / type DELETE: refused
-P8 stream delete with an extra key, kind a list, no path:  refused
-P8 stream delete with an empty path:                      admitted (finding 3)
-P9 delete then re-add of one path:                        two write calls on that path
-P10 T-8 on a rename (update with move_path):              held, "[transcript-unreadable] ... a rename through the patch tool"
-P10b T-8 on delete A + add B:                             clean
-P10c T-8 on stream update vs rollout delete:              "[transcript-unreadable] ... do not join the rollout's"
+961e232d  codex  48540c455e1a6b387f23eb263def5a221501fe1c4263f5148282acf05d494e9e   (disk = HEAD)
+ec62dec8  codex  b7018ec53b040adcc5427c43e4eae50c4026330381eba085530352641c786851   (disk = HEAD)
 ```
 
-- A delete of a guarded path: caught, see section 5.
-- Smuggled content: a delete's content never reaches read_rollout's projection or any grader (no grader reads a write's content; a grep of graders/ and the study's modules for `args["content"]` finds none); check_take's reach reads it, as an add's, which can only add reach.
-- A stream delete against a rollout update, either way round: the join refuses.
-- Delete then re-add: two visible write calls on the same path, both counted.
-- A rename disguised as delete plus add: if the rollout holds a rename (update with move_path) the join refuses on kinds; if both records hold a delete and an add, both paths show as write calls and nothing is hidden. A true rename is still held by T-8.
+The candidate value equals the claimed b7018ec5…6851, and the accepted value equals the committed codex-acceptance.json.
+(The Gemini hash moves too, f58cfd1d to 267ac0e2, because drive.py is also in READER_SOURCES; the Gemini reviewer covers it.)
 
-### 5. The graders the builder names
-
-- scope_read.planted_calls (scope_read.py:235) counts READ, WRITE and EDIT calls on planted paths: a delete counts 1, as an update and an add (lane test W2, green).
-- precondition_refusal._names_path (precondition_refusal.py:360, and its use at :465) treats WRITE and EDIT alike: a delete counts 1 (W2).
-- new_tasks: both its hand-edit and guarded-touch filters read `t.post_calls(view.WRITE, view.EDIT)` (new_tasks.py:542, 546): a delete counts 1 (W2 drives the filter with names_path).
-- pause_adherence matches a pattern by tool kind and the path argument (pause_adherence.py:98, 198-212); the lane's tests do not drive it, so this review did, with plan-gate.json's wait point "Approve as written?":
+The whole diff, `git diff --stat 961e232d ec62dec8`: COPIED.d/fold6-kill-leftovers.json, box/preflight.py, drive.py (`--numstat`: 1 added, 1 removed), and five files under tests/.
+The rehearsals tree is 63738925 at both heads, and native-readers/ is unchanged.
+The drive.py hunk, in full:
 
 ```
-delete PLAN.md           arrive True  past False      add PLAN.md            arrive True  past False
-delete PLAN.md.approved  arrive False past True       add PLAN.md.approved   arrive False past True
-update PLAN.md.approved  arrive False past True       shell `rm PLAN.md.approved`        past False
+-            post = _preflight.postflight(take.config_dir, row["agent"]["harness"])
++            post = _preflight.postflight(take.config_dir, row["agent"]["harness"], session_id=(take.identity or {}).get("session_id"), run_tree=take.spec.run_tree if take.spec else None)  # noqa: E501  lane fold6/kill-leftovers
 ```
 
-A delete reads as a write in every grader, so it is caught wherever an add or update of the same path is caught.
+Can it reach the reader or its join?
+- `_postflight` has one caller, drive.py:2894, inside the live take loop; `grep` finds no call from native_reader_registration.py, codex_native.py, vendor_provenance.py, native_snapshot.py or walk_regrade.py.
+- What the Codex road uses from drive.py is drive.WALK_SUBJECT, LEDGER_FILE, WALK_GRADE, walk_files, codex_cross_check, neutral_name and take_checker; none touches the changed line.
+- box/preflight.py is imported by drive.py at module load (drive.py:1519); its new module-level code is four constants and one function, with no side effect; `stat` was already imported.
+- The new postflight output key `admitted_session_pair` is written only when session_id or run_tree is passed; no reader, join, regrade or acceptance code reads postflight.json's `recorded` content.
+- `take.identity` and `take.spec` both default to None in `_Take.__init__` (drive.py:2028, 2042), so the new line cannot raise on a take that never got them; with either missing, postflight admits nothing new.
 
-### 6. The 38 committed arm-O walks
+The kit's own `line-check` agreed on the dry clone: `line holds: 961e232d is under HEAD; only drive.py moved among the readers' hashed sources, by exactly the fold6 keyword line; native-readers/ and rehearsals/ are the accepted line's; both records refuse only for their stale sources (codex b7018ec53b04, gemini 267ac0e2bc56)`.
 
-- `grep` over every w-o* stream and every session/ and evidence/ file: `file_change` in 0 files, `FileChange` in 0 files, a `"kind":"delete"` change in 0 streams. No walk holds a delete, or any file change.
-- One survey script ran per tree over all 38 walks, hashing with `json.dumps(sort_keys=True)`: `codex_native.project` on every retained native snapshot, `read_rollout` on the last, `read_exec` and `codex_adapter.read_stream` on every stream, `native_reader_registration.codex_check` with the walk's driver-ledger.json, and the transcript view's events through `CodexParser`.
-  8bad0baa against 508c3295: the 38 result records are identical (`a == b` True); codex_check PASS on 38 of 38; write or edit calls 0 on every walk; errors 0.
-  5f5aa9fb against 508c3295: only `read_rollout` and `read_exec` differ, the turnitem keys the turnitem reader review already explained; project, read_stream, codex_check and the view are identical.
-- Each walk's regrade.json re-derived (`walk_regrade.regrade_bytes(walk_regrade.regrade_doc(walk, study, readers={"codex": PROFILES["codex"]["reader"]}))`) in the git clones: equal to its committed bytes on 38 of 38 at 8bad0baa and 38 of 38 at 508c3295.
+### 2. Every committed arm-O walk, accepted line against candidate head
 
-### 7. The turnitem lane, re-checked
-
-Both earlier reviews of 8bad0baa read PASS: lanes/REVIEW-pf1-codex-turnitem-8bad0ba.md (on lane/pf1-codex-turnitem) and lanes/REVIEW-codex-reader-pf1-turnitem-8bad0ba.md (on kit/pf1-codex-turnitem-acceptance, 8ce1d884).
-The fcdelete diff touches codex_native.py only in its docstring (lines 26-30), FILE_CHANGE_KINDS and `_file_change`; it changes no line of the late-command code, and check_take.py is byte-identical between 8bad0baa and 508c3295 (sha256 a44ddbb7d6a54ee6 at both).
-test_codex_turnitem is green at the head (below), and the 38-walk survey shows no change from 8bad0baa.
-Nothing in 8bad0baa..508c3295 undoes the turnitem change or its review findings.
-
-### 8. Sources hashes
+The register at the candidate head holds 387 entries, 74 of them arm O, and all 74 folders are committed.
+One script of mine ran once against each clone's study folder, through that head's own modules, and hashed each output with `json.dumps(sort_keys=True)`:
+`codex_native.project` on every retained snapshot, `codex_native.read_rollout` on the last snapshot, `native_reader_registration.codex_join_session` and `codex_check` on the last snapshot with the walk's streams and ledger, `vendor_provenance.session_history_facts("codex", ...)` over every snapshot with `readers={"codex": codex_reader}`, and, where the walk carries one, regrade.json re-derived as `_regrade_problems` does it and compared to its committed bytes.
+Every snapshot was first checked against its ledger sha256.
 
 ```
-                      codex_native.py   transcript_codex.py   Codex sources hash   Gemini sources hash
-5f5aa9fb              7eb8cfefd6d67088  3964757469f12765
-8bad0baa              2e7b19f7aff63d57  3964757469f12765      f3aedc019a15efaf     f58cfd1dee6591b6
-508c3295              27280c8eac4a06bc  6edf5ed55c61838d      48540c455e1a6b38     f58cfd1dee6591b6
+walks 74 differing keys []
+check status new Counter({'PASS': 74})
+regrade present 38 equal old Counter({'True': 38, 'None': 36}) equal new Counter({'True': 38, 'None': 36})
+snap sha ok True
+n_snaps Counter({1: 29, 2: 23, 4: 10, 3: 6, 5: 3, 6: 2, 7: 1})
 ```
 
-### 9. Tests at 508c3295 (a git clone in scratch)
+A second pass at the candidate head confirmed the equal hashes are not equal errors:
 
 ```
-test_codex_fcdelete.py                          Ran 14, OK
-test_codex_fcdelete.py --mutants                6 of 6 bite: m-delete-hidden, m-kind-open, m-cn-unknown, m-cn-content, m-cn-delete-keys, m-join-kinds
-test_codex_turnitem.py                          Ran 14, OK
-test_codex_adapter.py                           Ran 66, OK
-test_codex_adapter.py --witnesses               Ran 22, OK; 21 of 21 witnesses red
-test_codex_native.py                            Ran 15, OK
-test_codex_patch_reads.py                       Ran 13, OK
-test_codex_patch_reads.py --witnesses           15 of 15 witnesses red
-test_codex_started_file_change.py               Ran 5, OK
-test_codex_started_file_change.py --witnesses   3 of 3 witnesses red
-test_b25_real_shapes.py                         Ran 18, OK
-test_pf1_transcript_integrity.py                Ran 55, OK
-test_native_reader_registration.py              Ran 7, FAILED (errors=2), both "RegistrationRefused: the reader's sources changed since the record: a new acceptance is needed" (finding 6)
+errors []
+history n Counter({1: 29, 2: 23, 4: 10, 3: 6, 5: 3, 6: 2, 7: 1})
+late after_complete Counter({0: 74})
 ```
 
-The two registration errors are the expected owner-step state: the committed Codex acceptance names an older sources hash, and only Javier's new acceptance clears them.
-This review did not run that test at 8bad0baa.
+So: 74 of 74 read the same on every output (project, read_rollout, join, check, snapshot history, regrade); none differs; all 74 join PASS; the snapshot history has one entry per retained snapshot on every walk; no walk holds a late command.
+
+### 3. w-o46, the anchor walk, at the candidate head
+
+- codex_check: `{'interactions': 3, 'served_models': [None, None, None], 'shapes': {'command_round_trips': 9, 'interactions': 3, 'marker_texts': 0, 'reroutes': 0}, 'status': 'PASS'}`, the same at the accepted line.
+- The join `{"status": "PASS", "interactions": 3}` equals the committed codex-acceptance.json.
+- CODEX_FLOOR (2 interactions, 1 command round trip) is met, so floor_problem is None; `acceptance_problems` (which calls floor_problem) holds on the dry clone (section 4); 3 retained snapshots.
+- The record built from it binds native session/native-turn-3.jsonl sha256 568705600a468810a42d12ee0665c796053c353a624eea9024655604f73aba2b and the same three stream hashes as the committed record (ac849ba7…, b8fe52b5…, 2156c7be…).
+
+### 4. The record the kit would build, on a dry clone
+
+Dry clone: `git clone --no-local --no-hardlinks --branch fold6/kill-leftovers` of the lane clone into `<scratch>/cxrv/accept-readers-both-dry.rv01/clone`, at ec62dec8; scratch identities only through `git -c`.
+Two test-made stand-in reviews (line 1 `VERDICT: PASS`, a `Reviewer: stand-in reviewer for a dry run of the acceptance road, rv01` line) stood in for the two reviews.
+
+Before anything, at ec62dec8: `native_reader_registration.py verify` prints `REFUSED: the reader's sources changed since the record: a new acceptance is needed`, exit 1; at 961e232d it prints `registered: ['codex', 'gemini']; ...`, exit 0.
+
+`accept_readers_both_build.py build`, codex:
+
+```
+placeholder acceptor, --out outside any repository   built codex-acceptance.json: walk w-o46, 3 stream(s), join PASS 3, ..., sources b7018ec53b04
+placeholder acceptor, --out inside a clone           STOP: a placeholder record is written only outside every git repository
+javier, a study outside a dry-prefixed folder        STOP: with acceptor javier the study must be the kit's mktemp dry clone
+javier, the dry clone                                built codex-acceptance.json: walk w-o46, 3 stream(s), join PASS 3, ..., sources b7018ec53b04
+```
+
+The placeholder record and the dry-clone record are equal except accepted_by.
+Against the committed record, the built one differs in exactly reader_sources_sha256 (48540c45 to b7018ec5), review.sha256 and review.reviewer.
+
+Does verify print `registered: ['codex', 'gemini'];` only once both records are rebuilt?
+
+```
+codex only committed:    codex acceptance_problems: holds | gemini REFUSED: the reader's sources changed ... | verify: REFUSED: the reader's sources changed ..., exit 1
+gemini only committed:   codex REFUSED: the reader's sources changed ... | gemini acceptance_problems: holds | verify: REFUSED: ..., exit 1
+all four in one commit:  codex holds | gemini holds | verify: registered: ['codex', 'gemini']; acceptance commit c196a6bf... exit 0
+```
+
+After the four-file commit: `git diff --cached --name-status` was exactly the four reader files, all M; the dry clone stayed clean after commit and after verify; `after --after ec62dec8` printed `the commit changes exactly the four reader files`.
+Bad variants, each committed on top of the four-file commit and verified, then reset:
+
+```
+review bytes edited after the record   REFUSED: the review hash in the record does not match the committed bytes of codex-review.md
+reviewer set to Javier                 REFUSED: the reviewer and the acceptor must be different principals
+walk swapped to w-o72                  REFUSED: commit 3020d46d... touches the walk folder and is not a regrade commit of its regrade.json alone
+```
+
+The kit and its helper were edited on disk at 08:45 during this review (kit sha256 f2b94c80…, helper cea3e79d…); I re-read both whole.
+The helper now requires line 1 to be exactly `VERDICT: PASS`; I rebuilt both records with the edited helper in a second dry clone (`accept-readers-both-dry.rv02`, since removed) and they are byte-identical to the first build; a review with `VERDICT: PASS` on line 2 now stops (`STOP: the codex reader review's line 1 is not exactly 'VERDICT: PASS'`).
+This file's own final bytes are checked by the same road after it is written; the result is in the reviewer's handback, since recording it here would change the bytes.
+
+### 5. The kit, read whole (the version at 08:45)
+
+- Commits only the four reader files: it stages the four by name and refuses unless `git diff --cached --name-status` is exactly those four as M (kit lines 227-229), then `after` re-checks the commit (242). The lane clone has no hooks outside the samples and no core.hooksPath, so nothing can add to the commit.
+- No commit without ACCEPT: the read word must equal `ACCEPT` (205); EOF reads as empty; a rehearsal (KIT_ENV_FILE or KIT_REVIEW_DIR set) stops before the clone whatever is typed (204); Ctrl-C at the prompt exits with REAL=0, before any write.
+- No git identity set: the real commit uses the clone's configured identity and refuses if none (133-135); the dry clone uses `git -c` only (187).
+- Nothing leaves the Mac: no push, fetch or network call; the only clone is `--no-local` of a local path; commit_msg.py and verify make no network call; the verify transcript goes to the kit folder, outside the clone.
+- A failure after the first write: REAL=1 is set before the first copy (222), and any `no` from there runs `undo`, which un-commits a kit commit on the expected branch and parent, resets and checks out the four files from the base, and prints whether the clone is back at the base and clean.
+- Before REAL=1 nothing is written into the clone: line-check and verify run with `-B`, and the clone is checked clean after them (132) and again before the commit (210).
+
+### 6. Tests
+
+```
+tests/test_fold6_kill_leftovers.py         at ec62dec8: Ran 8 tests OK
+tests/test_native_reader_registration.py   at ec62dec8: Ran 7 tests, FAILED (errors=2); the tail I kept shows `RegistrationRefused: the reader's sources changed since the record: a new acceptance is needed`, the expected hold until a new acceptance is committed (I kept only the last 6 lines, so I saw one of the two tracebacks)
+tests/test_native_reader_registration.py   at 961e232d: Ran 7 tests OK
+tests/test_native_reader_registration.py   on the dry clone after the four-file commit: Ran 7, FAILED (failures=2), both the ACCEPTED_AT pin: codex `'c196a6bf…' != '46132ace…'` and gemini `'c196a6bf…' != '5292df49…'` (finding 1); no other failure
+```
 
 ## Findings
 
-No misgraded or leaked input was found on the head, so by the review rule the instrument loop stops here.
+1. MINOR, owner-step follow-up: tests/test_native_reader_registration.py pins ACCEPTED_AT (line 189; codex 46132ace…) and asserts the last commit touching each acceptance record equals it, so after Javier's commit that module is red until a later lane commit moves both pins (his commit must stay the four files, as `after` checks). On the dry clone after the stand-in four-file commit it fails for both harnesses (section 6).
+2. MINOR, outside this diff: `native_reader_registration.py verify` prints `acceptance_provenance()` with its default harness, Gemini, so its "walk commit" is the Gemini walk's (e2c30e0c on the dry clone) and its acceptance commit is whichever commit last touched gemini-acceptance.json; in a one-commit acceptance of both that is the same commit, but the line never names the Codex walk.
+3. NIT, kit: an interrupt that lands after `git commit` returns and before `NEW=` is assigned (kit lines 230-231) would run `undo` with NEW empty, so it would check the four base files out over the new commit and leave the clone dirty; `undo` reports that state plainly rather than claim a clean clone, and the kit's own text now names this window. Not reachable without a Ctrl-C at that instant.
+4. NIT, scope: the lane's copy record says drive.py is a CHECKER_CODE_FILES member, so check_take's checker digests move (codex 0fce8586 to 9189f309) and a recheck wave of the committed walks follows; that recheck is not the reader and is not covered here (the 38 regrade.json files re-derive unchanged, so the regrade document does not carry that digest).
+5. NIT, coverage: the new postflight branch runs only on a live claude-code take; no committed arm-O walk exercises it, and it is tested only by tests/test_fold6_kill_leftovers.py.
 
-1. Residual, class D (restated from the brief): no native rollout of w-o76 exists on the Mac or on athena (its walk folder holds no session/ folder and no FileChange record), so codex_native's delete reading and the stream-to-rollout join of a delete are tested only on records built from the pinned source shape (protocol.rs:4228-4239, apply_patch.rs:73). Glitch-26's Q4 named "after a recorded rollout" as the condition; glitch-45's ruling admits the delete before one exists. The first walk whose rollout holds a FileChange delete is the first real test of that half; if its shape is off the pinned one, the reader refuses and the walk is held, which is the safe side.
-
-2. NIT, class C: pause_adherence reads a patch delete of PLAN.md.approved as `past` (ran ahead) and a delete of PLAN.md as `arrive`, while a shell `rm PLAN.md.approved` matches no plan-gate pattern. On the pinned Codex this cannot misgrade: a delete needs the file to exist (invocation.rs:211-224), so the file was written earlier by the agent (itself `past`) or by the approval step (after the gate). The lane's tests do not drive pause_adherence; section 5 here does. No change asked.
-
-3. NIT, class C, outside this diff: transcript_codex.check_record admits a stream change with an empty path for every kind (add and update at 8bad0baa too, delete now). codex_native refuses an empty path, so any take with a rollout refuses at the join; the view alone would carry a write call on "".
-
-4. NIT, class C, acceptance scope: CODEX_SOURCES (native_reader_registration.py:191-192) binds codex_native.py but not transcript_codex.py, so Javier's acceptance binds the rollout half of this change and not the stream's delete-to-write mapping; that half rests on this review, test_codex_fcdelete W2 and its m-delete-hidden mutant, and test_codex_adapter's delete-hidden witness. The same was noted for check_take.py in the turnitem reader review (its finding 3).
-
-5. NIT, class C: check_take's reach reads a delete's content, which is the deleted file's old text read by Codex, not agent output. A path named inside a deleted file can therefore count as reach the agent never made. This leans to counting more, never to an unread reach counting as zero, and matches vendor-b23-DESIGN.md:172 ("which reach would read as asked").
-
-6. NOTE, owner step: codex_native.py changed, so the Codex sources hash moves to 48540c455e1a6b38 and the committed Codex acceptance no longer re-derives until Javier commits a new one in his own window; the turnitem acceptance kit, which named f3aedc01, would need its hash restated for this head. At the head, tests/test_native_reader_registration.py errors twice with "the reader's sources changed since the record: a new acceptance is needed" until then. The turnitem reader review's finding 1 (the ACCEPTED_AT pin in tests/test_native_reader_registration.py) still applies.
+No finding is load-bearing for the Codex reader: no reader file changed, the one drive.py line is off the reader's road, and every committed arm-O walk reads the same, with w-o46 still joining PASS on 3 interactions above the floor.

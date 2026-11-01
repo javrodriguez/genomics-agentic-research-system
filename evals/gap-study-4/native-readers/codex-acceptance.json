@@ -2,7 +2,7 @@
   "schema": 1,
   "harness": "codex",
   "cli_version": "0.162.1",
-  "reader_sources_sha256": "48540c455e1a6b387f23eb263def5a221501fe1c4263f5148282acf05d494e9e",
+  "reader_sources_sha256": "b7018ec53b040adcc5427c43e4eae50c4026330381eba085530352641c786851",
   "walk": "w-o46",
   "native": {
     "file": "session/native-turn-3.jsonl",
@@ -29,7 +29,7 @@
   "review": {
     "verdict": "PASS",
     "file": "codex-review.md",
-    "sha256": "8aed3a847ba6540cec8078ae4abee01ce52a77f2dabb250b73b6a69c1e871609",
+    "sha256": "44cf53b077220fe07633d11cf29fea69ab0c805e8dadfff3585941bc73780552",
     "reviewer": "a fresh Opus 5.5 reviewer agent of glitch-45"
   },
   "accepted_by": "javier"
