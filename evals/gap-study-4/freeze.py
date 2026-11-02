@@ -660,6 +660,7 @@ FREEZE_WRITTEN_KEYS = (
     "take_order_witness",                 # the review of 53d0e9af, finding 2: GitHub's pushes of the round and draft
     "nulls_at_freeze", "rehearsal_record", "rehearsed_study_tree_sha256",
     "holdout_salted_digests", "holdout_wordings_per_task_version",
+    "published_tip_residual",             # pre-freeze review 7, M1 (lane fold9/round7-residual): PUBLISHED_TIP_LIMIT
 )
 FREEZE_FILLED_INSIDE = (
     "system_under_test.gars_tree_sha_at_freeze", "harness.claude_version_at_freeze",
@@ -1183,6 +1184,21 @@ PUBLISHED_TIP_RESIDUAL = (f"RESIDUAL (published tip): no remote of this reposito
                           f"the mirror's own push history")
 
 
+# Pre-freeze review 7, M1 (lane fold9/round7-residual; glitch-45's ruling of Mon 2 Nov 2026): PUBLISHED_TIP_RESIDUAL was
+# printed to one terminal and lost, and only when no mirror remote exists, while the reviewer showed unpushed dropped
+# commits are unseen with a mirror too. The freeze writes this limit into the frozen file always (published_tip_residual)
+# and result.py prints it on RESULT.md. The draft cannot change, so this is where the qualification is stated.
+PUBLISHED_TIP_LIMIT = ("This qualifies round_4_limitations[10], which says a registered review cannot be dropped. That "
+                       "holds only for commits the freezing repository can still read. A later review's row and report "
+                       "that were never pushed can be erased there by a reset, an expired reflog and a gc, using no "
+                       "fabricated record, and no check at the freeze then sees them, whether or not the study mirror "
+                       f"({STUDY_MIRROR}) is a remote. With the mirror as a remote, the freeze binds HEAD only to the "
+                       f"{FREEZE_LINE} tip as last fetched: a mirror rewritten by a force-push and then fetched passes, "
+                       "and commits on the mirror outside that line are not scanned for review rows or reports. So the "
+                       "statement that the freeze seeded from the last blind review rests on the mirror's push records "
+                       "for what was pushed, and on the operator's word for what was not.")
+
+
 def published_tip_problem() -> tuple[str | None, str | None]:
     """(why HEAD does not descend from the study mirror's freeze-line tip as last fetched, or None; the residual line
     to print when no remote is the mirror, or None)."""
@@ -1543,9 +1559,12 @@ def registered_review_problem(report: str, n: int) -> str | None:
 # the Lane-orchestrator before commit (its as-written bytes are review_kit/prefreeze-4.as-written.md), and rounds 1-3
 # were committed before the rule existed. None of them can seed a freeze now: grandfathered_seed_problem refuses each by
 # number (pre-freeze review 6, M1), and later_review_problem refuses any seed with a later review registered or committed.
+# Round 7 (lane fold9/round7-residual, glitch-45's ruling of Mon 2 Nov 2026) is grandfathered by number too: its reviewer
+# ran one sed on the report, so its record reads NOT RECORDED (review_kit/commit_review.py UNBOUND_REPORTS; as written:
+# review_kit/prefreeze-7.as-written.md). It ruled DO NOT FREEZE and can never seed, which is correct.
 # Round 5 is not grandfathered: its committed blindness record predates section 8 and states no report digest, so
 # registered_review_problem refuses it as a seed, and it ruled DO NOT FREEZE, which never seeds a freeze either way.
-REPORT_DIGEST_GRANDFATHERED = (1, 2, 3, 4)
+REPORT_DIGEST_GRANDFATHERED = (1, 2, 3, 4, 7)
 
 
 def _blindness():
@@ -1685,6 +1704,7 @@ def main(argv=None) -> int:
                       rehearsal_record=record if record else "rehearsal or preview",
                       rehearsed_study_tree_sha256=tree, take_order_witness=witness)
         frozen.update(holdout)
+        frozen.update(published_tip_residual=PUBLISHED_TIP_LIMIT)      # pre-freeze review 7, M1: always, mirror or not
         if not holdout:
             print(HOLDOUT_NOT_REHEARSED)
         if keys_outside_the_freeze(draft, frozen):
