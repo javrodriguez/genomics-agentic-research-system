@@ -216,6 +216,9 @@ class M1Register(unittest.TestCase):
             r.commit("unregister round 8")
             bad, name = r.problems(seed)
             self.assertTrue(bad and "round 8" in bad[0], f"M1-register: {bad}")
+            code, said = r.rounds_check()
+            self.assertEqual(code, 1, f"M1-register: rounds.py --check passes a cut register: {said}")
+            self.assertIn("append-only", said, "M1-register")
 
     def test_a_spent_row_with_a_committed_report_stops_any_seed(self):
         with rig() as r:

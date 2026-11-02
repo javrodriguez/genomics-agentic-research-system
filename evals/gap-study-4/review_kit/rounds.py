@@ -309,6 +309,23 @@ def check() -> int:
             problems.append(f"{r['kind']} round {r['n']} was launched on a prompt whose sha256 is "
                             f"{r['prompt_sha256'][:12]}; review_kit/BRIEF.md now hashes to {prompt[:12]}. The "
                             f"prompt is pinned byte-identical across rounds.")
+    # Pre-freeze review 6, M1 (lane fold8/review-binding): the register is append-only, so no committed version of it
+    # on any ref may hold more rows than HEAD's; a row cut out drops its round as surely as a report deleted.
+    reg = str(REGISTER.relative_to(REPO))
+    log = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--format=%H", "--", reg],
+                         capture_output=True, text=True)
+    for sha in log.stdout.split() if log.returncode == 0 else []:
+        blob = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{reg}"], capture_output=True, text=True)
+        try:
+            held = len(json.loads(blob.stdout)["rows"]) if blob.returncode == 0 else 0
+        except Exception:
+            held = 0
+        if held > len(rows):
+            problems.append(f"{reg} at {sha[:12]} holds {held} row(s) and HEAD's holds {len(rows)}: the register is "
+                            f"append-only, so a registered round was cut out")
+            break
+    if log.returncode != 0:
+        problems.append(f"the history of {reg} cannot be read, so its rows cannot be shown append-only")
     seen: dict[str, list[int]] = {}
     for r in rows:
         if r["kind"] == "verify" and not r.get("voided_by") and not r.get("spent_without_work"):
