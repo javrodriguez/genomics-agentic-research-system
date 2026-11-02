@@ -321,7 +321,7 @@ class B1Freeze(unittest.TestCase):
                 self.assertTrue(got and ("reviewer's session wrote" in got), f"B1-freeze: {kw}: {got}")
 
     def test_rounds_1_to_4_are_grandfathered_by_number(self):
-        self.assertEqual(freeze.REPORT_DIGEST_GRANDFATHERED, (1, 2, 3, 4), "B1-freeze")
+        self.assertEqual(freeze.REPORT_DIGEST_GRANDFATHERED, (1, 2, 3, 4, 7), "B1-freeze")   # 7: lane fold9
         with seed(4, record="none") as rel:
             self.assertIsNone(freeze.registered_review_problem(rel, 4), "B1-freeze")
         with seed(5, record="none") as rel:

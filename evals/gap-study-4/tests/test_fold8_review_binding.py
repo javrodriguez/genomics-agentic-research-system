@@ -3,13 +3,13 @@
 2026, under Javier's standing delegation): the freeze seeds only from the latest review ever registered or committed,
 and only when the code it freezes is the code that review was handed.
 
-  M1-road      review 6's clone road, replayed in a scratch repository: an approving round 7, a later round 8, then one
-               commit deleting review 8's report and blindness record and marking row 8 spent_without_work. Round 7
-               no longer seeds: review 8's report was committed once, and its row is marked spent with a committed
+  M1-road      review 6's clone road, replayed in a scratch repository: an approving round 9, a later round 10, then one
+               commit deleting review 10's report and blindness record and marking row 10 spent_without_work. Round 9
+               no longer seeds: review 10's report was committed once, and its row is marked spent with a committed
                report. rounds.py --check refuses that register too.
   M1-register  a later prefreeze row in review_kit/rounds.json, spent, voided or open, or in any committed version of
                the register, stops an earlier seed; a spent row whose report was ever committed stops any seed.
-  M1-grand     no round in REPORT_DIGEST_GRANDFATHERED (1-4) seeds a freeze, though registered_review_problem still
+  M1-grand     no round in REPORT_DIGEST_GRANDFATHERED (1-4, and 7 since lane fold9) seeds a freeze, though registered_review_problem still
                reads it as a registered round; review 4 at this repository's HEAD is refused by each new check.
   M2-pinned    a pinned file whose bytes at HEAD are not its bytes at the seed round's launch_commit stops the seed,
                and the refusal names the first differing path; a launch_commit that is absent, not a commit or not an
@@ -163,59 +163,59 @@ def report_rel(n: int) -> str:
 class M1Road(unittest.TestCase):
     def test_the_reviewers_clone_road_is_refused(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            self.assertEqual(r.problems(seed), ([], report_rel(7)), "M1-road: the approving round seeds at first")
-            r.register(8)
-            r.review(8, DO_NOT)
+            r.register(9)
+            seed = r.review(9)
+            self.assertEqual(r.problems(seed), ([], report_rel(9)), "M1-road: the approving round seeds at first")
+            r.register(10)
+            r.review(10, DO_NOT)
             self.assertTrue(r.problems(seed)[0], "M1-road: the later review stops the earlier seed")
-            # the road: delete review 8's pair, mark its row spent by hand, one commit
-            git(r.repo, "rm", "-q", f"{study.rel(RK)}/prefreeze-8.md", f"{study.rel(RK)}/prefreeze-8-blindness.txt")
+            # the road: delete review 10's pair, mark its row spent by hand, one commit
+            git(r.repo, "rm", "-q", f"{study.rel(RK)}/prefreeze-10.md", f"{study.rel(RK)}/prefreeze-10-blindness.txt")
             rows = r.rows()
             rows[1]["spent_without_work"] = "x"
             r.set_rows(rows)
             r.commit("drop")
             bad, name = r.problems(seed)
-            self.assertIsNone(name, f"M1-road: round 7 seeds after the drop: {bad}")
-            self.assertTrue(any("round 8" in b for b in bad), f"M1-road: {bad}")
+            self.assertIsNone(name, f"M1-road: round 9 seeds after the drop: {bad}")
+            self.assertTrue(any("round 10" in b for b in bad), f"M1-road: {bad}")
             code, said = r.rounds_check()
             self.assertEqual(code, 1, f"M1-road: rounds.py --check passes the dropped review: {said}")
-            self.assertIn("prefreeze-8.md", said, "M1-road")
+            self.assertIn("prefreeze-10.md", said, "M1-road")
 
 
     def test_a_deleted_report_alone_still_stops_the_seed(self):
-        # the report history on its own (no register row names round 8): a committed then deleted prefreeze-8.md
+        # the report history on its own (no register row names round 10): a committed then deleted prefreeze-10.md
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            r.path(f"{RK}/prefreeze-8.md").write_text("a later review\n")
+            r.register(9)
+            seed = r.review(9)
+            r.path(f"{RK}/prefreeze-10.md").write_text("a later review\n")
             r.commit("a later report")
-            git(r.repo, "rm", "-q", f"{study.rel(RK)}/prefreeze-8.md")
+            git(r.repo, "rm", "-q", f"{study.rel(RK)}/prefreeze-10.md")
             r.commit("drop it")
             bad, name = r.problems(seed)
-            self.assertTrue(bad and name is None and "prefreeze-8.md was committed" in bad[0], f"M1-road: {bad}")
+            self.assertTrue(bad and name is None and "prefreeze-10.md was committed" in bad[0], f"M1-road: {bad}")
 
 
 class M1Register(unittest.TestCase):
     def test_a_later_registered_row_stops_the_seed(self):
         for extra in ({}, {"spent_without_work": "rate limit"}, {"voided_by": 3}):
             with self.subTest(**extra), rig() as r:
-                r.register(7)
-                seed = r.review(7)
-                r.register(8, **extra)
+                r.register(9)
+                seed = r.review(9)
+                r.register(10, **extra)
                 bad, name = r.problems(seed)
-                self.assertTrue(bad and name is None, f"M1-register: row 8 {extra} left round 7 seeding")
-                self.assertIn("round 8", bad[0], f"M1-register: {bad}")
+                self.assertTrue(bad and name is None, f"M1-register: row 10 {extra} left round 9 seeding")
+                self.assertIn("round 10", bad[0], f"M1-register: {bad}")
 
     def test_a_row_removed_from_the_register_still_counts(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            r.register(8)
+            r.register(9)
+            seed = r.review(9)
+            r.register(10)
             r.set_rows(r.rows()[:1])
-            r.commit("unregister round 8")
+            r.commit("unregister round 10")
             bad, name = r.problems(seed)
-            self.assertTrue(bad and "round 8" in bad[0], f"M1-register: {bad}")
+            self.assertTrue(bad and "round 10" in bad[0], f"M1-register: {bad}")
             code, said = r.rounds_check()
             self.assertEqual(code, 1, f"M1-register: rounds.py --check passes a cut register: {said}")
             self.assertIn("append-only", said, "M1-register")
@@ -228,8 +228,8 @@ class M1Register(unittest.TestCase):
             rows[0]["spent_without_work"] = "x"
             r.set_rows(rows)
             r.commit("close 6 as spent")
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             bad, name = r.problems(seed)
             self.assertTrue(bad and name is None, f"M1-register: a spent row with a report: {bad}")
             self.assertIn("prefreeze-6.md", bad[0], f"M1-register: {bad}")
@@ -250,15 +250,15 @@ class M1Register(unittest.TestCase):
 
     def test_the_clean_register_still_checks_ok(self):
         with rig() as r:
-            r.register(7)
-            r.review(7)
+            r.register(9)
+            r.review(9)
             code, said = r.rounds_check()
             self.assertEqual(code, 0, said)
 
 
 class M1Grandfathered(unittest.TestCase):
     def test_no_grandfathered_round_seeds(self):
-        self.assertEqual(freeze.REPORT_DIGEST_GRANDFATHERED, (1, 2, 3, 4))
+        self.assertEqual(freeze.REPORT_DIGEST_GRANDFATHERED, (1, 2, 3, 4, 7))     # 7: lane fold9/round7-residual
         for n in freeze.REPORT_DIGEST_GRANDFATHERED:
             with self.subTest(round=n), rig() as r:
                 r.register(n)
@@ -282,11 +282,11 @@ class M2Pinned(unittest.TestCase):
     def test_a_pinned_change_after_launch_is_refused_and_named(self):
         for when in ("before the review", "after the review"):
             with self.subTest(when=when), rig() as r:
-                r.register(7)
+                r.register(9)
                 if when == "before the review":
                     r.path("code.py").write_text("x = 2\n")
                     r.commit("code")
-                seed = r.review(7)
+                seed = r.review(9)
                 if when == "after the review":
                     r.path("code.py").write_text("x = 2\n")
                     r.commit("code")
@@ -296,18 +296,18 @@ class M2Pinned(unittest.TestCase):
 
     def test_a_new_pinned_file_after_launch_is_refused(self):
         with rig() as r:
-            r.register(7)
+            r.register(9)
             r.path("new.py").write_text("y = 1\n")
-            seed = r.review(7)
+            seed = r.review(9)
             bad, _ = r.problems(seed, "new.py")
             self.assertTrue(bad and study.rel("new.py") in bad[0], f"M2-pinned: {bad}")
 
     def test_an_unpinned_change_is_not_read(self):
         with rig() as r:
-            r.register(7)
+            r.register(9)
             r.path("notes.txt").write_text("not pinned\n")
-            seed = r.review(7)
-            self.assertEqual(r.problems(seed), ([], report_rel(7)), "M2: only pinned paths are compared")
+            seed = r.review(9)
+            self.assertEqual(r.problems(seed), ([], report_rel(9)), "M2: only pinned paths are compared")
 
     def test_a_bad_launch_commit_is_refused(self):
         for launch in (None, "not-a-commit", "0" * 40, "orphan"):
@@ -322,8 +322,8 @@ class M2Pinned(unittest.TestCase):
                     git(r.repo, "fetch", "-q", str(other), "HEAD")
                     launch = git(r.repo, "rev-parse", "FETCH_HEAD")
                 # written by the row's one introducing commit (the confirm review of b968597e: a row is never edited)
-                r.register(7, launch_commit=launch)
-                seed = r.review(7)
+                r.register(9, launch_commit=launch)
+                seed = r.review(9)
                 bad, name = r.problems(seed)
                 self.assertTrue(bad and name is None and "launch_commit" in bad[0], f"M2: {launch}: {bad}")
 
@@ -331,18 +331,18 @@ class M2Pinned(unittest.TestCase):
 class M2Allowed(unittest.TestCase):
     def test_the_three_named_paths_may_differ_pinned_or_not(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            self.assertEqual(r.problems(seed), ([], report_rel(7)), "M2-allowed: unpinned report")
-            more = (f"{RK}/prefreeze-7.md", f"{RK}/prefreeze-7-blindness.txt")
-            self.assertEqual(r.problems(seed, *more), ([], report_rel(7)), "M2-allowed: report and record pinned")
+            r.register(9)
+            seed = r.review(9)
+            self.assertEqual(r.problems(seed), ([], report_rel(9)), "M2-allowed: unpinned report")
+            more = (f"{RK}/prefreeze-9.md", f"{RK}/prefreeze-9-blindness.txt")
+            self.assertEqual(r.problems(seed, *more), ([], report_rel(9)), "M2-allowed: report and record pinned")
 
     def test_another_rounds_report_is_not_allowed(self):
         with rig() as r:
-            r.register(7)
+            r.register(9)
             r.path(f"{RK}/prefreeze-3.md").write_text("an older report, edited\n")
             r.commit("edit an older report")
-            seed = r.review(7)
+            seed = r.review(9)
             bad, _ = r.problems(seed, f"{RK}/prefreeze-3.md")
             self.assertTrue(bad and "prefreeze-3.md" in bad[0], f"M2-allowed: {bad}")
 
@@ -359,32 +359,32 @@ class M2Allowed(unittest.TestCase):
 
     def test_the_seed_rounds_own_claims_and_excusals_may_be_added(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            self.claim(r, [f"{RK}/prefreeze-7.md", f"{RK}/prefreeze-7-blindness.txt"])
-            self.excuse(r, [report_rel(7)])
-            r.commit("claim and excuse review 7")
-            self.assertEqual(r.problems(seed), ([], report_rel(7)), "M2-allowed: record-only additions")
+            r.register(9)
+            seed = r.review(9)
+            self.claim(r, [f"{RK}/prefreeze-9.md", f"{RK}/prefreeze-9-blindness.txt"])
+            self.excuse(r, [report_rel(9)])
+            r.commit("claim and excuse review 9")
+            self.assertEqual(r.problems(seed), ([], report_rel(9)), "M2-allowed: record-only additions")
 
     def test_any_other_change_to_the_two_records_is_refused(self):
         cases = {
             "claim of another path": lambda r: self.claim(r, ["code2.py"]),
             "claim edited": lambda r: r.write_json(FRAGMENT, {"lane": "review-records", "files": [
                 {"path": FRAGMENT, "status": "new", "reason": "edited"},
-                {"path": f"{RK}/prefreeze-7.md", "status": "new", "reason": "r"}]}),
+                {"path": f"{RK}/prefreeze-9.md", "status": "new", "reason": "r"}]}),
             "claim with a source": lambda r: (self.claim(r, []), r.write_json(FRAGMENT, {
                 **r.read_json(FRAGMENT), "files": r.read_json(FRAGMENT)["files"] + [
-                    {"path": f"{RK}/prefreeze-7.md", "status": "identical", "source": "evals/x.md"}]})),
+                    {"path": f"{RK}/prefreeze-9.md", "status": "identical", "source": "evals/x.md"}]})),
             "excusal of another file": lambda r: self.excuse(r, [study.rel("code.py")]),
             "excusal removed": lambda r: r.write_json(ALLOWLIST, {"role": "synthetic", "excused": []}),
             "excusal reordered in front": lambda r: r.write_json(ALLOWLIST, {"role": "synthetic", "excused": [
-                {"file": report_rel(7), "pattern": "p", "line_text": "t", "ruled": "d", "why": "w"},
+                {"file": report_rel(9), "pattern": "p", "line_text": "t", "ruled": "d", "why": "w"},
                 *r.read_json(ALLOWLIST)["excused"]]}),
         }
         for name, change in cases.items():
             with self.subTest(case=name), rig() as r:
-                r.register(7)
-                seed = r.review(7)
+                r.register(9)
+                seed = r.review(9)
                 change(r)
                 r.commit(name)
                 bad, got = r.problems(seed)
@@ -395,11 +395,11 @@ class M2Allowed(unittest.TestCase):
             r.write_json("COPIED.d/other.json", {"lane": "other", "files": [
                 {"path": "COPIED.d/other.json", "status": "new", "reason": "r"}]})
             r.commit("other fragment")
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             r.write_json("COPIED.d/other.json", {"lane": "other", "files": [
                 {"path": "COPIED.d/other.json", "status": "new", "reason": "r"},
-                {"path": f"{RK}/prefreeze-7.md", "status": "new", "reason": "r"}]})
+                {"path": f"{RK}/prefreeze-9.md", "status": "new", "reason": "r"}]})
             r.commit("claim in other")
             bad, _ = r.problems(seed, "COPIED.d/other.json")
             self.assertTrue(bad and "COPIED.d/other.json" in bad[0], f"M2-allowed: {bad}")
@@ -416,8 +416,8 @@ class Wiring(unittest.TestCase):
 
     def test_review_file_problems_reads_both_fixes(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             for fn in ("later_review_problem", "grandfathered_seed_problem", "launch_binding_problem"):
                 with self.subTest(fn=fn), r.patched(), mock.patch.object(freeze, fn, lambda rep, n: "synthetic"):
                     self.assertEqual(freeze.review_file_problems(seed), (["synthetic"], None), f"wiring: {fn}")
@@ -438,17 +438,17 @@ class B1Relabel(unittest.TestCase):
     def test_the_reviewers_relabel_commit_is_refused_by_freeze_and_check(self):
         for when in ("after the review", "before the review"):
             with self.subTest(when=when), rig() as r:
-                r.register(7)
+                r.register(9)
                 r.path("code.py").write_text("x = 2\n")
                 r.commit("code changed after the launch")
                 if when == "after the review":
-                    seed = r.review(7)
+                    seed = r.review(9)
                 rows = r.rows()
                 rows[0]["launch_commit"] = git(r.repo, "rev-parse", "HEAD")
                 r.set_rows(rows)
                 r.commit("relabel")
                 if when == "before the review":
-                    seed = r.review(7)
+                    seed = r.review(9)
                 bad, name = r.problems(seed)
                 self.assertTrue(bad and name is None and ("introduced" in bad[0] or "written once" in bad[0]),
                                 f"B1: the relabel seeds: {bad}")
@@ -461,10 +461,10 @@ class B1Relabel(unittest.TestCase):
             first = git(r.repo, "rev-parse", "HEAD")
             r.path("notes.txt").write_text("unpinned\n")
             r.commit("an unpinned commit")
-            rows = r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": first, "voids": None}]
+            rows = r.rows() + [{"n": 9, "kind": "prefreeze", "launch_commit": first, "voids": None}]
             r.set_rows(rows)
-            r.row_sha[7] = r.commit("register round 7 naming the grandparent")
-            seed = r.review(7)
+            r.row_sha[9] = r.commit("register round 9 naming the grandparent")
+            seed = r.review(9)
             bad, name = r.problems(seed)
             self.assertTrue(bad and name is None and "parent" in bad[0], f"B1: {bad}")
 
@@ -472,8 +472,8 @@ class B1Relabel(unittest.TestCase):
         for field, value in (("n", 9), ("kind", "verify"), ("prompt_sha256", "0" * 64), ("voids", 3),
                              ("added", "2026-01-01T00:00:00+00:00"), ("extra", "x")):
             with self.subTest(field=field), rig() as r:
-                r.register(7)
-                r.review(7)
+                r.register(9)
+                r.review(9)
                 rows = r.rows()
                 rows[0][field] = value
                 r.set_rows(rows)
@@ -486,8 +486,8 @@ class B1Relabel(unittest.TestCase):
             r.register(6)
             self.assertEqual(close_spent(r, 0), 0)
             r.commit("close 6 as spent")
-            r.register(7)
-            r.review(7)
+            r.register(9)
+            r.review(9)
             code, said = r.rounds_check()
             self.assertEqual(code, 0, f"B1: the close-spent writer's shape is refused: {said}")
 
@@ -507,7 +507,7 @@ class B1Relabel(unittest.TestCase):
     def test_a_void_named_by_its_re_run_row_checks_ok(self):
         with rig() as r:
             r.register(6)
-            r.register(7, voids=0)
+            r.register(9, voids=0)
             rows = r.rows()
             rows[0]["voided_by"] = 1
             r.set_rows(rows)
@@ -521,13 +521,13 @@ class M1Reflog(unittest.TestCase):
 
     def test_a_rewound_later_round_still_stops_the_seed(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            r.register(8)
-            r.review(8, DO_NOT)
+            r.register(9)
+            seed = r.review(9)
+            r.register(10)
+            r.review(10, DO_NOT)
             git(r.repo, "reset", "-q", "--hard", seed)
             bad, name = r.problems(seed)
-            self.assertTrue(bad and name is None and "round 8" in bad[0], f"MAJOR 1: a rewound round 8: {bad}")
+            self.assertTrue(bad and name is None and "round 10" in bad[0], f"MAJOR 1: a rewound round 10: {bad}")
 
     def test_close_spent_refuses_a_report_only_the_reflog_holds(self):
         with rig() as r:
@@ -590,8 +590,8 @@ class M1ShallowClones(unittest.TestCase):
     def test_a_shallow_or_single_branch_clone_is_refused(self):
         for flags, word in ((("--depth", "1"), "shallow"), (("--single-branch",), "single-branch")):
             with self.subTest(flags=flags), rig() as r:
-                r.register(7)
-                seed = r.review(7)
+                r.register(9)
+                seed = r.review(9)
                 dest = self.cloned(r, *flags)
                 with mock.patch.object(freeze, "REPO", dest), \
                         mock.patch.object(freeze, "DRAFT", dest / study.STUDY_REL / "prereg-draft.json"), \
@@ -601,13 +601,13 @@ class M1ShallowClones(unittest.TestCase):
 
     def test_a_full_clone_still_seeds(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             dest = self.cloned(r)
             with mock.patch.object(freeze, "REPO", dest), \
                     mock.patch.object(freeze, "DRAFT", dest / study.STUDY_REL / "prereg-draft.json"), \
                     mock.patch.object(freeze, "PINNED", r.pinned()):
-                self.assertEqual(freeze.review_file_problems(seed), ([], report_rel(7)))
+                self.assertEqual(freeze.review_file_problems(seed), ([], report_rel(9)))
 
 
 class M2Mutants(unittest.TestCase):
@@ -621,8 +621,8 @@ class M2Mutants(unittest.TestCase):
             rows[0]["spent_without_work"] = "x"
             r.set_rows(rows)
             r.commit("close 6 by hand")
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             real = freeze.git
 
             def failing(*args):
@@ -657,10 +657,10 @@ class M2Mutants(unittest.TestCase):
             git(r.repo, "checkout", "-q", "-")
             r.path("notes.txt").write_text("unpinned, on the line\n")
             r.commit("line")
-            rows = r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": side, "voids": None}]
+            rows = r.rows() + [{"n": 9, "kind": "prefreeze", "launch_commit": side, "voids": None}]
             r.set_rows(rows)
-            r.row_sha[7] = r.commit("register round 7 on a side-branch launch")
-            seed = r.review(7)
+            r.row_sha[9] = r.commit("register round 9 on a side-branch launch")
+            seed = r.review(9)
             bad, name = r.problems(seed)
             self.assertTrue(bad and name is None and "not an ancestor of HEAD" in bad[0], f"G8: {bad}")
 
@@ -670,10 +670,10 @@ class Nits(unittest.TestCase):
         for entry in ({"file": None, "pattern": "p", "line_text": "t", "ruled": "d", "why": "w", "note": "x"},
                       {"file": None, "pattern": "p", "line_text": "t", "ruled": "d"}):
             with self.subTest(keys=sorted(entry)), rig() as r:
-                r.register(7)
-                seed = r.review(7)
+                r.register(9)
+                seed = r.review(9)
                 allow = r.read_json(ALLOWLIST)
-                allow["excused"].append({**entry, "file": report_rel(7)})
+                allow["excused"].append({**entry, "file": report_rel(9)})
                 r.write_json(ALLOWLIST, allow)
                 r.commit("excuse")
                 bad, name = r.problems(seed)
@@ -681,8 +681,8 @@ class Nits(unittest.TestCase):
 
     def test_nit2_an_unreadable_old_register_fails_check(self):
         with rig() as r:
-            r.register(7)
-            r.review(7)
+            r.register(9)
+            r.review(9)
             good = r.path(f"{RK}/rounds.json").read_text()
             r.path(f"{RK}/rounds.json").write_text("not json\n")
             r.commit("break the register")
@@ -698,23 +698,23 @@ class ConfirmProbes(unittest.TestCase):
     """MINOR D: the confirm review's two probes, as tests (BLOCKER A and MAJOR B)."""
 
     def test_a_relabel_through_a_merge_is_refused(self):
-        # probe_relabel_merge.py: a side branch re-adds row 7 with a later launch_commit, a merge takes its register,
+        # probe_relabel_merge.py: a side branch re-adds row 9 with a later launch_commit, a merge takes its register,
         # the blindness record's session line is rewritten to the side commit's id, the side branch is deleted
         with rig() as r:
             P = git(r.repo, "rev-parse", "HEAD")
-            r.register(7)
-            seed = r.review(7)
-            self.assertEqual(r.problems(seed), ([], report_rel(7)), "BLOCKER A: the baseline seeds")
+            r.register(9)
+            seed = r.review(9)
+            self.assertEqual(r.problems(seed), ([], report_rel(9)), "BLOCKER A: the baseline seeds")
             git(r.repo, "checkout", "-q", "-b", "side", P)
             r.path("code.py").write_text("x = 2   # code the reviewer never read\n")
             C2 = r.commit("code change")
-            r.set_rows(r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": C2, "voids": None}])
-            Y = r.commit("register round 7 again, launch at the changed code")
+            r.set_rows(r.rows() + [{"n": 9, "kind": "prefreeze", "launch_commit": C2, "voids": None}])
+            Y = r.commit("register round 9 again, launch at the changed code")
             git(r.repo, "checkout", "-q", "-")
             subprocess.run(["git", "-C", str(r.repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
                             "-c", "commit.gpgsign=false", "merge", "-q", "side", "-m", "merge"], capture_output=True)
             git(r.repo, "checkout", "--theirs", "--", study.rel(RK, "rounds.json"))
-            blind = r.path(f"{RK}/prefreeze-7-blindness.txt")
+            blind = r.path(f"{RK}/prefreeze-9-blindness.txt")
             lines = blind.read_text().splitlines()
             lines[0] = f"session id: {takes.session_id_for(Y)}"
             blind.write_text("\n".join(lines) + "\n")
@@ -730,13 +730,13 @@ class ConfirmProbes(unittest.TestCase):
         # the register half alone: the row re-added on a side branch and merged, nothing else changed
         with rig() as r:
             P = git(r.repo, "rev-parse", "HEAD")
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             git(r.repo, "checkout", "-q", "-b", "side", P)
             r.path("notes.txt").write_text("unpinned\n")
             C2 = r.commit("an unpinned change")
-            r.set_rows(r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": C2, "voids": None}])
-            r.commit("register round 7 again")
+            r.set_rows(r.rows() + [{"n": 9, "kind": "prefreeze", "launch_commit": C2, "voids": None}])
+            r.commit("register round 9 again")
             git(r.repo, "checkout", "-q", "-")
             subprocess.run(["git", "-C", str(r.repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
                             "-c", "commit.gpgsign=false", "merge", "-q", "side", "-m", "merge"], capture_output=True)
@@ -750,27 +750,27 @@ class ConfirmProbes(unittest.TestCase):
 
     def test_an_edited_blindness_record_is_refused(self):
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
-            blind = r.path(f"{RK}/prefreeze-7-blindness.txt")
+            r.register(9)
+            seed = r.review(9)
+            blind = r.path(f"{RK}/prefreeze-9-blindness.txt")
             blind.write_text(blind.read_text() + "an added line\n")
             r.commit("edit the record")
             bad, name = r.problems(seed)
             self.assertTrue(bad and name is None and "blindness" in bad[0], f"BLOCKER A: {bad}")
 
     def test_a_later_round_hidden_by_an_ours_merge_is_refused(self):
-        # probe_merge.py: round 8 on a lane worktree, merged with -s ours, worktree removed and branch deleted
+        # probe_merge.py: round 10 on a lane worktree, merged with -s ours, worktree removed and branch deleted
         with rig() as r:
-            r.register(7)
-            seed = r.review(7)
+            r.register(9)
+            seed = r.review(9)
             wt = Path(tempfile.mkdtemp()) / "side-wt"
             try:
                 git(r.repo, "worktree", "add", "-q", "-b", "side", str(wt))
                 side = Rig.__new__(Rig)
                 side.repo, side.study = wt, wt / study.STUDY_REL
                 side.draft, side.row_sha = side.study / "prereg-draft.json", dict(r.row_sha)
-                side.register(8)
-                side.review(8, DO_NOT)
+                side.register(10)
+                side.review(10, DO_NOT)
                 git(r.repo, "merge", "-q", "-s", "ours", "side", "-m", "merge side, keeping the line's tree")
                 git(r.repo, "worktree", "remove", str(wt))
                 git(r.repo, "branch", "-q", "-D", "side")
@@ -778,7 +778,7 @@ class ConfirmProbes(unittest.TestCase):
                 import shutil
                 shutil.rmtree(wt.parent, ignore_errors=True)
             bad, name = r.problems(seed)
-            self.assertTrue(bad and name is None and "round 8" in bad[0], f"MAJOR B: the hidden round 8: {bad}")
+            self.assertTrue(bad and name is None and "round 10" in bad[0], f"MAJOR B: the hidden round 10: {bad}")
             code, said = r.rounds_check()
             self.assertEqual(code, 1, f"MAJOR B: rounds.py --check passes the hidden round: {said}")
 
@@ -797,9 +797,9 @@ class ConfirmNits(unittest.TestCase):
 
     def test_nit_e_an_unreadable_register_version_fails_check(self):
         with rig() as r:
-            r.register(7)
-            r.review(7)
-            first = r.row_sha[7]
+            r.register(9)
+            r.review(9)
+            first = r.row_sha[9]
             mod = load_rounds(r.repo)
             real = mod.register_at
             with mock.patch.object(mod, "register_at", lambda rev: ("unreadable", None) if rev == first else real(rev)), \

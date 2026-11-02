@@ -1510,7 +1510,7 @@ class FreezeCoverage(unittest.TestCase):
                 self.assertTrue(any(f"{int(changed)} unrecorded change(s)" in line for line in lines))
 
     @contextmanager
-    def rehearsal_clone(self):
+    def rehearsal_clone(self, mirror=False):
         claims = {entry["path"]: entry for _lane, entry in cm.load_fragments()[0]}
         names = ("takes.py", "run.py", "result.py", "completeness.py", "check_results.py",
                  "freeze.py", "copy_manifest.py", "prereg.py", "study.py", "stats.py",
@@ -1541,14 +1541,14 @@ class FreezeCoverage(unittest.TestCase):
             draft[freeze.ORDER_FUNCTION_HASH_KEY] = freeze.take_order_function_sha256()
             (root / "prereg-draft.json").write_text(json.dumps(draft))
             # lane fold8/review-binding (pre-freeze review 6, M1 and M2, and the reviews of the fold): the rig seeds the way
-            # a real rehearsal will. Rounds 1-4 never seed, so its round is 7, the next after the six registered. The
+            # a real rehearsal will. Rounds 1-4 and 7 never seed, so its round is 8, the next after the seven registered. The
             # instrument is committed first (the launch commit), the row alone next, whose launch_commit is that commit,
             # then the report with a blindness record stating its digest, then the claims appended to the review-records
             # fragment, the one copy-record change the launch binding admits.
-            review_name = study.REVIEW_DIR + "/prefreeze-7.md"
+            review_name = study.REVIEW_DIR + "/prefreeze-8.md"
             review = root / review_name
             review.parent.mkdir(parents=True, exist_ok=True)
-            rounds_name, blind_name = study.REVIEW_DIR + "/rounds.json", study.REVIEW_DIR + "/prefreeze-7-blindness.txt"
+            rounds_name, blind_name = study.REVIEW_DIR + "/rounds.json", study.REVIEW_DIR + "/prefreeze-8-blindness.txt"
             (root / rounds_name).write_text(json.dumps({"rows": []}) + "\n")
             entries[rounds_name] = {"path": rounds_name, "status": "new", "reason": "synthetic registered round"}
             fragment["files"] = list(entries.values())
@@ -1558,9 +1558,9 @@ class FreezeCoverage(unittest.TestCase):
                                                             "reason": "synthetic review records"}]}
             (root / records_name).write_text(json.dumps(records))
             launch_commit = commit(repo, [study.STUDY_REL], "Record the synthetic instrument")
-            (root / rounds_name).write_text(json.dumps({"rows": [{"n": 7, "kind": "prefreeze", "voids": None,
+            (root / rounds_name).write_text(json.dumps({"rows": [{"n": 8, "kind": "prefreeze", "voids": None,
                                                                   "launch_commit": launch_commit}]}) + "\n")
-            row_commit = commit(repo, [study.rel(rounds_name)], "Register synthetic review round 7")
+            row_commit = commit(repo, [study.rel(rounds_name)], "Register synthetic review round 8")
             digest = hashlib.sha256((root / "prereg-draft.json").read_bytes()).hexdigest()
             text = f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n" + freeze.RULING_LINE + "\n"
             review.write_text(text)
@@ -1585,6 +1585,8 @@ class FreezeCoverage(unittest.TestCase):
                 # (tests/test_pf1_freeze_gates.py binds both gates)
                 stack.enter_context(mock.patch.object(freeze, "draft_pending", lambda d: {}))
                 stack.enter_context(mock.patch.object(freeze, "coverage_problem", lambda *a, **k: None))
+                if mirror:      # lane fold9/round7-residual: the limit is recorded with a mirror remote too
+                    stack.enter_context(mock.patch.object(freeze, "published_tip_problem", lambda: (None, None)))
                 output = stack.enter_context(redirect_stdout(io.StringIO()))
                 self.assertEqual(freeze.main(["--review-commit", review_commit, "--rehearsal", "--write"]),
                                  0, output.getvalue())
@@ -1643,6 +1645,20 @@ class FreezeCoverage(unittest.TestCase):
                 if command[0] == "check_results.py":
                     self.assertIn("NOT CHECKED: rehearsal record (disposable rehearsal)", got.stdout)
                     self.assertNotIn("PASS", got.stdout)
+
+    def test_the_frozen_file_records_the_published_tip_limit(self):
+        # lane fold9/round7-residual (pre-freeze review 7, M1): written always, with or without a mirror remote, and
+        # the unedited check_results.frozen_content_problems passes it and refuses it removed or edited
+        for mirror in (False, True):
+            with self.subTest(mirror=mirror), self.rehearsal_clone(mirror=mirror) as (_clone, root):
+                frozen = json.loads((root / "prereg.json").read_text())
+                self.assertEqual(frozen.get("published_tip_residual"), freeze.PUBLISHED_TIP_LIMIT)
+                self.assertIn("round_4_limitations[10]", freeze.PUBLISHED_TIP_LIMIT)
+                self.assertEqual(cr.frozen_content_problems(frozen, copy.deepcopy(frozen)), [])
+                removed = copy.deepcopy(frozen); del removed["published_tip_residual"]
+                self.assertTrue(cr.frozen_content_problems(frozen, removed), "the limit removed after the freeze")
+                edited = dict(frozen, published_tip_residual="nothing to see")
+                self.assertTrue(cr.frozen_content_problems(frozen, edited), "the limit edited after the freeze")
 
     def test_default_checker_refuses_disposable_frozen_state(self):
         with self.rehearsal_clone() as (clone, _root):
@@ -1872,6 +1888,7 @@ class PublishedArtifacts(unittest.TestCase):
                     "pushback_counts": {"raw": 4, "samples": 3}, "probe_line": "step-p", "pushback_line": "step-q"}
             rows, history = [dict(r, attempt=1)], [recorded(labels4.GRADED, r)]
             pre = pre_registration(); pre["rows"] = [r]
+            pre["published_tip_residual"] = "synthetic limit on the review record"      # lane fold9/round7-residual
             with ExitStack() as stack:
                 for module, key, value in ((runner, "HERE", root), (runner, "REPO", repo.root),
                                           (runner, "RECORDS", root / "records"),
@@ -1907,6 +1924,11 @@ class PublishedArtifacts(unittest.TestCase):
                 self.assertEqual(records[0]["views"], stats.STOP_VIEWS)
                 self.assertEqual(cr.check_publication(rows, history, records, pre,
                                  (root / "RESULT.md").read_text(), runner.grade_committed, native_table), [])
+                # lane fold9/round7-residual (pre-freeze review 7, M1): the frozen file's limit is on the written page
+                self.assertIn(pre["published_tip_residual"], (root / "RESULT.md").read_text())
+                self.assertTrue(cr.check_publication(rows, history, records, pre,
+                                (root / "RESULT.md").read_text().replace(pre["published_tip_residual"], "removed"),
+                                runner.grade_committed, native_table), "a tampered page without the limit passes")
                 loaded = endstate.Evidence.load(evidence)
                 runner.require_evidence_identity(r, loaded)
                 for name, wrong in (("model", "synthetic-other"), ("version", "0.0.2"), ("harness", "synthetic-other")):
@@ -1958,6 +1980,15 @@ class PublishedArtifacts(unittest.TestCase):
         pre = pre_registration()
         page = result_page.render(result_page.from_records(records, pre, rows, history, table()))
         self.assertEqual(cr.check_publication(rows, history, records, pre, page, grader, table()), [])
+        # lane fold9/round7-residual (pre-freeze review 7, M1): a frozen file's limit is printed on the page, and the
+        # unedited check_publication refuses a page without it
+        limited = dict(pre, published_tip_residual="synthetic limit on the review record")
+        with_limit = result_page.render(result_page.from_records(records, limited, rows, history, table()))
+        self.assertIn(result_page.TIP_LIMIT_HEADING, with_limit)
+        self.assertIn("synthetic limit on the review record", with_limit)
+        self.assertEqual(cr.check_publication(rows, history, records, limited, with_limit, grader, table()), [])
+        self.assertTrue(cr.check_publication(rows, history, records, limited, page, grader, table()),
+                        "a page without the limit passes")
         corrupt = copy.deepcopy(records); corrupt[0]["label"] = "synthetic-other"
         self.assertTrue(cr.check_publication(rows, history, corrupt, pre, page, grader, table()))
         with mock.patch.object(cr, "records_equal", lambda actual, wanted: True):
