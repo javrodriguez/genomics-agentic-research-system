@@ -429,5 +429,273 @@ class Wiring(unittest.TestCase):
                     self.assertEqual(freeze.review_file_problems(seed), (["synthetic"], None), f"wiring: {fn}")
 
 
+# ---- the fresh review of bc438542 (CHANGES), glitch-45's ruling of Mon 2 Nov 2026 ----
+
+def close_spent(r: "Rig", row: int, reason: str = "rate limit") -> int:
+    mod = load_rounds(r.repo)
+    with mock.patch.object(sys, "argv", ["rounds.py", "--close-spent", str(row), "--reason", reason]), \
+            contextlib.redirect_stdout(io.StringIO()):
+        return mod.main()
+
+
+class B1Relabel(unittest.TestCase):
+    """BLOCKER 1: a row's launch_commit relabelled in place after a pinned change."""
+
+    def test_the_reviewers_relabel_commit_is_refused_by_freeze_and_check(self):
+        for when in ("after the review", "before the review"):
+            with self.subTest(when=when), rig() as r:
+                r.register(7)
+                r.path("code.py").write_text("x = 2\n")
+                r.commit("code changed after the launch")
+                if when == "after the review":
+                    seed = r.review(7)
+                rows = r.rows()
+                rows[0]["launch_commit"] = git(r.repo, "rev-parse", "HEAD")
+                r.set_rows(rows)
+                r.commit("relabel")
+                if when == "before the review":
+                    seed = r.review(7)
+                bad, name = r.problems(seed)
+                self.assertTrue(bad and name is None and "introduced" in bad[0], f"B1: the relabel seeds: {bad}")
+                code, said = r.rounds_check()
+                self.assertEqual(code, 1, f"B1: rounds.py --check passes the relabel: {said}")
+                self.assertIn("launch_commit", said, "B1")
+
+    def test_a_launch_commit_that_is_not_the_row_commits_parent_is_refused(self):
+        with rig() as r:
+            first = git(r.repo, "rev-parse", "HEAD")
+            r.path("notes.txt").write_text("unpinned\n")
+            r.commit("an unpinned commit")
+            rows = r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": first, "voids": None}]
+            r.set_rows(rows)
+            r.row_sha[7] = r.commit("register round 7 naming the grandparent")
+            seed = r.review(7)
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None and "parent" in bad[0], f"B1: {bad}")
+
+    def test_any_other_in_place_field_edit_is_refused_by_check(self):
+        for field, value in (("n", 9), ("kind", "verify"), ("prompt_sha256", "0" * 64), ("voids", 3),
+                             ("added", "2026-01-01T00:00:00+00:00"), ("extra", "x")):
+            with self.subTest(field=field), rig() as r:
+                r.register(7)
+                r.review(7)
+                rows = r.rows()
+                rows[0][field] = value
+                r.set_rows(rows)
+                r.commit(f"edit {field}")
+                code, said = r.rounds_check()
+                self.assertEqual(code, 1, f"B1: an in-place {field} edit passes --check: {said}")
+
+    def test_the_kits_own_close_spent_still_checks_ok(self):
+        with rig() as r:
+            r.register(6)
+            self.assertEqual(close_spent(r, 0), 0)
+            r.commit("close 6 as spent")
+            r.register(7)
+            r.review(7)
+            code, said = r.rounds_check()
+            self.assertEqual(code, 0, f"B1: the close-spent writer's shape is refused: {said}")
+
+    def test_a_hand_closed_row_off_the_writers_shape_is_refused(self):
+        for extra in ({"spent_without_work": "x"}, {"spent_without_work": "", "spent_at": "2026-11-02T00:00:00+00:00"},
+                      {"spent_without_work": "x", "spent_at": "yesterday"}, {"voided_by": 1},
+                      {"spent_without_work": "x", "spent_at": "2026-11-02T00:00:00+00:00", "note": "y"}):
+            with self.subTest(**extra), rig() as r:
+                r.register(6)
+                rows = r.rows()
+                rows[0].update(extra)
+                r.set_rows(rows)
+                r.commit("hand close")
+                code, said = r.rounds_check()
+                self.assertEqual(code, 1, f"B1: a hand-closed row {extra} passes --check: {said}")
+
+    def test_a_void_named_by_its_re_run_row_checks_ok(self):
+        with rig() as r:
+            r.register(6)
+            r.register(7, voids=0)
+            rows = r.rows()
+            rows[0]["voided_by"] = 1
+            r.set_rows(rows)
+            r.commit("record the void")
+            code, said = r.rounds_check()
+            self.assertNotIn("in place", said, f"B1: the void shape is refused: {said}")
+
+
+class M1Reflog(unittest.TestCase):
+    """MAJOR 1: a later round reachable only through the reflog still counts."""
+
+    def test_a_rewound_later_round_still_stops_the_seed(self):
+        with rig() as r:
+            r.register(7)
+            seed = r.review(7)
+            r.register(8)
+            r.review(8, DO_NOT)
+            git(r.repo, "reset", "-q", "--hard", seed)
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None and "round 8" in bad[0], f"MAJOR 1: a rewound round 8: {bad}")
+
+    def test_close_spent_refuses_a_report_only_the_reflog_holds(self):
+        with rig() as r:
+            row = r.register(6)
+            r.review(6, DO_NOT)
+            git(r.repo, "reset", "-q", "--hard", row)
+            self.assertEqual(close_spent(r, 0), 1, "MAJOR 1: a rewound report's row closed as spent")
+
+
+MIRROR_URL = "https://github.com/javrodriguez/gars-cloud-mirror.git"
+
+
+class M1PublishedTip(unittest.TestCase):
+    def tip(self, r: Rig):
+        with r.patched():
+            return freeze.published_tip_problem()
+
+    def test_no_mirror_remote_prints_a_residual(self):
+        with rig() as r:
+            problem, note = self.tip(r)
+            self.assertIsNone(problem)
+            self.assertTrue(note and note.startswith("RESIDUAL"), note)
+
+    def test_a_mirror_remote_binds_head_to_its_freeze_line_tip(self):
+        with rig() as r:
+            git(r.repo, "remote", "add", "mirror", MIRROR_URL)
+            problem, _ = self.tip(r)
+            self.assertTrue(problem and "never fetched" in problem, f"published tip: no tracking ref: {problem}")
+            base = git(r.repo, "rev-parse", "HEAD")
+            r.path("notes.txt").write_text("a\n")
+            r.commit("on")
+            git(r.repo, "update-ref", f"refs/remotes/mirror/{freeze.FREEZE_LINE}", base)
+            self.assertEqual(self.tip(r), (None, None), "published tip: HEAD descends from the tip")
+            git(r.repo, "checkout", "-q", "--detach", base)
+            git(r.repo, "commit", "-q", "--allow-empty", "-m", "side")
+            side = git(r.repo, "rev-parse", "HEAD")
+            git(r.repo, "checkout", "-q", "-")
+            git(r.repo, "update-ref", f"refs/remotes/mirror/{freeze.FREEZE_LINE}", side)
+            problem, _ = self.tip(r)
+            self.assertTrue(problem and "does not descend" in problem, f"published tip: {problem}")
+
+    def test_a_mirror_named_by_remote_name_counts_too(self):
+        with rig() as r:
+            git(r.repo, "remote", "add", "gars-cloud-mirror", "/nowhere")
+            problem, _ = self.tip(r)
+            self.assertTrue(problem and "never fetched" in problem, problem)
+
+    def test_main_reads_the_published_tip(self):
+        src = (HERE / "freeze.py").read_text()
+        body = src[src.index("\ndef main("):]
+        self.assertIn("published_tip_problem()", body, "wiring: freeze.main reads the published tip")
+
+
+class M1ShallowClones(unittest.TestCase):
+    def cloned(self, r: Rig, *flags):
+        dest = Path(tempfile.mkdtemp(dir=r.repo.parent))
+        subprocess.run(["git", "clone", "-q", *flags, f"file://{r.repo}", str(dest)], check=True, capture_output=True)
+        return dest
+
+    def test_a_shallow_or_single_branch_clone_is_refused(self):
+        for flags, word in ((("--depth", "1"), "shallow"), (("--single-branch",), "single-branch")):
+            with self.subTest(flags=flags), rig() as r:
+                r.register(7)
+                seed = r.review(7)
+                dest = self.cloned(r, *flags)
+                with mock.patch.object(freeze, "REPO", dest), \
+                        mock.patch.object(freeze, "DRAFT", dest / study.STUDY_REL / "prereg-draft.json"), \
+                        mock.patch.object(freeze, "PINNED", r.pinned()):
+                    bad, name = freeze.review_file_problems(seed)
+                self.assertTrue(bad and name is None and word in bad[0], f"MINOR 1: {flags}: {bad}")
+
+    def test_a_full_clone_still_seeds(self):
+        with rig() as r:
+            r.register(7)
+            seed = r.review(7)
+            dest = self.cloned(r)
+            with mock.patch.object(freeze, "REPO", dest), \
+                    mock.patch.object(freeze, "DRAFT", dest / study.STUDY_REL / "prereg-draft.json"), \
+                    mock.patch.object(freeze, "PINNED", r.pinned()):
+                self.assertEqual(freeze.review_file_problems(seed), ([], report_rel(7)))
+
+
+class M2Mutants(unittest.TestCase):
+    """MINOR 2: the review's surviving mutants G7 and G8."""
+
+    def test_g7_a_git_error_reading_a_report_history_refuses(self):
+        with rig() as r:
+            r.register(6)
+            r.review(6, DO_NOT)
+            rows = r.rows()
+            rows[0]["spent_without_work"] = "x"
+            r.set_rows(rows)
+            r.commit("close 6 by hand")
+            r.register(7)
+            seed = r.review(7)
+            real = freeze.git
+
+            def failing(*args):
+                if args[:2] == ("log", "--all") and "-1" in args:
+                    return 128, ""
+                return real(*args)
+            with r.patched(), mock.patch.object(freeze, "git", failing):
+                bad, name = freeze.review_file_problems(seed)
+            self.assertTrue(bad and name is None, f"G7: a git error read as never committed: {bad}")
+            self.assertTrue(freeze.ever_committed.__doc__)
+            with r.patched(), mock.patch.object(freeze, "git", lambda *a: (128, "")):
+                self.assertTrue(freeze.ever_committed("anything"), "G7: an unreadable history reads committed")
+
+    def test_g7_rounds_check_reads_a_git_error_as_committed(self):
+        with rig() as r:
+            mod = load_rounds(r.repo)
+            real = mod.subprocess.run
+
+            def run(cmd, *a, **k):
+                if "log" in cmd and "-1" in cmd:
+                    return subprocess.CompletedProcess(cmd, 128, "", "fatal")
+                return real(cmd, *a, **k)
+            with mock.patch.object(mod.subprocess, "run", run):
+                self.assertTrue(mod.ever_committed(mod.REGISTER), "G7: rounds.ever_committed fails open")
+
+    def test_g8_a_side_branch_launch_with_equal_pinned_bytes_is_not_an_ancestor(self):
+        with rig() as r:
+            base = git(r.repo, "rev-parse", "HEAD")
+            git(r.repo, "checkout", "-q", "--detach", base)
+            r.path("notes.txt").write_text("unpinned, on a side branch\n")
+            side = r.commit("side")
+            git(r.repo, "checkout", "-q", "-")
+            r.path("notes.txt").write_text("unpinned, on the line\n")
+            r.commit("line")
+            rows = r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": side, "voids": None}]
+            r.set_rows(rows)
+            r.row_sha[7] = r.commit("register round 7 on a side-branch launch")
+            seed = r.review(7)
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None and "not an ancestor of HEAD" in bad[0], f"G8: {bad}")
+
+
+class Nits(unittest.TestCase):
+    def test_nit1_an_appended_excusal_carries_exactly_the_five_keys(self):
+        for entry in ({"file": None, "pattern": "p", "line_text": "t", "ruled": "d", "why": "w", "note": "x"},
+                      {"file": None, "pattern": "p", "line_text": "t", "ruled": "d"}):
+            with self.subTest(keys=sorted(entry)), rig() as r:
+                r.register(7)
+                seed = r.review(7)
+                allow = r.read_json(ALLOWLIST)
+                allow["excused"].append({**entry, "file": report_rel(7)})
+                r.write_json(ALLOWLIST, allow)
+                r.commit("excuse")
+                bad, name = r.problems(seed)
+                self.assertTrue(bad and name is None, f"NIT 1: {sorted(entry)} admitted: {bad}")
+
+    def test_nit2_an_unreadable_old_register_fails_check(self):
+        with rig() as r:
+            r.register(7)
+            r.review(7)
+            good = r.path(f"{RK}/rounds.json").read_text()
+            r.path(f"{RK}/rounds.json").write_text("not json\n")
+            r.commit("break the register")
+            r.path(f"{RK}/rounds.json").write_text(good)
+            r.commit("mend it")
+            code, said = r.rounds_check()
+            self.assertEqual(code, 1, f"NIT 2: an unreadable old register version passes: {said}")
+
+
 if __name__ == "__main__":
     unittest.main()
