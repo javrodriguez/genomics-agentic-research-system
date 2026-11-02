@@ -324,9 +324,7 @@ def from_records(records: list, pre: dict, rows: list, history: list, table=None
             "flagged": flagged_counts(pre, flagged_reader),
             "pause_notes": pause_notes(rows, published["attempts"]),
             # the orchestrator's pin-block ruling (lane pf1-l2a): listed, never counted
-            "harness_events": check_results.pin_block_events(history, registered, table),
-            # pre-freeze review 7, M1 (lane fold9/round7-residual): printed here, held by check_publication's page read
-            "published_tip_residual": pre.get("published_tip_residual")}
+            "harness_events": check_results.pin_block_events(history, registered, table), "published_tip_residual": pre.get("published_tip_residual")}
 
 
 def pause_notes(rows, attempts):
@@ -377,7 +375,9 @@ TIP_LIMIT_HEADING = "## Limit on the review record"
 
 def render_tip_limit(text) -> str:
     """Pre-freeze review 7, M1 (lane fold9/round7-residual): the limit the freeze wrote into the frozen file
-    (freeze.PUBLISHED_TIP_LIMIT), printed in its own words. A frozen file without it prints no byte."""
+    (freeze.PUBLISHED_TIP_LIMIT), printed in its own words, and check_publication holds the page to this render. A frozen
+    file without it prints no byte. from_records carries the field; it sits on one line there because the draft cites
+    this file's render_witness by line number."""
     return f"{TIP_LIMIT_HEADING}\n\n{text}\n" if text else ""
 
 

@@ -659,8 +659,7 @@ FREEZE_WRITTEN_KEYS = (
     "take_order_beacon_reading",          # pre-freeze review 1, MAJOR 9: the drand round the order is seeded by
     "take_order_witness",                 # the review of 53d0e9af, finding 2: GitHub's pushes of the round and draft
     "nulls_at_freeze", "rehearsal_record", "rehearsed_study_tree_sha256",
-    "holdout_salted_digests", "holdout_wordings_per_task_version",
-    "published_tip_residual",             # pre-freeze review 7, M1 (lane fold9/round7-residual): PUBLISHED_TIP_LIMIT
+    "holdout_salted_digests", "holdout_wordings_per_task_version", "published_tip_residual",
 )
 FREEZE_FILLED_INSIDE = (
     "system_under_test.gars_tree_sha_at_freeze", "harness.claude_version_at_freeze",

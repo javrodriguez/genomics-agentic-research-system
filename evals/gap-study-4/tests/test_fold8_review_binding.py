@@ -469,7 +469,7 @@ class B1Relabel(unittest.TestCase):
             self.assertTrue(bad and name is None and "parent" in bad[0], f"B1: {bad}")
 
     def test_any_other_in_place_field_edit_is_refused_by_check(self):
-        for field, value in (("n", 9), ("kind", "verify"), ("prompt_sha256", "0" * 64), ("voids", 3),
+        for field, value in (("n", 99), ("kind", "verify"), ("prompt_sha256", "0" * 64), ("voids", 3),
                              ("added", "2026-01-01T00:00:00+00:00"), ("extra", "x")):
             with self.subTest(field=field), rig() as r:
                 r.register(9)
