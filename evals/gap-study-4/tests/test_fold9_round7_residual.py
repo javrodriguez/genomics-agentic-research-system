@@ -92,7 +92,7 @@ class Grandfathered(unittest.TestCase):
 
 
 def rig_commit(tmp: Path, n: int = 7, *, reason_command="sed -i '' 's/synthetic review/a review/' prefreeze-7.md",
-               edit=None, as_written="right", unbound=None):
+               edit=None, as_written="right", unbound=None, report_sha=None):
     """commit_review on a registered round n whose reviewer wrote the report, then ran one shell step on it. Returns
     (exit code, stdout, the commit message or "", the repository's file names at HEAD)."""
     repo = tmp / "repo"
@@ -124,7 +124,7 @@ def rig_commit(tmp: Path, n: int = 7, *, reason_command="sed -i '' 's/synthetic 
     (folder / f"prefreeze-{n}.md").write_text(edited)
     (folder / "prereg.json").write_bytes(kit)
     (launch / "blindness.txt").write_text(cr.blindness.report(folder, sid, projects))
-    table = {str(n): {"report_sha256": sha(edited.encode()), "as_written": AS_WRITTEN,
+    table = {str(n): {"report_sha256": report_sha or sha(edited.encode()), "as_written": AS_WRITTEN,
                       "as_written_sha256": sha(written.encode()), "reason": "a shell step writes the report",
                       "edit": "one sed changed 'synthetic review' to 'a review'"}} if unbound is None else unbound
     out = io.StringIO()
@@ -152,11 +152,10 @@ class Unbound(unittest.TestCase):
         self.assertNotIn("the bytes its blindness record rebuilds", msg, "UNBOUND: no digest is claimed")
 
     def test_other_bytes_are_refused(self):
-        code, out, _, names = self.run_rig(edit=lambda w: w.replace("synthetic review", "a review") + "more\n",
-                                           unbound={"7": {"report_sha256": "0" * 64, "as_written": AS_WRITTEN,
-                                                          "as_written_sha256": "0" * 64, "edit": "e",
-                                                          "reason": "a shell step writes the report"}})
+        # only the report's bytes are wrong: the as-written record, the round and the record line all hold
+        code, out, _, names = self.run_rig(report_sha="0" * 64)
         self.assertEqual(code, 1, out)
+        self.assertIn("this round's entry names", out, "UNBOUND")
         self.assertNotIn(study.rel(RK, "prefreeze-7.md"), names)
 
     def test_a_missing_or_altered_as_written_record_is_refused(self):
@@ -176,6 +175,12 @@ class Unbound(unittest.TestCase):
         # round 9 has no entry; round 9 named in the table is still no grandfathered round
         code, out, _, _ = self.run_rig(n=9, reason_command="sed -i '' 's/a/b/' prefreeze-9.md", unbound={})
         self.assertEqual(code, 1, out)
+        self.assertIn("states no sha256", out, "UNBOUND: a round with no entry gets the plain refusal")
+        self.assertNotIn("grandfathered", out, "UNBOUND")
+        # a grandfathered round with no entry is refused the same way: being grandfathered opens nothing
+        code, out, _, _ = self.run_rig(n=3, reason_command="sed -i '' 's/a/b/' prefreeze-3.md", unbound={})
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("entry names", out, "UNBOUND")
         code, out, _, _ = self.run_rig(n=9, reason_command="sed -i '' 's/a/b/' prefreeze-9.md")
         self.assertEqual(code, 1, out)
         self.assertIn("grandfathered", out, "UNBOUND")
