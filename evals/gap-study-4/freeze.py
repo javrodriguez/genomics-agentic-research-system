@@ -1075,6 +1075,9 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     time yields another sha and another order, so the operator could choose among as many orders as it
     cared to commit. One report, one commit, recorded in the frozen file, lets a reader see it was not.
     """
+    problem = partial_clone_problem()                 # the review of bc438542, MINOR 1: every history read below
+    if problem:
+        return [problem], None
     code, touched = git("show", "--name-only", "--format=", review_commit)
     if code != 0:
         return [f"{review_commit[:12]} cannot be read"], None
@@ -1140,9 +1143,64 @@ def _report_of(row: dict) -> str | None:
 
 
 def ever_committed(path: str) -> bool:
-    """Whether any commit reachable from any ref (git log --all) touched `path`: added, changed or deleted it."""
-    code, out = git("log", "--all", "--format=%H", "-1", "--", path)
+    """Whether any commit reachable from any ref or reflog entry (git log --all --reflog) touched `path`: added,
+    changed or deleted it. The review of bc438542, MAJOR 1: --all alone forgets a commit once its ref is deleted."""
+    code, out = git("log", "--all", "--reflog", "--format=%H", "-1", "--", path)
     return code != 0 or bool(out)          # an unreadable history reads as committed: fail closed
+
+
+def partial_clone_problem() -> str | None:
+    """The review of bc438542, MINOR 1: why this clone may not hold every commit its remotes do, or None. The history
+    reads above see only the objects and refs present, so a shallow clone, or a single-branch one (a remote whose fetch
+    refspecs name no wildcard), could fail open."""
+    code, out = git("rev-parse", "--is-shallow-repository")
+    if code != 0 or out != "false":
+        return "this clone is shallow (or git cannot say it is not), so a later review may be missing from its history: no seed"
+    code, remotes = git("remote")
+    for remote in remotes.split() if code == 0 else []:
+        c, specs = git("config", "--get-all", f"remote.{remote}.fetch")
+        if c == 0 and specs and not any("*" in spec for spec in specs.splitlines()):
+            return (f"remote {remote} is fetched single-branch ({specs.splitlines()[0]}), so a later review on another "
+                    f"branch may be missing from this clone: no seed")
+    return None
+
+
+# The review of bc438542, MAJOR 1: the study line as published. A local ref deleted after a rebase drops a later round
+# from every local read once its reflog expires; only a published copy keeps it. The freeze fetches nothing: when this
+# repository has a remote that is the study mirror (by name or URL), HEAD must descend from that remote's freeze-line tip
+# as last fetched; with no such remote the freeze prints PUBLISHED_TIP_RESIDUAL and goes on.
+STUDY_MIRROR = order_beacon.WITNESS_REPO                  # javrodriguez/gars-cloud-mirror
+FREEZE_LINE = "freeze/r4-20261021"
+PUBLISHED_TIP_RESIDUAL = (f"RESIDUAL (published tip): no remote of this repository is {STUDY_MIRROR}, so HEAD is not "
+                          f"checked against the published {FREEZE_LINE}; a later review dropped by a rebase, a deleted "
+                          f"ref and an expired reflog would not be seen here, only in the mirror's own history")
+
+
+def published_tip_problem() -> tuple[str | None, str | None]:
+    """(why HEAD does not descend from the study mirror's freeze-line tip as last fetched, or None; the residual line
+    to print when no remote is the mirror, or None)."""
+    code, remotes = git("remote")
+    mirrors = []
+    for remote in remotes.split() if code == 0 else []:
+        c, url = git("remote", "get-url", remote)
+        name = STUDY_MIRROR.split("/")[-1]
+        if remote == name or (c == 0 and re.search(rf"[:/]{re.escape(STUDY_MIRROR)}(\.git)?/?$", url)):
+            mirrors.append(remote)
+    if code != 0:
+        return "the remotes of this repository cannot be read, so the published tip is unknown: no freeze", None
+    if not mirrors:
+        return None, PUBLISHED_TIP_RESIDUAL
+    for remote in mirrors:
+        ref = f"refs/remotes/{remote}/{FREEZE_LINE}"
+        c, tip = git("rev-parse", "--verify", "-q", f"{ref}^{{commit}}")
+        if c != 0 or not tip:
+            return (f"remote {remote} is the study mirror and {ref} was never fetched, so the published tip is unknown: "
+                    f"fetch it, then freeze"), None
+        if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", tip, "HEAD"],
+                          capture_output=True).returncode != 0:
+            return (f"HEAD does not descend from {ref} ({tip[:12]}), the study line as last fetched from the mirror: "
+                    f"a published commit would be dropped"), None
+    return None, None
 
 
 def later_review_problem(report: str, n: int) -> str | None:
@@ -1156,7 +1214,7 @@ def later_review_problem(report: str, n: int) -> str | None:
     voided_by whose report was ever committed refuses the seed, since a round that produced a report was never spent and
     a void records no report (review_kit/rounds.py)."""
     reg = _register_rel()
-    code, shas = git("log", "--all", "--format=%H", "--", reg)
+    code, shas = git("log", "--all", "--reflog", "--format=%H", "--", reg)
     if code != 0:
         return f"the history of {reg} cannot be read, so the latest registered round is unknown: no seed"
     numbers, head_rows = set(), None
@@ -1175,7 +1233,7 @@ def later_review_problem(report: str, n: int) -> str | None:
         return (f"round {max(numbers)} is registered in {reg} (at HEAD or in its history, spent, voided and open rows "
                 f"included), so {report} (round {n}) is not the latest review: the freeze seeds from the last ruling")
     folder = study.rel(study.REVIEW_DIR)
-    code, names = git("log", "--all", "--format=", "--name-only", "--", folder)
+    code, names = git("log", "--all", "--reflog", "--format=", "--name-only", "--", folder)
     if code != 0:
         return f"the history of {folder} cannot be read, so the latest committed review is unknown: no seed"
     ever = {int(m.group(1)) for ln in names.splitlines()
@@ -1209,6 +1267,7 @@ def grandfathered_seed_problem(report: str, n: int) -> str | None:
 # edited, when the language lint reads it (as rounds 1-6 were). Nothing else in either file may change.
 REVIEW_CLAIMS_FRAGMENT = "COPIED.d/review-records.json"
 LANGUAGE_ALLOWLIST = "language-allowlist.json"
+EXCUSAL_KEYS = {"file", "pattern", "line_text", "ruled", "why"}      # every language-allowlist entry's keys
 
 
 def _appended(old: list, new: list) -> list | None:
@@ -1237,7 +1296,8 @@ def _record_only_change(path: str, launch: str, own: tuple[str, str]) -> bool:
                 and e.get("status") == "new")
     elif path == study.rel(LANGUAGE_ALLOWLIST):
         key, mine = "excused", set(own)
-        fits = lambda e: isinstance(e, dict) and e.get("file") in mine   # noqa: E731
+        fits = (lambda e: isinstance(e, dict) and set(e) == EXCUSAL_KEYS   # the review of bc438542, NIT 1
+                and e.get("file") in mine)
     else:
         return False
     if {k: v for k, v in before.items() if k != key} != {k: v for k, v in after.items() if k != key}:
@@ -1245,6 +1305,34 @@ def _record_only_change(path: str, launch: str, own: tuple[str, str]) -> bool:
     added = _appended(before.get(key), after.get(key))
     return bool(added) and all(fits(e) for e in added) and (
         key != "files" or len({e["path"] for e in added}) == len(added))
+
+
+def introduced_row_problem(reg: str, i: int, launch: str) -> str | None:
+    """The review of bc438542, BLOCKER 1: rounds.json is an allowed difference, so a row's launch_commit could be
+    relabelled in place to the tip after a code change. Now the seed row at HEAD must be byte-for-byte (as JSON) the row
+    its introducing commit added (the first commit of HEAD's history whose register holds row i, as
+    registered_review_problem reads it), and launch_commit must be that commit's first parent, as rounds.py --add
+    writes it (HEAD when the row is written, then the row committed alone)."""
+    code, shas = git("log", "--reverse", "--format=%H", "--", reg)
+    row_commit, intro = None, None
+    for sha in shas.split() if code == 0 else []:
+        c, blob = git("show", f"{sha}:{reg}")
+        rows = _rows(blob) if c == 0 else None
+        if rows is not None and len(rows) > i:
+            row_commit, intro = sha, rows[i]
+            break
+    if row_commit is None:
+        return f"row {i} of {reg} was introduced by no commit of HEAD's history, so its launch_commit is unbound: no seed"
+    c, head = git("show", f"HEAD:{reg}")
+    now = (_rows(head) or [None] * (i + 1))[i] if c == 0 else None
+    if now != intro:
+        return (f"row {i} of {reg} at HEAD is not the row introduced by {row_commit[:12]} (a field was edited in "
+                f"place, launch_commit included): no seed")
+    c, parent = git("rev-parse", "--verify", "-q", f"{row_commit}^1")
+    if c != 0 or parent != launch:
+        return (f"row {i}'s launch_commit {launch[:12]} is not the parent of the commit that introduced it "
+                f"({row_commit[:12]}, whose parent is {parent[:12] or 'none'}): no seed")
+    return None
 
 
 def launch_binding_problem(report: str, n: int) -> str | None:
@@ -1272,6 +1360,9 @@ def launch_binding_problem(report: str, n: int) -> str | None:
     if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", launch, "HEAD"],
                       capture_output=True).returncode != 0:
         return f"round {n}'s launch_commit {launch[:12]} is not an ancestor of HEAD: the code its reviewer read is not this line's"
+    problem = introduced_row_problem(reg, rows.index(found[0]), launch)      # the review of bc438542, BLOCKER 1
+    if problem:
+        return problem
     try:
         paths = pinned_paths(PINNED)
     except ValueError as e:
@@ -1461,6 +1552,11 @@ def main(argv=None) -> int:
         bad, review_file = review_file_problems(args.review_commit)
         if bad:
             raise ValueError("; ".join(bad))
+        problem, residual = published_tip_problem()        # the review of bc438542, MAJOR 1
+        if problem:
+            raise ValueError(problem)
+        if residual:
+            print(residual)
         draft = json.loads(DRAFT.read_text())
         problem = draft_holdout_problem(draft)
         if problem:

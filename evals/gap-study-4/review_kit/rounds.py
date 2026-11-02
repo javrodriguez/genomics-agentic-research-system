@@ -202,7 +202,7 @@ def committed(path: Path) -> bool:
 def ever_committed(path: Path) -> bool:
     """Pre-freeze review 6, M1 (lane fold8/review-binding): whether any commit on any ref (git log --all) touched the
     file, so a report deleted from HEAD's tree still reads as committed. An unreadable history reads as committed."""
-    out = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--format=%H", "-1", "--",
+    out = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--format=%H", "-1", "--",
                           str(path.relative_to(REPO))], capture_output=True, text=True)
     return out.returncode != 0 or bool(out.stdout.strip())
 
@@ -266,6 +266,55 @@ def audit() -> int:
     return 1 if bad else 0
 
 
+CLOSING = {"spent_without_work", "spent_at", "voided_by"}
+
+
+def in_place_problems(rows: list[dict], commits: dict[int, str]) -> list[str]:
+    """The review of bc438542, BLOCKER 1: a row is append-only too. Each row at HEAD must be the row its introducing
+    commit added, except the fields the kit's own writers set later, each only in its writer's shape:
+    spent_without_work and spent_at together, as --close-spent writes them (a non-empty reason, an ISO UTC time); and
+    voided_by, the index of a later row whose `voids` (written by --add --voids) names this row. No kit command writes
+    voided_by today, so it is admitted only in the one shape the register itself can vouch for."""
+    out = []
+    reg = str(REGISTER.relative_to(REPO))
+    for i, row in enumerate(rows):
+        sha = commits.get(i)
+        if sha is None:
+            continue                             # an uncommitted row is reported by the open-round check
+        blob = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{reg}"], capture_output=True, text=True)
+        try:
+            intro = json.loads(blob.stdout)["rows"][i]
+        except Exception:
+            out.append(f"row {i}'s introducing commit {sha[:12]} cannot be read, so the row cannot be shown unedited")
+            continue
+        if not isinstance(row, dict) or not isinstance(intro, dict) or CLOSING & set(intro):
+            out.append(f"row {i} is not the row {sha[:12]} introduced")
+            continue
+        kept = {k: v for k, v in row.items() if k not in CLOSING}
+        if kept != intro:
+            names = sorted(k for k in set(kept) | set(intro) if kept.get(k) != intro.get(k))
+            out.append(f"row {i} ({row.get('kind')} {row.get('n')}) was edited in place since {sha[:12]} introduced it "
+                       f"({', '.join(names)}; launch_commit and every other field are written once, by --add)")
+            continue
+        added = set(row) & CLOSING
+        spent = {"spent_without_work", "spent_at"}
+        if added & spent:
+            reason, at = row.get("spent_without_work"), row.get("spent_at")
+            try:
+                when = datetime.fromisoformat(at) if isinstance(at, str) else None
+            except ValueError:
+                when = None
+            if not (spent <= added and isinstance(reason, str) and reason.strip() and when is not None
+                    and when.utcoffset() is not None and not when.utcoffset()):
+                out.append(f"row {i} carries spent fields that are not --close-spent's shape (a reason and an ISO UTC "
+                           f"spent_at, both): edited in place by hand")
+        if "voided_by" in added:
+            j = row.get("voided_by")
+            if not (type(j) is int and i < j < len(rows) and isinstance(rows[j], dict) and rows[j].get("voids") == i):
+                out.append(f"row {i}'s voided_by {j!r} names no later row whose voids is {i}: edited in place by hand")
+    return out
+
+
 def check() -> int:
     rows = load()
     problems, notes = [], []
@@ -312,20 +361,26 @@ def check() -> int:
     # Pre-freeze review 6, M1 (lane fold8/review-binding): the register is append-only, so no committed version of it
     # on any ref may hold more rows than HEAD's; a row cut out drops its round as surely as a report deleted.
     reg = str(REGISTER.relative_to(REPO))
-    log = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--format=%H", "--", reg],
+    log = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--format=%H", "--", reg],
                          capture_output=True, text=True)
     for sha in log.stdout.split() if log.returncode == 0 else []:
         blob = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{reg}"], capture_output=True, text=True)
+        if blob.returncode != 0:
+            continue                         # a commit that deleted the register holds no version of it
         try:
-            held = len(json.loads(blob.stdout)["rows"]) if blob.returncode == 0 else 0
+            held = len(json.loads(blob.stdout)["rows"])
         except Exception:
-            held = 0
+            # the review of bc438542, NIT 2: an unreadable version is a problem, never zero rows
+            problems.append(f"{reg} at {sha[:12]} cannot be read as the register, so its rows cannot be shown "
+                            f"append-only")
+            break
         if held > len(rows):
             problems.append(f"{reg} at {sha[:12]} holds {held} row(s) and HEAD's holds {len(rows)}: the register is "
                             f"append-only, so a registered round was cut out")
             break
     if log.returncode != 0:
         problems.append(f"the history of {reg} cannot be read, so its rows cannot be shown append-only")
+    problems.extend(in_place_problems(rows, commits))
     seen: dict[str, list[int]] = {}
     for r in rows:
         if r["kind"] == "verify" and not r.get("voided_by") and not r.get("spent_without_work"):
