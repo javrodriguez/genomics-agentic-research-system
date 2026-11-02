@@ -178,31 +178,10 @@
     },
     {
       "file": "evals/gap-study-4/native-readers/codex-review.md",
-      "pattern": "local-works",
-      "line_text": "So the road Javier's acceptance commit will travel works on this head; the real record must carry the real review's bytes and hash.",
-      "ruled": "2026-10-21",
-      "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:56 on d5c0f798)"
-    },
-    {
-      "file": "evals/gap-study-4/native-readers/codex-review.md",
-      "pattern": "every-model",
-      "line_text": "- Record types across the 38 last snapshots: world_state 38 (all `full: true`, all inside turn 1), thread_settings_applied 102 (all between turns, every one with the extra keys reasoning_effort and runtime_workspace_roots, every model equal to the ledger's), task_started 89 = task_complete 89, item kinds UserMessage 89, AgentMessage 169, CommandExecution 226, Reasoning 125 (0 with a non-empty summary), FileChange 0; no turn_aborted, no error, no reroute.",
-      "ruled": "2026-10-21",
-      "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:70 on d5c0f798)"
-    },
-    {
-      "file": "evals/gap-study-4/native-readers/codex-review.md",
-      "pattern": "consisten",
-      "line_text": "The gates are consistency checks over producer-written bytes; the guarantee against a consistent fabrication is his acceptance commit in his own window, as the module's docstring says.",
-      "ruled": "2026-10-21",
-      "why": "Bound record, never edited: native-readers/codex-review.md is the independent review Javier's acceptance binds by sha256 (native-readers/codex-acceptance.json review.sha256 47a3f266cd52d6c3fc8ca7fd11be0c5d2c0fcc5dd528bb2b3bb580bd12024c06; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's prose about the reader's code and checks, not a claim by this study about any model or take. (lane freeze-gates-fix, glitch-f1's ruling (2) of 21 Oct 2026 under Javier's standing delegation; at codex-review.md:122 on d5c0f798)"
-    },
-    {
-      "file": "evals/gap-study-4/native-readers/codex-review.md",
       "pattern": "free",
       "line_text": "Disk was 56 GiB free at the start (`df -h /System/Volumes/Data`).",
       "ruled": "2026-11-01",
-      "why": "Bound record, never edited: native-readers/codex-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's acceptance of the Codex reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/codex-acceptance.json review.sha256 44cf53b077220fe07633d11cf29fea69ab0c805e8dadfff3585941bc73780552; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's note of the Mac's disk space at the start of its review, not a claim about any model's cost. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at codex-review.md:11 on 0b3d4f73; the three earlier excusals for this file still match lines of these bytes)"
+      "why": "Bound record, never edited: native-readers/codex-review.md is the independent re-review (of lane fold6/kill-leftovers at ec62dec8) that Javier's acceptance of the Codex reader binds by sha256 (63bb03e5, Javier's OD173; native-readers/codex-acceptance.json review.sha256 44cf53b077220fe07633d11cf29fea69ab0c805e8dadfff3585941bc73780552; native_reader_registration.py:529 and :593 refuse a review whose bytes do not hash to it), so rewording the line would unbind the accepted reader. The word is the reviewer's note of the Mac's disk space at the start of its review, not a claim about any model's cost. (lane fold7/battery-reds, glitch-45's fold-7 brief of 1 Nov 2026 under Javier's standing delegation; at codex-review.md:11 on 0b3d4f73; it replaces the three excusals ruled 21 Oct 2026 for the 47a3f266 bytes (local-works, every-model, consisten), which match no line of these bytes)"
     },
     {
       "file": "evals/gap-study-4/native-readers/gemini-review.md",

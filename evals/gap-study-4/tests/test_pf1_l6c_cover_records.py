@@ -175,7 +175,8 @@ class R3Witness(unittest.TestCase):
         got, red = self.witness([constants_only, rechecks_hidden])
         self.assertEqual(sorted(covering(got)), list(WALKS), got)
         self.assertEqual(dict(got["uncounted"]), {}, got)
-        self.assertTrue(red, "R1 stays green on MINOR 3's line")
+        self.assertEqual([line.split(":")[0] for line in red], ["R1.named w165"], red)
+        self.assertIn("counted, covering its spec", red[0], red)
 
     def test_b_without_the_rechecks_all_three_read_stale(self):
         got, red = self.witness([rechecks_hidden])
@@ -183,7 +184,13 @@ class R3Witness(unittest.TestCase):
         self.assertEqual(sorted(held), list(WALKS), got)
         self.assertTrue(all(why.startswith(STALE) for why in held.values()), held)
         self.assertEqual(covering(got), {}, got)
-        self.assertTrue(red, "R1 stays green with the rechecks hidden")
+        stale = f"held as {STALE!r}"[:-1]
+        self.assertEqual(sorted({line.split(":")[0] for line in red}), [f"R1.named {w}" for w in WALKS], red)
+        self.assertEqual(sorted(line.split(":")[0] for line in red if stale in line),
+                         [f"R1.named {w}" for w in WALKS], red)
+        self.assertEqual(sorted(line.split(":")[0] for line in red if "covers None, not its spec" in line),
+                         [f"R1.named {w}" for w in COVERS], red)
+        self.assertEqual(len(red), len(WALKS) + len(COVERS), red)
 
     def test_c_strict_off_w165_counts(self):
         got, _ = self.witness([], strict_off=HELD)
