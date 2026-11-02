@@ -1540,28 +1540,43 @@ class FreezeCoverage(unittest.TestCase):
             # order function's hash, at the value this tree computes, as a built draft does
             draft[freeze.ORDER_FUNCTION_HASH_KEY] = freeze.take_order_function_sha256()
             (root / "prereg-draft.json").write_text(json.dumps(draft))
-            review_name = study.REVIEW_DIR + "/prefreeze-1.md"
+            # lane fold8/review-binding (pre-freeze review 6, M1 and M2, and the reviews of the fold): the rig seeds the way
+            # a real rehearsal will. Rounds 1-4 never seed, so its round is 7, the next after the six registered. The
+            # instrument is committed first (the launch commit), the row alone next, whose launch_commit is that commit,
+            # then the report with a blindness record stating its digest, then the claims appended to the review-records
+            # fragment, the one copy-record change the launch binding admits.
+            review_name = study.REVIEW_DIR + "/prefreeze-7.md"
             review = root / review_name
             review.parent.mkdir(parents=True, exist_ok=True)
-            # lane fold3/m1 (pre-freeze review 3, m2): the freeze seeds only from a registered round, so the round's
-            # row is committed alone first and the review carries the blindness record naming that commit's session id
-            rounds_name, blind_name = study.REVIEW_DIR + "/rounds.json", study.REVIEW_DIR + "/prefreeze-1-blindness.txt"
-            (root / rounds_name).write_text(json.dumps({"rows": [{"n": 1, "kind": "prefreeze", "voids": None}]}) + "\n")
-            row_commit = commit(repo, [study.rel(rounds_name)], "Register synthetic review round 1")
-            (root / blind_name).write_text(f"session id: {takes.session_id_for(row_commit)}\n")
-            for name in (rounds_name, blind_name):
-                entries[name] = {"path": name, "status": "new", "reason": "synthetic registered round"}
-            digest = hashlib.sha256((root / "prereg-draft.json").read_bytes()).hexdigest()
-            review.write_text(f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n" + freeze.RULING_LINE + "\n")
-            entries[review_name] = {"path": review_name, "status": "new", "reason": "synthetic ruling"}
+            rounds_name, blind_name = study.REVIEW_DIR + "/rounds.json", study.REVIEW_DIR + "/prefreeze-7-blindness.txt"
+            (root / rounds_name).write_text(json.dumps({"rows": []}) + "\n")
+            entries[rounds_name] = {"path": rounds_name, "status": "new", "reason": "synthetic registered round"}
             fragment["files"] = list(entries.values())
             (folder / "synthetic.json").write_text(json.dumps(fragment))
-            review_commit = commit(repo, [study.STUDY_REL], "Record synthetic reviewed design")
+            records_name = freeze.REVIEW_CLAIMS_FRAGMENT
+            records = {"lane": "review-records", "files": [{"path": records_name, "status": "new",
+                                                            "reason": "synthetic review records"}]}
+            (root / records_name).write_text(json.dumps(records))
+            launch_commit = commit(repo, [study.STUDY_REL], "Record the synthetic instrument")
+            (root / rounds_name).write_text(json.dumps({"rows": [{"n": 7, "kind": "prefreeze", "voids": None,
+                                                                  "launch_commit": launch_commit}]}) + "\n")
+            row_commit = commit(repo, [study.rel(rounds_name)], "Register synthetic review round 7")
+            digest = hashlib.sha256((root / "prereg-draft.json").read_bytes()).hexdigest()
+            text = f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n" + freeze.RULING_LINE + "\n"
+            review.write_text(text)
+            (root / blind_name).write_text(f"session id: {takes.session_id_for(row_commit)}\n"
+                                           + freeze._blindness().REPORT_DIGEST
+                                           + hashlib.sha256(text.encode()).hexdigest() + "\n")
+            review_commit = commit(repo, [study.rel(review_name), study.rel(blind_name)], "Record the synthetic review")
+            records["files"] += [{"path": name, "status": "new", "reason": "synthetic registered round"}
+                                 for name in (review_name, blind_name)]
+            (root / records_name).write_text(json.dumps(records))
+            commit(repo, [study.rel(records_name)], "Claim the synthetic review's records")
             problems, writer = cm.problems, freeze.write_outputs
             with ExitStack() as stack:
                 for module, name, value in ((freeze, "HERE", root), (freeze, "REPO", repo),
                     (freeze, "DRAFT", root / "prereg-draft.json"),
-                    (freeze, "PINNED", [study.rel(p) for p in entries])):
+                    (freeze, "PINNED", [study.rel(p) for p in entries] + [study.rel(records_name)])):
                     stack.enter_context(mock.patch.object(module, name, value))
                 stack.enter_context(mock.patch.object(cm, "problems", lambda *a, **k: problems(folder, **k)))
                 stack.enter_context(mock.patch.object(freeze, "write_outputs", lambda pre: writer(pre, root=root)))
