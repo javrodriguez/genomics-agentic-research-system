@@ -27,7 +27,8 @@ than the ones the row names is a report on a different study.
 
 AN OPEN ROUND BLOCKS. A registered row whose report is not committed is an OPEN round: `--check` exits 1 and
 names it. No report may be discarded, so an open round is either a report to commit or a void to record --
-and a void is a row of its own, naming the row it voids, never an edit to that row.
+and a void is a row of its own, naming the row it voids (`voids`); the one later mark on the voided row is its
+voided_by, admitted only as the index of that later row (in_place_problems), never any other edit to it.
 
 A SESSION SPENT WITHOUT PRODUCING WORK IS RECORDED, NOT HIDDEN. A row's session id is a pure function of
 its commit, so it can be opened exactly once: a launch that dies before the first agent turn -- a rate
@@ -160,22 +161,69 @@ def uncommitted() -> bool:
     return bool(git("status", "--porcelain", "--", str(REGISTER.relative_to(REPO))))
 
 
+def register_at(rev: str) -> tuple[str, list | None]:
+    """The confirm review of b968597e, NIT E: ("rows", rows), ("absent", None) when the register is not in that
+    commit, or ("unreadable", None) when the commit or its blob cannot be read or is not the register's shape."""
+    reg = str(REGISTER.relative_to(REPO))
+    run = lambda *a: subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True)  # noqa: E731
+    if run("cat-file", "-e", f"{rev}^{{commit}}").returncode:
+        return "unreadable", None
+    listed = run("ls-tree", "--name-only", rev, "--", reg)
+    if listed.returncode:
+        return "unreadable", None
+    if reg not in listed.stdout.splitlines():
+        return "absent", None
+    blob = run("show", f"{rev}:{reg}")
+    try:
+        rows = json.loads(blob.stdout)["rows"] if blob.returncode == 0 else None
+    except Exception:
+        rows = None
+    return ("rows", rows) if isinstance(rows, list) else ("unreadable", None)
+
+
+def register_history() -> list[tuple[str, list[str]]] | None:
+    """Every commit on any ref or reflog entry that touched the register, with full history (a merge that keeps one
+    parent's register still lists the other side's commits), each with its parents; None when git cannot read it."""
+    out = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--full-history", "--format=%H %P",
+                          "--", str(REGISTER.relative_to(REPO))], capture_output=True, text=True)
+    if out.returncode != 0:
+        return None
+    return [(ln.split()[0], ln.split()[1:]) for ln in out.stdout.splitlines() if ln.strip()]
+
+
+def introducers() -> tuple[dict[int, str], list[str]]:
+    """The confirm review of b968597e, BLOCKER A: row index -> the one commit, on any ref or reflog and with full
+    history, that holds the row while none of its parents does; and the problems: a row introduced by more than one
+    commit (a side branch re-adding it, merged in), or a history git cannot read."""
+    hist = register_history()
+    if hist is None:
+        return {}, ["the history of the register cannot be read, so no row's introducing commit is known"]
+    found: dict[int, list[str]] = {}
+    problems: list[str] = []
+    for sha, parents in hist:
+        state, rows = register_at(sha)
+        if state == "unreadable":
+            problems.append(f"the register at {sha[:12]} cannot be read")
+            continue
+        if rows is None:
+            continue
+        held = 0
+        for parent in parents:
+            pstate, prows = register_at(parent)
+            if pstate == "unreadable":
+                problems.append(f"the register at {parent[:12]} cannot be read")
+            held = max(held, len(prows or []))
+        for i in range(held, len(rows)):
+            found.setdefault(i, []).append(sha)
+    one = {i: shas[0] for i, shas in found.items() if len(shas) == 1}
+    problems += [f"row {i} was introduced by {len(shas)} commits ({', '.join(s[:12] for s in shas)}): a row is added "
+                 f"once, by one commit" for i, shas in sorted(found.items()) if len(shas) > 1]
+    return one, problems
+
+
 def row_commits() -> dict[int, str]:
-    """row index -> the sha of the commit that introduced it, read the way takes.py reads its ledger."""
-    shas = git("log", "--reverse", "--format=%H", "--", str(REGISTER.relative_to(REPO))).split()
-    seen: dict[int, str] = {}
-    for sha in shas:
-        blob = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{REGISTER.relative_to(REPO)}"],
-                              capture_output=True, text=True)
-        if blob.returncode != 0:
-            continue
-        try:
-            n = len(json.loads(blob.stdout)["rows"])
-        except Exception:
-            continue
-        for i in range(n):
-            seen.setdefault(i, sha)
-    return seen
+    """row index -> the one commit that introduced it (introducers; the freeze reads it the same way)."""
+    return introducers()[0]
 
 
 def session_id_for(row_commit_sha: str) -> str:
@@ -202,7 +250,7 @@ def committed(path: Path) -> bool:
 def ever_committed(path: Path) -> bool:
     """Pre-freeze review 6, M1 (lane fold8/review-binding): whether any commit on any ref (git log --all) touched the
     file, so a report deleted from HEAD's tree still reads as committed. An unreadable history reads as committed."""
-    out = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--format=%H", "-1", "--",
+    out = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--full-history", "--format=%H", "-1", "--",
                           str(path.relative_to(REPO))], capture_output=True, text=True)
     return out.returncode != 0 or bool(out.stdout.strip())
 
@@ -361,25 +409,32 @@ def check() -> int:
     # Pre-freeze review 6, M1 (lane fold8/review-binding): the register is append-only, so no committed version of it
     # on any ref may hold more rows than HEAD's; a row cut out drops its round as surely as a report deleted.
     reg = str(REGISTER.relative_to(REPO))
-    log = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--format=%H", "--", reg],
-                         capture_output=True, text=True)
+    log = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--reflog", "--full-history", "--format=%H", "--",
+                          reg], capture_output=True, text=True)
     for sha in log.stdout.split() if log.returncode == 0 else []:
-        blob = subprocess.run(["git", "-C", str(REPO), "show", f"{sha}:{reg}"], capture_output=True, text=True)
-        if blob.returncode != 0:
+        state, version = register_at(sha)
+        if state == "absent":
             continue                         # a commit that deleted the register holds no version of it
-        try:
-            held = len(json.loads(blob.stdout)["rows"])
-        except Exception:
-            # the review of bc438542, NIT 2: an unreadable version is a problem, never zero rows
+        if state == "unreadable":
+            # the review of bc438542, NIT 2, and the confirm review of b968597e, NIT E: an unreadable version (a bad
+            # blob, a missing object) is a problem, never zero rows and never skipped
             problems.append(f"{reg} at {sha[:12]} cannot be read as the register, so its rows cannot be shown "
                             f"append-only")
             break
+        held = len(version)
+        # the confirm review of b968597e, BLOCKER A: every version of every row equals HEAD's, closing fields aside
+        strip = lambda r: {k: v for k, v in r.items() if k not in CLOSING} if isinstance(r, dict) else r  # noqa: E731
+        moved = [i for i, old in enumerate(version[:len(rows)]) if strip(old) != strip(rows[i])]
+        if moved:
+            problems.append(f"row {moved[0]} of {reg} at {sha[:12]} is not HEAD's row {moved[0]} (closing fields "
+                            f"aside): a row is written once, on every branch")
         if held > len(rows):
             problems.append(f"{reg} at {sha[:12]} holds {held} row(s) and HEAD's holds {len(rows)}: the register is "
                             f"append-only, so a registered round was cut out")
             break
     if log.returncode != 0:
         problems.append(f"the history of {reg} cannot be read, so its rows cannot be shown append-only")
+    problems.extend(introducers()[1])                # the confirm review of b968597e, BLOCKER A
     problems.extend(in_place_problems(rows, commits))
     seen: dict[str, list[int]] = {}
     for r in rows:

@@ -1112,7 +1112,9 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     if numbers and n != max(numbers):
         return [f"{reports[0]} is not the latest review committed (prefreeze-{max(numbers)}.md is): the freeze seeds "
                 f"from the last ruling, not a chosen one"], None
-    problem = (registered_review_problem(reports[0], n)        # pre-freeze review 3, m2 (lane fold3/m1)
+    problem = (committed_once_problem(reports[0])               # the confirm review of b968597e, BLOCKER A
+               or committed_once_problem(reports[0][:-len(".md")] + "-blindness.txt")
+               or registered_review_problem(reports[0], n)        # pre-freeze review 3, m2 (lane fold3/m1)
                or later_review_problem(reports[0], n)          # pre-freeze review 6, M1 (lane fold8/review-binding)
                or grandfathered_seed_problem(reports[0], n)    # pre-freeze review 6, M1
                or launch_binding_problem(reports[0], n))       # pre-freeze review 6, M2
@@ -1144,8 +1146,10 @@ def _report_of(row: dict) -> str | None:
 
 def ever_committed(path: str) -> bool:
     """Whether any commit reachable from any ref or reflog entry (git log --all --reflog) touched `path`: added,
-    changed or deleted it. The review of bc438542, MAJOR 1: --all alone forgets a commit once its ref is deleted."""
-    code, out = git("log", "--all", "--reflog", "--format=%H", "-1", "--", path)
+    changed or deleted it. The review of bc438542, MAJOR 1: --all alone forgets a commit once its ref is deleted; the
+    confirm review of b968597e, MAJOR B: without --full-history a commit reachable from HEAD is hidden when a merge
+    (`-s ours`, or a conflict resolved to one side) keeps the other parent's tree."""
+    code, out = git("log", "--all", "--reflog", "--full-history", "--format=%H", "-1", "--", path)
     return code != 0 or bool(out)          # an unreadable history reads as committed: fail closed
 
 
@@ -1172,8 +1176,11 @@ def partial_clone_problem() -> str | None:
 STUDY_MIRROR = order_beacon.WITNESS_REPO                  # javrodriguez/gars-cloud-mirror
 FREEZE_LINE = "freeze/r4-20261021"
 PUBLISHED_TIP_RESIDUAL = (f"RESIDUAL (published tip): no remote of this repository is {STUDY_MIRROR}, so HEAD is not "
-                          f"checked against the published {FREEZE_LINE}; a later review dropped by a rebase, a deleted "
-                          f"ref and an expired reflog would not be seen here, only in the mirror's own history")
+                          f"checked against the published {FREEZE_LINE}. Even with one, the tip is bound only as last "
+                          f"fetched: a mirror rewritten by a force-push and then fetched passes, and commits on the "
+                          f"mirror off this line are not scanned for review rows or reports. A later review dropped by a "
+                          f"rebase, a deleted ref and an expired reflog (or a gc) is seen by no local read here, only in "
+                          f"the mirror's own push history")
 
 
 def published_tip_problem() -> tuple[str | None, str | None]:
@@ -1184,7 +1191,8 @@ def published_tip_problem() -> tuple[str | None, str | None]:
     for remote in remotes.split() if code == 0 else []:
         c, url = git("remote", "get-url", remote)
         name = STUDY_MIRROR.split("/")[-1]
-        if remote == name or (c == 0 and re.search(rf"[:/]{re.escape(STUDY_MIRROR)}(\.git)?/?$", url)):
+        if remote.lower() == name.lower() or (c == 0 and re.search(rf"[:/]{re.escape(STUDY_MIRROR)}(\.git)?/?$", url,
+                                                                    re.I)):
             mirrors.append(remote)
     if code != 0:
         return "the remotes of this repository cannot be read, so the published tip is unknown: no freeze", None
@@ -1214,7 +1222,7 @@ def later_review_problem(report: str, n: int) -> str | None:
     voided_by whose report was ever committed refuses the seed, since a round that produced a report was never spent and
     a void records no report (review_kit/rounds.py)."""
     reg = _register_rel()
-    code, shas = git("log", "--all", "--reflog", "--format=%H", "--", reg)
+    code, shas = git("log", "--all", "--reflog", "--full-history", "--format=%H", "--", reg)
     if code != 0:
         return f"the history of {reg} cannot be read, so the latest registered round is unknown: no seed"
     numbers, head_rows = set(), None
@@ -1233,7 +1241,7 @@ def later_review_problem(report: str, n: int) -> str | None:
         return (f"round {max(numbers)} is registered in {reg} (at HEAD or in its history, spent, voided and open rows "
                 f"included), so {report} (round {n}) is not the latest review: the freeze seeds from the last ruling")
     folder = study.rel(study.REVIEW_DIR)
-    code, names = git("log", "--all", "--reflog", "--format=", "--name-only", "--", folder)
+    code, names = git("log", "--all", "--reflog", "--full-history", "--format=", "--name-only", "--", folder)
     if code != 0:
         return f"the history of {folder} cannot be read, so the latest committed review is unknown: no seed"
     ever = {int(m.group(1)) for ln in names.splitlines()
@@ -1307,22 +1315,116 @@ def _record_only_change(path: str, launch: str, own: tuple[str, str]) -> bool:
         key != "files" or len({e["path"] for e in added}) == len(added))
 
 
+def _version(rev: str, path: str) -> tuple[bool, str | None]:
+    """(readable, the file's text at `rev`, or None when the path is absent there). Unreadable when the commit is
+    missing or the blob cannot be read: a partial or corrupt clone, read fail-closed by every caller."""
+    if subprocess.run(["git", "-C", str(REPO), "cat-file", "-e", f"{rev}^{{commit}}"], capture_output=True).returncode:
+        return False, None
+    code, names = git("ls-tree", "--name-only", rev, "--", path)
+    if code != 0:
+        return False, None
+    if path not in names.splitlines():
+        return True, None
+    code, text = git("show", f"{rev}:{path}")
+    return (code == 0), (text if code == 0 else None)
+
+
+def _history(path: str) -> list[tuple[str, list[str]]] | None:
+    """Every commit on any ref or reflog entry that touched `path`, with full history (so a merge that keeps one
+    parent's version still lists the other side's commits), each with its parents; None when git cannot read it."""
+    code, out = git("log", "--all", "--reflog", "--full-history", "--format=%H %P", "--", path)
+    if code != 0:
+        return None
+    return [(ln.split()[0], ln.split()[1:]) for ln in out.splitlines() if ln.strip()]
+
+
+def committed_once_problem(path: str) -> str | None:
+    """The confirm review of b968597e, BLOCKER A: why `path` was not committed exactly once, or None: exactly one
+    commit on any ref or reflog adds it (it is absent in every parent), and every commit holding it holds those bytes."""
+    hist = _history(path)
+    if hist is None:
+        return f"the history of {path} cannot be read: no seed"
+    adders, blobs = [], set()
+    for sha, parents in hist:
+        ok, text = _version(sha, path)
+        if not ok:
+            return f"{path} at {sha[:12]} cannot be read: no seed"
+        if text is None:
+            continue
+        blobs.add(text)
+        held = []
+        for parent in parents:
+            pok, ptext = _version(parent, path)
+            if not pok:
+                return f"{path} at {parent[:12]} cannot be read: no seed"
+            held.append(ptext is not None)
+        if not any(held):
+            adders.append(sha)
+    if len(adders) != 1 or len(blobs) != 1:
+        return (f"{path} was added by {len(adders)} commit(s) with {len(blobs)} distinct version(s) on any ref or "
+                f"reflog: a review record is committed exactly once, unedited, or it seeds no freeze")
+    return None
+
+
+def _strip_closing(row):
+    return {k: v for k, v in row.items() if k not in ROW_CLOSING} if isinstance(row, dict) else row
+
+
+ROW_CLOSING = ("spent_without_work", "spent_at", "voided_by")      # review_kit/rounds.py CLOSING
+
+
+def row_introducer(reg: str, i: int) -> tuple[str | None, str | None]:
+    """The confirm review of b968597e, BLOCKER A: (the one commit that introduced row i of the register, or None;
+    why not, or None). Every version of the register on any ref or reflog, with full history, is read: exactly one
+    commit holds row i while none of its parents does, and every version of row i equals HEAD's, closing fields
+    (ROW_CLOSING) aside. So a side branch re-adding the row with another launch_commit, merged in, is refused."""
+    hist = _history(reg)
+    if hist is None:
+        return None, f"the history of {reg} cannot be read, so row {i}'s introducing commit is unknown"
+    c, head = git("show", f"HEAD:{reg}")
+    head_rows = _rows(head) if c == 0 else None
+    if head_rows is None or len(head_rows) <= i:
+        return None, f"{reg} at HEAD holds no row {i}"
+    want = _strip_closing(head_rows[i])
+    introducers = []
+    for sha, parents in hist:
+        ok, text = _version(sha, reg)
+        if not ok:
+            return None, f"{reg} at {sha[:12]} cannot be read, so row {i}'s history is unknown"
+        rows = _rows(text) if text is not None else []
+        if rows is None:
+            return None, f"{reg} at {sha[:12]} is not the register's shape, so row {i}'s history is unknown"
+        if len(rows) <= i:
+            continue
+        if _strip_closing(rows[i]) != want:
+            return None, (f"row {i} of {reg} at {sha[:12]} is not HEAD's row {i} (closing fields aside): a row is "
+                          f"written once, on every branch")
+        held = []
+        for parent in parents:
+            pok, ptext = _version(parent, reg)
+            prows = _rows(ptext) if (pok and ptext is not None) else ([] if pok else None)
+            if prows is None:
+                return None, f"{reg} at {parent[:12]} cannot be read, so row {i}'s history is unknown"
+            held.append(len(prows) > i)
+        if not any(held):
+            introducers.append(sha)
+    if len(introducers) != 1:
+        return None, (f"row {i} of {reg} was introduced by {len(introducers)} commit(s) on any ref or reflog, not "
+                      f"exactly one")
+    return introducers[0], None
+
+
 def introduced_row_problem(reg: str, i: int, launch: str) -> str | None:
     """The review of bc438542, BLOCKER 1: rounds.json is an allowed difference, so a row's launch_commit could be
     relabelled in place to the tip after a code change. Now the seed row at HEAD must be byte-for-byte (as JSON) the row
     its introducing commit added (the first commit of HEAD's history whose register holds row i, as
     registered_review_problem reads it), and launch_commit must be that commit's first parent, as rounds.py --add
     writes it (HEAD when the row is written, then the row committed alone)."""
-    code, shas = git("log", "--reverse", "--format=%H", "--", reg)
-    row_commit, intro = None, None
-    for sha in shas.split() if code == 0 else []:
-        c, blob = git("show", f"{sha}:{reg}")
-        rows = _rows(blob) if c == 0 else None
-        if rows is not None and len(rows) > i:
-            row_commit, intro = sha, rows[i]
-            break
+    row_commit, why = row_introducer(reg, i)          # the confirm review of b968597e, BLOCKER A
     if row_commit is None:
-        return f"row {i} of {reg} was introduced by no commit of HEAD's history, so its launch_commit is unbound: no seed"
+        return f"{why}, so its launch_commit is unbound: no seed"
+    c, blob = git("show", f"{row_commit}:{reg}")
+    intro = (_rows(blob) or [None] * (i + 1))[i] if c == 0 else None
     c, head = git("show", f"HEAD:{reg}")
     now = (_rows(head) or [None] * (i + 1))[i] if c == 0 else None
     if now != intro:
@@ -1407,18 +1509,9 @@ def registered_review_problem(report: str, n: int) -> str | None:
     i = idx[0]
     if rows[i].get("voided_by") or rows[i].get("spent_without_work"):
         return f"{report}'s round (row {i} of {reg}) is voided or spent without work, so it seeds no freeze"
-    code, shas = git("log", "--reverse", "--format=%H", "--", reg)
-    row_commit = None
-    for sha in shas.split() if code == 0 else []:
-        c, blob = git("show", f"{sha}:{reg}")
-        try:
-            if c == 0 and len(json.loads(blob)["rows"]) > i:
-                row_commit = sha
-                break
-        except (ValueError, KeyError, TypeError):
-            continue
+    row_commit, why = row_introducer(reg, i)          # the confirm review of b968597e, BLOCKER A
     if row_commit is None:
-        return f"row {i} of {reg} was introduced by no commit, so no session id can be derived for {report}"
+        return f"{why}, so no session id can be derived for {report}"
     import takes
     want = takes.session_id_for(row_commit)
     blind = report[:-len(".md")] + "-blindness.txt"
