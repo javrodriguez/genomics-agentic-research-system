@@ -1109,10 +1109,188 @@ def review_file_problems(review_commit: str) -> tuple[list[str], str | None]:
     if numbers and n != max(numbers):
         return [f"{reports[0]} is not the latest review committed (prefreeze-{max(numbers)}.md is): the freeze seeds "
                 f"from the last ruling, not a chosen one"], None
-    problem = registered_review_problem(reports[0], n)        # pre-freeze review 3, m2 (lane fold3/m1)
+    problem = (registered_review_problem(reports[0], n)        # pre-freeze review 3, m2 (lane fold3/m1)
+               or later_review_problem(reports[0], n)          # pre-freeze review 6, M1 (lane fold8/review-binding)
+               or grandfathered_seed_problem(reports[0], n)    # pre-freeze review 6, M1
+               or launch_binding_problem(reports[0], n))       # pre-freeze review 6, M2
     if problem:
         return [problem], None
     return [], reports[0]
+
+
+def _register_rel() -> str:
+    return f"{study.rel(study.REVIEW_DIR)}/rounds.json"
+
+
+def _rows(text: str):
+    """A register blob's rows, or None when the blob is not the register's shape."""
+    try:
+        rows = json.loads(text)["rows"]
+    except (ValueError, KeyError, TypeError):
+        return None
+    return rows if isinstance(rows, list) else None
+
+
+def _report_of(row: dict) -> str | None:
+    """The committed report path a register row names (review_kit/rounds.py REPORT), or None for an unknown kind."""
+    folder = {"prefreeze": (study.REVIEW_DIR, "prefreeze"), "verify": (study.VERIFY_DIR, "verify")}.get(row.get("kind"))
+    if folder is None or type(row.get("n")) is not int:
+        return None
+    return f"{study.rel(folder[0])}/{folder[1]}-{row['n']}.md"
+
+
+def ever_committed(path: str) -> bool:
+    """Whether any commit reachable from any ref (git log --all) touched `path`: added, changed or deleted it."""
+    code, out = git("log", "--all", "--format=%H", "-1", "--", path)
+    return code != 0 or bool(out)          # an unreadable history reads as committed: fail closed
+
+
+def later_review_problem(report: str, n: int) -> str | None:
+    """Pre-freeze review 6, M1 (lane fold8/review-binding; glitch-45's ruling of Mon 2 Nov 2026): why a review later
+    than round n exists, or a registered round was closed over a committed report, or None. review_file_problems read
+    "the latest review" from the reports in HEAD's tree, so one commit deleting a later round's report and blindness
+    record and marking its row spent_without_work made an earlier approving round the seed. Now the latest is read from
+    three places, none of which that commit can rewrite: (a) the highest prefreeze n in review_kit/rounds.json, at HEAD
+    and in every committed version of it on any ref, spent, voided and open rows included; (b) every prefreeze-M.md ever
+    committed on any ref (git log --all over the review folder); and (c) at HEAD, any row marked spent_without_work or
+    voided_by whose report was ever committed refuses the seed, since a round that produced a report was never spent and
+    a void records no report (review_kit/rounds.py)."""
+    reg = _register_rel()
+    code, shas = git("log", "--all", "--format=%H", "--", reg)
+    if code != 0:
+        return f"the history of {reg} cannot be read, so the latest registered round is unknown: no seed"
+    numbers, head_rows = set(), None
+    for rev in ["HEAD", *shas.split()]:
+        c, blob = git("show", f"{rev}:{reg}")
+        if c != 0:
+            continue                              # a commit that deleted the register holds no version of it
+        rows = _rows(blob)
+        if rows is None:
+            return f"{reg} at {rev[:12]} is not the register's shape, so the rounds it registered are unknown: no seed"
+        if rev == "HEAD":
+            head_rows = rows
+        numbers |= {r["n"] for r in rows if isinstance(r, dict) and r.get("kind") == "prefreeze"
+                    and type(r.get("n")) is int}
+    if numbers and max(numbers) > n:
+        return (f"round {max(numbers)} is registered in {reg} (at HEAD or in its history, spent, voided and open rows "
+                f"included), so {report} (round {n}) is not the latest review: the freeze seeds from the last ruling")
+    folder = study.rel(study.REVIEW_DIR)
+    code, names = git("log", "--all", "--format=", "--name-only", "--", folder)
+    if code != 0:
+        return f"the history of {folder} cannot be read, so the latest committed review is unknown: no seed"
+    ever = {int(m.group(1)) for ln in names.splitlines()
+            for m in [re.fullmatch(rf"{re.escape(folder)}/prefreeze-(\d+)\.md", ln.strip())] if m}
+    if ever and max(ever) > n:
+        return (f"{folder}/prefreeze-{max(ever)}.md was committed (git log --all), so {report} (round {n}) is not the "
+                f"latest review, whether or not that report is in HEAD's tree: the freeze seeds from the last ruling")
+    for i, row in enumerate(head_rows or []):
+        if not isinstance(row, dict) or not (row.get("spent_without_work") or row.get("voided_by")):
+            continue
+        rep = _report_of(row)
+        if rep is None or ever_committed(rep):
+            return (f"row {i} of {reg} is marked spent without work or voided, and its report {rep} was committed "
+                    f"(git log --all): a round that produced a report is never closed so, and no seed is read past it")
+    return None
+
+
+def grandfathered_seed_problem(report: str, n: int) -> str | None:
+    """Pre-freeze review 6, M1: rounds 1-4 (REPORT_DIGEST_GRANDFATHERED) predate the report digest, so no record binds
+    their committed bytes to what their reviewers wrote (review 4's were masked before commit). None of them seeds a
+    freeze, whatever the register or the tree says; registered_review_problem still reads them as registered rounds."""
+    if n in REPORT_DIGEST_GRANDFATHERED:
+        return (f"{report} is round {n}, grandfathered from the report digest (REPORT_DIGEST_GRANDFATHERED): nothing "
+                f"binds its committed bytes to its reviewer's session, so it never seeds the freeze")
+    return None
+
+
+# Pre-freeze review 6, M2 (lane fold8/review-binding): the two records whose only change a seed round may bring, beyond
+# its report, its blindness record and the register, is entries appended for exactly that report and record. The copy
+# record must claim them (copy_manifest --check, the freeze's first step), and a reviewer's report is excused, never
+# edited, when the language lint reads it (as rounds 1-6 were). Nothing else in either file may change.
+REVIEW_CLAIMS_FRAGMENT = "COPIED.d/review-records.json"
+LANGUAGE_ALLOWLIST = "language-allowlist.json"
+
+
+def _appended(old: list, new: list) -> list | None:
+    """The entries `new` appends to `old` (old a prefix of new, order kept), or None when `new` changes anything else."""
+    if not isinstance(old, list) or not isinstance(new, list) or new[:len(old)] != old:
+        return None
+    return new[len(old):]
+
+
+def _record_only_change(path: str, launch: str, own: tuple[str, str]) -> bool:
+    """Whether `path`'s change from `launch` to HEAD is entries appended for exactly the seed round's own report and
+    blindness record (`own`, repository-relative), in REVIEW_CLAIMS_FRAGMENT or LANGUAGE_ALLOWLIST and nowhere else."""
+    c1, before = git("show", f"{launch}:{path}")
+    c2, after = git("show", f"HEAD:{path}")
+    if c1 or c2:
+        return False                              # added or deleted since the launch: never record-only
+    try:
+        before, after = json.loads(before), json.loads(after)
+    except ValueError:
+        return False
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return False
+    if path == study.rel(REVIEW_CLAIMS_FRAGMENT):
+        key, mine = "files", {p[len(study.STUDY_REL) + 1:] for p in own}
+        fits = (lambda e: isinstance(e, dict) and set(e) <= {"path", "status", "reason"} and e.get("path") in mine
+                and e.get("status") == "new")
+    elif path == study.rel(LANGUAGE_ALLOWLIST):
+        key, mine = "excused", set(own)
+        fits = lambda e: isinstance(e, dict) and e.get("file") in mine   # noqa: E731
+    else:
+        return False
+    if {k: v for k, v in before.items() if k != key} != {k: v for k, v in after.items() if k != key}:
+        return False
+    added = _appended(before.get(key), after.get(key))
+    return bool(added) and all(fits(e) for e in added) and (
+        key != "files" or len({e["path"] for e in added}) == len(added))
+
+
+def launch_binding_problem(report: str, n: int) -> str | None:
+    """Pre-freeze review 6, M2 (lane fold8/review-binding; glitch-45's ruling of Mon 2 Nov 2026): why the code being
+    frozen is not the code round n's reviewer was handed, or None. The seed was bound to the frozen draft through its
+    report's line 1 alone, so take-path and freeze code could change after a verdict with the draft byte-unchanged.
+    Now every path in PINNED (each ownership pattern read as its whole folder, and the whole COPIED.d folder, so a file
+    added or removed under either is read too) must have at HEAD the bytes it had at the round's launch_commit in
+    review_kit/rounds.json, the commit the reviewer was handed. Only the round's own report, its blindness record and
+    rounds.json may differ, by name, pinned or not; and REVIEW_CLAIMS_FRAGMENT and LANGUAGE_ALLOWLIST only by entries
+    appended for exactly that report and record (_record_only_change). The first differing path is named. A code change
+    after a review therefore needs a new round."""
+    reg = _register_rel()
+    code, text = git("show", f"HEAD:{reg}")
+    rows = _rows(text) if code == 0 else None
+    found = [r for r in rows or [] if isinstance(r, dict) and r.get("kind") == "prefreeze" and r.get("n") == n]
+    if len(found) != 1:
+        return f"{reg} holds {len(found)} prefreeze row(s) numbered {n} at HEAD, so {report} has no launch_commit"
+    launch = found[0].get("launch_commit")
+    if not (isinstance(launch, str) and re.fullmatch(r"[0-9a-f]{40}", launch)):
+        return f"round {n}'s row in {reg} names no launch_commit, so nothing says what code its reviewer read: no seed"
+    code, got = git("rev-parse", "--verify", "-q", f"{launch}^{{commit}}")
+    if code != 0 or got != launch:
+        return f"round {n}'s launch_commit {launch[:12]} is not a commit in this repository: no seed"
+    if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", launch, "HEAD"],
+                      capture_output=True).returncode != 0:
+        return f"round {n}'s launch_commit {launch[:12]} is not an ancestor of HEAD: the code its reviewer read is not this line's"
+    try:
+        paths = pinned_paths(PINNED)
+    except ValueError as e:
+        return f"the pinned paths cannot be listed ({e}), so the code being frozen cannot be compared: no seed"
+    folders = [p[:min(p.index(c) for c in GLOB_CHARS if c in p)].rsplit("/", 1)[0] for p in PINNED if is_pattern(p)]
+    spec = sorted(set(paths) | set(folders) | {study.rel("COPIED.d")})
+    out = subprocess.run(["git", "-C", str(REPO), "diff", "--no-renames", "--no-ext-diff", "--name-only", "-z",
+                          launch, "HEAD", "--", *spec], capture_output=True)
+    if out.returncode != 0:
+        return f"git diff {launch[:12]} HEAD over the pinned paths failed, so the code being frozen is unread: no seed"
+    blind = report[:-len(".md")] + "-blindness.txt"
+    allowed = {report, blind, reg}
+    differ = [p for p in out.stdout.decode("utf-8", "surrogateescape").split("\0") if p and p not in allowed
+              and not _record_only_change(p, launch, (report, blind))]
+    if differ:
+        return (f"{differ[0]} at HEAD is not its bytes at round {n}'s launch_commit {launch[:12]} ({len(differ)} pinned "
+                f"path(s) differ): the code being frozen is not the code {report}'s reviewer read, so a new round is "
+                f"needed")
+    return None
 
 
 def registered_review_problem(report: str, n: int) -> str | None:
@@ -1179,7 +1357,8 @@ def registered_review_problem(report: str, n: int) -> str | None:
 
 # Rounds whose blindness records predate the report digest (pre-freeze review 5, M1): review 4's report was masked by
 # the Lane-orchestrator before commit (its as-written bytes are review_kit/prefreeze-4.as-written.md), and rounds 1-3
-# were committed before the rule existed. None of them can seed a freeze now: freeze seeds only from the latest review.
+# were committed before the rule existed. None of them can seed a freeze now: grandfathered_seed_problem refuses each by
+# number (pre-freeze review 6, M1), and later_review_problem refuses any seed with a later review registered or committed.
 # Round 5 is not grandfathered: its committed blindness record predates section 8 and states no report digest, so
 # registered_review_problem refuses it as a seed, and it ruled DO NOT FREEZE, which never seeds a freeze either way.
 REPORT_DIGEST_GRANDFATHERED = (1, 2, 3, 4)

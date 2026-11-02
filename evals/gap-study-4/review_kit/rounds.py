@@ -199,6 +199,14 @@ def committed(path: Path) -> bool:
                           capture_output=True).returncode == 0
 
 
+def ever_committed(path: Path) -> bool:
+    """Pre-freeze review 6, M1 (lane fold8/review-binding): whether any commit on any ref (git log --all) touched the
+    file, so a report deleted from HEAD's tree still reads as committed. An unreadable history reads as committed."""
+    out = subprocess.run(["git", "-C", str(REPO), "log", "--all", "--format=%H", "-1", "--",
+                          str(path.relative_to(REPO))], capture_output=True, text=True)
+    return out.returncode != 0 or bool(out.stdout.strip())
+
+
 def add(kind: str, folder: Path, voids: int | None) -> int:
     if uncommitted():
         print("refusing: the register has an uncommitted row. One commit introduces exactly one row, or two "
@@ -265,6 +273,14 @@ def check() -> int:
     commits = row_commits()
     for i, r in enumerate(rows):
         if r.get("voided_by") or r.get("spent_without_work"):
+            # Pre-freeze review 6, M1 (lane fold8/review-binding): a closed row skips the open-round check, so one
+            # commit deleting a report and marking its row spent dropped a registered review. A round whose report was
+            # ever committed produced work and is never spent, and a void records no report.
+            if ever_committed(report_path(r)):
+                problems.append(f"{r['kind']} round {r['n']} is marked "
+                                f"{'voided' if r.get('voided_by') else 'spent without work'}, and its report "
+                                f"{report_path(r).relative_to(REPO)} was committed (git log --all): a registered "
+                                f"review is never dropped")
             continue
         rep = report_path(r)
         if not committed(rep):
@@ -351,9 +367,9 @@ def main() -> int:
             print(f"no row {args.close_spent}; the register holds {len(rows)}")
             return 2
         r = rows[args.close_spent]
-        if committed(report_path(r)):
-            print(f"refusing: {r['kind']} round {r['n']} has a committed report. A round that produced "
-                  f"work is never closed as spent.")
+        if committed(report_path(r)) or ever_committed(report_path(r)):
+            print(f"refusing: {r['kind']} round {r['n']} has a committed report (at HEAD or in any ref's history). "
+                  f"A round that produced work is never closed as spent.")
             return 1
         r["spent_without_work"] = args.reason
         r["spent_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
