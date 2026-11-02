@@ -665,6 +665,34 @@
       "line_text": "  - Recheck wave 3 added `recheck-1.json` to most arm A walks. Most now carry `nested-agent` or `harness-condition-violated` under the checker constants in force, because they predate `session-store.json` and the box condition. They are printed as not counted, and the coverage of the run arms still holds (athena 16: 18/18, 18/18, 90/90, 18/18, 18/18).",
       "ruled": "2026-11-02",
       "why": "Bound record, never edited: review_kit/prefreeze-6.md is pre-freeze review 6 as its reviewer wrote it, committed at 34735403 ('review: pre-freeze review 6, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold8 brief of Mon 2 Nov 2026. 18/18, 18/18, 90/90, 18/18 and 18/18 are the reviewer's coverage tallies of required walks (arm A, arm O) quoted from athena's walk-coverage output, never rates; the study's own texts write 'k of n'."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-7.as-written.md",
+      "pattern": "out-of",
+      "line_text": "Fold 8 closes review 6's M1 and M2 well in code (details under \"Read and found sound\"). One residual it found itself is left out of the pre-registration, and the draft's own sentence about it is now false. That residual is the one MAJOR below.",
+      "ruled": "2026-11-02",
+      "why": "Bound record, never edited: review_kit/prefreeze-7.as-written.md is pre-freeze review 7 as its reviewer's session wrote it (sha256 56bff23fa7a445a5849e47a6a50c03b3e82400317f7bf99646163121d9f1e9c4), committed by lane fold9/round7-residual; records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold 9 brief of Mon 2 Nov 2026. 'out of' names what the draft leaves unsaid or what the review's threat model leaves aside, never a rate in words."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-7.as-written.md",
+      "pattern": "out-of",
+      "line_text": "One correction. The brief scopes the operator to \"after the takes exist\", but it also lists \"a choice among several \u2026 reviews\". That choice is made *before* the freeze, at the step that seeds it. So the operator's threat model has to include the window between the reviews and the freeze. Every finding below is ruled against that corrected statement. Complete, coherent fabrication across every ledger is still out of scope, as are vendor-side behaviour beyond the client's records and the honesty of the machine and runner. Each of those is a limitation the pre-registration must name.",
+      "ruled": "2026-11-02",
+      "why": "Bound record, never edited: review_kit/prefreeze-7.as-written.md is pre-freeze review 7 as its reviewer's session wrote it (sha256 56bff23fa7a445a5849e47a6a50c03b3e82400317f7bf99646163121d9f1e9c4), committed by lane fold9/round7-residual; records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold 9 brief of Mon 2 Nov 2026. 'out of' names what the draft leaves unsaid or what the review's threat model leaves aside, never a rate in words."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-7.md",
+      "pattern": "out-of",
+      "line_text": "Fold 8 closes review 6's M1 and M2 well in code (details under \"Read and found sound\"). One residual it found itself is left out of the pre-registration, and the draft's own sentence about it is now false. That residual is the one MAJOR below.",
+      "ruled": "2026-11-02",
+      "why": "Bound record, never edited: review_kit/prefreeze-7.md is pre-freeze review 7 as committed by review_kit/commit_review.py after lane fold9/round7-residual lands (sha256 4538ce819faa156431b6d3a2d784991a880d74d7b287c264d1b606f4ed8833cf); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold 9 brief of Mon 2 Nov 2026. 'out of' names what the draft leaves unsaid or what the review's threat model leaves aside, never a rate in words."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-7.md",
+      "pattern": "out-of",
+      "line_text": "One correction. The brief scopes the operator to \"after the takes exist\", but it also lists \"a choice among several \u2026 reviews\". That choice is made *before* the freeze, at the step that seeds it. So the operator's threat model has to include the window between the reviews and the freeze. Every finding below is ruled against that corrected statement. Complete, coherent fabrication across every ledger is still out of scope, as are vendor-side behaviour beyond the client's records and the honesty of the machine and runner. Each of those is a limitation the pre-registration must name.",
+      "ruled": "2026-11-02",
+      "why": "Bound record, never edited: review_kit/prefreeze-7.md is pre-freeze review 7 as committed by review_kit/commit_review.py after lane fold9/round7-residual lands (sha256 4538ce819faa156431b6d3a2d784991a880d74d7b287c264d1b606f4ed8833cf); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold 9 brief of Mon 2 Nov 2026. 'out of' names what the draft leaves unsaid or what the review's threat model leaves aside, never a rate in words."
     }
   ]
 }

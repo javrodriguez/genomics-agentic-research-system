@@ -50,7 +50,7 @@
       "path": "review_kit/commit_review.py",
       "status": "edited",
       "source": "evals/gap-study-3/review_kit/commit_review.py",
-      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Fold 1 (glitch-f1, Wed 21 Oct 2026): the review commit's co-author line names Claude Opus 5.5, the reviewer launch.py opens, in place of Fable; the usage line names evals/gap-study-4/. Bound by tests/test_review_kit.py K7."
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Fold 1 (glitch-f1, Wed 21 Oct 2026): the review commit's co-author line names Claude Opus 5.5, the reviewer launch.py opens, in place of Fable; the usage line names evals/gap-study-4/. Bound by tests/test_review_kit.py K7. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates' citation rule): more than half of this file's lines now differ from its source, the near-rewrite line passed by lane fold9/round7-residual's UNBOUND_REPORTS on top of fold 5's edits 873dad03, 8be281ad and ffa2d974."
     },
     {
       "path": "review_kit/README.md",

@@ -32,7 +32,7 @@ STUDY_DIR = HERE.parent
 REPO = STUDY_DIR.parent.parent
 sys.path.insert(0, str(STUDY_DIR))
 import study  # noqa: E402
-from freeze import AMBIGUOUS, RULING, read_ruling  # noqa: E402,F401  (MAJOR 3: the one reader)
+from freeze import AMBIGUOUS, REPORT_DIGEST_GRANDFATHERED, RULING, read_ruling  # noqa: E402,F401  (MAJOR 3: the one reader)
 import importlib.util  # noqa: E402
 _spec = importlib.util.spec_from_file_location("review_kit_blindness_for_commit", HERE / "blindness.py")
 blindness = importlib.util.module_from_spec(_spec)
@@ -43,6 +43,39 @@ _spec.loader.exec_module(blindness)
 # search pattern such as `/Users/`) are no path of any machine, and refusing them is what made a report be masked.
 ABS_PATH = re.compile(r"/(Users|private|var/folders|home)/(?![< \t\n`'\")\]]|$)")
 PERSON = re.compile(r"javrodher|rodrij92|javier|@gmail", re.I)
+
+# Lane fold9/round7-residual (glitch-45's ruling of Mon 2 Nov 2026, round 4's precedent): a report changed by its own
+# reviewer's shell step has no digest to bind, and a registered review is never discarded. Round 7's reviewer ran one sed
+# on the report, so it lands as these exact bytes, beside the as-written record, and can never seed
+# (freeze.REPORT_DIGEST_GRANDFATHERED). An entry is for one round and one report; nothing else passes this door.
+UNBOUND_REPORTS = {
+    "7": {"report_sha256": "4538ce819faa156431b6d3a2d784991a880d74d7b287c264d1b606f4ed8833cf",
+          "as_written": "prefreeze-7.as-written.md",
+          "as_written_sha256": "56bff23fa7a445a5849e47a6a50c03b3e82400317f7bf99646163121d9f1e9c4",
+          "reason": "a shell step writes the report",
+          "edit": "its reviewer ran one sed on line 109, changing 'This sound apart from' to 'This is sound apart from'"},
+}
+
+
+def unbound_report_problems(n: str, report_sha: str, record: str) -> list[str]:
+    """Why round n's report, whose record states no digest, may not land under UNBOUND_REPORTS. An empty list admits it."""
+    entry = UNBOUND_REPORTS.get(n)
+    if entry is None:
+        return ["the blindness record states no sha256 of the report as the reviewer's session wrote it"]
+    out = []
+    if int(n) not in REPORT_DIGEST_GRANDFATHERED:
+        out.append(f"round {n} is not grandfathered (freeze.REPORT_DIGEST_GRANDFATHERED), so it could seed unbound")
+    line = blindness.REPORT_UNBOUND + entry["reason"]
+    if not re.search(rf"^{re.escape(line)}$", record, re.M):
+        out.append(f"the blindness record states no sha256 of the report as the reviewer's session wrote it, and does "
+                   f"not state the one reason this round's entry names ({entry['reason']})")
+    if report_sha != entry["report_sha256"]:
+        out.append(f"the report's sha256 {report_sha[:12]} is not the {entry['report_sha256'][:12]} this round's entry names")
+    rel = str((STUDY_DIR / study.REVIEW_DIR / entry["as_written"]).relative_to(REPO))
+    shown = subprocess.run(["git", "-C", str(REPO), "show", f"HEAD:{rel}"], capture_output=True)
+    if shown.returncode != 0 or hashlib.sha256(shown.stdout).hexdigest() != entry["as_written_sha256"]:
+        out.append(f"{entry['as_written']} is not committed at HEAD with sha256 {entry['as_written_sha256'][:12]}")
+    return out
 
 
 def report_problems(text: str, draft_sha: str) -> list[str]:
@@ -127,7 +160,7 @@ def main() -> int:
         problems.append("the blindness record is not the one blindness.py writes from the reviewer's session now")
     session_sha = blindness.recorded_report_digest(blind.read_text())
     if session_sha is None:
-        problems.append("the blindness record states no sha256 of the report as the reviewer's session wrote it")
+        problems += unbound_report_problems(n, report_sha, blind.read_text())
     elif session_sha != report_sha:
         problems.append(f"the report's sha256 {report_sha[:12]} is not the {session_sha[:12]} the reviewer's session "
                         "wrote: the report was changed after the reviewer wrote it")
@@ -148,9 +181,14 @@ def main() -> int:
                    + (" (zero or several ruling lines; the freeze reads it as no DO FREEZE)" if ruling == AMBIGUOUS
                       else "") + ". "
                    + ("" if read_sha == draft_sha else f"The draft in force at this commit is {draft_sha[:12]}: it moved after the review, so this review cannot seed a freeze. ")
-                   + f"The report's sha256 is {report_sha}, the bytes its blindness record rebuilds from the "
-                   "reviewer's own session; the report and the record are committed as they are.\n\n"
-                   "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
+                   + (f"The report's sha256 is {report_sha}, the bytes its blindness record rebuilds from the "
+                      "reviewer's own session; the report and the record are committed as they are.\n\n"
+                      if session_sha is not None else
+                      f"The report's sha256 is {report_sha}; its record states no digest: "
+                      f"{UNBOUND_REPORTS[n]['edit']}. The session's bytes are "
+                      f"{study.REVIEW_DIR}/{UNBOUND_REPORTS[n]['as_written']}, and this round never seeds a freeze. The "
+                      "report and the record are committed as they are.\n\n")
+                   + "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n")
     lint = subprocess.run([sys.executable, str(STUDY_DIR / "commit_msg.py"), str(msg)], capture_output=True, text=True)
     if lint.returncode != 0:
         print(lint.stdout)

@@ -1,0 +1,20 @@
+{
+  "lane": "fold9-round7-residual",
+  "files": [
+    {
+      "path": "COPIED.d/fold9-round7-residual.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane fold9/round7-residual folds pre-freeze review 7 (DO NOT FREEZE on M1, and m-new-2) on glitch-45's rulings of Mon 2 Nov 2026, under Javier's standing delegation, on branch fold9/round7-residual from the freeze line at 0abe070b. Edits without transfer, in files other fragments claim. freeze.py (lane w8b-holdout-digests' entry): PUBLISHED_TIP_LIMIT is written into every frozen file as published_tip_residual, with or without a mirror remote, and it says in plain words that it qualifies round_4_limitations[10]; it joins FREEZE_WRITTEN_KEYS; 7 joins REPORT_DIGEST_GRANDFATHERED, so round 7 never seeds. result.py (lane w5b-cp5-pipeline's entry): the frozen file's limit prints on RESULT.md under its own heading, and check_results.py is byte-identical because it is in check_take.CHECKER_CODE_FILES: its check_publication holds the page to result.render, so a page without the line is refused. review_kit/rounds.py (lane w7d-rehearsals' entry): --add refuses unless <folder>/COMMIT is HEAD (review 7, m-new-2); this applies to verify rows too. review_kit/commit_review.py (lane review-kit-port's entry): UNBOUND_REPORTS admits round 7's report, whose record reads NOT RECORDED, only with its exact bytes, its exact record line, a grandfathered round and the as-written record committed. That passes copy_manifest's near-rewrite line, so COPIED.d/review-kit-port.json's entry for it gains the citation sentence the rule requires. review_kit/check_real_sessions.py (lane fold5-report-binding's entry): round 7's one Write and its one edit are checked on the Mac. language-allowlist.json (lane w1a-cp1-scaffold's entry): the two lines of review 7 that the lint reads are excused for both prefreeze-7.as-written.md and prefreeze-7.md, here in the fold, ahead of the report's own commit. tests/test_pipeline.py (lane w8a-walk-layout's entry): its rehearsal rig moves to round 8, and it binds the frozen field and the page. tests/test_fold8_review_binding.py (lane fold8-review-binding's entry): its rig's rounds 7 and 8 become 9 and 10, since round 7 can no longer seed. tests/test_fold5_report_binding.py (lane fold5-report-binding's entry): the grandfathered list. prereg-draft.json, order_beacon.py and check_results.py are byte-identical, and the digests read constants 627fc956a41f2881, code c3da6472d708e009 and order fb554048de6589ff before and after."
+    },
+    {
+      "path": "tests/test_fold9_round7_residual.py",
+      "status": "new",
+      "reason": "Lane fold9/round7-residual's tests: --add against <folder>/COMMIT; round 7 grandfathered and registered; commit_review's one door for round 7's report, refusing other bytes, another NOT RECORDED reason, an absent or altered as-written record, and any round not named or not grandfathered; and the committed record, with the one edit, is the named report. Red first against 0abe070b, with the tests/test_pipeline.py additions: 7 failures and 10 errors."
+    },
+    {
+      "path": "review_kit/prefreeze-7.as-written.md",
+      "status": "new",
+      "reason": "Pre-freeze review 7's report as its reviewer's session wrote it (sha256 56bff23fa7a445a5849e47a6a50c03b3e82400317f7bf99646163121d9f1e9c4), taken from the one Write in that session file (sha256 5bf57c306bc3d17549380f4c5586c262cbc07f8dca87f802c52f1810c8e16078); a bound record, never edited. CORRECTION RECORD: after that Write the reviewer itself ran one shell step, sed -i, on line 109, changing '  - This sound apart from' to '  - This is sound apart from', and no other byte differs. So review_kit/blindness.py records NOT RECORDED, the report's sha256 is 4538ce819faa156431b6d3a2d784991a880d74d7b287c264d1b606f4ed8833cf, and its digest binds nothing. Round 7 ruled DO NOT FREEZE and is grandfathered by number, so it can never seed. The report itself lands through review_kit/commit_review.py on the freeze line after this lane, and its claims follow in COPIED.d/review-records.json."
+    }
+  ]
+}
