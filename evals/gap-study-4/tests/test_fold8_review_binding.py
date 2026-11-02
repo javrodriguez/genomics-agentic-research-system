@@ -313,22 +313,16 @@ class M2Pinned(unittest.TestCase):
         for launch in (None, "not-a-commit", "0" * 40, "orphan"):
             with self.subTest(launch=launch), rig() as r:
                 if launch == "orphan":
-                    other = Path(tempfile.mkdtemp(dir=r.repo.parent))
+                    other = Path(tempfile.mkdtemp())
+                    self.addCleanup(__import__("shutil").rmtree, other, True)
                     git(other, "init", "-q")
                     (other / "f").write_text("f\n")
                     git(other, "add", "-A")
                     git(other, "commit", "-q", "-m", "orphan")
                     git(r.repo, "fetch", "-q", str(other), "HEAD")
                     launch = git(r.repo, "rev-parse", "FETCH_HEAD")
-                r.register(7)
-                rows = r.rows()
-                if launch is None:
-                    del rows[0]["launch_commit"]
-                else:
-                    rows[0]["launch_commit"] = launch
-                r.set_rows(rows)
-                r.row_sha[7] = r.commit("register round 7")       # the row's introducing commit stays the first
-                r.row_sha[7] = git(r.repo, "rev-parse", "HEAD~1")
+                # written by the row's one introducing commit (the confirm review of b968597e: a row is never edited)
+                r.register(7, launch_commit=launch)
                 seed = r.review(7)
                 bad, name = r.problems(seed)
                 self.assertTrue(bad and name is None and "launch_commit" in bad[0], f"M2: {launch}: {bad}")
@@ -456,7 +450,8 @@ class B1Relabel(unittest.TestCase):
                 if when == "before the review":
                     seed = r.review(7)
                 bad, name = r.problems(seed)
-                self.assertTrue(bad and name is None and "introduced" in bad[0], f"B1: the relabel seeds: {bad}")
+                self.assertTrue(bad and name is None and ("introduced" in bad[0] or "written once" in bad[0]),
+                                f"B1: the relabel seeds: {bad}")
                 code, said = r.rounds_check()
                 self.assertEqual(code, 1, f"B1: rounds.py --check passes the relabel: {said}")
                 self.assertIn("launch_commit", said, "B1")
@@ -695,6 +690,122 @@ class Nits(unittest.TestCase):
             r.commit("mend it")
             code, said = r.rounds_check()
             self.assertEqual(code, 1, f"NIT 2: an unreadable old register version passes: {said}")
+
+
+# ---- the confirm review of b968597e (CHANGES), glitch-45's ruling of Mon 2 Nov 2026 ----
+
+class ConfirmProbes(unittest.TestCase):
+    """MINOR D: the confirm review's two probes, as tests (BLOCKER A and MAJOR B)."""
+
+    def test_a_relabel_through_a_merge_is_refused(self):
+        # probe_relabel_merge.py: a side branch re-adds row 7 with a later launch_commit, a merge takes its register,
+        # the blindness record's session line is rewritten to the side commit's id, the side branch is deleted
+        with rig() as r:
+            P = git(r.repo, "rev-parse", "HEAD")
+            r.register(7)
+            seed = r.review(7)
+            self.assertEqual(r.problems(seed), ([], report_rel(7)), "BLOCKER A: the baseline seeds")
+            git(r.repo, "checkout", "-q", "-b", "side", P)
+            r.path("code.py").write_text("x = 2   # code the reviewer never read\n")
+            C2 = r.commit("code change")
+            r.set_rows(r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": C2, "voids": None}])
+            Y = r.commit("register round 7 again, launch at the changed code")
+            git(r.repo, "checkout", "-q", "-")
+            subprocess.run(["git", "-C", str(r.repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                            "-c", "commit.gpgsign=false", "merge", "-q", "side", "-m", "merge"], capture_output=True)
+            git(r.repo, "checkout", "--theirs", "--", study.rel(RK, "rounds.json"))
+            blind = r.path(f"{RK}/prefreeze-7-blindness.txt")
+            lines = blind.read_text().splitlines()
+            lines[0] = f"session id: {takes.session_id_for(Y)}"
+            blind.write_text("\n".join(lines) + "\n")
+            r.commit("merge side")
+            git(r.repo, "branch", "-q", "-D", "side")
+            self.assertEqual(r.rows()[0]["launch_commit"], C2, "BLOCKER A: the row at HEAD names the changed code")
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None, f"BLOCKER A: the merged relabel seeds: {bad}")
+            code, said = r.rounds_check()
+            self.assertEqual(code, 1, f"BLOCKER A: rounds.py --check passes the merged relabel: {said}")
+
+    def test_the_relabel_is_refused_even_with_the_blindness_record_untouched(self):
+        # the register half alone: the row re-added on a side branch and merged, nothing else changed
+        with rig() as r:
+            P = git(r.repo, "rev-parse", "HEAD")
+            r.register(7)
+            seed = r.review(7)
+            git(r.repo, "checkout", "-q", "-b", "side", P)
+            r.path("notes.txt").write_text("unpinned\n")
+            C2 = r.commit("an unpinned change")
+            r.set_rows(r.rows() + [{"n": 7, "kind": "prefreeze", "launch_commit": C2, "voids": None}])
+            r.commit("register round 7 again")
+            git(r.repo, "checkout", "-q", "-")
+            subprocess.run(["git", "-C", str(r.repo), "-c", "user.name=t", "-c", "user.email=t@example.invalid",
+                            "-c", "commit.gpgsign=false", "merge", "-q", "side", "-m", "merge"], capture_output=True)
+            git(r.repo, "checkout", "--theirs", "--", study.rel(RK, "rounds.json"))
+            r.commit("merge side")
+            with r.patched():
+                self.assertIsNotNone(freeze.row_introducer(study.rel(RK, "rounds.json"), 0)[1],
+                                     "BLOCKER A: two introducers of row 0 read as one")
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None, f"BLOCKER A: {bad}")
+
+    def test_an_edited_blindness_record_is_refused(self):
+        with rig() as r:
+            r.register(7)
+            seed = r.review(7)
+            blind = r.path(f"{RK}/prefreeze-7-blindness.txt")
+            blind.write_text(blind.read_text() + "an added line\n")
+            r.commit("edit the record")
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None and "blindness" in bad[0], f"BLOCKER A: {bad}")
+
+    def test_a_later_round_hidden_by_an_ours_merge_is_refused(self):
+        # probe_merge.py: round 8 on a lane worktree, merged with -s ours, worktree removed and branch deleted
+        with rig() as r:
+            r.register(7)
+            seed = r.review(7)
+            wt = Path(tempfile.mkdtemp()) / "side-wt"
+            try:
+                git(r.repo, "worktree", "add", "-q", "-b", "side", str(wt))
+                side = Rig.__new__(Rig)
+                side.repo, side.study = wt, wt / study.STUDY_REL
+                side.draft, side.row_sha = side.study / "prereg-draft.json", dict(r.row_sha)
+                side.register(8)
+                side.review(8, DO_NOT)
+                git(r.repo, "merge", "-q", "-s", "ours", "side", "-m", "merge side, keeping the line's tree")
+                git(r.repo, "worktree", "remove", str(wt))
+                git(r.repo, "branch", "-q", "-D", "side")
+            finally:
+                import shutil
+                shutil.rmtree(wt.parent, ignore_errors=True)
+            bad, name = r.problems(seed)
+            self.assertTrue(bad and name is None and "round 8" in bad[0], f"MAJOR B: the hidden round 8: {bad}")
+            code, said = r.rounds_check()
+            self.assertEqual(code, 1, f"MAJOR B: rounds.py --check passes the hidden round: {said}")
+
+
+class ConfirmNits(unittest.TestCase):
+    def test_minor_c_the_mirror_url_matches_in_any_case(self):
+        with rig() as r:
+            git(r.repo, "remote", "add", "m", "https://github.com/JavRodriguez/GARS-Cloud-Mirror.git")
+            with r.patched():
+                problem, _ = freeze.published_tip_problem()
+            self.assertTrue(problem and "never fetched" in problem, f"MINOR C: {problem}")
+
+    def test_minor_c_the_residual_names_the_real_exposure(self):
+        for words in ("last fetched", "force-push", "not scanned"):
+            self.assertIn(words, freeze.PUBLISHED_TIP_RESIDUAL, "MINOR C")
+
+    def test_nit_e_an_unreadable_register_version_fails_check(self):
+        with rig() as r:
+            r.register(7)
+            r.review(7)
+            first = r.row_sha[7]
+            mod = load_rounds(r.repo)
+            real = mod.register_at
+            with mock.patch.object(mod, "register_at", lambda rev: ("unreadable", None) if rev == first else real(rev)), \
+                    contextlib.redirect_stdout(io.StringIO()) as said:
+                code = mod.check()
+            self.assertEqual(code, 1, f"NIT E: an unreadable version is skipped: {said.getvalue()}")
 
 
 if __name__ == "__main__":
