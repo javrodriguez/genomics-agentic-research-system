@@ -264,6 +264,16 @@ def add(kind: str, folder: Path, voids: int | None) -> int:
         print(f"refusing: {folder} is not a folder. The row binds the bytes the reviewer is handed, so the "
               f"folder must be built first (review_kit/build_kit.py).")
         return 1
+    # Pre-freeze review 7, m-new-2 (lane fold9/round7-residual): launch_commit is HEAD here and the kit's COMMIT is HEAD
+    # when the kit was built, and nothing compared them, so a commit between the two became the code the launch binding
+    # holds, unread by the reviewer.
+    commit_file = folder / "COMMIT"
+    kit_commit = commit_file.read_text().strip() if commit_file.is_file() else None
+    head = git("rev-parse", "HEAD")
+    if kit_commit != head:
+        print(f"refusing: {commit_file} names {kit_commit!r}, not HEAD {head}: a row binds the commit its reviewer is "
+              f"handed, so build the kit at this commit (review_kit/build_kit.py).")
+        return 1
     rows = load()
     open_rows = [r for r in rows if not r.get("voided_by") and not r.get("spent_without_work")
                  and not committed(report_path(r))]
@@ -277,7 +287,7 @@ def add(kind: str, folder: Path, voids: int | None) -> int:
     row = {"n": n, "kind": kind,
            "prompt_sha256": sha256_bytes(BRIEF.read_bytes()),
            "input_sha256": manifest_digest(manifest),
-           "launch_commit": git("rev-parse", "HEAD"),
+           "launch_commit": head,
            "added": datetime.now(timezone.utc).isoformat(timespec="seconds"),
            "voids": voids}
     rows.append(row)
