@@ -217,7 +217,10 @@ def register_round(repo: Path, review_dir: Path, n: int) -> None:
     import takes
     reg = review_dir / "rounds.json"
     rows = json.loads(reg.read_text())["rows"] if reg.is_file() else []
-    reg.write_text(json.dumps({"rows": rows + [{"n": n, "kind": "prefreeze", "voids": None}]}) + "\n")
+    # lane fold8/review-binding (review 6, M2): the launch commit, None in a repository with no commit yet
+    head = subprocess.run(["git", "-C", str(repo), "rev-parse", "-q", "--verify", "HEAD"], capture_output=True, text=True)
+    reg.write_text(json.dumps({"rows": rows + [{"n": n, "kind": "prefreeze", "launch_commit": head.stdout.strip() or None,
+                                                "voids": None}]}) + "\n")
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", f"register round {n}")
     sid = takes.session_id_for(git(repo, "rev-parse", "HEAD"))
@@ -237,18 +240,24 @@ def g3_review(fz, p="G3.review") -> list:
             other = hashlib.sha256(b'{"synthetic": "bytes A"}\n').hexdigest()
             here = hashlib.sha256(draft.read_bytes()).hexdigest()
             report = study_dir / "review_kit" / "prefreeze-1.md"
-            for n, digest in ((1, other), (2, here)):
+            # lane fold8/review-binding (review 6, M1): rounds 1-4 no longer seed (REPORT_DIGEST_GRANDFATHERED), so the
+            # rig's rounds are 5 and 6, each blindness record stating its report's digest (fold5's rule), the draft pinned
+            for n, digest in ((5, other), (6, here)):
                 register_round(repo, study_dir / "review_kit", n)     # lane fold3/m1 (review 3, m2): its row first
                 report = study_dir / "review_kit" / f"prefreeze-{n}.md"
-                report.write_text(f"prereg.json sha256: {digest}\n\n# synthetic review\n\n{fz.RULING_LINE}\n")
+                text = f"prereg.json sha256: {digest}\n\n# synthetic review\n\n{fz.RULING_LINE}\n"
+                report.write_text(text)
+                with (study_dir / "review_kit" / f"prefreeze-{n}-blindness.txt").open("a") as fh:
+                    fh.write(fz._blindness().REPORT_DIGEST + hashlib.sha256(text.encode()).hexdigest() + "\n")
                 git(repo, "add", "-A")
                 git(repo, "commit", "-q", "-m", f"review {n}")
                 sha = git(repo, "rev-parse", "HEAD")
-                with mock.patch.object(fz, "REPO", repo), mock.patch.object(fz, "DRAFT", draft):
+                with mock.patch.object(fz, "REPO", repo), mock.patch.object(fz, "DRAFT", draft), \
+                        mock.patch.object(fz, "PINNED", ["evals/gap-study-4/prereg-draft.json"]):
                     bad, name = fz.review_file_problems(sha)
-                if n == 1 and not any("reviewed other bytes" in b for b in bad):
+                if n == 5 and not any("reviewed other bytes" in b for b in bad):
                     out.append(f"{p}: a review of other bytes seeds the freeze: {bad}")
-                if n == 2 and (bad or name != "evals/gap-study-4/review_kit/prefreeze-2.md"):
+                if n == 6 and (bad or name != "evals/gap-study-4/review_kit/prefreeze-6.md"):
                     out.append(f"{p}: the review of the draft's bytes is refused: {bad}")
     except Exception as e:  # noqa: BLE001
         return [f"ERROR {p}: {type(e).__name__}: {str(e)[:240]}"]

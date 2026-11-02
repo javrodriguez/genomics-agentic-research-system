@@ -509,7 +509,14 @@ class M2Register(unittest.TestCase):
             return freeze.review_file_problems(sha)
 
     def test_a_registered_round_seeds(self):
-        self.assertEqual(self.problems(), ([], f"{study.STUDY_REL}/{study.REVIEW_DIR}/prefreeze-1.md"), "m2-register")
+        # lane fold8/review-binding (pre-freeze review 6, M1): round 1 is grandfathered from the report digest, so it is
+        # a registered round that no longer seeds; the grandfathering is the only refusal. A registered post-rule round
+        # seeding is tests/test_fold8_review_binding.py's M2Allowed.
+        rel = f"{study.STUDY_REL}/{study.REVIEW_DIR}/prefreeze-1.md"
+        with seed_repo() as sha:
+            self.assertIsNone(freeze.registered_review_problem(rel, 1), "m2-register")
+            bad, name = freeze.review_file_problems(sha)
+        self.assertTrue(name is None and len(bad) == 1 and "grandfathered" in bad[0], f"m2-register: {bad}")
 
     def test_an_unregistered_review_never_seeds(self):
         bad, name = self.problems(register=False)
