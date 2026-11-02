@@ -1,0 +1,20 @@
+{
+  "lane": "review-records",
+  "files": [
+    {
+      "path": "COPIED.d/review-records.json",
+      "status": "new",
+      "reason": "The copy record of the pre-freeze review records committed after lane fold8/review-binding (glitch-45's ruling of Mon 2 Nov 2026, under Javier's standing delegation; pre-freeze review 6, M2). A round's report and blindness record are claimed here, by entries APPENDED to this file, never by an edit of an earlier entry or by a new fragment: freeze.launch_binding_problem admits a change to this file since a seed round's launch_commit only when it is entries appended for exactly that round's report and blindness record (status new, no source), so the claim copy_manifest --check needs cannot carry any other change past the binding of frozen code to reviewed code."
+    },
+    {
+      "path": "review_kit/prefreeze-6.md",
+      "status": "new",
+      "reason": "Pre-freeze review 6's report (Ruling: DO NOT FREEZE on M1 and M2), committed by 34735403 ('review: pre-freeze review 6, committed as it stands'); a bound record, never edited. Claimed here by lane fold8/review-binding on glitch-45's ruling of Mon 2 Nov 2026, as review 5's were claimed by fold5; its bytes are not this lane's. Its line 201 (five coverage tallies k/k) is excused in language-allowlist.json, never reworded."
+    },
+    {
+      "path": "review_kit/prefreeze-6-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 6's blindness record, committed by 34735403; a bound record, never edited. Claimed here by lane fold8/review-binding on glitch-45's ruling of Mon 2 Nov 2026; its bytes are not this lane's."
+    }
+  ]
+}

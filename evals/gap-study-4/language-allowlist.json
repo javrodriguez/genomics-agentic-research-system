@@ -658,6 +658,13 @@
       "line_text": "The only red is 09, and it names itself as owed and not run. Files 02 and 03 record operator-marker masking only. 13 also masks absolute paths and person names, which is consistent with a public record.",
       "ruled": "2026-10-31",
       "why": "Bound record, never edited: review_kit/prefreeze-4.as-written.md is pre-freeze review 4 as its reviewer's session wrote it (sha256 27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8), committed by lane fold5/report-binding on glitch-45's word in the fold5 brief of Sat 31 Oct 2026; the line is the same line review_kit/prefreeze-4.md carries, excused there for the same sense: 'consistent with a public record' says the athena files' masking suits publication, never a claim about the agents' behaviour."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-6.md",
+      "pattern": "ratio-slash",
+      "line_text": "  - Recheck wave 3 added `recheck-1.json` to most arm A walks. Most now carry `nested-agent` or `harness-condition-violated` under the checker constants in force, because they predate `session-store.json` and the box condition. They are printed as not counted, and the coverage of the run arms still holds (athena 16: 18/18, 18/18, 90/90, 18/18, 18/18).",
+      "ruled": "2026-11-02",
+      "why": "Bound record, never edited: review_kit/prefreeze-6.md is pre-freeze review 6 as its reviewer wrote it, committed at 34735403 ('review: pre-freeze review 6, committed as it stands'); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold8 brief of Mon 2 Nov 2026. 18/18, 18/18, 90/90, 18/18 and 18/18 are the reviewer's coverage tallies of required walks (arm A, arm O) quoted from athena's walk-coverage output, never rates; the study's own texts write 'k of n'."
     }
   ]
 }
