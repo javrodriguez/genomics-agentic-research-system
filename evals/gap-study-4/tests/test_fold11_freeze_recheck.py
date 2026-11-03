@@ -240,7 +240,7 @@ class DDraft(Base):
         def edit(doc):
             doc["draft_sha256_at_freeze"] = "0" * 64
         self.world.commit_freeze(edit)
-        named(self.world.check(), "draft_sha256_at_freeze", "D.draft")
+        named(self.world.check(), "draft_sha256_at_freeze is not the sha256", "D.draft")
 
     def test_a_draft_edited_in_the_freeze_commit_with_its_digest_is_refused(self):
         draft = json.loads((self.world.study / "prereg-draft.json").read_text())
@@ -294,7 +294,7 @@ class DLimit(Base):
                     else:
                         doc["published_tip_residual"] = v
                 self.world.commit_freeze(edit)
-                named(self.world.check(), "published_tip_residual", "D.limit")
+                named(self.world.check(), "is not freeze.PUBLISHED_TIP_LIMIT", "D.limit")
 
     def test_check_publication_holds_the_limit(self):
         # fold 10's review, m1: the real check_publication; only what surrounds the hold stands in (no takes here)
@@ -327,7 +327,7 @@ class DReview(Base):
         def edit(doc):
             doc["pre_freeze_review_sha256"] = "0" * 64
         self.world.commit_freeze(edit)
-        named(self.world.check(), "pre_freeze_review_sha256", "D.review")
+        named(self.world.check(), "pre_freeze_review_sha256 is not the sha256", "D.review")
 
     def test_the_named_report_must_exist_at_the_parent(self):
         def edit(doc):
@@ -383,7 +383,7 @@ class DParent(Base):
         def edit(doc):
             doc["frozen_at_commit_parent"] = self.world.base
         self.world.commit_freeze(edit)
-        named(self.world.check(), "frozen_at_commit_parent", "D.parent")
+        named(self.world.check(), "is not the freeze commit's parent", "D.parent")
 
     def test_a_merge_freeze_commit_is_refused(self):
         self.world.commit_freeze()
@@ -402,7 +402,7 @@ class DTouch(Base):
 
     def test_an_edited_fragment_is_refused(self):
         self.world.commit_freeze(also={"COPIED.d/freeze.json": b'{"lane": "freeze", "files": []}\n'})
-        named(self.world.check(), "COPIED.d/freeze.json", "D.touch")
+        named(self.world.check(), "COPIED.d/freeze.json is not what freeze.py writes", "D.touch")
 
 
 class DBytes(Base):
@@ -706,13 +706,16 @@ METHOD = {
     "network-door": "DNetwork.test_witness_main_reads_the_door",
 }
 WITNESSES = {name: (METHOD[name], clause) for name, (clause, _, _, _) in mutants().items()}
-# One child builds its own scratch repository and reads one test. Measured on the Mac: see the fold's report.
+# One child builds its own scratch repository and reads one test: about a minute each on a loaded Mac, 3 Nov 2026.
 CHILD_TIMEOUT_S = 1200
 
 
 def run_witnesses(names) -> int:
     chosen = names or sorted(WITNESSES)
     red = 0
+    import mutation_baseline  # the unmutated selection runs first; a red one refuses (exit 3), nothing counted
+    mutation_baseline.require_green("test_fold11 witnesses", [sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()),
+                                    *sorted({WITNESSES[x][0] for x in chosen})], timeout=CHILD_TIMEOUT_S, tag="test_fold11")
     for name in chosen:
         method, clause = WITNESSES[name]
         got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(Path(__file__).resolve()), "--mutant", name,
