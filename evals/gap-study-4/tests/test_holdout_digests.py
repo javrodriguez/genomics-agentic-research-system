@@ -101,8 +101,8 @@ def mutants() -> dict:
                           "    if not isinstance(data, dict):\n"),
         "uneven-admitted": ("H5.shape", "build_draft", "    if len(counts) != 1 or min(counts) < 1:\n",
                             "    if min(counts) < 1:\n"),
-        "keys-not-allowed": ("H6.allowed", "freeze", '    "holdout_salted_digests", "holdout_wordings_per_task_version",\n',
-                             ""),
+        "keys-not-allowed": ("H6.allowed", "freeze", '    "holdout_salted_digests", "holdout_wordings_per_task_version", "published_tip_residual",\n',
+                             '    "published_tip_residual",\n'),
         # lane pf1-l1-freeze-gates (pre-freeze review 1, m1): --check reads the holdout fields as one leg of check_legs
         "check-skips-draft": ("H7.check", "freeze", '    legs.append(("holdout fields", [problem] if problem else []))\n',
                               '    legs.append(("holdout fields", []))\n'),
