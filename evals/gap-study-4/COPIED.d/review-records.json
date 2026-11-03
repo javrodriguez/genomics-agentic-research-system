@@ -15,6 +15,16 @@
       "path": "review_kit/prefreeze-6-blindness.txt",
       "status": "new",
       "reason": "Pre-freeze review 6's blindness record, committed by 34735403; a bound record, never edited. Claimed here by lane fold8/review-binding on glitch-45's ruling of Mon 2 Nov 2026; its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/prefreeze-7.md",
+      "status": "new",
+      "reason": "Pre-freeze review 7's report (Ruling: DO NOT FREEZE), committed by review_kit/commit_review.py with sha256 4538ce819faa156431b6d3a2d784991a880d74d7b287c264d1b606f4ed8833cf. Its reviewer ran one sed on line 109 after writing it, so its record states no digest; the session's bytes are review_kit/prefreeze-7.as-written.md, and COPIED.d/fold9-round7-residual.json holds the correction record. Round 7 is grandfathered by number and never seeds. A bound record, never edited; its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/prefreeze-7-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 7's blindness record, committed by review_kit/commit_review.py; its section 8 reads NOT RECORDED. A bound record, never edited; its bytes are not this lane's."
     }
   ]
 }
