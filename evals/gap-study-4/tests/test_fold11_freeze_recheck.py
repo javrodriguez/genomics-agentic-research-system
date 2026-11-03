@@ -29,6 +29,8 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
   D.post      after the freeze: rounds.json's pin holds on every row present at the freeze, and only valid verify rows may
               be appended; every other pinned file still refuses; check_results.py --ledger is green along the plan's whole
               road (a take, its records and page, labels, one verify round, two, a new copy-record fragment)
+  D.copy      once a frozen file is committed, the copy record reads the files of the freeze commit, not the run's
+  D.words     the language and pooling walks read a later amendment's words and the rehearsal record's text by name
   D.main      main --ledger --rehearsal-plan, the real CLI, passes the clean state and refuses an edited one, and the
               runtime steps of the rehearsal run on it
 
@@ -920,6 +922,58 @@ class DPost(Base):
                 (self.world.study / "labelling" / name).write_text("[]\n")
             self.study_git("the frame and the sample")
             self.assertEqual(self.pins(), [], "D.post.road: the frame and the sample")
+
+
+class DCopy(Base):
+    """The gate review 3's M1: the copy record reads the freeze commit's files once a frozen file is committed, as ci.yml's
+    Copy record step does, so the run's outputs are no finding, in test_pf1_freeze_gates' G8 or any checks.d line."""
+
+    # the two byte guards read round 3's source commit, which this scratch has not, and return before the claims are read
+    DRIVER = ("import json, sys\nsys.path.insert(0, sys.argv[1])\nimport copy_manifest as cm\n"
+              "cm.record_blobs = cm.prior_blobs = lambda: set()\n"
+              "print('PROBLEMS ' + json.dumps([x for x in cm.problems() if 'no fragment' in x]))\n")
+
+    def test_the_runs_outputs_are_no_finding(self):
+        for rel in ("RESULT.md", "takes.json", "outcomes.json", "witness-record.json", "records/a.json", "labelling/labels.json",
+                    "verification/verify-1.md", "verification/verify-1-blindness.txt", "COPIED.d-later.txt"):
+            f = self.world.study / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("a synthetic output\n")
+        self.assertEqual(self.world.check("plan", self.DRIVER), [], "D.copy.outputs")
+        self.world.commit("the run's outputs")
+        self.assertEqual(self.world.check("plan", self.DRIVER), [], "D.copy.outputs")
+
+    def test_an_unclaimed_file_at_the_freeze_commit_is_still_a_finding(self):
+        self.world.commit_freeze(also={"stray.txt": b"unclaimed\n"})
+        self.assertTrue(any("stray.txt" in x for x in self.world.check("plan", self.DRIVER)), "D.copy.freeze")
+
+    def test_before_the_freeze_the_live_tree_is_read(self):
+        run_git(self.world.repo, "reset", "-q", "--hard", self.world.parent)
+        (self.world.study / "stray.txt").write_text("unclaimed\n")
+        self.assertTrue(any("stray.txt" in x for x in self.world.check("plan", self.DRIVER)), "D.copy.live")
+
+
+class DWords(Base):
+    """The gate review 3's m4: the walk skips the frozen file, and reads these two fields of it by name."""
+
+    def lints(self):
+        return self.world.cli("lint_language.py", str(self.world.study)), self.world.cli("lint_pooling.py", str(self.world.study))
+
+    def test_a_later_amendments_words_are_read(self):
+        def edit(doc):
+            doc["amendments"]["a later one"] = {"reason": "pooled across rounds, at 690/700"}
+        self.world.commit_freeze(edit)
+        for got in self.lints():
+            self.assertEqual(got.returncode, 1, f"D.words: {got.stdout[-400:]}")
+            self.assertIn("(own words)", got.stdout, "D.words")
+
+    def test_the_rehearsal_records_text_is_read(self):
+        def edit(doc):
+            doc["rehearsal_record"] = {"name": "x", "sha256": "0" * 64, "text": "pooled across rounds, at 690/700\n"}
+        self.world.commit_freeze(edit)
+        for got in self.lints():
+            self.assertEqual(got.returncode, 1, f"D.words: {got.stdout[-400:]}")
+            self.assertIn("(own words)", got.stdout, "D.words")
 
 
 class DMain(Base):
