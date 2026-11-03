@@ -354,7 +354,7 @@ def derive() -> dict | None:
     rows, history = takes.load_rows(), takes.read_history()
     if not records and not rows and not history:
         return None
-    pre = prereg.require_frozen("publishing the result")
+    pre = tip_limit_held(prereg.require_frozen("publishing the result"))
     return from_records(records, pre, rows, history)
 
 
@@ -379,6 +379,16 @@ def render_tip_limit(text) -> str:
     file without it prints no byte. from_records carries the field; it sits on one line there because the draft cites
     this file's render_witness by line number."""
     return f"{TIP_LIMIT_HEADING}\n\n{text}\n" if text else ""
+
+
+def tip_limit_held(pre: dict) -> dict:
+    """Fold 9's review, m1 (lane fold10/rehearsal-road): the frozen file's published_tip_residual is exactly what pinned
+    freeze.py always writes, so a limit stripped or softened before the freeze commit, which every other check passes,
+    never reaches the page unqualified. `pre`, unchanged, when it holds."""
+    import freeze
+    if pre.get("published_tip_residual") != freeze.PUBLISHED_TIP_LIMIT:
+        raise ValueError("the frozen file's published_tip_residual is not freeze.PUBLISHED_TIP_LIMIT")
+    return pre
 
 
 def render(rec: dict, witness=None) -> str:

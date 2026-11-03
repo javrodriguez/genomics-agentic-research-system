@@ -411,10 +411,10 @@ def check_pins() -> list[str]:
         if isinstance(node, dict):
             if node.get("path") and node.get("sha256"):
                 checked += 1
-                f = REPO / node["path"]
-                if not f.is_file():
+                raw = pinned_bytes(path, node["path"])
+                if raw is None:
                     problems.append(f"{path}: pinned file is missing: {node['path']}")
-                elif sha256(f) != node["sha256"]:
+                elif hashlib.sha256(raw).hexdigest() != node["sha256"]:
                     problems.append(f"{path}: {node['path']} does not match its pinned sha256")
             for k, v in node.items():
                 walk(v, f"{path}.{k}")
@@ -992,6 +992,34 @@ def check_publication(rows, history, records, pre, page, grade, table=None, witn
         problems.append("RESULT.md differs from the complete statistics and committed cell states, including agent")
     problems += original_values_problems(rec)          # MAJOR 10 (lane pf1-l2b)
     return problems
+
+
+# Fold 9's review, B1 (lane fold10/rehearsal-road; glitch-45's road A ruling, Mon 2 Nov 2026): two blocks of the
+# pre-registration pin paths that are not repository-relative. build_draft writes image_locks' paths study-relative and
+# config_templates' files as the names take_config renders; they are no files on disk, and two names hold different
+# bytes per model. It sits here, past every line of this file the draft cites by number.
+import re  # noqa: E402
+
+IMAGE_LOCK_PIN = re.compile(r"\.image_locks\[\d+\]")
+TEMPLATE_PIN = re.compile(r"\.config_templates\.(?P<harness>[^.]+)\.(?P<model>.+)\.files\[\d+\]")
+
+
+def pinned_bytes(where: str, rel: str):
+    """The bytes the pin at document position `where` names, or None when there are none, which check_pins refuses: an
+    image lock from the study folder; a template file from take_config's render for that harness and model, exactly as
+    build_draft.config_templates renders it (a name the render does not make, or a harness or model it refuses, is
+    None, never a dropped pin); any other node from the repository root."""
+    template = TEMPLATE_PIN.fullmatch(where)
+    if template:
+        from box import take_config        # here, so the take road's import of this file does not load it
+        harness = template["harness"]
+        try:
+            return take_config.files_for(harness, model=None if harness == take_config.CLAUDE_CODE
+                                         else template["model"]).get(rel)
+        except (take_config.Refused, take_config.NotReady):
+            return None
+    f = (HERE if IMAGE_LOCK_PIN.fullmatch(where) else REPO) / rel
+    return f.read_bytes() if f.is_file() else None
 
 
 def _sample_error() -> tuple:
