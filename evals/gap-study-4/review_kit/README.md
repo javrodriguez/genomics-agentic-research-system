@@ -18,7 +18,7 @@ Every step names its interpreter: `python3.12`, the operator machine's Python 3.
    That commit changes the one pinned file the launch binding admits for this. No other pinned file may change before the freeze without a new round; from round 9 on, the two lints need no line for the report.
    A rehearsal for this round follows this commit, because the claims are inside the rehearsed tree.
 
-A verifier after the freeze registers with `rounds.py --add --kind verify`, the only kind left once a frozen file exists. Its row is appended to the pinned register, which `check_results.py` admits for valid verify rows alone, and its report is `verification/verify-<N>.md`. No claims commit: the copy gate reads the freeze commit, never a later one. Every other pinned file stays as frozen, so a new record goes in a new file, and a commit body after the freeze must pass both lints, and `lint_pooling.py` has no excusal for one that fails it.
+A verifier after the freeze registers with `rounds.py --add --kind verify`, the only kind left once a frozen file exists. Its row is appended to the pinned register, which `check_results.py` admits for valid verify rows alone, and its report is `verification/verify-<N>.md`. No claims commit: the copy record reads the freeze commit's files, never a later one's, here and in the battery. Every other pinned file stays as frozen, so a new record goes in a new file, and a commit body after the freeze must pass both lints, and `lint_pooling.py` has no excusal for one that fails it.
 
 ## Before round 1: the skills smoke
 

@@ -28,7 +28,7 @@ FROZEN = "evals/gap-study-4/prereg.json"
 PRIVATE_MESSAGE = "holdout lives in the private aegis repo; checked locally at each freeze step"
 
 # Plan 1013-1036, verbatim command spellings. The private command has a named
-# deferral; --regrade remains the plan's command even while its flag is owed.
+# deferral; --regrade is the plan's command, the same complete check as --ledger (lane fold11/freeze-recheck).
 PLAN_COMMANDS = (
     "python3 evals/gap-study-4/lint_language.py evals/gap-study-4/",
     "python3 evals/gap-study-4/lint_pooling.py evals/gap-study-4/",

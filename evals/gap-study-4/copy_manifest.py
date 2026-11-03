@@ -180,6 +180,18 @@ def files_here() -> set[str]:
     return out
 
 
+def files_of_the_record() -> set[str]:
+    """What the copy record answers for. Lane fold11/freeze-recheck (its gate review 3, M1): under w5b-4 the run's outputs have
+    no fragment, so once a frozen file is committed only the files of its introducing commit are read, as ci.yml's Copy
+    record step reads them; before that commit, everything here."""
+    rel = study.rel("prereg.json")
+    log = git("log", "--reverse", "--format=%H", "--", rel).stdout.decode().split() if (HERE / "prereg.json").is_file() else []
+    if not log:
+        return files_here()
+    listed = git("ls-tree", "-r", "-z", "--name-only", log[0], "--", study.STUDY_REL).stdout.decode().split("\0")
+    return files_here() & {name[len(study.STUDY_REL) + 1:] for name in listed if name}
+
+
 def tracked_here() -> set[str]:
     listed = git("ls-files", "-z", "--", study.STUDY_REL)
     return {name[len(study.STUDY_REL) + 1:] for name in listed.stdout.decode().split("\0") if name}
@@ -396,7 +408,7 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
         prior_blobs()
     except ManifestError as e:   # the byte guards cannot read: the check fails, it never runs them empty
         return out + [str(e)]
-    present = files_here() if present is None else present
+    present = files_of_the_record() if present is None else present
     claimed: dict[str, str] = {}
     for lane, e in entries:
         path, status, src, why = e["path"], e["status"], e.get("source"), e.get("reason")

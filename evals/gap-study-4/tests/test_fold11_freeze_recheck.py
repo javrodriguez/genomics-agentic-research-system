@@ -950,6 +950,7 @@ class DCopy(Base):
     def test_before_the_freeze_the_live_tree_is_read(self):
         run_git(self.world.repo, "reset", "-q", "--hard", self.world.parent)
         (self.world.study / "stray.txt").write_text("unclaimed\n")
+        self.addCleanup((self.world.study / "stray.txt").unlink)    # commit_freeze adds everything on disk
         self.assertTrue(any("stray.txt" in x for x in self.world.check("plan", self.DRIVER)), "D.copy.live")
 
 
@@ -1055,6 +1056,9 @@ def mutants() -> dict:
         "regrade-flag": ("D.post.regrade", cr, '    parser.add_argument("--regrade", action="store_true",', '    parser.add_argument("--regrade-off", action="store_true",'),
         "verifier-report-scanned": ("D.post.road", "lint_language", '    re.compile(r"^verify-[1-9]\\d*\\.md$"),', '    re.compile(r"^verify-never$"),'),
         "freeze-outputs-scanned": ("D.post.road", "lint_language", "                        and not is_freeze_output(f)\n", ""),
+        "record-live": ("D.copy.outputs", "copy_manifest", "    present = files_of_the_record() if present is None else present\n", "    present = files_here() if present is None else present\n"),
+        "words-language": ("D.words", "lint_language", "    findings += [x for words, name in freeze_output_words(args.paths) for x in scan_text(words, name, entries)]\n", ""),
+        "words-pooling": ("D.words", "lint_pooling", "    findings += [x for words, name in ll.freeze_output_words(args.paths) for x in scan_text(words, name)]\n", ""),
         "rule-leading-zero": ("D.road.floor", "lint_language", 'r"prefreeze-([1-9]\\d*)\\.md"', 'r"prefreeze-(\\d+)\\.md"'),
         "network-door": ("D.network", cr, "    return problems + frozen_network_problems(pushes), ledger, unwitnessed\n", "    return problems, ledger, unwitnessed\n"),
     }
@@ -1108,6 +1112,9 @@ METHOD = {
     "regrade-flag": "DPost.test_the_cli_is_green_along_the_plans_road",
     "verifier-report-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
     "freeze-outputs-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
+    "record-live": "DCopy.test_the_runs_outputs_are_no_finding",
+    "words-language": "DWords.test_a_later_amendments_words_are_read",
+    "words-pooling": "DWords.test_a_later_amendments_words_are_read",
     "rule-leading-zero": "DRoad.test_the_rule_starts_at_round_nine_and_reads_only_review_reports",
 }
 WITNESSES = {name: (METHOD[name], clause) for name, (clause, _, _, _) in mutants().items()}

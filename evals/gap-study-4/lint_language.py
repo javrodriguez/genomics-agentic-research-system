@@ -328,9 +328,19 @@ def is_bound_review_report(path: Path) -> bool:
 # The fold's post-freeze sweep: the two files freeze.py assembles, in this study's own folder. Every word they carry is
 # scanned where it is written (prereg-draft.json, COPIED.d/) and excused there by exact path and line, so on a frozen tree a
 # whole-folder walk reported those same lines again, under names no excusal can then be added for, since the allowlist is
-# pinned. What this leaves unread here: the rehearsal record's text, and an amendment's words, in prereg.json.
+# pinned. The words written nowhere else, a later amendment's and the rehearsal record's text, are read by name below.
 def is_freeze_output(path: Path) -> bool:
     return path.name in ("prereg.json", "COPIED.json") and path.resolve().parent == Path(__file__).resolve().parent
+
+
+def freeze_output_words(paths):
+    """The gate review 3's m4: (words, name) of the two fields of a walked frozen file written nowhere else."""
+    for f in (Path(p) / "prereg.json" for p in paths):
+        if is_freeze_output(f) and f.is_file():
+            doc, had = json.loads(f.read_text()), json.loads(f.with_name("prereg-draft.json").read_text()).get("amendments") or {}
+            now, record = doc.get("amendments") or {}, doc.get("rehearsal_record")
+            later = [v for k, v in now.items() if k not in had] if isinstance(now, dict) else now[len(had):]
+            yield json.dumps(later) + "\n" + (record.get("text", "") if isinstance(record, dict) else ""), f"{f} (own words)"
 
 
 def named_bound_report(path: Path) -> bool:
@@ -465,6 +475,7 @@ def main() -> int:
         scanned += 1
         findings.extend(scan_text(f.read_text(errors="replace"), rel, entries))
 
+    findings += [x for words, name in freeze_output_words(args.paths) for x in scan_text(words, name, entries)]
     # the study's own words inside the case files, scanned by field
     for p in args.paths:
         base = Path(p)

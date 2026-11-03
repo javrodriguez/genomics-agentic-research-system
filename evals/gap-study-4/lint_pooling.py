@@ -234,6 +234,7 @@ def main() -> int:
         scanned += 1
         findings.extend(scan_text(f.read_text(errors="replace"), rel))
 
+    findings += [x for words, name in ll.freeze_output_words(args.paths) for x in scan_text(words, name)]
     commits = 0
     if args.commits_since:
         for sha, body in ll.commit_bodies(args.commits_since, args.at):
