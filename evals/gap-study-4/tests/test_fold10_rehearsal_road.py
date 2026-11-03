@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 import io
 import json
 import shutil
@@ -135,6 +136,17 @@ class Pins(unittest.TestCase):
         self.assertEqual(len(problems), 1)
         self.assertIn("other.toml", problems[0])
         self.assertIn("1 pinned file(s)", printed)
+
+    def test_another_name_with_the_rendered_bytes_hash_is_refused(self):
+        """The name is part of the pin: the right bytes under a name the render does not make never pass."""
+        real = DRAFT["config_templates"]["codex"]["gpt-6-luna"]["files"][0]["sha256"]
+        pre = {"config_templates": {"codex": {"gpt-6-luna": {"files": [{"path": "other.toml", "sha256": real}]}}}}
+        self.assertEqual(len(pins(pre)[0]), 1)
+
+    def test_a_refused_render_never_matches_an_empty_file_hash(self):
+        empty = hashlib.sha256(b"").hexdigest()
+        pre = {"config_templates": {"no-such": {"m": {"files": [{"path": "settings.json", "sha256": empty}]}}}}
+        self.assertEqual(len(pins(pre)[0]), 1)
 
     def test_a_harness_the_render_refuses_is_refused_never_dropped(self):
         pre = {"config_templates": {"no-such": {"m": {"files": [{"path": "settings.json", "sha256": "0" * 64}]}}}}
