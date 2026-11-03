@@ -9290,6 +9290,13 @@
       "n": 2,
       "checker_constants_sha256": "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
       "sha256": "258bb7d9d9103249d5b1a43312b18f9b3002022dc6d73aa988ef2c0c613b0342"
+    },
+    {
+      "walk": "w154",
+      "file": "recheck-2.json",
+      "n": 2,
+      "checker_constants_sha256": "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
+      "sha256": "863d3b7c750fc41b85a93a6094ed4f8b8f23aeaa71f51d04329c1a7b67ac2b4b"
     }
   ]
 }
