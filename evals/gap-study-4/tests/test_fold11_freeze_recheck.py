@@ -21,6 +21,11 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
   D.real      outside a disposable rehearsal: the rehearsal record's sha256 is its text's, the beacon reading is no
               synthetic one, the witness is one and is what the freeze derives from its own stamps
   D.network   check_results.py --witness holds the frozen witness to the push records and the reading to the relays
+  D.shapes    the freeze's shapes gate on the draft is read again, and it holds on this tree
+  D.py39      the check runs where tar's extractall takes no `filter` (Python 3.9's signature)
+  D.rounds    rounds.py --add refuses a prefreeze row once a frozen file exists, and leaves a verify row alone
+  D.road      a DO FREEZE report that trips both lints lands through the post-review road with no edit to a pinned file
+              but its own claims, both lints clean, and the launch binding reads clean
   D.main      main --ledger --rehearsal-plan, the real CLI, passes the clean state and refuses an edited one, and the
               runtime steps of the rehearsal run on it
 
@@ -51,6 +56,10 @@ import study  # noqa: E402
 import takes  # noqa: E402
 
 SELECTED = None
+# A report's words that trip both lints, each as review 8 wrote it: a reviewer restates the guard it reads, and its report
+# is never edited.
+REPORT_WORDS = ("`not_poolable` forbids comparison, pooling and bridging with rounds 1-3.\n\n"
+                "I found no sentence better than a plain count, always read at 690/700.")
 LIVE_BOX_PASS = ("live-box record " + "a" * 64 + ": walk lb1, budget 10 s of 20 s, turn 2 cut (end timed-out, exit 124), stream 3 "
                  "unit(s), session 3 unit(s), shape equal, content problems 0, session torn no; files 4 re-read equal; adapter, "
                  "check_take and checker digests this tree's; within the bound")
@@ -63,7 +72,8 @@ MESSAGE = "Freeze\n\nCo-Authored-By: synthetic <synthetic@example.invalid>\n"
 DRIVER = """
 import json, sys
 sys.path.insert(0, sys.argv[1])
-import check_results as cr
+import check_results as cr, freeze
+freeze.unrecorded_shapes_problem = lambda draft: None   # reads committed walks this scratch lacks; DShapes reads it real
 if sys.argv[3:] != ["unstubbed"]:
     cr.frozen_commit_problems = lambda frozen, commit: []
 print("PROBLEMS " + json.dumps(cr.check_frozen_content(rehearsal_plan=sys.argv[2] == "plan")))
@@ -115,12 +125,17 @@ class World:
         register = json.loads(self.rounds.read_text())
         self.earlier = max(r["n"] for r in register["rows"] if r.get("kind") == "prefreeze")
         self.n = self.earlier + 1
-        register["rows"].append({"n": self.n, "kind": "prefreeze", "launch_commit": self.base, "voids": None})
-        self.rounds.write_text(json.dumps(register, indent=2) + "\n")
+        kit = root / "kit"
+        kit.mkdir()
+        shutil.copyfile(self.study / "prereg-draft.json", kit / "prereg.json")
+        (kit / "COMMIT").write_text(self.base + "\n")
+        got = self.cli(f"{study.REVIEW_DIR}/rounds.py", "--add", "--kind", "prefreeze", "--folder", str(kit))
+        if got.returncode != 0:
+            raise AssertionError(f"the real rounds.py --add refused: {got.stdout[-800:]}{got.stderr[-800:]}")
         row = self.commit("the round's row")
         self.report = study.rel(study.REVIEW_DIR, f"prefreeze-{self.n}.md")
         digest = hashlib.sha256((self.study / "prereg-draft.json").read_bytes()).hexdigest()
-        text = f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n# a synthetic review\n\n{freeze.RULING_LINE}\n"
+        text = f"{freeze.REVIEW_DIGEST_PREFIX}{digest}\n\n{REPORT_WORDS}\n\n{freeze.RULING_LINE}\n"
         (self.repo / self.report).write_text(text)
         (self.study / study.REVIEW_DIR / f"prefreeze-{self.n}-blindness.txt").write_text(
             f"session id: {takes.session_id_for(row)}\n{freeze._blindness().REPORT_DIGEST}"
@@ -184,6 +199,12 @@ class World:
         return json.loads(found[-1])
 
     def cli(self, *args: str) -> subprocess.CompletedProcess:
+        if args[0] == "check_results.py":     # the real main; the one gate this scratch's missing walks cannot hold is named
+            launcher = ("import sys; sys.path.insert(0, sys.argv[1]); import freeze, check_results; "
+                        "freeze.unrecorded_shapes_problem = lambda draft: None; "
+                        "raise SystemExit(check_results.main(sys.argv[2:]))")
+            return subprocess.run([sys.executable, "-B", "-W", "ignore", "-c", launcher, str(self.study), *args[1:]],
+                                  capture_output=True, text=True, env=self.env(), cwd=str(self.repo))
         return subprocess.run([sys.executable, "-B", "-W", "ignore", str(self.study / args[0]), *args[1:]],
                               capture_output=True, text=True, env=self.env(), cwd=str(self.repo))
 
@@ -359,7 +380,7 @@ class DReview(Base):
             doc["pre_freeze_review_file"] = rel
             doc["pre_freeze_review_sha256"] = hashlib.sha256(body).hexdigest()
         self.world.commit_freeze(edit)
-        driver = DRIVER.replace("import check_results as cr\n",
+        driver = DRIVER.replace("import check_results as cr, freeze\n",
                                 "import check_results as cr, freeze\n"
                                 f"freeze.review_file_problems = lambda c: ([], {rel!r})\n")
         named(self.world.check("plan", driver), "as freeze approval", "D.ruling")
@@ -504,7 +525,7 @@ class DReal(Base):
     def no_swaps(self) -> str:
         # the scratch's one-commit history holds no registration or swap history, so those two reads stand in; the real
         # line's are driven on a scratch clone of the real history (the fold's report)
-        return DRIVER.replace("import check_results as cr\n", "import check_results as cr, freeze\n"
+        return DRIVER.replace("import check_results as cr, freeze\n", "import check_results as cr, freeze\n"
                               "freeze.supersession_swaps = lambda history: []\n"
                               f"freeze.registering_commit = lambda round_no: {self.world.base!r}\n")
 
@@ -607,6 +628,143 @@ with mock.patch.object(freeze, "push_records", return_value=[]), mock.patch.obje
 print("PROBLEMS " + json.dumps([code, door.call_count]))
 """
         self.assertEqual(self.world.check("plan", driver), [1, 1], "D.network")
+
+
+class DShapes(Base):
+    def test_the_recheck_reads_the_shapes_gate(self):
+        driver = DRIVER.replace("freeze.unrecorded_shapes_problem = lambda draft: None",
+                                "freeze.unrecorded_shapes_problem = lambda draft: 'the shapes stand-in refuses'")
+        named(self.world.check("plan", driver), "the shapes stand-in refuses", "D.shapes")
+
+    def test_the_gate_holds_on_this_tree(self):
+        # the real gate on this checkout's real walks; in a frozen rehearsal clone this reads the frozen state too
+        code = ("import json, sys; sys.path.insert(0, sys.argv[1]); import freeze; "
+                "print('SHAPES', freeze.unrecorded_shapes_problem(json.load(open(freeze.DRAFT))))")
+        got = subprocess.run([sys.executable, "-B", "-W", "ignore", "-c", code, str(HERE)], capture_output=True, text=True)
+        self.assertIn("SHAPES None", got.stdout, f"D.shapes: {got.stdout[-800:]}{got.stderr[-800:]}")
+
+
+class DPy39(Base):
+    def test_the_check_needs_no_filter_argument(self):
+        # pre-gate review of the fold, M2: 3.9.6's signature, which took the check down with a TypeError
+        driver = DRIVER.replace("import check_results as cr, freeze\n", "import tarfile\n"
+                                "tarfile.TarFile.extractall = lambda self, path='.', members=None, *, numeric_owner=False: None\n"
+                                "import check_results as cr, freeze\n")
+        try:
+            got = self.world.check("plan", driver)
+        except AssertionError as exc:
+            raise AssertionError(f"D.py39: {exc}") from None
+        self.assertEqual(got, [], "D.py39")
+
+
+class DRounds(Base):
+    def kit(self, tmp: str) -> Path:
+        folder = Path(tmp) / "kit"
+        folder.mkdir()
+        shutil.copyfile(self.world.study / "prereg-draft.json", folder / "prereg.json")
+        (folder / "COMMIT").write_text(run_git(self.world.repo, "rev-parse", "HEAD") + "\n")
+        return folder
+
+    def test_a_prefreeze_row_is_refused_once_frozen(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self.world.cli(f"{study.REVIEW_DIR}/rounds.py", "--add", "--kind", "prefreeze", "--folder", str(self.kit(tmp)))
+        self.assertEqual(got.returncode, 1, f"D.rounds: {got.stdout[-500:]}")
+        self.assertIn("frozen", got.stdout, "D.rounds")
+        self.assertEqual(run_git(self.world.repo, "status", "--porcelain"), "", "D.rounds: a refusal writes nothing")
+
+    def test_a_verify_row_is_not_refused_for_the_freeze(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            got = self.world.cli(f"{study.REVIEW_DIR}/rounds.py", "--add", "--kind", "verify", "--folder", str(self.kit(tmp)))
+        self.assertNotIn("is frozen", got.stdout, "D.rounds")
+        run_git(self.world.repo, "reset", "-q", "--hard")
+
+
+class DRoad(Base):
+    """Pre-freeze review 8's fold, the gate review's m6: the road after a DO FREEZE report, on the real pinned files."""
+
+    TOOL = f"{study.REVIEW_DIR}/claim_review.py"
+
+    def walk_the_road(self):
+        run_git(self.world.repo, "reset", "-q", "--hard", self.world.review)     # commit_review.py's commit is HEAD
+        got = self.world.cli(self.TOOL, str(self.world.n))
+        self.assertEqual(got.returncode, 0, f"D.road: {got.stdout[-800:]}{got.stderr[-800:]}")
+
+    def binding(self):
+        driver = ("import json, sys\nsys.path.insert(0, sys.argv[1])\nimport freeze\n"
+                  f"print('PROBLEMS ' + json.dumps(freeze.review_file_problems({self.world.review!r})))\n")
+        return self.world.check("plan", driver)
+
+    def lints(self):
+        return (self.world.cli("lint_language.py", str(self.world.study)), self.world.cli("lint_pooling.py", str(self.world.study)))
+
+    def test_the_report_trips_both_lints_when_named(self):
+        # the fixture is honest: these words do fail, so the rule below is what lets them through
+        self.walk_the_road()
+        for tool in ("lint_language.py", "lint_pooling.py"):
+            got = self.world.cli(tool, str(self.world.repo / self.world.report))
+            self.assertEqual(got.returncode, 1, f"D.road: {tool} passes the words: {got.stdout[-400:]}")
+
+    def test_the_road_lands_with_no_edit_to_a_pinned_file_but_its_claims(self):
+        self.walk_the_road()
+        changed = set(run_git(self.world.repo, "diff", "--name-only", self.world.base, "HEAD").splitlines())
+        want = {self.world.report, self.world.report[:-3] + "-blindness.txt", study.rel(study.REVIEW_DIR, "rounds.json"),
+                study.rel(FRAGMENT)}
+        self.assertEqual(changed, want, "D.road")
+        for got in self.lints():
+            self.assertEqual(got.returncode, 0, f"D.road: {got.stdout[-800:]}{got.stderr[-400:]}")
+            self.assertIn("not scanned", got.stdout, "D.road: an exemption is named, never silent")
+        self.assertEqual(self.binding(), [[], self.world.report], "D.road: the launch binding")
+
+    def test_an_edited_report_is_scanned(self):
+        self.walk_the_road()
+        report = self.world.repo / self.world.report
+        report.write_text(report.read_text() + "\nAn added sentence on pooling.\n")
+        self.assertEqual(self.lints()[1].returncode, 1, "D.road.digest")
+
+    def test_a_report_with_no_stated_digest_is_scanned(self):
+        self.walk_the_road()
+        blind = self.world.study / study.REVIEW_DIR / f"prefreeze-{self.world.n}-blindness.txt"
+        blind.write_text(blind.read_text().split("report sha256")[0])
+        self.assertEqual(self.lints()[1].returncode, 1, "D.road.digest")
+
+    def test_the_rule_starts_at_round_nine_and_reads_only_review_reports(self):
+        # the scratch's own lint, so a mutant of it is what runs
+        driver = """
+import hashlib, json, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import freeze, lint_language as ll
+out = {"line": ll.REPORT_DIGEST_LINE == freeze._blindness().REPORT_DIGEST}
+with tempfile.TemporaryDirectory() as tmp:
+    kit = Path(tmp) / "review_kit"
+    kit.mkdir()
+    for name in ("prefreeze-8", "prefreeze-9", "prefreeze-12"):
+        (kit / f"{name}.md").write_bytes(b"words\\n")
+        (kit / f"{name}-blindness.txt").write_text(ll.REPORT_DIGEST_LINE + hashlib.sha256(b"words\\n").hexdigest() + "\\n")
+        out[name] = ll.is_bound_review_report(kit / f"{name}.md")
+    other = Path(tmp) / "prefreeze-9.md"
+    other.write_bytes(b"words\\n")
+    out["elsewhere"] = ll.is_bound_review_report(other)
+print("PROBLEMS " + json.dumps(out))
+"""
+        self.assertEqual(self.world.check("plan", driver), {"line": True, "prefreeze-8": False, "prefreeze-9": True,
+                                                            "prefreeze-12": True, "elsewhere": False}, "D.road.floor")
+
+    def test_a_pinned_edit_after_the_review_breaks_the_binding(self):
+        # why the cure cannot be made after the report: the road's whole reason
+        self.walk_the_road()
+        f = self.world.study / "lint_pooling.py"
+        f.write_bytes(f.read_bytes() + b"\n# a late cure\n")
+        self.world.commit("a late cure")
+        bad = self.binding()[0]
+        self.assertTrue(any("lint_pooling.py" in p for p in bad), f"D.road.pinned: {bad}")
+
+    def test_the_claims_tool_refuses_anywhere_else(self):
+        # at the parent: HEAD is the earlier claims commit, which does not land the two records
+        run_git(self.world.repo, "reset", "-q", "--hard", self.world.parent)
+        got = self.world.cli(self.TOOL, str(self.world.n))
+        self.assertEqual(got.returncode, 1, f"D.road.tool: {got.stdout[-400:]}")
+        self.assertEqual(run_git(self.world.repo, "rev-parse", "HEAD"), self.world.parent, "D.road.tool")
 
 
 class DMain(Base):
