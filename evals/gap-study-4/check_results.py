@@ -713,8 +713,8 @@ def witness_main(record: bool = False) -> int:
     """check_results.py --witness [--record]: the take ledger against GitHub's push records (MAJOR 2). With --record
     (glitch-45's review, MJ-2: the batch-fetch step on the Mac and the step before publication) each run is appended
     to WITNESS_RECORD, problems and all, so that it ran is on record; it fails closed (exit 1) on any problem."""
-    import freeze
-    problems, ledger, unwitnessed = take_ledger_witness(freeze.push_records())
+    import freeze  # noqa: F401  (witness_reading reads its push records; this line keeps the draft's line citations)
+    problems, ledger, unwitnessed = witness_reading()
     print(f"check_results --witness: {len(ledger)} take-ledger commit(s) on HEAD's line, {len(unwitnessed)} "
           f"unwitnessed (no push record holds them)" + (": " + ", ".join(c[:12] for c in unwitnessed)
                                                         if unwitnessed else ""))
@@ -917,7 +917,9 @@ def check_frozen_content(rehearsal_plan=False) -> list[str]:
     commit = freeze_commit()
     held = frozen_commit_problems(frozen, commit) if commit else ["the freeze commit could not be found"]
     print(f"  the freeze commit held to its rehearsal and each pin to its committed blob: {len(held)} problem(s)")
-    return problems + rehearsal + held
+    recheck = freeze_recheck_problems(frozen, commit, rehearsal_plan) if commit else []
+    print(f"  the freeze's gates read again at its commit and its parent: {len(recheck)} problem(s)")
+    return problems + rehearsal + held + recheck
 
 
 # ---------------------------------------------------------------- the ledger
@@ -991,6 +993,7 @@ def check_publication(rows, history, records, pre, page, grade, table=None, witn
     if not page_equal(page, rendered):
         problems.append("RESULT.md differs from the complete statistics and committed cell states, including agent")
     problems += original_values_problems(rec)          # MAJOR 10 (lane pf1-l2b)
+    problems += tip_limit_problems(pre)                # fold 10's review, m1: a page without the limit, on --ledger too
     return problems
 
 
@@ -998,6 +1001,8 @@ def check_publication(rows, history, records, pre, page, grade, table=None, witn
 # pre-registration pin paths that are not repository-relative. build_draft writes image_locks' paths study-relative and
 # config_templates' files as the names take_config renders; they are no files on disk, and two names hold different
 # bytes per model. It sits here, past every line of this file the draft cites by number.
+import contextlib  # noqa: E402
+import io  # noqa: E402
 import re  # noqa: E402
 
 IMAGE_LOCK_PIN = re.compile(r"\.image_locks\[\d+\]")
@@ -1020,6 +1025,286 @@ def pinned_bytes(where: str, rel: str):
             return None
     f = (HERE if IMAGE_LOCK_PIN.fullmatch(where) else REPO) / rel
     return f.read_bytes() if f.is_file() else None
+
+
+# Pre-freeze review 8, M1 (lane fold11/freeze-recheck): the freeze's gates ran once, inside freeze.main, and then the
+# operator committed what it wrote by hand, so one edit in that window passed everything above: the frozen file was only
+# ever compared with later versions of itself. Here the freeze commit is read again against what it could only have been.
+# It sits past every line of this file the draft cites by number.
+#
+# freeze.main writes every FREEZE_WRITTEN_KEYS member but this one: nothing has ever written it. It is listed so a
+# changed-key report may name it, so a frozen file carrying it is a hand edit (frozen_file_problems refuses it).
+FREEZE_KEYS_NOT_WRITTEN = ("nulls_at_freeze",)
+FREEZE_OUTPUTS = ("prereg.json", "COPIED.json", "COPIED.d/freeze.json")      # freeze.write_outputs, one commit
+
+
+def committed_raw(rev: str, rel: str) -> bytes | None:
+    """The file's exact bytes at `rev`, or None when it is not there (this file's git() strips what it reads, which would
+    change every digest)."""
+    got = subprocess.run(["git", "-C", str(REPO), "show", f"{rev}:{rel}"], capture_output=True)
+    return got.stdout if got.returncode == 0 else None
+
+
+def committed_pins(rev: str, paths: list[str]) -> list[dict] | str:
+    """freeze.pin's record of each path as `rev` commits it, in order, read from git and not from any working tree; or the
+    first path `rev` does not hold, by name."""
+    listed = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", "-z", rev, "--", *paths], capture_output=True)
+    if listed.returncode != 0:
+        return f"the tree of {rev[:12]}"
+    blobs = {}
+    for item in listed.stdout.decode("utf-8", "surrogateescape").split("\0"):
+        if item:
+            meta, path = item.split("\t", 1)
+            blobs[path] = meta.split()[2]
+    for path in paths:
+        if path not in blobs:
+            return path
+    got = subprocess.run(["git", "-C", str(REPO), "cat-file", "--batch"], capture_output=True,
+                         input="".join(blobs[p] + "\n" for p in paths).encode())
+    if got.returncode != 0:
+        return f"the blobs of {rev[:12]}"
+    out, at = [], 0
+    for path in paths:
+        end = got.stdout.index(b"\n", at)
+        size = int(got.stdout[at:end].split()[2])
+        body = got.stdout[end + 1:end + 1 + size]
+        at = end + 2 + size
+        out.append({"path": path, "git_blob_sha": blobs[path], "sha256": hashlib.sha256(body).hexdigest(),
+                    "uncommitted": False})
+    return out
+
+
+@contextlib.contextmanager
+def freeze_as_of(parent: str):
+    """freeze's own review gate reads HEAD, the draft on disk and the PINNED list its import built from COPIED.d, so at
+    this file's HEAD it would read the run, not the freeze. Inside this block all three are the parent's. No checkout and
+    no write to the repository: a temporary git directory holds only HEAD (the parent) and a `commondir` pointing at the
+    real objects, refs, reflogs and config."""
+    import tarfile
+    import tempfile
+    import freeze
+    code, common = git("rev-parse", "--git-common-dir")
+    if code != 0:
+        raise ValueError("the repository's git folder cannot be found")
+    common_dir = (REPO / common).resolve()
+    with tempfile.TemporaryDirectory(prefix="freeze-as-of-") as tmp:
+        root = Path(tmp)
+        gitdir = root / ".git"
+        gitdir.mkdir()
+        (gitdir / "HEAD").write_text(parent + "\n")
+        (gitdir / "commondir").write_text(str(common_dir) + "\n")
+        draft = root / "prereg-draft.json"
+        draft.write_bytes(committed_raw(parent, study.rel("prereg-draft.json")) or b"")
+        archive = subprocess.run(["git", "-C", str(REPO), "archive", "--format=tar", parent, "--",
+                                  study.rel("COPIED.d")], capture_output=True)
+        if archive.returncode != 0:
+            raise ValueError(f"COPIED.d cannot be read at {parent[:12]}")
+        with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+            tar.extractall(root, filter="data")
+        owned = freeze.owned_paths(folder=root / study.rel("COPIED.d"))
+        pinned = [p for p in map(study.rel, owned) if p not in freeze.NOT_PINNED_AND_WHY] + list(freeze.BOUND_OUTSIDE)
+        saved = freeze.REPO, freeze.DRAFT, freeze.PINNED
+        freeze.REPO, freeze.DRAFT, freeze.PINNED = root, draft, pinned
+        try:
+            yield freeze
+        finally:
+            freeze.REPO, freeze.DRAFT, freeze.PINNED = saved
+
+
+def tip_limit_problems(pre: dict) -> list[str]:
+    """Fold 10's review, m1: result.derive's hold, read as a problem by this file's two callers."""
+    import result
+    try:
+        result.tip_limit_held(pre)
+    except ValueError as exc:
+        return [str(exc)]
+    return []
+
+
+def frozen_file_problems(frozen: dict, draft: dict, parent: str, commit: str, raw_draft: bytes, review_sha: str | None,
+                         fz) -> list[str]:
+    """The frozen file against what freeze.main writes: its own code, run on the draft and the parent's committed pins,
+    given only what cannot be derived again here (the time, the beacon reading, the witness, the rehearsal record, the
+    holdout digests, each read on its own elsewhere). This is what keys_outside_the_freeze cannot be: it allows the keys
+    FREEZE_FILLED_INSIDE names, which nothing fills, and it zips the two task lists, so a dropped task names no key."""
+    import copy
+    pins = committed_pins(parent, fz.pinned_paths(fz.PINNED))
+    if isinstance(pins, str):
+        return [f"{pins} is pinned by the freeze's own list and cannot be read at the freeze's parent"]
+    out_bytes = {name: committed_raw(commit, study.rel(name)) for name in FREEZE_OUTPUTS[1:]}
+    if None in out_bytes.values():
+        return ["the freeze commit does not carry COPIED.json and COPIED.d/freeze.json"]
+    try:
+        rebuilt = fz.prepare(copy.deepcopy(draft), review=frozen.get("pre_freeze_review_commit"), parent=parent, pins=pins,
+                             frozen_at=frozen.get("frozen_at"), beacon=frozen.get("take_order_beacon_reading"))
+    except (ValueError, KeyError, TypeError) as exc:
+        return [f"freeze.prepare refuses this draft and reading, so the frozen file is not byte for byte what the freeze "
+                f"writes: {exc}"]
+    rebuilt.update(draft_sha256_at_freeze=hashlib.sha256(raw_draft).hexdigest(),
+                   pre_freeze_review_file=frozen.get("pre_freeze_review_file"), pre_freeze_review_sha256=review_sha,
+                   rehearsal_record=frozen.get("rehearsal_record"), rehearsed_study_tree_sha256=fz.study_tree_sha(),
+                   take_order_witness=frozen.get("take_order_witness"))
+    rebuilt.update({k: frozen[k] for k in fz.HOLDOUT_KEYS if k in frozen})
+    rebuilt.update(published_tip_residual=fz.PUBLISHED_TIP_LIMIT)
+    rebuilt["pinned_files"].extend(fz.generated_pins(out_bytes))
+    if fz.json_bytes(rebuilt) == committed_raw(commit, study.rel("prereg.json")):
+        return []
+    differ = sorted(k for k in set(rebuilt) | set(frozen) if rebuilt.get(k) != frozen.get(k))
+    return ["the frozen file is not byte for byte what the freeze's own code writes from the parent's tree; it differs "
+            "in " + (", ".join(differ) or "its bytes alone, its keys holding the same values")]
+
+
+def witness_as_derived_problems(frozen: dict, draft: dict, fz) -> list[str]:
+    """take_order_witness, derived again by the freeze's own code from the push stamps the file itself records. GitHub's
+    records are read at check_results.py --witness (frozen_network_problems); this binds the rest offline: which commits
+    registered the round and last changed the draft, and each stamp's lead before the round."""
+    witness = frozen.get("take_order_witness")
+    if not isinstance(witness, dict):
+        return [f"take_order_witness is {str(witness)[:60]!r}, a disposable rehearsal's: a real freeze holds GitHub's "
+                f"push records of the round and the draft"]
+    pushes = [(p.get("stamp"), p.get("sha")) for p in witness_pushes(witness)]
+    try:
+        again = fz.take_order_witness(draft, pushes=pushes)
+    except (ValueError, TypeError) as exc:
+        return [f"take_order_witness is not what the freeze derives from its own stamps: {exc}"]
+    if again != witness:
+        return ["take_order_witness is not what the freeze derives from its own stamps"]
+    return []
+
+
+def witness_pushes(witness: dict) -> list[dict]:
+    """Every push record a frozen take_order_witness names (freeze.take_order_witness writes these keys)."""
+    named = [witness.get("registering_push"), witness.get("draft_push")]
+    named += [s.get("swap_push") for s in witness.get("superseded") or [] if isinstance(s, dict)]
+    return [p for p in named if isinstance(p, dict)]
+
+
+def frozen_network_problems(pushes) -> list[str]:
+    """Run by check_results.py --witness, the one door here that reads the network (witness_reading). What no offline check
+    can hold: the frozen witness's pushes are in GitHub's records, and the frozen beacon reading is the round the relays
+    publish. order_reference.py checks the reading's shape, and that its randomness is the sha256 of its signature, and no
+    signature is verified, so a hand-written signature gave another seed and another order and passed."""
+    import order_beacon
+    frozen, _ = frozen_bytes()
+    if not isinstance(frozen, dict):
+        return []
+    out = []
+    witness = frozen.get("take_order_witness")
+    if isinstance(witness, dict):
+        real = {(stamp, sha) for stamp, sha in pushes}
+        for push in witness_pushes(witness):
+            if (push.get("stamp"), push.get("sha")) not in real:
+                out.append(f"the frozen take_order_witness names {str(push.get('sha'))[:12]} at {push.get('stamp')}, and "
+                           f"no push record of the mirror holds it")
+    else:
+        out.append("the frozen take_order_witness is not a witness: no push record stands behind it")
+    reading = frozen.get("take_order_beacon_reading")
+    try:
+        answer = order_beacon.read_relays(reading.get("round"))
+    except (order_beacon.BeaconRefused, AttributeError) as exc:
+        return out + [f"the frozen beacon reading cannot be read back from the relays: {exc}"]
+    if any(reading.get(k) != answer.get(k) for k in ("round", "randomness", "signature")):
+        out.append("the frozen beacon reading is not the round the relays publish: the take order was seeded by another "
+                   "value")
+    return out
+
+
+def witness_reading() -> tuple[list[str], list[str], list[str]]:
+    """witness_main's reading (on one line there because the draft cites this file by number): the take ledger against
+    GitHub's push records, and frozen_network_problems."""
+    import freeze
+    pushes = freeze.push_records()
+    problems, ledger, unwitnessed = take_ledger_witness(pushes)
+    return problems + frozen_network_problems(pushes), ledger, unwitnessed
+
+
+def freeze_recheck_problems(frozen: dict, commit: str, rehearsal_plan: bool = False) -> list[str]:
+    """At the freeze commit, what freeze.main's gates held. Every read is at the commit or its parent, never HEAD."""
+    import build_draft
+    import freeze
+    parents = git("rev-list", "--parents", "-n", "1", commit)[1].split()[1:]
+    want_parent = frozen.get("frozen_at_commit_parent")
+    if not parents:
+        # AMENDMENT 1's copy (frozen_commit_problems): the battery's sandbox commits its working tree as one root commit,
+        # which carries no history to hold. A real publication never can be one.
+        print(f"  NOT CHECKED: the freeze commit in this copy ({commit[:12]}) has no parent, so the freeze's gates cannot "
+              f"be read again here")
+        return [] if rehearsal_plan else [f"the freeze commit {commit[:12]} has no parent: the review, the draft and the "
+                                          f"pins it froze cannot be read"]
+    if len(parents) != 1:
+        return [f"the freeze commit {commit[:12]} has {len(parents)} parents: freeze.py's output is one commit on the "
+                f"reviewed line"]
+    parent = parents[0]
+    if want_parent != parent:
+        # frozen_commit_problems reads this difference as a copy without the study's history and prints NOT CHECKED: one
+        # edit of this field switched its hold off
+        return [f"frozen_at_commit_parent {str(want_parent)[:12]} is not the freeze commit's parent {parent[:12]}"]
+    out: list[str] = []
+    code, names = git("diff", "--no-renames", "--name-only", parent, commit)
+    touched = set(names.splitlines()) if code == 0 else None
+    want = {study.rel(p) for p in FREEZE_OUTPUTS}
+    if touched != want:
+        out.append("the freeze commit changes other paths than freeze.py's three outputs: "
+                   + ("unreadable" if touched is None else ", ".join(sorted(touched ^ want))[:300]))
+    if committed_raw(commit, study.rel(FREEZE_OUTPUTS[2])) != freeze.json_bytes(freeze.output_fragment()):
+        out.append("the freeze commit's COPIED.d/freeze.json is not what freeze.py writes")
+    raw_draft = committed_raw(commit, study.rel("prereg-draft.json"))
+    if raw_draft is None:
+        return out + ["prereg-draft.json is not committed at the freeze commit"]
+    if hashlib.sha256(raw_draft).hexdigest() != frozen.get("draft_sha256_at_freeze"):
+        out.append("draft_sha256_at_freeze is not the sha256 of prereg-draft.json at the freeze commit: the rehearsal "
+                   "record and the review's line 1 bind to it")
+    draft = json.loads(raw_draft)
+    try:
+        outside = freeze.keys_outside_the_freeze(draft, frozen)
+    except (KeyError, TypeError, AttributeError) as exc:       # a task's shape it cannot walk: named, never a pass
+        outside = [f"unreadable ({type(exc).__name__}: {exc})"]
+    if outside:
+        out.append("the frozen file changes keys outside the freeze: " + ", ".join(outside)[:400])
+    absent = [k for k in freeze.FREEZE_WRITTEN_KEYS if k not in frozen and k not in FREEZE_KEYS_NOT_WRITTEN]
+    if absent:
+        out.append("the freeze's written keys are absent: " + ", ".join(absent))
+    out += tip_limit_problems(frozen)
+    out += [p for p in (freeze.draft_holdout_problem(draft), freeze.order_function_problem(draft)) if p]
+    review_file = frozen.get("pre_freeze_review_file")
+    review = committed_raw(parent, review_file) if isinstance(review_file, str) else None
+    review_sha = None
+    if review is None:
+        out.append(f"pre_freeze_review_file {str(review_file)[:120]} is not committed at the freeze's parent")
+    else:
+        review_sha = hashlib.sha256(review).hexdigest()
+        if review_sha != frozen.get("pre_freeze_review_sha256"):
+            out.append(f"pre_freeze_review_sha256 is not the sha256 of {review_file} at the freeze's parent")
+        ruling = freeze.read_ruling(review.decode("utf-8", "replace"))
+        if ruling != freeze.DO_FREEZE:
+            out.append(f"{review_file} at the freeze's parent reads {ruling}, never as freeze approval")
+    seed = frozen.get("pre_freeze_review_commit")
+    with freeze_as_of(parent) as fz:
+        bad, named = fz.review_file_problems(seed if isinstance(seed, str) else "")
+        if bad:
+            out.append("review_file_problems, re-run as of the freeze's parent: " + "; ".join(bad)[:600])
+        elif named != review_file:
+            out.append(f"pre_freeze_review_file names another report ({str(review_file)[:120]}) than the seed commit "
+                       f"lands ({named})")
+        out += frozen_file_problems(frozen, draft, parent, commit, raw_draft, review_sha, fz)
+        if not rehearsal_plan:
+            out += witness_as_derived_problems(frozen, draft, fz)
+    try:
+        count = build_draft.validate_digests(frozen.get("holdout_salted_digests"), [t["id"] for t in draft["tasks"]])
+        if count != frozen.get("holdout_wordings_per_task_version"):
+            out.append(f"the frozen holdout digests hold {count} per task version, and "
+                       f"holdout_wordings_per_task_version says {frozen.get('holdout_wordings_per_task_version')!r}")
+    except (ValueError, KeyError, TypeError) as exc:
+        out.append(f"the frozen holdout digests are refused by the freeze's own validator: {exc}")
+    if not rehearsal_plan:
+        reading = frozen.get("take_order_beacon_reading")
+        if isinstance(reading, dict) and reading.get("signature") == freeze.SYNTHETIC_SIGNATURE:
+            out.append("the frozen beacon reading is the rehearsal's synthetic one")
+        record = frozen.get("rehearsal_record")
+        text = record.get("text") if isinstance(record, dict) else None
+        if isinstance(text, str) and hashlib.sha256(text.encode("utf-8")).hexdigest() != record.get("sha256"):
+            out.append("the frozen rehearsal record's sha256 is not its text's")
+    return out
 
 
 def _sample_error() -> tuple:

@@ -474,6 +474,7 @@ class S1Synthetic(Case):
                     mock.patch.object(cr, "frozen_commit_problems", return_value=[]), \
                     mock.patch.object(cr, "rehearsal_record_problems", return_value=[]), \
                     mock.patch.object(cr, "take_order_problems", return_value=[]), \
+                    mock.patch.object(cr, "freeze_recheck_problems", return_value=[]), \
                     contextlib.redirect_stdout(out):     # fold2/lb: the order recompute stood in (test_fold2_lb's)
                 problems = self.must("S1.synthetic", cr.check_frozen_content, rehearsal_plan=rehearsal_plan)
         return problems, out.getvalue()

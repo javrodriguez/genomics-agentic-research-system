@@ -422,7 +422,8 @@ class R3PoolingExemption(unittest.TestCase):
         # lane fold4/records (glitch-45's fold4 brief, Sat 31 Oct 2026): review 4 joins review 3, each bound to its bytes
         # lane fold5/report-binding (glitch-45's ruling 3): and review 4 as its reviewer's session wrote it
         records = ["evals/gap-study-4/review_kit/prefreeze-3.md", "evals/gap-study-4/review_kit/prefreeze-4.as-written.md",
-                   "evals/gap-study-4/review_kit/prefreeze-4.md"]
+                   "evals/gap-study-4/review_kit/prefreeze-4.md",
+                   "evals/gap-study-4/review_kit/prefreeze-8.md"]
         self.assertEqual(sorted(lint_pooling.BOUND_REVIEW_RECORDS), records, "R3")
         for rel in records:
             self.assertEqual(lint_pooling.BOUND_REVIEW_RECORDS[rel],

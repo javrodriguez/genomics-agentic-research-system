@@ -63,7 +63,11 @@ BOUND_REVIEW_RECORDS = {"evals/gap-study-4/review_kit/prefreeze-3.md":
                         "27fdd7252ec4c7e959609c553e57421dc8107af7c93c52e85ec3469c4f81df8c",
                         # lane fold5/report-binding (glitch-45's ruling 3): review 4 as its reviewer wrote it
                         "evals/gap-study-4/review_kit/prefreeze-4.as-written.md":
-                        "27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8"}
+                        "27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8",
+                        # lane fold11/freeze-recheck: review 8's line 33 restates not_poolable, and its line 139 names the
+                        # words it searched for and did not find; it reports no joined figure
+                        "evals/gap-study-4/review_kit/prefreeze-8.md":
+                        "f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3"}
 
 # TWO KINDS OF PATTERN, AND WHY THEY ARE NOT ONE LIST.
 #

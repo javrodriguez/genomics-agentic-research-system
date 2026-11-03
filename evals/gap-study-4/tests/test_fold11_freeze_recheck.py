@@ -16,6 +16,7 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
   D.touch     the freeze commit changes exactly its three outputs, and its fragment is output_fragment's bytes
   D.bytes     the frozen file is byte for byte what the freeze's own code writes from the parent's tree: a pin dropped, a
               task edited or dropped, a key keys_outside_the_freeze allows but nothing writes
+  D.gates     the freeze's two gates on the draft itself: no holdout field, and the order function's digest
   D.holdout   the frozen digests pass the freeze's own validator and the count is theirs
   D.real      outside a disposable rehearsal: the rehearsal record's sha256 is its text's, the beacon reading is no
               synthetic one, the witness is one and is what the freeze derives from its own stamps
@@ -45,10 +46,14 @@ HERE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HERE))
 
 import freeze  # noqa: E402
+import freeze_rehearsal  # noqa: E402
 import study  # noqa: E402
 import takes  # noqa: E402
 
 SELECTED = None
+LIVE_BOX_PASS = ("live-box record " + "a" * 64 + ": walk lb1, budget 10 s of 20 s, turn 2 cut (end timed-out, exit 124), stream 3 "
+                 "unit(s), session 3 unit(s), shape equal, content problems 0, session torn no; files 4 re-read equal; adapter, "
+                 "check_take and checker digests this tree's; within the bound")
 OUTPUTS = ("prereg.json", "COPIED.json", "COPIED.d/freeze.json")
 FRAGMENT = "COPIED.d/review-records.json"
 MESSAGE = "Freeze\n\nCo-Authored-By: synthetic <synthetic@example.invalid>\n"
@@ -154,6 +159,9 @@ class World:
         """The freeze commit again, on the same parent, by hand: `edit` changes the frozen dict, `raw` replaces its bytes,
         `also` writes other paths {study-relative: bytes} into the same commit."""
         run_git(self.repo, "reset", "-q", "--hard", self.parent)
+        # the gate reads every reflog: this rig's own earlier worlds, a merge or a root commit re-adding the report, are no
+        # part of the next one
+        run_git(self.repo, "reflog", "expire", "--expire=now", "--all")
         doc = copy.deepcopy(self.frozen)
         if edit:
             edit(doc)
@@ -245,6 +253,19 @@ class DDraft(Base):
         self.world.commit_freeze(edit, also={"prereg-draft.json": body})
         named(self.world.check(), "prereg-draft.json", "D.touch")
 
+    def test_the_gates_on_the_draft_are_read(self):
+        # the freeze's own two gates on the draft, on bytes committed in the freeze commit (D.touch names that too)
+        draft = json.loads((self.world.study / "prereg-draft.json").read_text())
+        for key, value, needle in ((freeze.ORDER_FUNCTION_HASH_KEY, "0" * 64, "order function"),
+                                   ("holdout_salted_digests", {}, "before the freeze")):
+            with self.subTest(key=key):
+                body = freeze.json_bytes({**draft, key: value})
+
+                def edit(doc, b=body):
+                    doc["draft_sha256_at_freeze"] = hashlib.sha256(b).hexdigest()
+                self.world.commit_freeze(edit, also={"prereg-draft.json": body})
+                named(self.world.check(), needle, "D.gates")
+
 
 class DKeys(Base):
     def test_a_design_key_edited_at_the_freeze_is_refused(self):
@@ -285,7 +306,7 @@ import check_results as cr, result, run_builders, freeze
 pipe = mock.Mock(); pipe.produce.return_value = {"records": []}
 with mock.patch.object(cr, "pipeline", return_value=pipe), mock.patch.object(result, "from_records", return_value={}), \\
         mock.patch.object(result, "render", return_value="page"), mock.patch.object(cr, "original_values_problems", return_value=[]), \\
-        mock.patch.object(run_builders, "order_problems", return_value=[]), mock.patch.object(cr.stats, "check_records"):
+        mock.patch.object(run_builders, "order_problems", side_effect=lambda *a: []), mock.patch.object(cr.stats, "check_records"):
     out = {}
     for name, pre in (("held", {"published_tip_residual": freeze.PUBLISHED_TIP_LIMIT}), ("absent", {}),
                       ("soft", {"published_tip_residual": "softened"})):
@@ -325,10 +346,14 @@ class DReview(Base):
         named(self.world.check(), "names another report", "D.review")
 
     def test_a_named_report_that_refused_is_refused_by_its_ruling(self):
-        # review_file_problems stood in as clean, so the ruling clause is read alone; round 8 ruled DO NOT FREEZE
-        rel = self.earlier_report()
-        body = (self.world.repo / rel).read_bytes()
-        self.assertNotEqual(freeze.read_ruling(body.decode()), freeze.DO_FREEZE, "the fixture: the earlier round refused")
+        # review_file_problems stood in as clean, so the ruling clause is read alone. The report is the latest that refused,
+        # by its ruling, never by its number: a head that freezes has an approving round as its latest
+        reports = sorted((self.world.study / study.REVIEW_DIR).glob("prefreeze-[0-9]*.md"), key=lambda f: f.stat().st_size)
+        refused = [f for f in reports if re.fullmatch(r"prefreeze-\d+\.md", f.name)
+                   and freeze.read_ruling(f.read_text()) == "DO NOT FREEZE"]
+        self.assertTrue(refused, "the fixture: a round that refused")
+        rel = study.rel(study.REVIEW_DIR, refused[-1].name)
+        body = refused[-1].read_bytes()
 
         def edit(doc):
             doc["pre_freeze_review_file"] = rel
@@ -453,9 +478,45 @@ class DReal(Base):
         lines = [hashlib.sha256((self.world.study / "prereg-draft.json").read_bytes()).hexdigest(),
                  freeze.REHEARSAL_TREE_PREFIX + self.world.frozen["rehearsed_study_tree_sha256"]]
         for name in freeze.rehearsal_required_steps():
-            lines += [f"[0] {name}", "    ok"]
+            lines += [f"[0] {name}", "    " + (LIVE_BOX_PASS if name == freeze_rehearsal.LIVE_BOX_STEP else "ok")]
         text = "\n".join(lines + [freeze.REHEARSAL_LAST_LINE]) + "\n"
         return {"name": "freeze-rehearsal-1.txt", "sha256": hashlib.sha256(text.encode()).hexdigest(), "text": text}
+
+    def real_frozen(self, doc):
+        """`doc` as a real freeze writes it: a non-synthetic reading, its seed and order, a green record, and the witness
+        the freeze's own code derives from one push of the parent, stamped well before the round."""
+        import order_beacon
+        draft = json.loads((self.world.study / "prereg-draft.json").read_text())
+        signature = "ab" * 48
+        reading = dict(doc["take_order_beacon_reading"], signature=signature,
+                       randomness=hashlib.sha256(bytes.fromhex(signature)).hexdigest())
+        seed = order_beacon.seed(reading)
+        doc.update(take_order_beacon_reading=reading, take_order_seed=seed, take_order=freeze.planned_order(draft, seed),
+                   rehearsal_record=self.green_record(),
+                   holdout_salted_digests={t["id"]: [hashlib.sha256(f"stand-in-{t['id']}-{i}".encode()).hexdigest()
+                                                     for i in range(2)] for t in draft["tasks"]})
+        registered = {"repo": order_beacon.WITNESS_REPO, "host": freeze.WITNESS_HOST}
+        for name in ("registering", "draft"):
+            registered[f"{name}_commit"] = self.world.base
+            registered[f"{name}_push"] = {"sha": self.world.parent, "stamp": 1000000000}
+        doc["take_order_witness"] = registered
+
+    def no_swaps(self) -> str:
+        # the scratch's one-commit history holds no registration or swap history, so those two reads stand in; the real
+        # line's are driven on a scratch clone of the real history (the fold's report)
+        return DRIVER.replace("import check_results as cr\n", "import check_results as cr, freeze\n"
+                              "freeze.supersession_swaps = lambda history: []\n"
+                              f"freeze.registering_commit = lambda round_no: {self.world.base!r}\n")
+
+    def test_the_real_shape_passes_and_an_edited_witness_does_not(self):
+        self.world.commit_freeze(self.real_frozen)
+        self.assertEqual(self.world.check("real", self.no_swaps()), [], "D.real.witness")
+
+        def edited(doc):
+            self.real_frozen(doc)
+            doc["take_order_witness"]["repo"] = "someone/else"
+        self.world.commit_freeze(edited)
+        named(self.world.check("real", self.no_swaps()), "take_order_witness", "D.real.witness")
 
     def test_a_placeholder_witness_is_refused(self):
         record = self.green_record()
@@ -579,11 +640,72 @@ class DMain(Base):
 
 def mutants() -> dict:
     """name -> (clause, module, anchor, replacement). Each anchor occurs once in the module's source."""
-    return {}
+    cr = "check_results"
+    return {
+        "wired-off": ("D.main", cr, "    return problems + rehearsal + held + recheck\n", "    return problems + rehearsal + held\n"),
+        "draft-digest": ("D.draft", cr, '    if hashlib.sha256(raw_draft).hexdigest() != frozen.get("draft_sha256_at_freeze"):\n', "    if False:\n"),
+        "keys-outside": ("D.keys", cr, "        outside = freeze.keys_outside_the_freeze(draft, frozen)\n", "        outside = []\n"),
+        "keys-present": ("D.keys", cr, "    if absent:\n", "    if False:\n"),
+        "never-written": ("D.clean", cr, 'FREEZE_KEYS_NOT_WRITTEN = ("nulls_at_freeze",)\n', "FREEZE_KEYS_NOT_WRITTEN = ()\n"),
+        "limit-at-freeze": ("D.limit", cr, "    out += tip_limit_problems(frozen)\n", ""),
+        "limit-at-publication": ("D.publication", cr, "    problems += tip_limit_problems(pre)", "    problems += []"),
+        "review-digest": ("D.review", cr, '        if review_sha != frozen.get("pre_freeze_review_sha256"):\n', "        if False:\n"),
+        "review-absent": ("D.review", cr, "    if review is None:\n        out.append(f\"pre_freeze_review_file", "    if review is None:\n        str(f\"pre_freeze_review_file"),
+        "ruling": ("D.ruling", cr, "        if ruling != freeze.DO_FREEZE:\n", "        if False:\n"),
+        "gate": ("D.gate", cr, "        if bad:\n            out.append(\"review_file_problems", "        if False:\n            out.append(\"review_file_problems"),
+        "gate-names": ("D.review", cr, "        elif named != review_file:\n", "        elif False:\n"),
+        "gate-at-head": ("D.asof", cr, "    with freeze_as_of(parent) as fz:\n", "    with contextlib.nullcontext(freeze) as fz:\n"),
+        "parent-edit": ("D.parent", cr, "    if want_parent != parent:\n", "    if False:\n"),
+        "merge": ("D.parent", cr, "    if len(parents) != 1:\n", "    if False:\n"),
+        "touch": ("D.touch", cr, "    if touched != want:\n", "    if False:\n"),
+        "fragment": ("D.touch", cr, "    if committed_raw(commit, study.rel(FREEZE_OUTPUTS[2])) != freeze.json_bytes(freeze.output_fragment()):\n", "    if False:\n"),
+        "bytes": ("D.bytes", cr, "        out += frozen_file_problems(frozen, draft, parent, commit, raw_draft, review_sha, fz)\n", ""),
+        "draft-gates": ("D.gates", cr, "    out += [p for p in (freeze.draft_holdout_problem(draft), freeze.order_function_problem(draft)) if p]\n", ""),
+        "holdout-validator": ("D.holdout", cr, "        count = build_draft.validate_digests(frozen.get(\"holdout_salted_digests\"), [t[\"id\"] for t in draft[\"tasks\"]])\n", "        count = frozen.get(\"holdout_wordings_per_task_version\")\n"),
+        "holdout-count": ("D.holdout", cr, '        if count != frozen.get("holdout_wordings_per_task_version"):\n', "        if False:\n"),
+        "witness-unread": ("D.real.witness", cr, "            out += witness_as_derived_problems(frozen, draft, fz)\n", "            pass\n"),
+        "witness-compare": ("D.real.witness", cr, "    if again != witness:\n", "    if False:\n"),
+        "reading-synthetic": ("D.real.reading", cr, '        if isinstance(reading, dict) and reading.get("signature") == freeze.SYNTHETIC_SIGNATURE:\n', "        if False:\n"),
+        "record-digest": ("D.real.record", cr, '        if isinstance(text, str) and hashlib.sha256(text.encode("utf-8")).hexdigest() != record.get("sha256"):\n', "        if False:\n"),
+        "root-passes": ("D.real.root", cr, "        return [] if rehearsal_plan else [f\"the freeze commit {commit[:12]} has no parent", "        return [] if True else [f\"the freeze commit {commit[:12]} has no parent"),
+        "network-push": ("D.network", cr, '            if (push.get("stamp"), push.get("sha")) not in real:\n', "            if False:\n"),
+        "network-reading": ("D.network", cr, '    if any(reading.get(k) != answer.get(k) for k in ("round", "randomness", "signature")):\n', "    if False:\n"),
+        "network-door": ("D.network", cr, "    return problems + frozen_network_problems(pushes), ledger, unwitnessed\n", "    return problems, ledger, unwitnessed\n"),
+    }
 
 
-BOUND = {}
-WITNESSES = {name: (BOUND[clause], clause) for name, (clause, _, _, _) in mutants().items()}
+METHOD = {
+    "wired-off": "DMain.test_the_cli_refuses_an_edited_state",
+    "draft-digest": "DDraft.test_a_recorded_digest_that_is_not_the_drafts_is_refused",
+    "keys-outside": "DKeys.test_a_design_key_edited_at_the_freeze_is_refused",
+    "keys-present": "DKeys.test_every_key_the_freeze_writes_must_be_present",
+    "never-written": "DClean.test_the_clean_freeze_has_no_problem",
+    "limit-at-freeze": "DLimit.test_the_limit_stripped_or_softened_at_the_freeze_is_refused",
+    "limit-at-publication": "DLimit.test_check_publication_holds_the_limit",
+    "review-digest": "DReview.test_a_recorded_digest_that_is_not_the_reports_is_refused",
+    "review-absent": "DReview.test_the_named_report_must_exist_at_the_parent",
+    "ruling": "DReview.test_a_named_report_that_refused_is_refused_by_its_ruling",
+    "gate": "DReview.test_a_seed_commit_the_gate_refuses_is_refused",
+    "gate-names": "DReview.test_another_report_named_with_its_own_digest_is_refused",
+    "gate-at-head": "DReview.test_the_gate_reads_the_parent_not_head",
+    "parent-edit": "DParent.test_an_edited_parent_is_refused_not_read_as_another_copy",
+    "merge": "DParent.test_a_merge_freeze_commit_is_refused",
+    "touch": "DTouch.test_a_freeze_commit_carrying_anything_else_is_refused",
+    "fragment": "DTouch.test_an_edited_fragment_is_refused",
+    "bytes": "DBytes.test_a_pin_dropped_is_refused",
+    "draft-gates": "DDraft.test_the_gates_on_the_draft_are_read",
+    "holdout-validator": "DHoldout.test_digests_the_validator_refuses_are_refused",
+    "holdout-count": "DHoldout.test_a_count_that_is_not_theirs_is_refused",
+    "witness-unread": "DReal.test_a_placeholder_witness_is_refused",
+    "witness-compare": "DReal.test_the_real_shape_passes_and_an_edited_witness_does_not",
+    "reading-synthetic": "DReal.test_a_synthetic_reading_is_refused",
+    "record-digest": "DReal.test_a_record_whose_digest_is_not_its_texts_is_refused",
+    "root-passes": "DReal.test_a_root_freeze_commit_is_refused_on_the_real_road_only",
+    "network-push": "DNetwork.test_the_network_door_holds_the_witness_and_the_reading",
+    "network-reading": "DNetwork.test_the_network_door_holds_the_witness_and_the_reading",
+    "network-door": "DNetwork.test_witness_main_reads_the_door",
+}
+WITNESSES = {name: (METHOD[name], clause) for name, (clause, _, _, _) in mutants().items()}
 # One child builds its own scratch repository and reads one test. Measured on the Mac: see the fold's report.
 CHILD_TIMEOUT_S = 1200
 

@@ -1502,6 +1502,7 @@ class FreezeCoverage(unittest.TestCase):
                         mock.patch.object(cr, "freeze_commit", return_value="synthetic"), \
                         mock.patch.object(cr, "frozen_commit_problems", return_value=[]), \
                         mock.patch.object(cr, "take_order_problems", return_value=[]), \
+                        mock.patch.object(cr, "freeze_recheck_problems", return_value=[]), \
                         redirect_stdout(io.StringIO()) as output:      # fold2/lb: the order recompute stood in
                     problems = cr.check_frozen_content()
                 self.assertEqual(len(problems), 1 + int(changed))
@@ -1607,6 +1608,9 @@ class FreezeCoverage(unittest.TestCase):
                          for name in ("main", "check_frozen_content", "rehearsal_record_problems")}
             launcher = ('import sys,json,marshal,base64,types; sys.path.insert(0,sys.argv[1]); '
                         'import check_results as m; '
+                        # lane fold11/freeze-recheck: this rig's synthetic design is no registered design, as its own
+                        # freeze's PENDING and coverage stand-ins say; test_fold11_freeze_recheck reads the recheck
+                        'm.freeze_recheck_problems = (lambda *a, **k: []); '
                         '[(setattr(m,n,types.FunctionType(marshal.loads(base64.b64decode(c)), '
                         'm.__dict__,n,getattr(m,n).__defaults__))) for n,c in json.loads(sys.argv[2]).items()]; '
                         'sys.exit(m.main(sys.argv[3:]))')
@@ -1727,6 +1731,7 @@ class FreezeCoverage(unittest.TestCase):
                     mock.patch.object(cr, "REPO", repo.root), \
                     mock.patch.object(study, "rel", lambda name: name), \
                     mock.patch.object(cr, "take_order_problems", return_value=[]), \
+                    mock.patch.object(cr, "freeze_recheck_problems", return_value=[]), \
                     redirect_stdout(io.StringIO()):     # fold2/lb: the order recompute stood in (test_fold2_lb's)
                 return cr.check_frozen_content()
 
@@ -1962,7 +1967,7 @@ class PublishedArtifacts(unittest.TestCase):
         history = [recorded(labels4.GRADED, r)]
         grade = lambda r, o: {"label": "synthetic-right", "correct": True}
         records = get_run().produce(rows, history, grade, table=table())["records"]
-        pre = pre_registration()
+        pre = dict(pre_registration(), published_tip_residual=freeze.PUBLISHED_TIP_LIMIT)    # fold 10's review, m1
         pre["rows"][0]["agent"]["version"] = "0.0.2"
         page = result_page.render(result_page.from_records(records, pre, rows, history, table()))
         with self.assertRaisesRegex(ValueError, "pre-registered"):
@@ -1977,18 +1982,25 @@ class PublishedArtifacts(unittest.TestCase):
         history = [recorded(labels4.GRADED, r)]
         grader = lambda r, o: {"label": "synthetic-right", "correct": True}
         records = runner.produce(rows, history, grader, table=table())["records"]
-        pre = pre_registration()
+        pre = dict(pre_registration(), published_tip_residual=freeze.PUBLISHED_TIP_LIMIT)
         page = result_page.render(result_page.from_records(records, pre, rows, history, table()))
         self.assertEqual(cr.check_publication(rows, history, records, pre, page, grader, table()), [])
         # lane fold9/round7-residual (pre-freeze review 7, M1): a frozen file's limit is printed on the page, and the
         # unedited check_publication refuses a page without it
-        limited = dict(pre, published_tip_residual="synthetic limit on the review record")
-        with_limit = result_page.render(result_page.from_records(records, limited, rows, history, table()))
-        self.assertIn(result_page.TIP_LIMIT_HEADING, with_limit)
-        self.assertIn("synthetic limit on the review record", with_limit)
-        self.assertEqual(cr.check_publication(rows, history, records, limited, with_limit, grader, table()), [])
-        self.assertTrue(cr.check_publication(rows, history, records, limited, page, grader, table()),
+        self.assertIn(result_page.TIP_LIMIT_HEADING, page)
+        self.assertIn(freeze.PUBLISHED_TIP_LIMIT, page)
+        stripped = {k: v for k, v in pre.items() if k != "published_tip_residual"}
+        bare = result_page.render(result_page.from_records(records, stripped, rows, history, table()))
+        self.assertTrue(cr.check_publication(rows, history, records, pre, bare, grader, table()),
                         "a page without the limit passes")
+        # lane fold11/freeze-recheck (fold 10's review, m1): a frozen file without the limit, or with another, and the page
+        # it renders, were read as agreeing; result.derive's hold is held here too
+        self.assertTrue(cr.check_publication(rows, history, records, stripped, bare, grader, table()),
+                        "a frozen file without the limit passes")
+        softer = dict(pre, published_tip_residual="synthetic limit on the review record")
+        soft_page = result_page.render(result_page.from_records(records, softer, rows, history, table()))
+        self.assertTrue(cr.check_publication(rows, history, records, softer, soft_page, grader, table()),
+                        "a frozen file with another limit passes")
         corrupt = copy.deepcopy(records); corrupt[0]["label"] = "synthetic-other"
         self.assertTrue(cr.check_publication(rows, history, corrupt, pre, page, grader, table()))
         with mock.patch.object(cr, "records_equal", lambda actual, wanted: True):

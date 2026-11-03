@@ -1,0 +1,5 @@
+# Lane fold11/freeze-recheck: Gap Study round 4, pre-freeze review 8's M1 and fold 10's review, m1 and m5. One command per
+# line, run from the repository root. --witnesses runs every registered mutant against its bound test, each child in its
+# own scratch repository. Synthetic records only; the scratch holds the study's real pinned files and real draft.
+python3 -B -W ignore evals/gap-study-4/tests/test_fold11_freeze_recheck.py
+python3 -B -W ignore evals/gap-study-4/tests/test_fold11_freeze_recheck.py --witnesses
