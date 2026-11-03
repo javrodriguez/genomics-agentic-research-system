@@ -1,0 +1,41 @@
+{
+  "agent_calls": 0,
+  "change": {
+    "checker_constants_sha256": [
+      "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
+      "2686bf7901b6f40072e06954bba6e3be0d8bcf09e679c4b27f1414f33925cc15"
+    ],
+    "reasons_added": [],
+    "reasons_removed": []
+  },
+  "checker_constants_sha256": "2686bf7901b6f40072e06954bba6e3be0d8bcf09e679c4b27f1414f33925cc15",
+  "checker_reasons": [
+    "nested-agent"
+  ],
+  "machine": {
+    "checkout": "/home/javier/w-BlVlVcbA/repo",
+    "home": "/home/javier",
+    "temp_root": "/tmp"
+  },
+  "n": 3,
+  "nested_cli_calls": 0,
+  "no_output_nudges": 0,
+  "route": null,
+  "run_tree": "/tmp/run-ca61517f",
+  "schema": 1,
+  "subagents": {
+    "calls": [],
+    "models": [],
+    "stream_file_differences": 0
+  },
+  "supersedes": "recheck-2.json",
+  "walk": "w138",
+  "walk_commit": "175db5200618f9a6c1b5d4f3c042d4d01014a41d",
+  "was": {
+    "checker_constants_sha256": "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
+    "checker_reasons": [
+      "nested-agent"
+    ],
+    "file": "recheck-2.json"
+  }
+}
