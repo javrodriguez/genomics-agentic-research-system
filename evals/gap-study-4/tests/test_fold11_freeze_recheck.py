@@ -22,10 +22,13 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
               synthetic one, the witness is one and is what the freeze derives from its own stamps
   D.network   check_results.py --witness holds the frozen witness to the push records and the reading to the relays
   D.shapes    the freeze's shapes gate on the draft is read again, and it holds on this tree
-  D.py39      the check runs where tar's extractall takes no `filter` (Python 3.9's signature)
+  D.py39      freeze_as_of never reaches tar's extractall; no claim about Python 3.9, which fails closed at the shapes gate
   D.rounds    rounds.py --add refuses a prefreeze row once a frozen file exists, and leaves a verify row alone
   D.road      a DO FREEZE report that trips both lints lands through the post-review road with no edit to a pinned file
               but its own claims, both lints clean, and the launch binding reads clean
+  D.post      after the freeze: rounds.json's pin holds on every row present at the freeze, and only valid verify rows may
+              be appended; every other pinned file still refuses; check_results.py --ledger is green along the plan's whole
+              road (a take, its records and page, labels, one verify round, two, a new copy-record fragment)
   D.main      main --ledger --rehearsal-plan, the real CLI, passes the clean state and refuses an edited one, and the
               runtime steps of the rehearsal run on it
 
@@ -123,6 +126,9 @@ class World:
         self.base = self.commit("the study")
         self.rounds = self.study / study.REVIEW_DIR / "rounds.json"
         register = json.loads(self.rounds.read_text())
+        register["rows"] = [r for r in register["rows"] if r.get("kind") == "prefreeze"]   # a verify report is not pinned
+        self.rounds.write_text(json.dumps(register, indent=2) + "\n")
+        self.base = self.commit("the study, its prefreeze rows")
         self.earlier = max(r["n"] for r in register["rows"] if r.get("kind") == "prefreeze")
         self.n = self.earlier + 1
         kit = root / "kit"
@@ -646,7 +652,8 @@ class DShapes(Base):
 
 class DPy39(Base):
     def test_the_check_needs_no_filter_argument(self):
-        # pre-gate review of the fold, M2: 3.9.6's signature, which took the check down with a TypeError
+        # The gate review's M2: freeze_as_of does not reach tar's extraction. This is all it shows. It runs on sys.executable
+        # with the shapes gate stood in, and on 3.9 that gate's import of check_take fails closed: 3.12 is the interpreter.
         driver = DRIVER.replace("import check_results as cr, freeze\n", "import tarfile\n"
                                 "tarfile.TarFile.extractall = lambda self, path='.', members=None, *, numeric_owner=False: None\n"
                                 "import check_results as cr, freeze\n")
@@ -738,7 +745,7 @@ out = {"line": ll.REPORT_DIGEST_LINE == freeze._blindness().REPORT_DIGEST}
 with tempfile.TemporaryDirectory() as tmp:
     kit = Path(tmp) / "review_kit"
     kit.mkdir()
-    for name in ("prefreeze-8", "prefreeze-9", "prefreeze-12"):
+    for name in ("prefreeze-8", "prefreeze-9", "prefreeze-12", "prefreeze-09"):
         (kit / f"{name}.md").write_bytes(b"words\\n")
         (kit / f"{name}-blindness.txt").write_text(ll.REPORT_DIGEST_LINE + hashlib.sha256(b"words\\n").hexdigest() + "\\n")
         out[name] = ll.is_bound_review_report(kit / f"{name}.md")
@@ -747,8 +754,8 @@ with tempfile.TemporaryDirectory() as tmp:
     out["elsewhere"] = ll.is_bound_review_report(other)
 print("PROBLEMS " + json.dumps(out))
 """
-        self.assertEqual(self.world.check("plan", driver), {"line": True, "prefreeze-8": False, "prefreeze-9": True,
-                                                            "prefreeze-12": True, "elsewhere": False}, "D.road.floor")
+        self.assertEqual(self.world.check("plan", driver), {"line": True, "prefreeze-8": False, "prefreeze-9": True, "prefreeze-12": True,
+                                                            "prefreeze-09": False, "elsewhere": False}, "D.road.floor")
 
     def test_a_pinned_edit_after_the_review_breaks_the_binding(self):
         # why the cure cannot be made after the report: the road's whole reason
@@ -760,11 +767,152 @@ print("PROBLEMS " + json.dumps(out))
         self.assertTrue(any("lint_pooling.py" in p for p in bad), f"D.road.pinned: {bad}")
 
     def test_the_claims_tool_refuses_anywhere_else(self):
-        # at the parent: HEAD is the earlier claims commit, which does not land the two records
-        run_git(self.world.repo, "reset", "-q", "--hard", self.world.parent)
+        # HEAD lands nothing and nothing is claimed yet, so only the landing check can refuse this
+        run_git(self.world.repo, "reset", "-q", "--hard", self.world.review)
+        head = self.world.commit("a commit between the report and its claims")
         got = self.world.cli(self.TOOL, str(self.world.n))
         self.assertEqual(got.returncode, 1, f"D.road.tool: {got.stdout[-400:]}")
-        self.assertEqual(run_git(self.world.repo, "rev-parse", "HEAD"), self.world.parent, "D.road.tool")
+        self.assertIn("does not land exactly", got.stdout, "D.road.tool")
+        self.assertEqual(run_git(self.world.repo, "rev-parse", "HEAD"), head, "D.road.tool")
+
+
+class DPost(Base):
+    """The gate review 2's m1, and the road after the freeze."""
+
+    PINS = ("import json, sys\nsys.path.insert(0, sys.argv[1])\nimport check_results as cr\n"
+            "print('PROBLEMS ' + json.dumps(cr.check_pins()))\n")
+
+    def study_git(self, message="a post-freeze commit") -> str:
+        return self.world.commit(message)
+
+    def add_verify(self, tmp, words=REPORT_WORDS) -> int:
+        kit = Path(tempfile.mkdtemp(dir=tmp))
+        shutil.copyfile(self.world.study / "prereg-draft.json", kit / "prereg.json")
+        (kit / "COMMIT").write_text(run_git(self.world.repo, "rev-parse", "HEAD") + "\n")
+        got = self.world.cli(f"{study.REVIEW_DIR}/rounds.py", "--add", "--kind", "verify", "--folder", str(kit))
+        self.assertEqual(got.returncode, 0, f"D.post: {got.stdout[-500:]}")
+        row_commit = self.study_git("a verify row")
+        n = json.loads(self.world.rounds.read_text())["rows"][-1]["n"]
+        folder = self.world.study / study.VERIFY_DIR
+        folder.mkdir(exist_ok=True)
+        (folder / f"verify-{n}.md").write_text(f"# a synthetic verifier\n\n{words}\n")
+        (folder / f"verify-{n}-blindness.txt").write_text(f"session id: {takes.session_id_for(row_commit)}\n")
+        self.study_git("a verifier's report")
+        return n
+
+    def pins(self):
+        return self.world.check("plan", self.PINS)
+
+    def edit_register(self, change):
+        doc = json.loads(self.world.rounds.read_text())
+        change(doc)
+        self.world.rounds.write_text(json.dumps(doc, indent=2) + "\n")
+        self.study_git("the register edited")
+
+    def test_a_valid_verify_row_holds_the_pin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.add_verify(tmp)
+            self.assertEqual(self.pins(), [], "D.post.valid")
+            self.add_verify(tmp)
+            self.assertEqual(self.pins(), [], "D.post.valid")
+
+    def test_a_changed_or_removed_row_refuses(self):
+        def changed(doc):
+            doc["rows"][0]["launch_commit"] = "0" * 40
+
+        def removed(doc):
+            del doc["rows"][0]
+        for name, change in (("changed", changed), ("removed", removed)):
+            with self.subTest(name=name):
+                self.world.commit_freeze()
+                self.edit_register(change)
+                self.assertTrue(self.pins(), f"D.post.frozen-rows: {name}")
+
+    def test_the_rows_of_the_freeze_must_survive_a_verify_row(self):
+        # the prefix read, on its own: a valid verify row appended beside an edit of a row the freeze held
+        with tempfile.TemporaryDirectory() as tmp:
+            self.add_verify(tmp)
+
+            def changed(doc):
+                doc["rows"][0]["voids"] = 99
+            self.edit_register(changed)
+            self.assertTrue(self.pins(), "D.post.frozen-rows")
+
+    def test_a_later_prefreeze_row_refuses(self):
+        head = run_git(self.world.repo, "rev-parse", "HEAD")
+
+        def later(doc):
+            doc["rows"].append({"n": self.world.n + 1, "kind": "prefreeze", "launch_commit": head, "voids": None,
+                                "prompt_sha256": "a" * 64, "input_sha256": "b" * 64})
+        self.edit_register(later)
+        self.assertTrue(self.pins(), "D.post.kind")
+
+    def verify_row(self, **fields):
+        row = {"n": 1, "kind": "verify", "launch_commit": run_git(self.world.repo, "rev-parse", "HEAD"), "voids": None,
+               "prompt_sha256": "a" * 64, "input_sha256": "b" * 64}
+        row.update(fields)
+        return row
+
+    def test_an_invalid_verify_row_refuses(self):
+        cases = {"D.post.number": {"n": 7}, "D.post.launch": {"launch_commit": "0" * 40},
+                 "D.post.launch-before": {"launch_commit": self.world.parent}, "D.post.digests": {"prompt_sha256": "short"}}
+        for clause, fields in cases.items():
+            with self.subTest(clause=clause):
+                self.world.commit_freeze()
+                row = self.verify_row(**fields)
+                self.edit_register(lambda doc, r=row: doc["rows"].append(r))
+                self.assertTrue(self.pins(), clause)
+
+    def test_a_top_level_change_refuses(self):
+        row = self.verify_row()
+
+        def change(doc):
+            doc["rows"].append(row)
+            doc["another"] = 1
+        self.edit_register(change)
+        self.assertTrue(self.pins(), "D.post.top")
+
+    def test_every_other_pinned_file_still_refuses(self):
+        for rel in (FRAGMENT, "language-allowlist.json", "rehearsals/register.json", "owner_decisions.jsonl", "lint_pooling.py"):
+            with self.subTest(rel=rel):
+                self.world.commit_freeze()
+                f = self.world.study / rel
+                f.write_bytes(f.read_bytes() + b"\n")
+                self.study_git("a pinned file edited")
+                self.assertTrue(any(rel in p for p in self.pins()), f"D.post.others: {rel}")
+
+    def test_the_cli_is_green_along_the_plans_road(self):
+        cli = self.world.cli
+        with tempfile.TemporaryDirectory() as tmp:
+            row = Path(tmp) / "row.json"
+            row.write_text(json.dumps(self.world.frozen["take_order"][0]))
+            for command in (("takes.py", "--add", "--row", str(row), "--attempt", "1"), ("run.py", "--all"), ("result.py", "--write")):
+                got = cli(*command)
+                self.assertEqual(got.returncode, 0, f"D.post.road: {command}: {got.stdout[-800:]}{got.stderr[-800:]}")
+            self.study_git("a take's records and the page")
+            for name in ("frame.json", "sample.json", "definitions.json", "labels.json"):      # no pin names these
+                (self.world.study / "labelling" / name).write_text("{}\n")
+            (self.world.study / "labelling" / "AGREEMENT.md").write_text("# a synthetic table\n")
+            self.study_git("the labels and the agreement table")
+
+            def ledger(when):
+                got = cli("check_results.py", "--ledger", "--rehearsal-plan")
+                self.assertEqual(got.returncode, 0, f"D.post.road: {when}: {got.stdout[-1200:]}{got.stderr[-400:]}")
+            ledger("after the labels")
+            self.add_verify(tmp)
+            ledger("after one verify round")
+            self.add_verify(tmp)
+            ledger("after two")
+            fragment = self.world.study / "COPIED.d" / "verify-records.json"
+            fragment.write_text(json.dumps({"lane": "verify-records", "files": []}, indent=2) + "\n")
+            self.study_git("a new copy-record fragment")
+            ledger("after a new fragment")
+            for command in (("result.py", "--check"), ("completeness.py", "--check"),
+                            ("lint_language.py", str(self.world.study)), ("lint_pooling.py", str(self.world.study))):
+                got = cli(*command)
+                self.assertEqual(got.returncode, 0, f"D.post.road: {command}: {got.stdout[-900:]}{got.stderr[-400:]}")
+            got = cli("check_results.py", "--regrade", "--rehearsal-plan")
+            self.assertEqual(got.returncode, 0, f"D.post.regrade: {got.stdout[-500:]}{got.stderr[-300:]}")
 
 
 class DMain(Base):
