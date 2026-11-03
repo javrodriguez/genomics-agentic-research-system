@@ -693,6 +693,41 @@
       "line_text": "One correction. The brief scopes the operator to \"after the takes exist\", but it also lists \"a choice among several \u2026 reviews\". That choice is made *before* the freeze, at the step that seeds it. So the operator's threat model has to include the window between the reviews and the freeze. Every finding below is ruled against that corrected statement. Complete, coherent fabrication across every ledger is still out of scope, as are vendor-side behaviour beyond the client's records and the honesty of the machine and runner. Each of those is a limitation the pre-registration must name.",
       "ruled": "2026-11-02",
       "why": "Bound record, never edited: review_kit/prefreeze-7.md is pre-freeze review 7 as committed by review_kit/commit_review.py after lane fold9/round7-residual lands (sha256 4538ce819faa156431b6d3a2d784991a880d74d7b287c264d1b606f4ed8833cf); records are append-only, so the line is excused rather than reworded, on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation) in the fold 9 brief of Mon 2 Nov 2026. 'out of' names what the draft leaves unsaid or what the review's threat model leaves aside, never a rate in words."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-8.md",
+      "pattern": "always",
+      "line_text": "Fold 9 answers review 7's M1 in code. `freeze.py` now always writes `PUBLISHED_TIP_LIMIT` into the frozen file as `published_tip_residual`. `result.py` prints it under its own heading, and `result.derive` refuses a frozen file whose field differs (fold 10). Fold 9 also closes review 7's m-new-2: `rounds.py --add` now refuses unless the kit's `COMMIT` is HEAD. Both changes are sound as far as they reach.",
+      "ruled": "2026-11-03",
+      "why": "Bound record, never edited: review_kit/prefreeze-8.md is pre-freeze review 8 as committed by 5511d3af (sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3); records are append-only, so the line is excused rather than reworded, as rounds 1-7 were, by lane fold11/freeze-recheck. 'always' sits in the reviewer's sentence on what freeze.py writes."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-8.md",
+      "pattern": "out-of",
+      "line_text": "These stay out of scope, as limitations the draft must name: complete, coherent fabrication across every ledger; what a vendor serves beyond its client's records; and the honesty of the machines and runner beyond what they commit.",
+      "ruled": "2026-11-03",
+      "why": "Bound record, never edited: review_kit/prefreeze-8.md is pre-freeze review 8 as committed by 5511d3af (sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3); records are append-only, so the line is excused rather than reworded, as rounds 1-7 were, by lane fold11/freeze-recheck. 'out of' sits in the reviewer's sentence on what stays out of scope."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-8.md",
+      "pattern": "always",
+      "line_text": "  - `PUBLISHED_TIP_LIMIT` (`freeze.py:1190-1198`) names the residual in plain words and cites `[10]`. It is written always (`:1706`) and is a freeze-written key (`:662`).",
+      "ruled": "2026-11-03",
+      "why": "Bound record, never edited: review_kit/prefreeze-8.md is pre-freeze review 8 as committed by 5511d3af (sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3); records are append-only, so the line is excused rather than reworded, as rounds 1-7 were, by lane fold11/freeze-recheck. 'always' sits in the reviewer's account of fold 9's write."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-8.md",
+      "pattern": "ratio-slash",
+      "line_text": "  - The draft's line citations still land. I spot-checked 13, among them `freeze.py` 690/700/709/876/880/184/233, `result.py` 122/361 and `check_results.py` 153/624/739/863: all hit.",
+      "ruled": "2026-11-03",
+      "why": "Bound record, never edited: review_kit/prefreeze-8.md is pre-freeze review 8 as committed by 5511d3af (sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3); records are append-only, so the line is excused rather than reworded, as rounds 1-7 were, by lane fold11/freeze-recheck. The slashes separate the line numbers the reviewer spot-checked; none is a ratio."
+    },
+    {
+      "file": "evals/gap-study-4/review_kit/prefreeze-8.md",
+      "pattern": "outperform",
+      "line_text": "- **Outcome, walks, publication (steps 9-11).** `routing.py --check` proves the no-match defaults. `probes4.py --check` grades 1690 cells with 0 defects. Every take-side gate says it measured nothing rather than printing a pass. `lint_language` and `lint_pooling` are clean. `result.py` has no rate or model-comparison sentence that I could find (grep for `%`, \"better than\", \"outperform\": none outside comments).",
+      "ruled": "2026-11-03",
+      "why": "Bound record, never edited: review_kit/prefreeze-8.md is pre-freeze review 8 as committed by 5511d3af (sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3); records are append-only, so the line is excused rather than reworded, as rounds 1-7 were, by lane fold11/freeze-recheck. The word is what the reviewer searched for and did not find."
     }
   ]
 }

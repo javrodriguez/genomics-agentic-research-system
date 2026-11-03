@@ -25,6 +25,16 @@
       "path": "review_kit/prefreeze-7-blindness.txt",
       "status": "new",
       "reason": "Pre-freeze review 7's blindness record, committed by review_kit/commit_review.py; its section 8 reads NOT RECORDED. A bound record, never edited; its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/prefreeze-8.md",
+      "status": "new",
+      "reason": "Pre-freeze review 8's report (Ruling: DO NOT FREEZE on M1), committed by 5511d3af ('review: pre-freeze review 8, committed as it stands') through review_kit/commit_review.py, with sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3, the digest its blindness record states. A bound record, never edited; its bytes are not this lane's. Claimed here by lane fold11/freeze-recheck, as an ordinary commit."
+    },
+    {
+      "path": "review_kit/prefreeze-8-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 8's blindness record, committed by 5511d3af through review_kit/commit_review.py. A bound record, never edited; its bytes are not this lane's. Claimed here by lane fold11/freeze-recheck, as an ordinary commit."
     }
   ]
 }
