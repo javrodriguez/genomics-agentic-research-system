@@ -125,7 +125,7 @@ class World:
         run_git(self.repo, "init", "-q")
         run_git(self.repo, "config", "user.name", "t")
         run_git(self.repo, "config", "user.email", "t@example.invalid")
-        self.base = self.commit("the study")
+        self.first = self.base = self.commit("the study")     # the last commit that changes the draft
         self.rounds = self.study / study.REVIEW_DIR / "rounds.json"
         register = json.loads(self.rounds.read_text())
         register["rows"] = [r for r in register["rows"] if r.get("kind") == "prefreeze"]   # a verify report is not pinned
@@ -526,7 +526,7 @@ class DReal(Base):
                                                      for i in range(2)] for t in draft["tasks"]})
         registered = {"repo": order_beacon.WITNESS_REPO, "host": freeze.WITNESS_HOST}
         for name in ("registering", "draft"):
-            registered[f"{name}_commit"] = self.world.base
+            registered[f"{name}_commit"] = self.world.first
             registered[f"{name}_push"] = {"sha": self.world.parent, "stamp": 1000000000}
         doc["take_order_witness"] = registered
 
@@ -535,11 +535,18 @@ class DReal(Base):
         # line's are driven on a scratch clone of the real history (the fold's report)
         return DRIVER.replace("import check_results as cr, freeze\n", "import check_results as cr, freeze\n"
                               "freeze.supersession_swaps = lambda history: []\n"
-                              f"freeze.registering_commit = lambda round_no: {self.world.base!r}\n")
+                              f"freeze.registering_commit = lambda round_no: {self.world.first!r}\n")
 
     def test_the_real_shape_passes_and_an_edited_witness_does_not(self):
         self.world.commit_freeze(self.real_frozen)
         self.assertEqual(self.world.check("real", self.no_swaps()), [], "D.real.witness")
+        # read as another machine reads it: a fresh clone, with no reflog, in another timezone
+        with tempfile.TemporaryDirectory() as tmp:
+            run_git(self.world.repo, "clone", "-q", "--no-local", str(self.world.repo), f"{tmp}/repo")
+            run_git(Path(tmp) / "repo", "remote", "remove", "origin")
+            got = subprocess.run([sys.executable, "-B", "-W", "ignore", "-c", self.no_swaps(), f"{tmp}/repo/{study.STUDY_REL}", "real"],
+                                 capture_output=True, text=True, cwd=f"{tmp}/repo", env={**self.world.env(), "TZ": "Pacific/Kiritimati"})
+            self.assertIn("PROBLEMS []", got.stdout, f"D.real.elsewhere: {got.stdout[-600:]}{got.stderr[-400:]}")
 
         def edited(doc):
             self.real_frozen(doc)
