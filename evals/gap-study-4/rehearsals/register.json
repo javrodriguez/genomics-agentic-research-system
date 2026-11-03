@@ -11285,6 +11285,13 @@
       "n": 3,
       "checker_constants_sha256": "2686bf7901b6f40072e06954bba6e3be0d8bcf09e679c4b27f1414f33925cc15",
       "sha256": "1d40f8169fb56e490b2e0553047fa5769b780df9a37d80a0077df20160eae403"
+    },
+    {
+      "walk": "w121",
+      "file": "recheck-3.json",
+      "n": 3,
+      "checker_constants_sha256": "2686bf7901b6f40072e06954bba6e3be0d8bcf09e679c4b27f1414f33925cc15",
+      "sha256": "600924509e986eba471534b72520431ab114e8fcf2eb8f2fc0501339915a2287"
     }
   ]
 }
