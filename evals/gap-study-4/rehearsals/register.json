@@ -8520,6 +8520,13 @@
       "n": 2,
       "checker_constants_sha256": "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
       "sha256": "23dbdc6739409638e9859aa71da340ea644b13f764f3ef1c3bee672c7654fba3"
+    },
+    {
+      "walk": "w035",
+      "file": "recheck-2.json",
+      "n": 2,
+      "checker_constants_sha256": "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
+      "sha256": "a28738bd8fc08d8051816a9a018b8708d48288f9304632c4eb1813cebc6e47fd"
     }
   ]
 }
