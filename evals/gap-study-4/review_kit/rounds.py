@@ -256,6 +256,11 @@ def ever_committed(path: Path) -> bool:
 
 
 def add(kind: str, folder: Path, voids: int | None) -> int:
+    # Lane fold11/freeze-recheck (the fold's gate review, m1): a prefreeze row after the freeze refuses publication for good,
+    # whatever its state (freeze.later_review_problem, re-run by check_results). Verify rows are the study's later road.
+    if kind == "prefreeze" and (STUDY_DIR / "prereg.json").is_file():
+        print("refusing: this study is frozen, so a prefreeze row can only stop its publication. Nothing was written.")
+        return 1
     if uncommitted():
         print("refusing: the register has an uncommitted row. One commit introduces exactly one row, or two "
               "rounds would share a session id. Commit the previous row first.")

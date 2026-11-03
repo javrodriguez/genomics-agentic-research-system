@@ -302,6 +302,35 @@ def is_recorded_fixture_copy(path: Path) -> bool:
 DEFAULT_SUFFIXES = {".md", ".json"}
 
 
+# Lane fold11/freeze-recheck (the fold's gate review, m6): the same reasoning, for this study's review folder, by rule. A
+# seed round's report lands after its launch commit, and any edit to a pinned file then needs a new round, so a report
+# cannot be listed or cured by that file after the fact. From round 9 on, a report is outside this scan and lint_pooling's
+# when it is review_kit/prefreeze-<N>.md and its sha256 is the digest the blindness record beside it states: an edited copy
+# is no longer the record, and is scanned. Rounds before 9 keep their excusals and BOUND_REVIEW_RECORDS. Named on its own
+# path, a report is still scanned, and a walk says what it skipped.
+BOUND_RULE_FROM_ROUND = 9
+REPORT_DIGEST_LINE = "report sha256, as the reviewer's session wrote it: "     # review_kit/blindness.py REPORT_DIGEST
+
+
+def is_bound_review_report(path: Path) -> bool:
+    got = re.fullmatch(r"prefreeze-(\d+)\.md", path.name)
+    if not got or int(got.group(1)) < BOUND_RULE_FROM_ROUND or path.parent.name != "review_kit":
+        return False
+    try:
+        stated = re.findall(rf"^{re.escape(REPORT_DIGEST_LINE)}([0-9a-f]{{64}})$",
+                            path.with_name(f"prefreeze-{got.group(1)}-blindness.txt").read_text(errors="replace"), re.M)
+        return len(stated) == 1 and stated[0] == hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return False
+
+
+def named_bound_report(path: Path) -> bool:
+    if not is_bound_review_report(path):
+        return False
+    print(f"not scanned: {path.name}, a bound review report (is_bound_review_report)")
+    return True
+
+
 def iter_files(paths: list[str], include_code: bool = False):
     suffixes = DEFAULT_SUFFIXES | ({".py"} if include_code else set())
     for p in paths:
@@ -311,6 +340,7 @@ def iter_files(paths: list[str], include_code: bool = False):
                 if (f.is_file() and f.suffix in suffixes
                         and f.name not in NEVER_SCANNED
                         and not is_outside_report(f)
+                        and not named_bound_report(f)
                         and not is_case_file(f)
                         and not is_take_record(f)
                         and not is_recorded_fixture_copy(f)

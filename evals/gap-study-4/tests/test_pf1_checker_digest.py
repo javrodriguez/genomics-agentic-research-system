@@ -100,6 +100,7 @@ LAZY_OUTSIDE = {
     (STUDY + "takes.py", "run"),
     (STUDY + "check_results.py", "freeze"), (STUDY + "check_results.py", "labelling.sample"),
     (STUDY + "check_results.py", "result"), (STUDY + "check_results.py", "run_builders"),
+    (STUDY + "check_results.py", "build_draft"), (STUDY + "check_results.py", "order_beacon"),     # lane fold11: the recheck
 }
 WALKS = ("w165", "w-o46", "w-g21")
 PENDING_WALKS = ("w-o46", "w-g21")

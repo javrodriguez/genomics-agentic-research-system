@@ -1002,7 +1002,6 @@ def check_publication(rows, history, records, pre, page, grade, table=None, witn
 # config_templates' files as the names take_config renders; they are no files on disk, and two names hold different
 # bytes per model. It sits here, past every line of this file the draft cites by number.
 import contextlib  # noqa: E402
-import io  # noqa: E402
 import re  # noqa: E402
 
 IMAGE_LOCK_PIN = re.compile(r"\.image_locks\[\d+\]")
@@ -1080,7 +1079,6 @@ def freeze_as_of(parent: str):
     this file's HEAD it would read the run, not the freeze. Inside this block all three are the parent's. No checkout and
     no write to the repository: a temporary git directory holds only HEAD (the parent) and a `commondir` pointing at the
     real objects, refs, reflogs and config."""
-    import tarfile
     import tempfile
     import freeze
     code, common = git("rev-parse", "--git-common-dir")
@@ -1095,12 +1093,14 @@ def freeze_as_of(parent: str):
         (gitdir / "commondir").write_text(str(common_dir) + "\n")
         draft = root / "prereg-draft.json"
         draft.write_bytes(committed_raw(parent, study.rel("prereg-draft.json")) or b"")
-        archive = subprocess.run(["git", "-C", str(REPO), "archive", "--format=tar", parent, "--",
-                                  study.rel("COPIED.d")], capture_output=True)
-        if archive.returncode != 0:
+        listed = subprocess.run(["git", "-C", str(REPO), "ls-tree", "-r", "-z", "--name-only", parent, "--",
+                                 study.rel("COPIED.d")], capture_output=True)
+        names = listed.stdout.decode("utf-8", "surrogateescape").split("\0") if listed.returncode == 0 else []
+        if not any(names):
             raise ValueError(f"COPIED.d cannot be read at {parent[:12]}")
-        with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
-            tar.extractall(root, filter="data")
+        for name in filter(None, names):       # one file at a time: tar's extraction filter is not on every Python here
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(committed_raw(parent, name) or b"")
         owned = freeze.owned_paths(folder=root / study.rel("COPIED.d"))
         pinned = [p for p in map(study.rel, owned) if p not in freeze.NOT_PINNED_AND_WHY] + list(freeze.BOUND_OUTSIDE)
         saved = freeze.REPO, freeze.DRAFT, freeze.PINNED
@@ -1266,6 +1266,9 @@ def freeze_recheck_problems(frozen: dict, commit: str, rehearsal_plan: bool = Fa
         out.append("the freeze's written keys are absent: " + ", ".join(absent))
     out += tip_limit_problems(frozen)
     out += [p for p in (freeze.draft_holdout_problem(draft), freeze.order_function_problem(draft)) if p]
+    shapes = freeze.unrecorded_shapes_problem(draft)        # the gate review, m3: this tree's walks and adapters
+    if shapes:
+        out.append(shapes)
     review_file = frozen.get("pre_freeze_review_file")
     review = committed_raw(parent, review_file) if isinstance(review_file, str) else None
     review_sha = None

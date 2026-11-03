@@ -828,6 +828,14 @@ def mutants() -> dict:
         "root-passes": ("D.real.root", cr, "        return [] if rehearsal_plan else [f\"the freeze commit {commit[:12]} has no parent", "        return [] if True else [f\"the freeze commit {commit[:12]} has no parent"),
         "network-push": ("D.network", cr, '            if (push.get("stamp"), push.get("sha")) not in real:\n', "            if False:\n"),
         "network-reading": ("D.network", cr, '    if any(reading.get(k) != answer.get(k) for k in ("round", "randomness", "signature")):\n', "    if False:\n"),
+        "shapes": ("D.shapes", cr, "    if shapes:\n", "    if False:\n"),
+        "rounds-after-freeze": ("D.rounds", f"{study.REVIEW_DIR}/rounds", '    if kind == "prefreeze" and (STUDY_DIR / "prereg.json").is_file():\n', "    if False:\n"),
+        "rounds-verify-too": ("D.rounds", f"{study.REVIEW_DIR}/rounds", '    if kind == "prefreeze" and (STUDY_DIR / "prereg.json").is_file():\n', '    if (STUDY_DIR / "prereg.json").is_file():\n'),
+        "rule-off": ("D.road", "lint_language", "                        and not named_bound_report(f)\n", ""),
+        "rule-any-bytes": ("D.road.digest", "lint_language", 'return len(stated) == 1 and stated[0] == hashlib.sha256(path.read_bytes()).hexdigest()', "return len(stated) == 1"),
+        "rule-no-digest": ("D.road.digest", "lint_language", 'return len(stated) == 1 and stated[0] == hashlib.sha256(path.read_bytes()).hexdigest()', "return True"),
+        "rule-floor": ("D.road.floor", "lint_language", "BOUND_RULE_FROM_ROUND = 9\n", "BOUND_RULE_FROM_ROUND = 1\n"),
+        "tool-anywhere": ("D.road.tool", f"{study.REVIEW_DIR}/claim_review", "    if landed != want:\n", "    if False:\n"),
         "network-door": ("D.network", cr, "    return problems + frozen_network_problems(pushes), ledger, unwitnessed\n", "    return problems, ledger, unwitnessed\n"),
     }
 
@@ -862,6 +870,14 @@ METHOD = {
     "network-push": "DNetwork.test_the_network_door_holds_the_witness_and_the_reading",
     "network-reading": "DNetwork.test_the_network_door_holds_the_witness_and_the_reading",
     "network-door": "DNetwork.test_witness_main_reads_the_door",
+    "shapes": "DShapes.test_the_recheck_reads_the_shapes_gate",
+    "rounds-after-freeze": "DRounds.test_a_prefreeze_row_is_refused_once_frozen",
+    "rounds-verify-too": "DRounds.test_a_verify_row_is_not_refused_for_the_freeze",
+    "rule-off": "DRoad.test_the_road_lands_with_no_edit_to_a_pinned_file_but_its_claims",
+    "rule-any-bytes": "DRoad.test_an_edited_report_is_scanned",
+    "rule-no-digest": "DRoad.test_a_report_with_no_stated_digest_is_scanned",
+    "rule-floor": "DRoad.test_the_rule_starts_at_round_nine_and_reads_only_review_reports",
+    "tool-anywhere": "DRoad.test_the_claims_tool_refuses_anywhere_else",
 }
 WITNESSES = {name: (METHOD[name], clause) for name, (clause, _, _, _) in mutants().items()}
 # One child builds its own scratch repository and reads one test: about a minute each on a loaded Mac, 3 Nov 2026.
