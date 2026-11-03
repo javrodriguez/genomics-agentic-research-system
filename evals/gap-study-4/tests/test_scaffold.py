@@ -578,7 +578,10 @@ class TheRunner(unittest.TestCase):
 
     def test_an_interrupt_still_prints_a_true_count_last(self):
         # review round 2 W1A2-7
-        code = ("import sys; sys.path.insert(0, sys.argv[1]); import run_checks as r; from pathlib import Path; "
+        # lane fold10/rehearsal-road: SIGINT put back first, since a process started under nohup or as a background job
+        # inherits it ignored (the rehearsal's held command), and then no interrupt reaches the runner to be counted
+        code = ("import signal, sys; signal.signal(signal.SIGINT, signal.default_int_handler); "
+                "sys.path.insert(0, sys.argv[1]); import run_checks as r; from pathlib import Path; "
                 "r.BATTERY = 'echo test_round4: 1 run, 0 skipped, 0 expected failures'; r.CHECKS = Path(sys.argv[2]); sys.exit(r.main())")
         with tempfile.TemporaryDirectory() as d:
             (Path(d) / "a.txt").write_text("true\nkill -INT $PPID; sleep 5\ntrue\n")

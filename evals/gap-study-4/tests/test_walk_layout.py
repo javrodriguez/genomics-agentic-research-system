@@ -508,8 +508,9 @@ class L3TimeFence(Case):
                 self.fail(f"L3.time-fence: {type(e).__name__}: {e}")
             self.assertEqual(tbi.git(r.root, "rev-parse", "HEAD"), unfrozen, "L3.time-fence")
         # TakeRepo stays post-freeze: registration needs the frozen pre-registration (this study has none)
-        with mock.patch.object(prereg, "load", REAL_LOAD), mock.patch.object(prereg, "require_frozen", REAL_REQUIRE):
-            self.assertFalse(REAL_LOAD()["_frozen"], "L3.time-fence")
+        # lane fold10/rehearsal-road: a walk tree is unfrozen by this document, so the check also holds in a frozen clone
+        unfrozen_pre = lambda: dict(REAL_LOAD(), _frozen=False)      # noqa: E731
+        with mock.patch.object(prereg, "load", unfrozen_pre), mock.patch.object(prereg, "require_frozen", REAL_REQUIRE):
             with self.assertRaises(SystemExit, msg="L3.time-fence"):
                 takes.commit_registration(tbi.row(), 1, root=HERE, repo=HERE.parent.parent)
 

@@ -1888,7 +1888,7 @@ class PublishedArtifacts(unittest.TestCase):
                     "pushback_counts": {"raw": 4, "samples": 3}, "probe_line": "step-p", "pushback_line": "step-q"}
             rows, history = [dict(r, attempt=1)], [recorded(labels4.GRADED, r)]
             pre = pre_registration(); pre["rows"] = [r]
-            pre["published_tip_residual"] = "synthetic limit on the review record"      # lane fold9/round7-residual
+            pre["published_tip_residual"] = freeze.PUBLISHED_TIP_LIMIT      # lane fold10/rehearsal-road: derive holds it
             with ExitStack() as stack:
                 for module, key, value in ((runner, "HERE", root), (runner, "REPO", repo.root),
                                           (runner, "RECORDS", root / "records"),

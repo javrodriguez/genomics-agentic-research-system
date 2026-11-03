@@ -120,7 +120,11 @@ def cause_cases() -> list:
             out.append(f"R2.cause {w}: its check.json digest {recorded} is not the constants-only digest {alone}")
         if recorded == now:
             out.append(f"R2.cause {w}: its check.json digest is the digest coverage reads in force")
-        recheck = json.loads((base / w / RECHECK).read_text(encoding="utf-8"))
+        # lane fold10/rehearsal-road: the latest recheck in the register, since a later wave supersedes RECHECK
+        recheck = pw.latest_recheck(base, w)
+        if not isinstance(recheck, dict):
+            out.append(f"R2.cause {w}: the register names no recheck")
+            continue
         if recheck.get("checker_constants_sha256") != now:
             out.append(f"R2.cause {w}: its {RECHECK} digest {recheck.get('checker_constants_sha256')} is not the "
                        f"digest in force {now}")

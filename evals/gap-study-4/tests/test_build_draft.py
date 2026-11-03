@@ -270,8 +270,8 @@ class Assembly(unittest.TestCase):
         with mock.patch.object(order_tests.prereg, "load", lambda: one_null):
             code, text = order_tests.cli("--order", "f" * 40)
         self.assertEqual(code, 1, "R3.carry")
-        self.assertIn("take order: freeze.planned_order refuses the design in force (prereg-draft.json)", text,
-                      "R3.carry")
+        self.assertIn(f"take order: freeze.planned_order refuses the design in force ({order_tests.prereg.in_force().name})",
+                      text, "R3.carry")
         self.assertEqual(study.ARMS, ("A", "C", "O", "G"))
 
     def test_accessors_red(self):

@@ -190,7 +190,7 @@ class OrderIsPlannedOrder(unittest.TestCase):
                 prereg.order(SEED)
             code, text = cli("--order", SEED)
         self.assertEqual(code, 1, "O5.pending")
-        self.assertIn("take order: freeze.planned_order refuses the design in force (prereg-draft.json)", text,
+        self.assertIn(f"take order: freeze.planned_order refuses the design in force ({prereg.in_force().name})", text,
                       "O5.pending")
 
     def test_seed_length_refused(self):
