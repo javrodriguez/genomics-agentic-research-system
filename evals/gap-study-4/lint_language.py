@@ -182,6 +182,7 @@ NEVER_SCANNED = {"lint_language.py", "language-allowlist.json"}
 REPORT_NAMES = (
     re.compile(r"^prefreeze-\d+\.md$"),          # a pre-freeze review
     re.compile(r"^\d{4}-\d{2}-\d{2}-[0-9a-f]+\.md$"),  # a dated verifier report
+    re.compile(r"^verify-[1-9]\d*\.md$"),       # lane fold11: round 4's verifier report (review_kit/rounds.py REPORT)
 )
 
 
@@ -313,7 +314,7 @@ REPORT_DIGEST_LINE = "report sha256, as the reviewer's session wrote it: "     #
 
 
 def is_bound_review_report(path: Path) -> bool:
-    got = re.fullmatch(r"prefreeze-(\d+)\.md", path.name)
+    got = re.fullmatch(r"prefreeze-([1-9]\d*)\.md", path.name)
     if not got or int(got.group(1)) < BOUND_RULE_FROM_ROUND or path.parent.name != "review_kit":
         return False
     try:
@@ -322,6 +323,14 @@ def is_bound_review_report(path: Path) -> bool:
         return len(stated) == 1 and stated[0] == hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
         return False
+
+
+# The fold's post-freeze sweep: the two files freeze.py assembles, in this study's own folder. Every word they carry is
+# scanned where it is written (prereg-draft.json, COPIED.d/) and excused there by exact path and line, so on a frozen tree a
+# whole-folder walk reported those same lines again, under names no excusal can then be added for, since the allowlist is
+# pinned. What this leaves unread here: the rehearsal record's text, and an amendment's words, in prereg.json.
+def is_freeze_output(path: Path) -> bool:
+    return path.name in ("prereg.json", "COPIED.json") and path.resolve().parent == Path(__file__).resolve().parent
 
 
 def named_bound_report(path: Path) -> bool:
@@ -341,6 +350,7 @@ def iter_files(paths: list[str], include_code: bool = False):
                         and f.name not in NEVER_SCANNED
                         and not is_outside_report(f)
                         and not named_bound_report(f)
+                        and not is_freeze_output(f)
                         and not is_case_file(f)
                         and not is_take_record(f)
                         and not is_recorded_fixture_copy(f)

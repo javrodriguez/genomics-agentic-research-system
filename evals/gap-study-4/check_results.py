@@ -414,7 +414,7 @@ def check_pins() -> list[str]:
                 raw = pinned_bytes(path, node["path"])
                 if raw is None:
                     problems.append(f"{path}: pinned file is missing: {node['path']}")
-                elif hashlib.sha256(raw).hexdigest() != node["sha256"]:
+                elif not pin_holds(path, node, raw):
                     problems.append(f"{path}: {node['path']} does not match its pinned sha256")
             for k, v in node.items():
                 walk(v, f"{path}.{k}")
@@ -1310,6 +1310,60 @@ def freeze_recheck_problems(frozen: dict, commit: str, rehearsal_plan: bool = Fa
     return out
 
 
+# The gate review 2 of lane fold11/freeze-recheck, m1: round 4's plan runs verifiers after the freeze, rounds.py --add appends
+# their rows to review_kit/rounds.json, and that file is pinned, so a passing verifier refused publication for good. Its pin
+# still binds every row the freeze held. A later version may only append verify rows; rounds.py --check reads the rest of
+# each row's road (its session id, its report). It sits here, past every line of this file the draft cites by number.
+PINNED_FILE_NODE = re.compile(r"\.pinned_files\[\d+\]")
+HEX64 = re.compile(r"[0-9a-f]{64}")
+HEX40 = re.compile(r"[0-9a-f]{40}")
+
+
+def register_growth_problem(node: dict, raw: bytes) -> str | None:
+    """Why `raw` is not the register the freeze pinned (`node`) with only valid verify rows appended, or None."""
+    got = subprocess.run(["git", "-C", str(REPO), "cat-file", "blob", str(node.get("git_blob_sha"))], capture_output=True)
+    if got.returncode != 0 or hashlib.sha256(got.stdout).hexdigest() != node.get("sha256"):
+        return "the register the freeze pinned cannot be read from its blob"
+    try:
+        before, after = json.loads(got.stdout), json.loads(raw)
+        old, new = before["rows"], after["rows"]
+    except (ValueError, KeyError, TypeError):
+        return "it is not the register's shape"
+    if {k: v for k, v in before.items() if k != "rows"} != {k: v for k, v in after.items() if k != "rows"}:
+        return "a key beside its rows changed"
+    if not isinstance(new, list) or new[:len(old)] != old:
+        return "a row present at the freeze was changed or removed"
+    commit = freeze_commit()
+    last = max([r["n"] for r in old if r.get("kind") == "verify"], default=0)
+    for row in new[len(old):]:
+        if not isinstance(row, dict) or row.get("kind") != "verify":
+            return "a row added after the freeze is not a verify row"
+        last += 1
+        if row.get("n") != last or type(row.get("n")) is not int:
+            return f"verify row {row.get('n')!r} added after the freeze is not number {last}"
+        if not all(isinstance(row.get(k), str) and HEX64.fullmatch(row[k]) for k in ("prompt_sha256", "input_sha256")):
+            return f"verify row {last} does not bind its prompt and its input"
+        launch = row.get("launch_commit")
+        if not (commit and isinstance(launch, str) and HEX40.fullmatch(launch)
+                and git("merge-base", "--is-ancestor", commit, launch)[0] == 0
+                and git("merge-base", "--is-ancestor", launch, "HEAD")[0] == 0):
+            return f"verify row {last}'s launch_commit is not on this line at or after the freeze commit"
+    return None
+
+
+def pin_holds(where: str, node: dict, raw: bytes) -> bool:
+    """check_pins' comparison (on one line there because the draft cites this file by number): the pinned sha256, or for
+    the round register alone, register_growth_problem."""
+    if hashlib.sha256(raw).hexdigest() == node["sha256"]:
+        return True
+    if not PINNED_FILE_NODE.fullmatch(where) or node.get("path") != study.rel(study.REVIEW_DIR, "rounds.json"):
+        return False
+    why = register_growth_problem(node, raw)
+    if why:
+        print(f"  {node['path']}: {why}")
+    return why is None
+
+
 def _sample_error() -> tuple:
     """labelling/sample.py's SampleError (a missing frame); none in a copy that carries no labelling/."""
     try:
@@ -1323,6 +1377,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--ledger", action="store_true")
+    parser.add_argument("--regrade", action="store_true",      # the plan's and ci.yml's spelling, read by every run
+                        help="the same complete check: publication regrades the committed takes on every run")
     parser.add_argument("--rehearsal-plan", action="store_true",
                         help="disposable rehearsal only; rehearsal evidence is NOT CHECKED")
     parser.add_argument("--witness", action="store_true",

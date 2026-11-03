@@ -48,11 +48,13 @@ import lint_language as ll  # noqa: E402  the copied linter, for its file walk a
 # The patterns hold the file that defines them out of their own scan, as the copied linter does.
 NEVER_SCANNED = {"lint_pooling.py"}
 
-# THE ONE NARROW EXEMPTION (lane fold3/m1, on glitch-45's ruling R3 in the fold3 brief of Fri 30 Oct 2026, under Javier's
+# THE NARROW EXEMPTIONS: this list, and lint_language.iter_files' rule for an outside report (from round 9, a report whose
+# sha256 its blindness record states; a verifier's verification/verify-<N>.md), which this file's walk goes through.
+# THE LIST (lane fold3/m1, on glitch-45's ruling R3 in the fold3 brief of Fri 30 Oct 2026, under Javier's
 # standing delegation). A bound review record is the reviewer's text, committed as it stands and never edited, and a
 # reviewer of this guard has to name the shortcut to discuss it: pre-freeze review 3's m8 and n6 discuss pooling and
 # report no pooled figure. So the records listed here, by exact path under the repository and nothing broader, are not
-# scanned, and each run says so. Every other file, review records included, is scanned as before; a listed record's
+# scanned, and each run says so. Every other file but those the rule names is scanned as before; a listed record's
 # lines in any other file still fail. No line, pattern or flag is excusable anywhere else. Each record is bound to the
 # sha256 of its committed bytes (the review of 1cb4ee64, NIT 4): an edited copy is no longer the record, and is scanned.
 BOUND_REVIEW_RECORDS = {"evals/gap-study-4/review_kit/prefreeze-3.md":

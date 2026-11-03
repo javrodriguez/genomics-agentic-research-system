@@ -886,11 +886,12 @@ class DPost(Base):
         with tempfile.TemporaryDirectory() as tmp:
             row = Path(tmp) / "row.json"
             row.write_text(json.dumps(self.world.frozen["take_order"][0]))
-            for command in (("takes.py", "--add", "--row", str(row), "--attempt", "1"), ("run.py", "--all"), ("result.py", "--write")):
+            for command in (("takes.py", "--add", "--row", str(row), "--attempt", "1"), ("run.py", "--all"),
+                            ("result.py", "--write")):
                 got = cli(*command)
                 self.assertEqual(got.returncode, 0, f"D.post.road: {command}: {got.stdout[-800:]}{got.stderr[-800:]}")
             self.study_git("a take's records and the page")
-            for name in ("frame.json", "sample.json", "definitions.json", "labels.json"):      # no pin names these
+            for name in ("definitions.json", "labels.json"):      # Javier's files; no pin names these
                 (self.world.study / "labelling" / name).write_text("{}\n")
             (self.world.study / "labelling" / "AGREEMENT.md").write_text("# a synthetic table\n")
             self.study_git("the labels and the agreement table")
@@ -913,6 +914,12 @@ class DPost(Base):
                 self.assertEqual(got.returncode, 0, f"D.post.road: {command}: {got.stdout[-900:]}{got.stderr[-400:]}")
             got = cli("check_results.py", "--regrade", "--rehearsal-plan")
             self.assertEqual(got.returncode, 0, f"D.post.regrade: {got.stdout[-500:]}{got.stderr[-300:]}")
+            # The labelling frame and sample: a real frame needs graded takes of every design model, which this scratch has
+            # not, and the page then refuses (result.py, by design). No pin names them, which is what is read here.
+            for name in ("frame.json", "sample.json"):
+                (self.world.study / "labelling" / name).write_text("[]\n")
+            self.study_git("the frame and the sample")
+            self.assertEqual(self.pins(), [], "D.post.road: the frame and the sample")
 
 
 class DMain(Base):
@@ -984,6 +991,17 @@ def mutants() -> dict:
         "rule-no-digest": ("D.road.digest", "lint_language", 'return len(stated) == 1 and stated[0] == hashlib.sha256(path.read_bytes()).hexdigest()', "return True"),
         "rule-floor": ("D.road.floor", "lint_language", "BOUND_RULE_FROM_ROUND = 9\n", "BOUND_RULE_FROM_ROUND = 1\n"),
         "tool-anywhere": ("D.road.tool", f"{study.REVIEW_DIR}/claim_review", "    if landed != want:\n", "    if False:\n"),
+        "register-frozen": ("D.post.valid", cr, "                elif not pin_holds(path, node, raw):\n", '                elif hashlib.sha256(raw).hexdigest() != node["sha256"]:\n'),
+        "register-prefix": ("D.post.frozen-rows", cr, "    if not isinstance(new, list) or new[:len(old)] != old:\n", "    if not isinstance(new, list):\n"),
+        "register-kind": ("D.post.kind", cr, '        if not isinstance(row, dict) or row.get("kind") != "verify":\n', "        if not isinstance(row, dict):\n"),
+        "register-number": ("D.post.number", cr, "        if row.get(\"n\") != last or type(row.get(\"n\")) is not int:\n", "        if False:\n"),
+        "register-digests": ("D.post.digests", cr, '        if not all(isinstance(row.get(k), str) and HEX64.fullmatch(row[k]) for k in ("prompt_sha256", "input_sha256")):\n', "        if False:\n"),
+        "register-launch": ("D.post.launch", cr, '                and git("merge-base", "--is-ancestor", commit, launch)[0] == 0\n                and git("merge-base", "--is-ancestor", launch, "HEAD")[0] == 0):\n', "                ):\n"),
+        "register-top": ("D.post.top", cr, '    if {k: v for k, v in before.items() if k != "rows"} != {k: v for k, v in after.items() if k != "rows"}:\n', "    if False:\n"),
+        "regrade-flag": ("D.post.regrade", cr, '    parser.add_argument("--regrade", action="store_true",', '    parser.add_argument("--regrade-off", action="store_true",'),
+        "verifier-report-scanned": ("D.post.road", "lint_language", '    re.compile(r"^verify-[1-9]\\d*\\.md$"),', '    re.compile(r"^verify-never$"),'),
+        "freeze-outputs-scanned": ("D.post.road", "lint_language", "                        and not is_freeze_output(f)\n", ""),
+        "rule-leading-zero": ("D.road.floor", "lint_language", 'r"prefreeze-([1-9]\\d*)\\.md"', 'r"prefreeze-(\\d+)\\.md"'),
         "network-door": ("D.network", cr, "    return problems + frozen_network_problems(pushes), ledger, unwitnessed\n", "    return problems, ledger, unwitnessed\n"),
     }
 
@@ -1026,6 +1044,17 @@ METHOD = {
     "rule-no-digest": "DRoad.test_a_report_with_no_stated_digest_is_scanned",
     "rule-floor": "DRoad.test_the_rule_starts_at_round_nine_and_reads_only_review_reports",
     "tool-anywhere": "DRoad.test_the_claims_tool_refuses_anywhere_else",
+    "register-frozen": "DPost.test_a_valid_verify_row_holds_the_pin",
+    "register-prefix": "DPost.test_the_rows_of_the_freeze_must_survive_a_verify_row",
+    "register-kind": "DPost.test_a_later_prefreeze_row_refuses",
+    "register-number": "DPost.test_an_invalid_verify_row_refuses",
+    "register-digests": "DPost.test_an_invalid_verify_row_refuses",
+    "register-launch": "DPost.test_an_invalid_verify_row_refuses",
+    "register-top": "DPost.test_a_top_level_change_refuses",
+    "regrade-flag": "DPost.test_the_cli_is_green_along_the_plans_road",
+    "verifier-report-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
+    "freeze-outputs-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
+    "rule-leading-zero": "DRoad.test_the_rule_starts_at_round_nine_and_reads_only_review_reports",
 }
 WITNESSES = {name: (METHOD[name], clause) for name, (clause, _, _, _) in mutants().items()}
 # One child builds its own scratch repository and reads one test: about a minute each on a loaded Mac, 3 Nov 2026.

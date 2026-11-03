@@ -14,6 +14,11 @@ Every step names its interpreter: `python3.12`, the operator machine's Python 3.
 5. Run `python3.12 evals/gap-study-4/review_kit/blindness.py <folder>` on the reviewer's own session file and every sidechain session it spawned (`<session>/subagents/`).
    Its UNEXPLAINED columns in sections 1, 3 and 4 must read 0, and sections 2 and 6 name what the round's reader must see: a launched sub-agent with no session file, and every write outside the folder.
 6. Commit the report exactly once: `python3.12 evals/gap-study-4/review_kit/commit_review.py <folder> <N>`.
+7. Claim its two records, in one commit and nothing else: `python3.12 evals/gap-study-4/review_kit/claim_review.py <N>`.
+   That commit changes the one pinned file the launch binding admits for this. No other pinned file may change before the freeze without a new round; from round 9 on, the two lints need no line for the report.
+   A rehearsal for this round follows this commit, because the claims are inside the rehearsed tree.
+
+A verifier after the freeze registers with `rounds.py --add --kind verify`, the only kind left once a frozen file exists. Its row is appended to the pinned register, which `check_results.py` admits for valid verify rows alone, and its report is `verification/verify-<N>.md`. No claims commit: the copy gate reads the freeze commit, never a later one. Every other pinned file stays as frozen, so a new record goes in a new file, and a commit body after the freeze must pass both lints, and `lint_pooling.py` has no excusal for one that fails it.
 
 ## Before round 1: the skills smoke
 

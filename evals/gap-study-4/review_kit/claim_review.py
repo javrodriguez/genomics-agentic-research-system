@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The one commit after a pre-freeze review's report lands: its two records claimed, and nothing else.
 
-    python3 evals/gap-study-4/review_kit/claim_review.py <N>
+    python3.12 evals/gap-study-4/review_kit/claim_review.py <N>
 
 Lane fold11/freeze-recheck (the gate review of the fold, m6). Run it once, right after review_kit/commit_review.py <folder> <N>.
 copy_manifest --check fails on an unclaimed file, and a claim cannot land before the file does, so this commit is on every
