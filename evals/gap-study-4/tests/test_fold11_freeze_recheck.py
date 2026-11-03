@@ -848,10 +848,12 @@ class DPost(Base):
             self.assertTrue(self.pins(), "D.post.frozen-rows")
 
     def test_a_later_prefreeze_row_refuses(self):
+        # numbered as the next verify row and valid in every other field, so only the kind can refuse it
         head = run_git(self.world.repo, "rev-parse", "HEAD")
 
         def later(doc):
-            doc["rows"].append({"n": self.world.n + 1, "kind": "prefreeze", "launch_commit": head, "voids": None,
+            next_verify = 1 + sum(r.get("kind") == "verify" for r in doc["rows"])
+            doc["rows"].append({"n": next_verify, "kind": "prefreeze", "launch_commit": head, "voids": None,
                                 "prompt_sha256": "a" * 64, "input_sha256": "b" * 64})
         self.edit_register(later)
         self.assertTrue(self.pins(), "D.post.kind")
@@ -1060,7 +1062,7 @@ def mutants() -> dict:
         "register-digests": ("D.post.digests", cr, '        if not all(isinstance(row.get(k), str) and HEX64.fullmatch(row[k]) for k in ("prompt_sha256", "input_sha256")):\n', "        if False:\n"),
         "register-launch": ("D.post.launch", cr, '                and git("merge-base", "--is-ancestor", commit, launch)[0] == 0\n                and git("merge-base", "--is-ancestor", launch, "HEAD")[0] == 0):\n', "                ):\n"),
         "register-top": ("D.post.top", cr, '    if {k: v for k, v in before.items() if k != "rows"} != {k: v for k, v in after.items() if k != "rows"}:\n', "    if False:\n"),
-        "regrade-flag": ("D.post.regrade", cr, '    parser.add_argument("--regrade", action="store_true",', '    parser.add_argument("--regrade-off", action="store_true",'),
+        "regrade-flag": ("D.post.regrade", cr, '    parser.add_argument("--regrade", action="store_true",', '    parser.add_argument("--no-regrade", action="store_true",'),
         "verifier-report-scanned": ("D.post.road", "lint_language", '    re.compile(r"^verify-[1-9]\\d*\\.md$"),', '    re.compile(r"^verify-never$"),'),
         "freeze-outputs-scanned": ("D.post.road", "lint_language", "                        and not is_freeze_output(f)\n", ""),
         "record-live": ("D.copy.outputs", "copy_manifest", "    present = files_of_the_record() if present is None else present\n", "    present = files_here() if present is None else present\n"),
