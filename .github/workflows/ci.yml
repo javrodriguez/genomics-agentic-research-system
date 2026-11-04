@@ -467,7 +467,8 @@ jobs:
         run: python3 -W ignore evals/gap-study-4/test_round4.py
       - name: Copy record
         # PL-5(c), w5b-4: bind pre-freeze HEAD or the freeze commit; never post-freeze HEAD.
-        # Fold 13: only the freeze commit's own code then lists what HEAD added, so a later file cannot shadow the reader.
+        # Fold 13: only the freeze commit's own code then lists what HEAD added, so a later file cannot shadow the reader;
+        # an importable file no run writes fails, any other is printed.
         run: |
           if [ ! -f evals/gap-study-4/prereg.json ]; then
             echo "copy gate commit: $(git rev-parse HEAD)"

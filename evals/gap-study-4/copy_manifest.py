@@ -3,8 +3,9 @@
 
     python3 evals/gap-study-4/copy_manifest.py --check     assemble COPIED.d/*.json, re-derive every entry; exit 1 on any problem
     python3 evals/gap-study-4/copy_manifest.py --derive    print the assembled record (what the freeze writes as COPIED.json)
-    python3 evals/gap-study-4/copy_manifest.py --later-files [REV]    after the freeze: refuse a file added under this folder
-                                                                      that is no run output (later_files_problems)
+    python3 evals/gap-study-4/copy_manifest.py --later-files [REV]    after the freeze: refuse an importable file added under
+                                                                      this folder that is no run output, report any other
+                                                                      (later_files_problems)
 
 ROUND 4'S SHAPE. Round 3's manifest compared one committed COPIED.json with what the files derived, so every
 lane that added a file would have rewritten that same file. Here each build lane writes its own fragment,
@@ -546,10 +547,27 @@ def is_run_output(name: str) -> bool:
     return record_root_of(name) == mode_binding.TAKES_DIR or any(name == p or name.startswith(p + "/") for p in written)
 
 
-def later_files_problems(rev: str | None = None) -> list[str] | None:
-    """Every path under this folder that the freeze commit does not hold and no run writes, or None before the freeze: at
-    `rev`, in any commit between the freeze and `rev` (a file added, used and deleted was still there), and, with no `rev`,
-    on disk. CI gives `rev` and runs the freeze commit's copy of this file, so a file added later cannot shadow what reads it."""
+# Narrowed on the gate review of 36787b17: copy_manifest.py is pinned and CI runs the freeze commit's copy, so a refusal here can
+# never be repaired, and the list of what a run writes is derived by hand. So only what can shadow a module blocks.
+IMPORTABLE_SUFFIXES = (".py", ".pyc", ".so", ".pth")
+
+
+def is_importable(name: str) -> bool:
+    """Lower-cased: a case-insensitive disk imports FRACTIONS.PY as fractions."""
+    return name.lower().endswith(IMPORTABLE_SUFFIXES)
+
+
+def later_files_problems(rev: str | None = None) -> tuple[list[str], list[str]] | None:
+    """(refused, reported) over the paths under this folder that the freeze commit does not hold and no run writes, or None
+    before the freeze. Refused: an importable one at `rev`, or, with no `rev`, on disk. Reported, never failing: every other
+    such path, and one seen only in a commit between the freeze and `rev` (a file added, used and deleted was still there, and
+    the run line cannot be rewritten, so it stays a printed line in public CI). CI gives `rev` and runs the freeze commit's
+    copy of this file, so a file added later cannot shadow what reads it; run with no `rev` at HEAD, a shadow of the standard
+    library does run here first.
+
+    THE LIMITS. Only this folder is read, so the same file one folder up (evals/, the repository root) is not named. Code that
+    must run after the freeze cannot be added under this folder: CP8's reader of the labelling sheet's content (labelling/sheet.py,
+    "not built here") lives outside the study folder or is built before the freeze."""
     log = git("log", "--reverse", "--format=%H", "--", study.rel("prereg.json")).stdout.decode().split()
     if not log or not (HERE / "prereg.json").is_file():
         return None
@@ -565,28 +583,41 @@ def later_files_problems(rev: str | None = None) -> list[str] | None:
         return {name.strip("\n")[len(study.STUDY_REL) + 1:] for name in listed if name.strip("\n")}
 
     at_freeze = names("ls-tree", "-r", "-z", "--name-only", frozen)
-    later = names("ls-tree", "-r", "-z", "--name-only", tip) | names(
-        "log", "--full-history", "-m", "--no-renames", "--diff-filter=A", "--format=", "--name-only", "-z", f"{frozen}..{tip}")
+    at_tip = names("ls-tree", "-r", "-z", "--name-only", tip)
     if rev is None:
-        later |= files_here()
-    return [f"{name} is under {study.STUDY_REL}/, the freeze commit {frozen[:12]} does not hold it and no run writes it"
-            for name in sorted(later - at_freeze) if not is_run_output(name)]
+        at_tip |= files_here()
+    seen = at_tip | names(
+        "log", "--full-history", "-m", "--no-renames", "--diff-filter=A", "--format=", "--name-only", "-z", f"{frozen}..{tip}")
+    refused, reported = [], []
+    for name in sorted(seen - at_freeze):
+        if is_run_output(name):
+            continue
+        if name in at_tip and is_importable(name):
+            refused.append(f"{name} is under {study.STUDY_REL}/, can be imported, the freeze commit {frozen[:12]} does not hold "
+                           f"it and no run writes it")
+        else:
+            reported.append(name if name in at_tip else f"{name} (only in history)")
+    return refused, reported
 
 
 def later_files_main(rev: str | None) -> int:
     try:
-        bad = later_files_problems(rev)
+        got = later_files_problems(rev)
     except ManifestError as e:
         print(f"FAIL {e}")
         return 1
-    if bad is None:
+    if got is None:
         print("later files: not applicable, not frozen")
         return 0
-    for b in bad:
+    refused, reported = got
+    for name in reported:
+        print(f"later files: reported: {name}")
+    for b in refused:
         print(f"FAIL {b}")
-    if not bad:
-        print(f"later files: ok, every file added since the freeze commit is a run output ({rev or 'HEAD and this disk'})")
-    return 1 if bad else 0
+    if not refused:
+        print(f"later files: ok, no importable file added since the freeze commit but a run's; {len(reported)} other(s) "
+              f"reported ({rev or 'HEAD and this disk'})")
+    return 1 if refused else 0
 
 
 def main() -> int:

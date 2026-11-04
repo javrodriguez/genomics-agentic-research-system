@@ -31,7 +31,8 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
               road (a take, its records and page, labels, one verify round, two, a new copy-record fragment)
   D.copy      once a frozen file is committed, the copy record reads the files of the freeze commit, not the run's
   D.later     fold 13, A3: after the freeze a file under the study that the freeze commit does not hold and no run writes is
-              refused, at the tip, in any commit since, and on disk; read from the freeze commit's own code as CI runs it
+              refused if it can be imported (at the tip, or on disk with no revision) and reported, exit 0, otherwise,
+              in any commit since; read from the freeze commit's own code as CI runs it
   D.words     the language and pooling walks read a later amendment's words and the rehearsal record's text by name
   D.main      main --ledger --rehearsal-plan, the real CLI, passes the clean state and refuses an edited one, and the
               runtime steps of the rehearsal run on it
@@ -1004,9 +1005,9 @@ class DLater(Base):
         got = self.later()
         self.assertEqual((got.returncode, got.stdout.strip()), (0, "later files: not applicable, not frozen"), "D.later.before")
 
-    def test_a_new_file_that_no_run_writes_is_refused(self):
-        for rel in ("fractions.py", "graders/shadow.py", "labelling/fractions.py", "tests/shadow.py", "COPIED.d/later.json",
-                    "records.py", "takes/s1/shadow.py", "labelling/frame.json.py"):
+    def test_a_new_importable_file_that_no_run_writes_is_refused(self):
+        for rel in ("fractions.py", "graders/shadow.py", "labelling/fractions.py", "tests/shadow.py", "records.py", "takes/s1/shadow.py",
+                    "labelling/frame.json.py", "shadow/__init__.py", "x.pyc", "x.so", "x.pth", "FRACTIONS.PY"):
             self.world.commit_freeze()
             self.put(rel)
             self.world.commit("a later file")
@@ -1014,24 +1015,33 @@ class DLater(Base):
             self.assertEqual((got.returncode, got.stdout.count("FAIL")), (1, 1), f"D.later.file: {rel}: {got.stdout}{got.stderr}")
             self.assertIn(f"FAIL {rel} is under", got.stdout, "D.later.file")
 
-    def test_a_file_added_and_deleted_is_still_refused(self):
+    def test_a_new_file_that_cannot_be_imported_is_reported_and_passes(self):
+        for rel in ("COPIED.d/later.json", "notes.txt", "labelling/sheet.md", "x.py.txt"):
+            self.world.commit_freeze()
+            self.put(rel)
+            self.world.commit("a later file")
+            got = self.later()
+            self.assertEqual(got.returncode, 0, f"D.later.report: {rel}: {got.stdout}{got.stderr}")
+            self.assertIn(f"later files: reported: {rel}\n", got.stdout, "D.later.report")
+
+    def test_a_file_added_and_deleted_is_reported_and_passes(self):
         self.put("fractions.py")
         self.world.commit("a later file")
         (self.world.study / "fractions.py").unlink()
         self.world.commit("gone again")
         got = self.later()
-        self.assertEqual(got.returncode, 1, f"D.later.history: {got.stdout}")
-        self.assertIn("FAIL fractions.py is under", got.stdout, "D.later.history")
+        self.assertEqual(got.returncode, 0, f"D.later.history: {got.stdout}")
+        self.assertIn("later files: reported: fractions.py (only in history)\n", got.stdout, "D.later.history")
 
-    def test_a_frozen_file_renamed_there_and_back_is_refused(self):
+    def test_a_frozen_file_renamed_there_and_back_is_reported_and_passes(self):
         here, there = self.world.study / "denials.py", self.world.study / "fractions.py"
         here.rename(there)
         self.world.commit("renamed")
         there.rename(here)
         self.world.commit("renamed back")
         got = self.later()
-        self.assertEqual(got.returncode, 1, f"D.later.rename: {got.stdout}")
-        self.assertIn("FAIL fractions.py is under", got.stdout, "D.later.rename")
+        self.assertEqual(got.returncode, 0, f"D.later.rename: {got.stdout}")
+        self.assertIn("later files: reported: fractions.py (only in history)\n", got.stdout, "D.later.rename")
 
     def test_a_file_on_disk_is_read_only_without_a_revision(self):
         self.put("fractions.py")
@@ -1165,11 +1175,14 @@ def mutants() -> dict:
         "verifier-report-scanned": ("D.post.road", "lint_language", '    re.compile(r"^verify-[1-9]\\d*\\.md$"),', '    re.compile(r"^verify-never$"),'),
         "freeze-outputs-scanned": ("D.post.road", "lint_language", "                        and not is_freeze_output(f)\n", ""),
         "record-live": ("D.copy.outputs", "copy_manifest", "    present = files_of_the_record() if present is None else present\n", "    present = files_here() if present is None else present\n"),
-        "later-unread": ("D.later.file", "copy_manifest", "for name in sorted(later - at_freeze) if not is_run_output(name)]", "for name in () if not is_run_output(name)]"),
+        "later-unread": ("D.later.file", "copy_manifest", "        if name in at_tip and is_importable(name):\n", "        if False:\n"),
+        "later-suffixes": ("D.later.file", "copy_manifest", 'IMPORTABLE_SUFFIXES = (".py", ".pyc", ".so", ".pth")', 'IMPORTABLE_SUFFIXES = (".py",)'),
+        "later-block-all": ("D.later.report", "copy_manifest", "        if name in at_tip and is_importable(name):\n", "        if name in at_tip:\n"),
+        "later-block-history": ("D.later.history", "copy_manifest", "        if name in at_tip and is_importable(name):\n", "        if is_importable(name):\n"),
         "later-any-output": ("D.later.file", "copy_manifest", "any(name == p or name.startswith(p + \"/\") for p in written)", "any(name.startswith(p) for p in written)"),
-        "later-no-history": ("D.later.history", "copy_manifest", " | names(\n        \"log\", \"--full-history\", \"-m\", \"--no-renames\", \"--diff-filter=A\", \"--format=\", \"--name-only\", \"-z\", f\"{frozen}..{tip}\")", ""),
+        "later-no-history": ("D.later.history", "copy_manifest", " | names(\n        \"log\", \"--full-history\", \"-m\", \"--no-renames\", \"--diff-filter=A\", \"--format=\", \"--name-only\", \"-z\", f\"{frozen}..{tip}\")", " | set()"),
         "later-renames": ("D.later.rename", "copy_manifest", "\"--no-renames\", ", ""),
-        "later-no-disk": ("D.later.disk", "copy_manifest", "    if rev is None:\n        later |= files_here()\n", ""),
+        "later-no-disk": ("D.later.disk", "copy_manifest", "    if rev is None:\n        at_tip |= files_here()\n", ""),
         "later-off-line": ("D.later.line", "copy_manifest", "    if git(\"merge-base\", \"--is-ancestor\", frozen, tip).returncode != 0:\n", "    if False:\n"),
         "words-language": ("D.words", "lint_language", "    findings += [x for words, name in freeze_output_words(args.paths) for x in scan_text(words, name, entries)]\n", ""),
         "words-pooling": ("D.words", "lint_pooling", "    findings += [x for words, name in ll.freeze_output_words(args.paths) for x in scan_text(words, name)]\n", ""),
@@ -1227,10 +1240,13 @@ METHOD = {
     "verifier-report-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
     "freeze-outputs-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
     "record-live": "DCopy.test_the_runs_outputs_are_no_finding",
-    "later-unread": "DLater.test_a_new_file_that_no_run_writes_is_refused",
-    "later-any-output": "DLater.test_a_new_file_that_no_run_writes_is_refused",
-    "later-no-history": "DLater.test_a_file_added_and_deleted_is_still_refused",
-    "later-renames": "DLater.test_a_frozen_file_renamed_there_and_back_is_refused",
+    "later-unread": "DLater.test_a_new_importable_file_that_no_run_writes_is_refused",
+    "later-suffixes": "DLater.test_a_new_importable_file_that_no_run_writes_is_refused",
+    "later-block-all": "DLater.test_a_new_file_that_cannot_be_imported_is_reported_and_passes",
+    "later-block-history": "DLater.test_a_file_added_and_deleted_is_reported_and_passes",
+    "later-any-output": "DLater.test_a_new_importable_file_that_no_run_writes_is_refused",
+    "later-no-history": "DLater.test_a_file_added_and_deleted_is_reported_and_passes",
+    "later-renames": "DLater.test_a_frozen_file_renamed_there_and_back_is_reported_and_passes",
     "later-no-disk": "DLater.test_a_file_on_disk_is_read_only_without_a_revision",
     "later-off-line": "DLater.test_a_tip_off_the_freeze_line_is_refused",
     "words-language": "DWords.test_a_later_amendments_words_are_read",
