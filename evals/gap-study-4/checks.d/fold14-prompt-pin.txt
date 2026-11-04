@@ -1,0 +1,4 @@
+# Fold 14: the reviewer's prompt is pinned in two named eras (OD186's one allowed change), and no third. One command per line, run
+# from the repository root. No model, network, container or take.
+python3 -B -W ignore evals/gap-study-4/tests/test_fold14_prompt_pin.py
+python3 -B -W ignore evals/gap-study-4/tests/test_fold14_prompt_pin.py --witnesses

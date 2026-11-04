@@ -378,11 +378,32 @@ def in_place_problems(rows: list[dict], commits: dict[int, str]) -> list[str]:
     return out
 
 
+# Javier's word of Wed 4 Nov 2026 (OD186, "last-review yes"): round 10 is the last review, under a stop rule written into BRIEF.md.
+# So the prompt is pinned in two named eras, and only these: prefreeze rounds 1-9 on the first, every later row on the second. A
+# verify row counts its own n from 1 and comes after the freeze, so it is on the second whatever its n.
+PROMPT_ROUNDS_1_TO_9 = "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc"
+PROMPT_FROM_ROUND_10 = "b3e08938f214f3ae59ecebd437410df20ba797313b504c394cd7e3fee700f6e8"
+LAST_ROUND_ON_THE_FIRST_PROMPT = 9
+
+
+def prompt_problem(row: dict) -> str | None:
+    """The prompt this row must have been launched on, by its kind and number; any other refuses."""
+    first = row["kind"] == "prefreeze" and row["n"] <= LAST_ROUND_ON_THE_FIRST_PROMPT
+    wanted = PROMPT_ROUNDS_1_TO_9 if first else PROMPT_FROM_ROUND_10
+    if row.get("prompt_sha256") == wanted:
+        return None
+    return (f"{row['kind']} round {row['n']} was launched on a prompt whose sha256 is {str(row.get('prompt_sha256'))[:12]}; this "
+            f"row's prompt is {wanted[:12]}. The prompt is pinned in two eras (OD186) and no third.")
+
+
 def check() -> int:
     rows = load()
     problems, notes = [], []
     prompt = sha256_bytes(BRIEF.read_bytes()) if BRIEF.is_file() else None
     commits = row_commits()
+    if prompt and prompt != PROMPT_FROM_ROUND_10:
+        problems.append(f"review_kit/BRIEF.md hashes to {prompt[:12]}, not {PROMPT_FROM_ROUND_10[:12]}: the prompt is pinned in two "
+                        f"eras (OD186) and no third.")
     for i, r in enumerate(rows):
         if r.get("voided_by") or r.get("spent_without_work"):
             # Pre-freeze review 6, M1 (lane fold8/review-binding): a closed row skips the open-round check, so one
@@ -417,10 +438,8 @@ def check() -> int:
                     problems.append(
                         f"{blind.relative_to(REPO)} does not name the session id this row derives "
                         f"({want}). The reviewer it read was not the one this row registered.")
-        if prompt and r["prompt_sha256"] != prompt:
-            problems.append(f"{r['kind']} round {r['n']} was launched on a prompt whose sha256 is "
-                            f"{r['prompt_sha256'][:12]}; review_kit/BRIEF.md now hashes to {prompt[:12]}. The "
-                            f"prompt is pinned byte-identical across rounds.")
+        if prompt and prompt_problem(r):
+            problems.append(prompt_problem(r))
     # Pre-freeze review 6, M1 (lane fold8/review-binding): the register is append-only, so no committed version of it
     # on any ref may hold more rows than HEAD's; a row cut out drops its round as surely as a report deleted.
     reg = str(REGISTER.relative_to(REPO))
@@ -479,7 +498,7 @@ def check() -> int:
                   f"round. Prompt pinned at {(prompt or '-')[:12]}.")
         else:
             print(f"ok: {len(live)} registered round(s) graded, every report committed, "
-                  f"{len(voided)} voided; prompt pinned at {(prompt or '-')[:12]}")
+                  f"{len(voided)} voided; prompt pinned at {(prompt or '-')[:12]}, rounds 1-{LAST_ROUND_ON_THE_FIRST_PROMPT} at {PROMPT_ROUNDS_1_TO_9[:12]}")
     return 1 if problems else 0
 
 

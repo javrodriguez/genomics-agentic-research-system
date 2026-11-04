@@ -30,6 +30,8 @@ Not in scope, and so a limitation the pre-registration must name rather than a d
 
 You may find this statement wrong or incomplete. If so, say so first and rule every later finding against your corrected statement.
 
+**Stop rule for this round (the study owner's word, recorded before the round opened; the published write-up discloses it and the nine rounds before it).** Only three things are a MAJOR and hold the freeze: a reading or count that is wrong in an honest run; a published claim that is false in an honest run; the real road being stopped. A deliberate act by the operator that shows in public git history and moves no reading in an honest run is a limitation to name: report it as a MINOR, say what it would take, and do not rule on it as a defect. Report everything you find; the rule changes what holds the freeze, not what you look for.
+
 ## Where to start
 
 Start inside `study/evals/gap-study-4/` with `prereg-draft.json`, the copy record (`COPIED.d/`, one fragment per build lane, assembled and checked by `copy_manifest.py`), `coverage_today.md`, the walk record (`rehearsals/README.md`, `rehearsals/register.json` and the walk folders), the native-reader acceptances and their reviews under `native-readers/`, and `research/`.
