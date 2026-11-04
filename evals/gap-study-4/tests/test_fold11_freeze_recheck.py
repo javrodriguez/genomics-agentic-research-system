@@ -30,6 +30,8 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
               be appended; every other pinned file still refuses; check_results.py --ledger is green along the plan's whole
               road (a take, its records and page, labels, one verify round, two, a new copy-record fragment)
   D.copy      once a frozen file is committed, the copy record reads the files of the freeze commit, not the run's
+  D.later     fold 13, A3: after the freeze a file under the study that the freeze commit does not hold and no run writes is
+              refused, at the tip, in any commit since, and on disk; read from the freeze commit's own code as CI runs it
   D.words     the language and pooling walks read a later amendment's words and the rehearsal record's text by name
   D.main      main --ledger --rehearsal-plan, the real CLI, passes the clean state and refuses an edited one, and the
               runtime steps of the rehearsal run on it
@@ -966,6 +968,100 @@ class DCopy(Base):
         self.assertTrue(any("stray.txt" in x for x in self.world.check("plan", self.DRIVER)), "D.copy.live")
 
 
+class DLater(Base):
+    """Fold 13, A3: copy_manifest.py --later-files, the real CLI on the real freeze commit of this scratch."""
+
+    OUTPUTS = ("RESULT.md", "COSTS.md", "takes.json", "outcomes.json", "rulings.json", "cost-calls.json", "witness-record.json",
+               "original-values.json", "deferred-arm-go.json", "records/a.json", "takes/s1/1/transcript.jsonl",
+               "takes/s1/1/evidence/x.py", "labelling/frame.json", "labelling/flagged-verdicts.json",
+               "labelling/definitions.json", "labelling/labels.json", "labelling/AGREEMENT.md", "labelling/sample.json",
+               "labelling/sample-followup.json", "verification/verify-1.md", "verification/verify-1-blindness.txt")
+
+    def put(self, *rels: str) -> None:
+        for rel in rels:
+            f = self.world.study / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("a synthetic file\n")
+
+    def later(self, *rev: str) -> subprocess.CompletedProcess:
+        return self.world.cli("copy_manifest.py", "--later-files", *rev)
+
+    def test_the_freeze_commit_and_a_real_runs_outputs_pass(self):
+        got = self.later()
+        self.assertEqual(got.returncode, 0, f"D.later.clean: {got.stdout}{got.stderr}")
+        self.put(*self.OUTPUTS)
+        self.world.commit("the run's outputs")
+        got = self.later()
+        self.assertEqual(got.returncode, 0, f"D.later.outputs: {got.stdout[-900:]}{got.stderr[-400:]}")
+
+    def test_the_runtime_paths_are_check_results_own(self):
+        driver = ("import json, sys\nsys.path.insert(0, sys.argv[1])\nimport check_results as cr, copy_manifest as cm\n"
+                  "print('PROBLEMS ' + json.dumps([] if cm.runtime_paths() == cr.RUNTIME_PATHS else ['the lists differ']))\n")
+        self.assertEqual(self.world.check("plan", driver), [], "D.later.runtime")
+
+    def test_before_the_freeze_it_says_so(self):
+        run_git(self.world.repo, "reset", "-q", "--hard", self.world.parent)
+        got = self.later()
+        self.assertEqual((got.returncode, got.stdout.strip()), (0, "later files: not applicable, not frozen"), "D.later.before")
+
+    def test_a_new_file_that_no_run_writes_is_refused(self):
+        for rel in ("fractions.py", "graders/shadow.py", "labelling/fractions.py", "tests/shadow.py", "COPIED.d/later.json",
+                    "records.py", "takes/s1/shadow.py", "labelling/frame.json.py"):
+            self.world.commit_freeze()
+            self.put(rel)
+            self.world.commit("a later file")
+            got = self.later()
+            self.assertEqual((got.returncode, got.stdout.count("FAIL")), (1, 1), f"D.later.file: {rel}: {got.stdout}{got.stderr}")
+            self.assertIn(f"FAIL {rel} is under", got.stdout, "D.later.file")
+
+    def test_a_file_added_and_deleted_is_still_refused(self):
+        self.put("fractions.py")
+        self.world.commit("a later file")
+        (self.world.study / "fractions.py").unlink()
+        self.world.commit("gone again")
+        got = self.later()
+        self.assertEqual(got.returncode, 1, f"D.later.history: {got.stdout}")
+        self.assertIn("FAIL fractions.py is under", got.stdout, "D.later.history")
+
+    def test_a_frozen_file_renamed_there_and_back_is_refused(self):
+        here, there = self.world.study / "denials.py", self.world.study / "fractions.py"
+        here.rename(there)
+        self.world.commit("renamed")
+        there.rename(here)
+        self.world.commit("renamed back")
+        got = self.later()
+        self.assertEqual(got.returncode, 1, f"D.later.rename: {got.stdout}")
+        self.assertIn("FAIL fractions.py is under", got.stdout, "D.later.rename")
+
+    def test_a_file_on_disk_is_read_only_without_a_revision(self):
+        self.put("fractions.py")
+        self.addCleanup((self.world.study / "fractions.py").unlink)    # commit_freeze adds everything on disk
+        got = self.later()
+        self.assertEqual(got.returncode, 1, f"D.later.disk: {got.stdout}")
+        self.assertEqual(self.later(run_git(self.world.repo, "rev-parse", "HEAD")).returncode, 0, "D.later.disk")
+
+    def test_the_freeze_commits_code_reads_a_later_tip_as_ci_runs_it(self):
+        # the shadow here is of the standard library's json, which the reader imports: it must not run, and must be named
+        (self.world.study / "json.py").write_text("print('SHADOW-RAN')\nraise SystemExit(0)\n")
+        tip = self.world.commit("a later shadow")
+        freeze_commit = run_git(self.world.repo, "rev-parse", "HEAD~1")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "frozen-tree"
+            run_git(self.world.repo, "worktree", "add", "-q", "--detach", str(root), freeze_commit)
+            self.addCleanup(run_git, self.world.repo, "worktree", "prune")
+            got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(root / study.STUDY_REL / "copy_manifest.py"),
+                                  "--later-files", tip], capture_output=True, text=True, env=self.world.env(),
+                                 cwd=str(self.world.repo))
+        self.assertEqual(got.returncode, 1, f"D.later.rev: {got.stdout}{got.stderr}")
+        self.assertIn("FAIL json.py is under", got.stdout, "D.later.rev")
+        self.assertNotIn("SHADOW-RAN", got.stdout, "D.later.rev")
+
+    def test_a_tip_off_the_freeze_line_is_refused(self):
+        got = self.later(self.world.parent)
+        self.assertEqual(got.returncode, 1, f"D.later.line: {got.stdout}")
+        self.assertIn("does not descend from the freeze commit", got.stdout, "D.later.line")
+
+
 class DWords(Base):
     """The gate review 3's m4: the walk skips the frozen file, and reads these two fields of it by name."""
 
@@ -1069,6 +1165,12 @@ def mutants() -> dict:
         "verifier-report-scanned": ("D.post.road", "lint_language", '    re.compile(r"^verify-[1-9]\\d*\\.md$"),', '    re.compile(r"^verify-never$"),'),
         "freeze-outputs-scanned": ("D.post.road", "lint_language", "                        and not is_freeze_output(f)\n", ""),
         "record-live": ("D.copy.outputs", "copy_manifest", "    present = files_of_the_record() if present is None else present\n", "    present = files_here() if present is None else present\n"),
+        "later-unread": ("D.later.file", "copy_manifest", "for name in sorted(later - at_freeze) if not is_run_output(name)]", "for name in () if not is_run_output(name)]"),
+        "later-any-output": ("D.later.file", "copy_manifest", "any(name == p or name.startswith(p + \"/\") for p in written)", "any(name.startswith(p) for p in written)"),
+        "later-no-history": ("D.later.history", "copy_manifest", " | names(\n        \"log\", \"--full-history\", \"-m\", \"--no-renames\", \"--diff-filter=A\", \"--format=\", \"--name-only\", \"-z\", f\"{frozen}..{tip}\")", ""),
+        "later-renames": ("D.later.rename", "copy_manifest", "\"--no-renames\", ", ""),
+        "later-no-disk": ("D.later.disk", "copy_manifest", "    if rev is None:\n        later |= files_here()\n", ""),
+        "later-off-line": ("D.later.line", "copy_manifest", "    if git(\"merge-base\", \"--is-ancestor\", frozen, tip).returncode != 0:\n", "    if False:\n"),
         "words-language": ("D.words", "lint_language", "    findings += [x for words, name in freeze_output_words(args.paths) for x in scan_text(words, name, entries)]\n", ""),
         "words-pooling": ("D.words", "lint_pooling", "    findings += [x for words, name in ll.freeze_output_words(args.paths) for x in scan_text(words, name)]\n", ""),
         "rule-leading-zero": ("D.road.floor", "lint_language", 'r"prefreeze-([1-9]\\d*)\\.md"', 'r"prefreeze-(\\d+)\\.md"'),
@@ -1125,6 +1227,12 @@ METHOD = {
     "verifier-report-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
     "freeze-outputs-scanned": "DPost.test_the_cli_is_green_along_the_plans_road",
     "record-live": "DCopy.test_the_runs_outputs_are_no_finding",
+    "later-unread": "DLater.test_a_new_file_that_no_run_writes_is_refused",
+    "later-any-output": "DLater.test_a_new_file_that_no_run_writes_is_refused",
+    "later-no-history": "DLater.test_a_file_added_and_deleted_is_still_refused",
+    "later-renames": "DLater.test_a_frozen_file_renamed_there_and_back_is_refused",
+    "later-no-disk": "DLater.test_a_file_on_disk_is_read_only_without_a_revision",
+    "later-off-line": "DLater.test_a_tip_off_the_freeze_line_is_refused",
     "words-language": "DWords.test_a_later_amendments_words_are_read",
     "words-pooling": "DWords.test_a_later_amendments_words_are_read",
     "rule-leading-zero": "DRoad.test_the_rule_starts_at_round_nine_and_reads_only_review_reports",

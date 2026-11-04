@@ -467,6 +467,7 @@ jobs:
         run: python3 -W ignore evals/gap-study-4/test_round4.py
       - name: Copy record
         # PL-5(c), w5b-4: bind pre-freeze HEAD or the freeze commit; never post-freeze HEAD.
+        # Fold 13: only the freeze commit's own code then lists what HEAD added, so a later file cannot shadow the reader.
         run: |
           if [ ! -f evals/gap-study-4/prereg.json ]; then
             echo "copy gate commit: $(git rev-parse HEAD)"
@@ -479,6 +480,7 @@ jobs:
             trap 'git worktree remove "$copy_root"' EXIT
             echo "copy gate commit: $freeze"
             python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check
+            python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --later-files "$(git rev-parse HEAD)"
           fi
       - name: Round 4 pooling guard on the published page
         # Pre-freeze review 1, m14: round 3's step, ported. Only this round's marked section of

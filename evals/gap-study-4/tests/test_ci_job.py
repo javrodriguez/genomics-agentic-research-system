@@ -45,6 +45,8 @@ PLAN_COMMANDS = (
     "python3 evals/gap-study-4/check_results.py --ledger",
     "python3 evals/gap-study-4/check_results.py --regrade",
 )
+# Fold 13, A3: inside the Copy record step's frozen branch, the freeze commit's code listing what HEAD added.
+LATER = 'python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --later-files "$(git rev-parse HEAD)"'
 AFTER = PLAN_COMMANDS[-3:] + (
     "python3 evals/gap-study-4/result.py --check",
     "python3 evals/gap-study-4/completeness.py --check",
@@ -281,12 +283,13 @@ def problems(text, baseline, introduced, *, box_present=None):
             '  git worktree add --detach "$copy_root" "$freeze"\n'
             "  trap 'git worktree remove \"$copy_root\"' EXIT\n"
             '  echo "copy gate commit: $freeze"\n'
-            '  python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check\nfi'
+            '  python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check\n'
+            f"  {LATER}\nfi"
         )
         need(run == expected_copy, "R42.branches")
     else:
         need(False, "R42.branches")
-    need(sum("copy_manifest.py" in line for entry in runs for line in entry.splitlines()) == 2,
+    need(sum("copy_manifest.py" in line for entry in runs for line in entry.splitlines()) == 3,
          "R42.only")
     need(ZERO_RULE in comments, "R43.rule")
     for command in AFTER:
@@ -359,6 +362,8 @@ def mutations():
         "copy-empty": ("R42.branches", '          test -n "$freeze"\n', ""),
         "copy-location": ("R42.branches", '$RUNNER_TEMP/frozen-tree', 'frozen-tree'),
         "copy-after": ("R42.branches", 'python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check', COPY),
+        "copy-later-dropped": ("R42.branches", f"            {LATER}\n", ""),
+        "copy-later-from-head": ("R42.branches", LATER, LATER.replace('"$copy_root/', "")),
         "copy-print": ("R42.branches", 'echo "copy gate commit: $freeze"', 'echo "copy checked"'),
         "copy-head-print": ("R42.branches", 'echo "copy gate commit: $(git rev-parse HEAD)"', 'echo "copy checked"'),
         "copy-cleanup": ("R42.branches", "trap 'git worktree remove \"$copy_root\"' EXIT", "true"),

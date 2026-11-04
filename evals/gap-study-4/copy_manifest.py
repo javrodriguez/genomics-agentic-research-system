@@ -3,6 +3,8 @@
 
     python3 evals/gap-study-4/copy_manifest.py --check     assemble COPIED.d/*.json, re-derive every entry; exit 1 on any problem
     python3 evals/gap-study-4/copy_manifest.py --derive    print the assembled record (what the freeze writes as COPIED.json)
+    python3 evals/gap-study-4/copy_manifest.py --later-files [REV]    after the freeze: refuse a file added under this folder
+                                                                      that is no run output (later_files_problems)
 
 ROUND 4'S SHAPE. Round 3's manifest compared one committed COPIED.json with what the files derived, so every
 lane that added a file would have rewritten that same file. Here each build lane writes its own fragment,
@@ -79,6 +81,7 @@ No model, no network, stdlib only.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -518,12 +521,82 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
     return out
 
 
+# Fold 13, A3 (the post-run triage's probe: a fractions.py committed in this folder after the freeze ran inside
+# check_results.py --ledger and passed every check). check_pins reads pinned paths and files_of_the_record the freeze commit's,
+# so nothing read a file ADDED later, and this folder is first on sys.path. The paths a real run writes that
+# check_results.RUNTIME_PATHS does not name (they may exist with the freeze, so its timing rule cannot hold them):
+# Javier's labelling inputs, the drawn samples and the agreement page; a take's own folder is read by record_root_of below.
+LATER_RUN_FILES = ("labelling/definitions.json", "labelling/labels.json", "labelling/AGREEMENT.md", "labelling/sample.json",
+                   "labelling/sample-followup.json")
+
+
+def runtime_paths() -> tuple:
+    """check_results.RUNTIME_PATHS read from its source, never imported: importing it runs stats' `from fractions import`
+    from this folder, so the very file the probe committed would have run inside its own refusal."""
+    for node in ast.parse((HERE / "check_results.py").read_text(encoding="utf-8")).body:
+        if isinstance(node, ast.Assign) and [getattr(t, "id", None) for t in node.targets] == ["RUNTIME_PATHS"]:
+            return ast.literal_eval(node.value)
+    raise ManifestError("check_results.py names no RUNTIME_PATHS, so what a run writes cannot be read")
+
+
+def is_run_output(name: str) -> bool:
+    """A path a real run or a verifier writes: check_results' runtime paths, verification/, a take's record folder."""
+    written = (*runtime_paths(), *LATER_RUN_FILES, study.VERIFY_DIR)
+    return record_root_of(name) == mode_binding.TAKES_DIR or any(name == p or name.startswith(p + "/") for p in written)
+
+
+def later_files_problems(rev: str | None = None) -> list[str] | None:
+    """Every path under this folder that the freeze commit does not hold and no run writes, or None before the freeze: at
+    `rev`, in any commit between the freeze and `rev` (a file added, used and deleted was still there), and, with no `rev`,
+    on disk. CI gives `rev` and runs the freeze commit's copy of this file, so a file added later cannot shadow what reads it."""
+    log = git("log", "--reverse", "--format=%H", "--", study.rel("prereg.json")).stdout.decode().split()
+    if not log or not (HERE / "prereg.json").is_file():
+        return None
+    frozen, tip = log[0], rev or "HEAD"
+    if git("merge-base", "--is-ancestor", frozen, tip).returncode != 0:
+        raise ManifestError(f"{tip} does not descend from the freeze commit {frozen[:12]}, so what it added cannot be read")
+
+    def names(*args: str) -> set[str]:
+        got = git(*args, "--", study.STUDY_REL)
+        if got.returncode != 0:
+            raise ManifestError(f"cannot read git {args[0]} at {tip}: git exited {got.returncode}")
+        listed = got.stdout.decode("utf-8", "surrogateescape").split("\0")
+        return {name.strip("\n")[len(study.STUDY_REL) + 1:] for name in listed if name.strip("\n")}
+
+    at_freeze = names("ls-tree", "-r", "-z", "--name-only", frozen)
+    later = names("ls-tree", "-r", "-z", "--name-only", tip) | names(
+        "log", "--full-history", "-m", "--no-renames", "--diff-filter=A", "--format=", "--name-only", "-z", f"{frozen}..{tip}")
+    if rev is None:
+        later |= files_here()
+    return [f"{name} is under {study.STUDY_REL}/, the freeze commit {frozen[:12]} does not hold it and no run writes it"
+            for name in sorted(later - at_freeze) if not is_run_output(name)]
+
+
+def later_files_main(rev: str | None) -> int:
+    try:
+        bad = later_files_problems(rev)
+    except ManifestError as e:
+        print(f"FAIL {e}")
+        return 1
+    if bad is None:
+        print("later files: not applicable, not frozen")
+        return 0
+    for b in bad:
+        print(f"FAIL {b}")
+    if not bad:
+        print(f"later files: ok, every file added since the freeze commit is a run output ({rev or 'HEAD and this disk'})")
+    return 1 if bad else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true")
     g.add_argument("--derive", action="store_true")
+    g.add_argument("--later-files", nargs="?", const="", metavar="REV")
     args = ap.parse_args()
+    if args.later_files is not None:
+        return later_files_main(args.later_files or None)
     for commit in (SOURCE_COMMIT, BASE_COMMIT, SHARED_COMMIT):
         if git("cat-file", "-e", f"{commit}^{{commit}}").returncode != 0:
             print(f"FAIL commit {commit} is not in this clone (git fetch --unshallow)")
