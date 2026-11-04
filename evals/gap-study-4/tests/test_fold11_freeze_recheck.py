@@ -1204,7 +1204,7 @@ class DReach(Base):
         self.assertEqual((got.returncode, got.stdout.count("FAIL")), (1, 2), f"D.reach.rev: {got.stdout}{got.stderr}")
         self.assertNotIn("SHADOW-RAN", got.stdout, "D.reach.rev")
 
-    def result_main(self, *args: str) -> tuple[int, str, bool]:
+    def result_main(self, *args: str, env: dict | None = None) -> tuple[int, str, bool]:
         """The real result.main past its record readers, which need takes this scratch lacks: derive, the witness door and render
         stand in, by name, and the page goes to a temporary file. copy_manifest runs for real, in its own process."""
         with tempfile.TemporaryDirectory() as tmp:
@@ -1215,9 +1215,10 @@ class DReach(Base):
                       "result.check_results.witness_publication_problems = lambda frozen: ([], None)\n"
                       "result.render = lambda got, witness: 'page\\n'\n"
                       "result.PAGE = Path(sys.argv[2])\n"
+                      "import os\nos.environ.update(PYTHONPATH=child_path) if (child_path := os.environ.get('CHILD_PYTHONPATH')) else None\n"
                       "raise SystemExit(result.main(sys.argv[3:]))\n")
             got = subprocess.run([sys.executable, "-B", "-W", "ignore", "-c", driver, str(self.world.study), str(page), *args],
-                                 capture_output=True, text=True, env=self.world.env(), cwd="/")
+                                 capture_output=True, text=True, env={**self.world.env(), **(env or {})}, cwd="/")
             return got.returncode, got.stdout + got.stderr, page.exists()
 
     def test_the_page_is_neither_written_nor_checked_over_a_refused_file(self):
@@ -1231,6 +1232,36 @@ class DReach(Base):
         code, out, _ = self.result_main("--check")
         self.assertEqual(code, 1, f"D.reach.result: {out[-600:]}")
         self.assertIn("evals/shlex.py", out, "D.reach.result")
+
+
+    def test_a_crashed_child_stops_the_page(self):
+        guard = self.world.study / "copy_manifest.py"
+        kept = guard.read_bytes()
+        guard.write_text("raise SystemExit(3)\n")    # on this disk only; nothing here is committed
+        try:
+            code, out, written = self.result_main("--write")
+        finally:
+            guard.write_bytes(kept)
+        self.assertEqual((code, written), (1, False), f"D.reach.crash: {out[-600:]}")
+        self.assertIn("exited 3", out, "D.reach.crash")
+
+    def test_the_child_ignores_pythonpath(self):
+        # The child's first import after sys is replaced by a file on PYTHONPATH that exits 0: only -I keeps the refusal.
+        self.put("evals/shlex.py")
+        self.world.commit("a later file")
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "ast.py").write_text("raise SystemExit(0)\n")
+            code, out, written = self.result_main("--write", env={"CHILD_PYTHONPATH": tmp})
+        self.assertEqual((code, written), (1, False), f"D.reach.isolated: {out[-600:]}")
+        self.assertIn("evals/shlex.py", out, "D.reach.isolated")
+
+    def test_a_stray_on_this_disk_does_not_stop_the_page(self):
+        stray = self.put("evals/shlex.py")     # never committed: a verifier's disk
+        try:
+            code, out, written = self.result_main("--write")
+        finally:
+            stray.unlink()
+        self.assertEqual((code, written), (0, True), f"D.reach.head: {out[-600:]}")
 
 
 class DWords(Base):
@@ -1358,6 +1389,9 @@ def mutants() -> dict:
         "reach-case": ("D.reach.case", "copy_manifest", 'if head.lower() != "evals":', 'if head != "evals":'),
         "reach-study-case": ("D.reach.case", "copy_manifest", 'if name.lower().startswith(study.STUDY_REL.lower() + "/"):', "if False:"),
         "reach-no-disk": ("D.reach.disk", "copy_manifest", "    if rev is None:\n        changed |= changed_on_disk(frozen, study.STUDY_REL)\n", ""),
+        "reach-result-crash": ("D.reach.crash", "result", "    return failed or [f\"copy_manifest.py --later-files exited {got.returncode}: {got.stderr.strip()[-300:]}\"]\n", "    return failed\n"),
+        "reach-result-no-isolation": ("D.reach.isolated", "result", 'subprocess.run([sys.executable, "-I", "-B", ', 'subprocess.run([sys.executable, "-B", '),
+        "reach-result-disk": ("D.reach.head", "result", '"--later-files", "HEAD"],', '"--later-files"],'),
         "reach-result-unwired": ("D.reach.result", "result", "    later = later_files_problems()\n", "    later = []\n"),
         "words-language": ("D.words", "lint_language", "    findings += [x for words, name in freeze_output_words(args.paths) for x in scan_text(words, name, entries)]\n", ""),
         "words-pooling": ("D.words", "lint_pooling", "    findings += [x for words, name in ll.freeze_output_words(args.paths) for x in scan_text(words, name)]\n", ""),
@@ -1437,6 +1471,9 @@ METHOD = {
     "reach-case": "DReach.test_a_case_variant_of_the_folder_is_read",
     "reach-study-case": "DReach.test_a_case_variant_of_the_folder_is_read",
     "reach-no-disk": "DReach.test_a_file_on_disk_is_read_only_without_a_revision",
+    "reach-result-crash": "DReach.test_a_crashed_child_stops_the_page",
+    "reach-result-no-isolation": "DReach.test_the_child_ignores_pythonpath",
+    "reach-result-disk": "DReach.test_a_stray_on_this_disk_does_not_stop_the_page",
     "reach-result-unwired": "DReach.test_the_page_is_neither_written_nor_checked_over_a_refused_file",
     "words-language": "DWords.test_a_later_amendments_words_are_read",
     "words-pooling": "DWords.test_a_later_amendments_words_are_read",

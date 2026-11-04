@@ -613,8 +613,9 @@ def later_files_problems(rev: str | None = None) -> tuple[list[str], list[str]] 
     this file, whose own sys.path holds this folder only, so a file added later cannot shadow what reads it; run with no `rev`
     at HEAD, a shadow in this folder does run here first.
 
-    THE LIMITS. An edit to evals/*.py or evals/graders/ on any line that descends from the freeze reads red until it is undone,
-    published or not: those files feed a study process, and this reader cannot be changed after the freeze. A file elsewhere in
+    THE LIMITS. An edit to evals/*.py or evals/graders/ reads red, until it is undone, in any run at a later HEAD on a line that
+    descends from the freeze: those files feed a study process, and this reader cannot be changed after the freeze. Once CP8 pins
+    the round's CI job to the done commit, that job reads the done commit and a later edit does not reach it. A file elsewhere in
     the root's folders is not read, because no import reaches it without a link or a package that is read. Run data under
     evals/ that a hyphen keeps from an import, and a data file any study process opens by path, are not read here. ci.yml, which
     calls this, is not pinned; result.py calls it again, in a process of its own, before it writes or checks the page. Code
@@ -709,8 +710,8 @@ def later_files_main(rev: str | None) -> int:
     for b in refused:
         print(f"FAIL {b}")
     if not refused:
-        print(f"later files: ok, no importable file added since the freeze commit but a run's, and none added or changed in "
-              f"evals/ or the repository root; {len(reported)} other(s) reported ({rev or 'HEAD and this disk'})")
+        print(f"later files: ok, no importable file added since the freeze commit but a run's, and none that can shadow an import added "
+              f"or changed in evals/ or the repository root; {len(reported)} other(s) reported ({rev or 'HEAD and this disk'})")
     return 1 if refused else 0
 
 
