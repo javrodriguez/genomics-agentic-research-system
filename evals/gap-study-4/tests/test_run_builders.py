@@ -92,6 +92,10 @@ MODELS = {"A": ["claude-opus-5-5", "claude-sonnet-5-5"], "O": ["gpt-6.1-sol", "g
 
 
 def design(deferred=True, per=3) -> dict:
+    """A frozen file's shape for what these tests read. It carries published_tip_residual because freeze.main writes it
+    into every frozen file (freeze.py, always, mirror or not) and check_publication holds it (fold 11, 52f206d0): without
+    it S3Hook's order problem never stands alone. Read from freeze, never copied, so the fixture cannot drift from it."""
+    import freeze
     rows = []
     for arm, models in MODELS.items():
         for model in models:
@@ -100,7 +104,8 @@ def design(deferred=True, per=3) -> dict:
                 rows.append({"slot": f"s-{arm}-{model}-{k}", "arm": arm, "model": model, "half_cell": f"hc-{arm}-{model}",
                              "agent": {"harness": h, "version": v}, "task": "t", "half": "h", "wording": 1})
     order = sorted(copy.deepcopy(rows), key=lambda r: hashlib.sha256(r["slot"].encode()).hexdigest())
-    pre = {"arms": ["A", "C", "O", "G"], "rows": rows, "take_order": order}
+    pre = {"arms": ["A", "C", "O", "G"], "rows": rows, "take_order": order,
+           "published_tip_residual": freeze.PUBLISHED_TIP_LIMIT}
     if deferred:
         pre["deferred_arms"] = {"G": {"status": "deferred"}}
     return pre
