@@ -324,7 +324,20 @@ def manifest_repository():
             return {p[len(study.STUDY_REL) + 1:] for p in
                     git(repo, "ls-files", "--", study.STUDY_REL).splitlines()}
 
-        with mock.patch.object(cm, "HERE", root), mock.patch.object(cm, "tracked_here", tracked):
+        # Fold 13, A1. The two readers of this study's state read the scratch study, by their own code: files_of_the_record
+        # asks git for the frozen file's introducing commit, and git runs in cm.REPO, so unpatched it read the enclosing
+        # repository (a frozen rehearsal clone's freeze commit, whose tree holds no scratch file); committed_records binds
+        # the real folder as its default. cm.REPO is left alone for everything else: a copy's source blob is read at the
+        # round 3 commit, which never moves.
+        real_record, real_records = cm.files_of_the_record, cm.committed_records
+
+        def record_of_the_scratch():
+            with mock.patch.object(cm, "REPO", repo):
+                return real_record()
+
+        with mock.patch.object(cm, "HERE", root), mock.patch.object(cm, "tracked_here", tracked), \
+                mock.patch.object(cm, "files_of_the_record", record_of_the_scratch), \
+                mock.patch.object(cm, "committed_records", lambda: real_records(root)):
             yield repo, root, folder
 
 
@@ -365,6 +378,25 @@ class FreezeOutputs(unittest.TestCase):
             paths = git(repo, "show", "--format=", "--name-only", "HEAD").splitlines()
             self.assertEqual(set(paths), {study.rel(p) for p in
                                          ("COPIED.json", "prereg.json", "COPIED.d/freeze.json")})
+
+    def test_the_manifest_reads_the_scratch_repositorys_own_freeze(self):
+        # Fold 13, A1: the record is the scratch freeze commit's files whatever state the enclosing repository is in, so a
+        # claimed file is found, a file added later is not read, and a claimed file deleted later is missing.
+        writer = self.writer()
+        with manifest_repository() as (repo, root, folder):
+            before = cm.files_of_the_record()
+            self.assertIn("instrument.txt", before)
+            writer({"synthetic": True, "status": "frozen"}, root=root, manifest=cm)
+            commit(repo, [study.STUDY_REL], "Freeze synthetic inputs")
+            frozen = before | {"COPIED.json", "prereg.json", "COPIED.d/freeze.json"}
+            self.assertEqual(cm.files_of_the_record(), frozen)
+            (root / "later.txt").write_text("a run's output\n")
+            commit(repo, [study.STUDY_REL], "A later file")
+            self.assertEqual(cm.files_of_the_record(), frozen)
+            self.assertEqual(cm.problems(folder, pinned=False), [])
+            (root / "instrument.txt").unlink()
+            commit(repo, [study.STUDY_REL], "A claimed file deleted")
+            self.assertEqual(cm.problems(folder, pinned=False), ["instrument.txt (synthetic) is claimed but does not exist"])
 
     def test_second_freeze_refused_before_any_write(self):
         writer = self.writer()
