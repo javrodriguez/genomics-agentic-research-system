@@ -34,6 +34,9 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
   D.later     fold 13, A3: after the freeze a file under the study that the freeze commit does not hold and no run writes is
               refused if it can be imported (at the tip, or on disk with no revision) and reported, exit 0, otherwise,
               in any commit since; read from the freeze commit's own code as CI runs it
+  D.reach     fold 14, pre-freeze review 9's M1: in evals/ and the repository root, a path that can shadow an import and that the
+              freeze commit does not hold, or holds other bytes for, is refused; deleting or restoring it clears the refusal; what
+              the road lands elsewhere stays silent or reported; result.py reads the same check before the page
   D.words     the language and pooling walks read a later amendment's words and the rehearsal record's text by name
   D.main      main --ledger --rehearsal-plan, the real CLI, passes the clean state and refuses an edited one, and the
               runtime steps of the rehearsal run on it
@@ -111,7 +114,8 @@ def source_files() -> list[str]:
     """What the scratch carries: every pinned path, minus the freeze's own outputs (the battery also runs in a frozen
     rehearsal clone, where they exist and would stop the freeze)."""
     gone = {study.rel(p) for p in OUTPUTS}
-    return [p for p in freeze.pinned_paths(freeze.PINNED) if p not in gone]
+    # evals/transcript.py is the one file outside the study that a study process imports by name (fold 14, D.reach).
+    return [p for p in freeze.pinned_paths(freeze.PINNED) if p not in gone] + ["evals/transcript.py"]
 
 
 class World:
@@ -1074,6 +1078,161 @@ class DLater(Base):
         self.assertIn("does not descend from the freeze commit", got.stdout, "D.later.line")
 
 
+class DReach(Base):
+    """Fold 14, pre-freeze review 9's M1 and m-new-2: --later-files over evals/ and the repository root, by the real CLI."""
+
+    BLOCKED = ("evals/shlex.py", "shlex.py", "evals/shlex.pyc", "evals/x.so", "x.pth", "evals/x.pth", "evals/SHLEX.PY", "evals/shlex/__init__.py",
+               "shlex/__init__.py", "shlex/__init__.pyc", "evals/graders.py", "evals/graders/__init__.py", "evals/graders/labels4.py", "evals/box/x/y.py",
+               "evals/__pycache__/transcript.cpython-312.pyc", "__pycache__/x.cpython-312.pyc", "conftest.py", "evals/sitecustomize.py")
+    # The road's own landings outside the study, and other work in the root: none can be imported, so none may stop the road.
+    REPORTED = ("evals/gap-study-5/x.py", "evals/fixtures/planted-effect/x.py", "evals/notes.txt", "notes.txt", "evals/results/a.json", "README.md")
+    SILENT = ("docs/EVALS.md", ".github/workflows/ci.yml", "ops/x.py", "gars/_system/x.py", "gars/_system/tools/__init__.py", "tests/x.py",
+              "scripts/x.py", "lane-reports/gap-study-4/x/y.py", "ops/x/y.txt")
+
+    def put(self, rel: str, body: str = "a synthetic file\n") -> Path:
+        f = self.world.repo / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(body)
+        return f
+
+    def later(self, *rev: str) -> subprocess.CompletedProcess:
+        return self.world.cli("copy_manifest.py", "--later-files", *rev)
+
+    def commit_entry(self, rel: str, mode: str = "100644", body: bytes = b"x\n") -> None:
+        """A commit of one tree entry, whatever this disk's case rules or link rules: written to the index, not the disk."""
+        with tempfile.NamedTemporaryFile(suffix=".bin") as blob:
+            blob.write(body)
+            blob.flush()
+            sha = run_git(self.world.repo, "hash-object", "-w", blob.name)
+        if mode == "160000":
+            sha = run_git(self.world.repo, "rev-parse", "HEAD")
+        run_git(self.world.repo, "update-index", "--add", "--cacheinfo", f"{mode},{sha},{rel}")
+        run_git(self.world.repo, "commit", "-q", "-m", "a later entry")
+
+    def test_a_file_that_can_shadow_is_refused_where_the_study_imports(self):
+        for rel in self.BLOCKED:
+            self.world.commit_freeze()
+            self.put(rel)
+            self.world.commit("a later file")
+            got = self.later("HEAD")
+            self.assertEqual((got.returncode, got.stdout.count("FAIL")), (1, 1), f"D.reach.file: {rel}: {got.stdout}{got.stderr}")
+            self.assertIn(f"FAIL {rel} is on a study process's import path", got.stdout, "D.reach.file")
+
+    def test_the_shadow_the_guard_names_is_real_and_runs_in_the_checker(self):
+        self.put("evals/shlex.py", "print('SHADOW-RAN')\nraise SystemExit(0)\n")
+        self.world.commit("a later shadow")
+        ran = self.world.cli("check_take.py", "--help")
+        self.assertIn("SHADOW-RAN", ran.stdout, f"D.reach.real: {ran.stdout[-400:]}{ran.stderr[-400:]}")
+        got = self.later("HEAD")
+        self.assertEqual(got.returncode, 1, f"D.reach.real: {got.stdout}")
+        self.assertNotIn("SHADOW-RAN", got.stdout, "D.reach.real")
+
+    def test_an_edit_to_a_file_the_study_imports_is_refused_and_restoring_clears_it(self):
+        f = self.world.repo / "evals/transcript.py"
+        frozen = f.read_bytes()
+        f.write_bytes(frozen + b"\n# an edit\n")
+        self.world.commit("an edit")
+        got = self.later("HEAD")
+        self.assertEqual(got.returncode, 1, f"D.reach.edit: {got.stdout}")
+        self.assertIn("FAIL evals/transcript.py is on a study process's import path", got.stdout, "D.reach.edit")
+        self.assertIn("holds other bytes", got.stdout, "D.reach.edit")
+        f.write_bytes(frozen)
+        self.world.commit("restored")
+        got = self.later("HEAD")
+        self.assertEqual(got.returncode, 0, f"D.reach.edit: {got.stdout}")
+
+    def test_deleting_the_stray_clears_the_block_and_prints_it(self):
+        for rel in ("evals/shlex.py", "shlex.py", "evals/shlex/__init__.py"):
+            self.world.commit_freeze()
+            f = self.put(rel)
+            self.world.commit("a stray")
+            self.assertEqual(self.later("HEAD").returncode, 1, f"D.reach.clear: {rel}")
+            f.unlink()
+            self.world.commit("deleted")
+            got = self.later("HEAD")
+            self.assertEqual(got.returncode, 0, f"D.reach.clear: {rel}: {got.stdout}")
+            self.assertIn(f"later files: reported: {rel} (only in history)\n", got.stdout, "D.reach.clear")
+
+    def test_what_no_import_reaches_is_reported_or_silent(self):
+        for rel in (*self.REPORTED, *self.SILENT):
+            self.world.commit_freeze()
+            self.put(rel)
+            self.world.commit("a later file")
+            got = self.later("HEAD")
+            self.assertEqual(got.returncode, 0, f"D.reach.road: {rel}: {got.stdout}{got.stderr}")
+            printed = f"later files: reported: {rel}\n" in got.stdout
+            self.assertEqual(printed, rel in self.REPORTED, f"D.reach.road: {rel}: {got.stdout}")
+
+    def test_a_link_or_a_submodule_is_refused_whatever_its_name(self):
+        for rel, mode in (("evals/shlex", "120000"), ("shlex", "120000"), ("evals/shlex", "160000"), (study.rel("shlex"), "120000")):
+            self.world.commit_freeze()
+            self.commit_entry(rel, mode, b"../ops/x")
+            got = self.later("HEAD")
+            self.assertEqual(got.returncode, 1, f"D.reach.link: {rel} {mode}: {got.stdout}{got.stderr}")
+        # A link a take's own record holds is the take's: the run line carries it, no import path does.
+        self.world.commit_freeze()
+        self.commit_entry(study.rel("takes/s1/1/link"), "120000", b"x")
+        got = self.later("HEAD")
+        self.assertEqual(got.returncode, 0, f"D.reach.link: a run output: {got.stdout}")
+
+    def test_a_case_variant_of_the_folder_is_read(self):
+        for rel in ("Evals/shlex.py", "EVALS/gap-study-4/x.py"):
+            self.world.commit_freeze()
+            self.commit_entry(rel)
+            got = self.later("HEAD")
+            self.assertEqual(got.returncode, 1, f"D.reach.case: {rel}: {got.stdout}{got.stderr}")
+
+    def test_a_file_on_disk_is_read_only_without_a_revision(self):
+        f = self.put("evals/shlex.py")
+        self.addCleanup(f.unlink)    # commit_freeze adds everything on disk
+        got = self.later()
+        self.assertEqual(got.returncode, 1, f"D.reach.disk: {got.stdout}")
+        self.assertEqual(self.later("HEAD").returncode, 0, "D.reach.disk")
+
+    def test_the_freeze_commits_code_reads_a_later_tip_as_ci_runs_it(self):
+        self.put("evals/json.py", "print('SHADOW-RAN')\nraise SystemExit(0)\n")
+        self.put("json.py", "print('SHADOW-RAN')\nraise SystemExit(0)\n")
+        tip = self.world.commit("later shadows")
+        freeze_commit = run_git(self.world.repo, "rev-parse", "HEAD~1")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "frozen-tree"
+            run_git(self.world.repo, "worktree", "add", "-q", "--detach", str(root), freeze_commit)
+            self.addCleanup(run_git, self.world.repo, "worktree", "prune")
+            got = subprocess.run([sys.executable, "-B", "-W", "ignore", str(root / study.STUDY_REL / "copy_manifest.py"),
+                                  "--later-files", tip], capture_output=True, text=True, env=self.world.env(),
+                                 cwd=str(self.world.repo))
+        self.assertEqual((got.returncode, got.stdout.count("FAIL")), (1, 2), f"D.reach.rev: {got.stdout}{got.stderr}")
+        self.assertNotIn("SHADOW-RAN", got.stdout, "D.reach.rev")
+
+    def result_main(self, *args: str) -> tuple[int, str, bool]:
+        """The real result.main past its record readers, which need takes this scratch lacks: derive, the witness door and render
+        stand in, by name, and the page goes to a temporary file. copy_manifest runs for real, in its own process."""
+        with tempfile.TemporaryDirectory() as tmp:
+            page = Path(tmp) / "RESULT.md"
+            driver = ("import sys\nfrom pathlib import Path\nsys.path.insert(0, sys.argv[1])\nimport result\n"
+                      "result.derive = lambda: {'stats': {'takes': 1}}\n"
+                      "result.prereg.require_frozen = lambda why: {}\n"
+                      "result.check_results.witness_publication_problems = lambda frozen: ([], None)\n"
+                      "result.render = lambda got, witness: 'page\\n'\n"
+                      "result.PAGE = Path(sys.argv[2])\n"
+                      "raise SystemExit(result.main(sys.argv[3:]))\n")
+            got = subprocess.run([sys.executable, "-B", "-W", "ignore", "-c", driver, str(self.world.study), str(page), *args],
+                                 capture_output=True, text=True, env=self.world.env(), cwd="/")
+            return got.returncode, got.stdout + got.stderr, page.exists()
+
+    def test_the_page_is_neither_written_nor_checked_over_a_refused_file(self):
+        code, out, written = self.result_main("--write")
+        self.assertEqual((code, written), (0, True), f"D.reach.result: {out[-600:]}")
+        self.put("evals/shlex.py")
+        self.world.commit("a later file")
+        code, out, written = self.result_main("--write")
+        self.assertEqual((code, written), (1, False), f"D.reach.result: {out[-600:]}")
+        self.assertIn("result: FAIL evals/shlex.py is on a study process's import path", out, "D.reach.result")
+        code, out, _ = self.result_main("--check")
+        self.assertEqual(code, 1, f"D.reach.result: {out[-600:]}")
+        self.assertIn("evals/shlex.py", out, "D.reach.result")
+
+
 class DWords(Base):
     """The gate review 3's m4: the walk skips the frozen file, and reads these two fields of it by name."""
 
@@ -1186,6 +1345,20 @@ def mutants() -> dict:
         "later-renames": ("D.later.rename", "copy_manifest", "\"--no-renames\", ", ""),
         "later-no-disk": ("D.later.disk", "copy_manifest", "    if rev is None:\n        at_tip |= files_here()\n", ""),
         "later-off-line": ("D.later.line", "copy_manifest", "    if git(\"merge-base\", \"--is-ancestor\", frozen, tip).returncode != 0:\n", "    if False:\n"),
+        "reach-unread": ("D.reach.file", "copy_manifest", "        if shadow_shaped(name, mode_of(name)):\n", "        if False:\n"),
+        "reach-no-root-file": ("D.reach.file", "copy_manifest", "    if len(parts) == 1:\n        return link or is_importable(name)\n", "    if len(parts) == 1:\n        return link\n"),
+        "reach-no-root-package": ("D.reach.file", "copy_manifest", "(head == \"__pycache__\" or rest[0].lower().startswith(\"__init__.\"))", "head == \"__pycache__\""),
+        "reach-no-depth": ("D.reach.file", "copy_manifest", "all(folder.isidentifier() for folder in rest[:-1])", "len(rest) == 1"),
+        "reach-added-only": ("D.reach.edit", "copy_manifest", "and was.get(name) != entry}", "and name not in was}"),
+        "reach-any-depth": ("D.reach.road", "copy_manifest", "and all(folder.isidentifier() for folder in rest[:-1])", ""),
+        "reach-root-all": ("D.reach.road", "copy_manifest", "        return len(parts) == 2 and is_importable(name) and (head", "        return is_importable(name) or (head"),
+        "reach-history-blocks": ("D.reach.clear", "copy_manifest", "            reported.append(f\"{name} (only in history)\")\n    return refused, reported\n", "            refused.append(f\"{name} (only in history)\")\n    return refused, reported\n"),
+        "reach-no-links": ("D.reach.link", "copy_manifest", 'LINK_MODES = ("120000", "160000")', 'LINK_MODES = ()'),
+        "reach-no-study-link": ("D.reach.link", "copy_manifest", "(is_importable(name) or mode_of(here + name) in LINK_MODES)", "is_importable(name)"),
+        "reach-case": ("D.reach.case", "copy_manifest", 'if head.lower() != "evals":', 'if head != "evals":'),
+        "reach-study-case": ("D.reach.case", "copy_manifest", 'if name.lower().startswith(study.STUDY_REL.lower() + "/"):', "if False:"),
+        "reach-no-disk": ("D.reach.disk", "copy_manifest", "    if rev is None:\n        changed |= changed_on_disk(frozen, study.STUDY_REL)\n", ""),
+        "reach-result-unwired": ("D.reach.result", "result", "    later = later_files_problems()\n", "    later = []\n"),
         "words-language": ("D.words", "lint_language", "    findings += [x for words, name in freeze_output_words(args.paths) for x in scan_text(words, name, entries)]\n", ""),
         "words-pooling": ("D.words", "lint_pooling", "    findings += [x for words, name in ll.freeze_output_words(args.paths) for x in scan_text(words, name)]\n", ""),
         "rule-leading-zero": ("D.road.floor", "lint_language", 'r"prefreeze-([1-9]\\d*)\\.md"', 'r"prefreeze-(\\d+)\\.md"'),
@@ -1251,6 +1424,20 @@ METHOD = {
     "later-renames": "DLater.test_a_frozen_file_renamed_there_and_back_is_reported_and_passes",
     "later-no-disk": "DLater.test_a_file_on_disk_is_read_only_without_a_revision",
     "later-off-line": "DLater.test_a_tip_off_the_freeze_line_is_refused",
+    "reach-unread": "DReach.test_a_file_that_can_shadow_is_refused_where_the_study_imports",
+    "reach-no-root-file": "DReach.test_a_file_that_can_shadow_is_refused_where_the_study_imports",
+    "reach-no-root-package": "DReach.test_a_file_that_can_shadow_is_refused_where_the_study_imports",
+    "reach-no-depth": "DReach.test_a_file_that_can_shadow_is_refused_where_the_study_imports",
+    "reach-added-only": "DReach.test_an_edit_to_a_file_the_study_imports_is_refused_and_restoring_clears_it",
+    "reach-any-depth": "DReach.test_what_no_import_reaches_is_reported_or_silent",
+    "reach-root-all": "DReach.test_what_no_import_reaches_is_reported_or_silent",
+    "reach-history-blocks": "DReach.test_deleting_the_stray_clears_the_block_and_prints_it",
+    "reach-no-links": "DReach.test_a_link_or_a_submodule_is_refused_whatever_its_name",
+    "reach-no-study-link": "DReach.test_a_link_or_a_submodule_is_refused_whatever_its_name",
+    "reach-case": "DReach.test_a_case_variant_of_the_folder_is_read",
+    "reach-study-case": "DReach.test_a_case_variant_of_the_folder_is_read",
+    "reach-no-disk": "DReach.test_a_file_on_disk_is_read_only_without_a_revision",
+    "reach-result-unwired": "DReach.test_the_page_is_neither_written_nor_checked_over_a_refused_file",
     "words-language": "DWords.test_a_later_amendments_words_are_read",
     "words-pooling": "DWords.test_a_later_amendments_words_are_read",
     "rule-leading-zero": "DRoad.test_the_rule_starts_at_round_nine_and_reads_only_review_reports",

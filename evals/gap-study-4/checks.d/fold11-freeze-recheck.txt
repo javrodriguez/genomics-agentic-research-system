@@ -3,5 +3,5 @@
 # own scratch repository. Synthetic records only; the scratch holds the study's real pinned files and real draft.
 python3 -B -W ignore evals/gap-study-4/tests/test_fold11_freeze_recheck.py
 python3 -B -W ignore evals/gap-study-4/tests/test_fold11_freeze_recheck.py --witnesses
-# Fold 13, A3: what was committed under the study after the freeze; before it, says not applicable.
+# Fold 13, A3, and fold 14: what was committed under the study, in evals/ or in the repository root after the freeze; before it, says not applicable.
 python3 -B -W ignore evals/gap-study-4/copy_manifest.py --later-files HEAD
