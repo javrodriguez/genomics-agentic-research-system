@@ -382,7 +382,7 @@ def in_place_problems(rows: list[dict], commits: dict[int, str]) -> list[str]:
 # So the prompt is pinned in two named eras, and only these: prefreeze rounds 1-9 on the first, every later row on the second. A
 # verify row counts its own n from 1 and comes after the freeze, so it is on the second whatever its n.
 PROMPT_ROUNDS_1_TO_9 = "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc"
-PROMPT_FROM_ROUND_10 = "cd0d19587b1933fa0675da3d87763c3769a13d88ab65be80f20e30613a70b895"
+PROMPT_FROM_ROUND_10 = "629b698e930c033917052eded03bf25d371896b71e63dd4bc9438b30e2237797"
 LAST_ROUND_ON_THE_FIRST_PROMPT = 9
 
 
