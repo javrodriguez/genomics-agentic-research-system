@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -405,6 +406,22 @@ def render(rec: dict, witness=None) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def later_files_problems() -> list[str]:
+    """Pre-freeze review 9, m-new-2: ci.yml is not pinned and was the one caller of copy_manifest.py --later-files, so an edit
+    to it switched the check off. This file is pinned and is on the publication road, so the page is neither written nor
+    checked over a refused later file. `-I` keeps PYTHONPATH and the script's own folder out of the child, and copy_manifest
+    puts only this folder on its path. Only HEAD's commits are read, as the battery's line reads them, so a stray on a
+    verifier's disk stops nothing. THE LIMIT: this copy runs from HEAD, after this process has imported what a shadow may have
+    replaced, so CI's run of the freeze commit's copy stays the one no later file can reach, and a page written by hand
+    is read by check_results.py without this."""
+    got = subprocess.run([sys.executable, "-I", "-B", str(HERE / "copy_manifest.py"), "--later-files", "HEAD"],
+                         capture_output=True, text=True)
+    if got.returncode == 0:
+        return []
+    failed = [line[len("FAIL "):] for line in got.stdout.splitlines() if line.startswith("FAIL ")]
+    return failed or [f"copy_manifest.py --later-files exited {got.returncode}: {got.stderr.strip()[-300:]}"]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     group = ap.add_mutually_exclusive_group(required=True)
@@ -434,6 +451,10 @@ def main(argv=None) -> int:
     problems, witness = check_results.witness_publication_problems(prereg.require_frozen("publishing the result"))
     if problems:
         print("result: FAIL " + "; ".join(problems))
+        return 1
+    later = later_files_problems()
+    if later:
+        print("result: FAIL " + "; ".join(later))
         return 1
     wanted = render(got, witness=witness)
     if args.write:
