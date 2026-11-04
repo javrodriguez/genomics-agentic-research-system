@@ -1713,9 +1713,6 @@ def help_problems(prefix, mod) -> list:
 def c2_cli(sm, sh, ag):
     """sample.py's command line over its own (patched) paths: --check, --write, --pin and the refusals."""
     out = help_problems("C2", sm)
-    rc, got = out_of(sm.main, ["--check"])
-    if (rc, got) != (0, "sample: no takes (no frame and no results); nothing was drawn. Not a pass on data.\n"):
-        out.append(f"C2: --check on this tree: {rc} {got!r}")
     with tempfile.TemporaryDirectory(prefix="w11d-c2-") as t:
         root = Path(t)
         kw = _tree(root, write_sample=False)
@@ -1740,6 +1737,10 @@ def c2_cli(sm, sh, ag):
         ekw = dict(frame_path=str(e / "frame.json"), prereg=str(e / "prereg.json"), results=str(e / "records"),
                    sample_path=str(e / "sample.json"))
         with _patched(sm, sh, ag, e, ekw):
+            # Fold 13, class sweep of A2: this leg read the study's live folders, so it held only until takes existed.
+            rc, got = out_of(sm.main, ["--check"])
+            if (rc, got) != (0, "sample: no takes (no frame and no results); nothing was drawn. Not a pass on data.\n"):
+                out.append(f"C2: --check over nothing: {rc} {got!r}")
             rc, got = out_of(sm.main, ["--write"])
             if (rc, got) != (1, "sample: no takes; nothing drawn or written\n") or (e / "sample.json").exists():
                 out.append(f"C2: --write over nothing: {rc} {got!r}")
@@ -1792,9 +1793,16 @@ def k7_cli(sm, sh, ag):
 def g8_cli(sm, sh, ag):
     """agreement.py's command line over its own (patched) paths: --write, --check, and nothing to write."""
     out = help_problems("G8", ag)
-    rc, got = out_of(ag.main, ["--check"])
-    if (rc, got) != (0, "agreement: no labels; nothing measured. Not a pass on data.\n"):
-        out.append(f"G8: --check on this tree: {rc} {got!r}")
+    # Fold 13, A2: this leg read the study's live labels, so it held only until labels existed. "Nothing measured" is a
+    # property of a tree with no labels and a history that never held any, so that is the tree it now reads.
+    with tempfile.TemporaryDirectory(prefix="w11d-g8-none-") as t:
+        root = Path(t)
+        kw = _agree_tree(root)
+        Path(kw["labels_path"]).unlink()
+        with _patched(sm, sh, ag, root, kw), mock.patch.object(ag, "_git", fake_git(kw["labels_path"], shas=())):
+            rc, got = out_of(ag.main, ["--check"])
+            if (rc, got) != (0, "agreement: no labels; nothing measured. Not a pass on data.\n"):
+                out.append(f"G8: --check with no labels: {rc} {got!r}")
     with tempfile.TemporaryDirectory(prefix="w11d-g8-") as t:
         root = Path(t)
         kw = _agree_tree(root)

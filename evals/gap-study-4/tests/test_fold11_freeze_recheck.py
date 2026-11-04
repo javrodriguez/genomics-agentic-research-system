@@ -125,11 +125,14 @@ class World:
         run_git(self.repo, "init", "-q")
         run_git(self.repo, "config", "user.name", "t")
         run_git(self.repo, "config", "user.email", "t@example.invalid")
-        self.first = self.base = self.commit("the study")     # the last commit that changes the draft
+        # Fold 13, A2: this world's register never holds a verify row, in any version. A verify report is not pinned, and
+        # freeze.row_introducer reads every version of the register, so a row committed here and stripped a commit later
+        # would read as a row rewritten once the live register holds one.
         self.rounds = self.study / study.REVIEW_DIR / "rounds.json"
         register = json.loads(self.rounds.read_text())
-        register["rows"] = [r for r in register["rows"] if r.get("kind") == "prefreeze"]   # a verify report is not pinned
+        register["rows"] = [r for r in register["rows"] if r.get("kind") == "prefreeze"]
         self.rounds.write_text(json.dumps(register, indent=2) + "\n")
+        self.first = self.base = self.commit("the study")     # the last commit that changes the draft
         self.base = self.commit("the study, its prefreeze rows")
         self.earlier = max(r["n"] for r in register["rows"] if r.get("kind") == "prefreeze")
         self.n = self.earlier + 1

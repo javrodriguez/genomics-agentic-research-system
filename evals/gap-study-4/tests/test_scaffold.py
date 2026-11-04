@@ -200,13 +200,16 @@ class TheManifest(unittest.TestCase):
             cm.BASE_COMMIT = saved
 
     def later_lane(self, files: list[dict], blobs: dict[str, bytes]):
-        """problems() with this lane's fragment plus a later lane's, whose files exist with the given bytes."""
+        """problems() with this lane's fragment plus a later lane's, whose files exist with the given bytes. Fold 13, A2:
+        the files are what problems() itself reads (files_of_the_record), so these tests read the same on a pre-freeze, a
+        frozen and a post-run tree; a run's outputs have no fragment and are not what a later lane's claim is checked
+        against."""
         with tempfile.TemporaryDirectory() as d:
             d = Path(d)
             own_fragment_in(d)
             (d / "zz-later.json").write_text(json.dumps({"lane": "zz-later", "files": files}))
             read = lambda path: blobs[path] if path in blobs else cm.read_copy(path)
-            return cm.problems(d, present=cm.files_here() | set(blobs), read=read, pinned=False)
+            return cm.problems(d, present=cm.files_of_the_record() | set(blobs), read=read, pinned=False)
 
     def test_a_round3_record_copied_by_any_lane_is_refused(self):
         # review W1A-1: a later lane's fragment copying a record or a grader of round 3 must go red
