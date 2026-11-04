@@ -28,7 +28,8 @@ a test says so. Each test then commits the freeze again by hand, with one edit, 
               but its own claims, both lints clean, and the launch binding reads clean
   D.post      after the freeze: rounds.json's pin holds on every row present at the freeze, and only valid verify rows may
               be appended; every other pinned file still refuses; check_results.py --ledger is green along the plan's whole
-              road (a take, its records and page, labels, one verify round, two, a new copy-record fragment)
+              road (a take, its records and page, labels, one verify round, two), and a later copy-record fragment changes nothing it reads
+              (no real road writes one; --later-files prints it, D.later)
   D.copy      once a frozen file is committed, the copy record reads the files of the freeze commit, not the run's
   D.later     fold 13, A3: after the freeze a file under the study that the freeze commit does not hold and no run writes is
               refused if it can be imported (at the tip, or on disk with no revision) and reported, exit 0, otherwise,
@@ -921,6 +922,7 @@ class DPost(Base):
             ledger("after one verify round")
             self.add_verify(tmp)
             ledger("after two")
+            # No real road writes this; the ledger must not read it either way (--later-files prints it, DLater).
             fragment = self.world.study / "COPIED.d" / "verify-records.json"
             fragment.write_text(json.dumps({"lane": "verify-records", "files": []}, indent=2) + "\n")
             self.study_git("a new copy-record fragment")
