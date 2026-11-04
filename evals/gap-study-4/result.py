@@ -16,7 +16,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -414,6 +413,7 @@ def later_files_problems() -> list[str]:
     verifier's disk stops nothing. THE LIMIT: this copy runs from HEAD, after this process has imported what a shadow may have
     replaced, so CI's run of the freeze commit's copy stays the one no later file can reach, and a page written by hand
     is read by check_results.py without this."""
+    import subprocess  # here, so no line the draft cites in this file moves
     got = subprocess.run([sys.executable, "-I", "-B", str(HERE / "copy_manifest.py"), "--later-files", "HEAD"],
                          capture_output=True, text=True)
     if got.returncode == 0:
