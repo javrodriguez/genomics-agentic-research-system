@@ -35,6 +35,16 @@
       "path": "review_kit/prefreeze-8-blindness.txt",
       "status": "new",
       "reason": "Pre-freeze review 8's blindness record, committed by 5511d3af through review_kit/commit_review.py. A bound record, never edited; its bytes are not this lane's. Claimed here by lane fold11/freeze-recheck, as an ordinary commit."
+    },
+    {
+      "path": "review_kit/prefreeze-9.md",
+      "status": "new",
+      "reason": "Pre-freeze review 9's report, committed by 81282ff29588 through review_kit/commit_review.py. A bound record, never edited."
+    },
+    {
+      "path": "review_kit/prefreeze-9-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 9's blindness record, committed by 81282ff29588 through review_kit/commit_review.py. A bound record, never edited."
     }
   ]
 }
