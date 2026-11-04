@@ -525,8 +525,9 @@ def problems(folder: Path = FRAGMENTS, present: set[str] | None = None, read=rea
 # check_results.py --ledger and passed every check). check_pins reads pinned paths and files_of_the_record the freeze commit's,
 # so nothing read a file ADDED later, and this folder is first on sys.path. The paths a real run writes that
 # check_results.RUNTIME_PATHS does not name (they may exist with the freeze, so its timing rule cannot hold them):
+# run_builders' spend and trim ledger (its RUN_LEDGER_NAME; arms O and G's money gate reads it, so the counted run commits it),
 # Javier's labelling inputs, the drawn samples and the agreement page; a take's own folder is read by record_root_of below.
-LATER_RUN_FILES = ("labelling/definitions.json", "labelling/labels.json", "labelling/AGREEMENT.md", "labelling/sample.json",
+LATER_RUN_FILES = ("run-ledger.json", "labelling/definitions.json", "labelling/labels.json", "labelling/AGREEMENT.md", "labelling/sample.json",
                    "labelling/sample-followup.json")
 
 

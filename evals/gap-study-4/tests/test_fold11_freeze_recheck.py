@@ -972,7 +972,7 @@ class DLater(Base):
     """Fold 13, A3: copy_manifest.py --later-files, the real CLI on the real freeze commit of this scratch."""
 
     OUTPUTS = ("RESULT.md", "COSTS.md", "takes.json", "outcomes.json", "rulings.json", "cost-calls.json", "witness-record.json",
-               "original-values.json", "deferred-arm-go.json", "records/a.json", "takes/s1/1/transcript.jsonl",
+               "original-values.json", "deferred-arm-go.json", "run-ledger.json", "records/a.json", "takes/s1/1/transcript.jsonl",
                "takes/s1/1/evidence/x.py", "labelling/frame.json", "labelling/flagged-verdicts.json",
                "labelling/definitions.json", "labelling/labels.json", "labelling/AGREEMENT.md", "labelling/sample.json",
                "labelling/sample-followup.json", "verification/verify-1.md", "verification/verify-1-blindness.txt")
