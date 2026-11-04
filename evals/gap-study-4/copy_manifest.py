@@ -550,6 +550,8 @@ def is_run_output(name: str) -> bool:
 # Narrowed on the gate review of 36787b17: copy_manifest.py is pinned and CI runs the freeze commit's copy, so a refusal here can
 # never be repaired, and the list of what a run writes is derived by hand. So only what can shadow a module blocks.
 IMPORTABLE_SUFFIXES = (".py", ".pyc", ".so", ".pth")
+# git's modes for a symbolic link and a submodule: a folder link named shlex replaces a module with no suffix to read.
+LINK_MODES = ("120000", "160000")
 
 
 def is_importable(name: str) -> bool:
@@ -557,23 +559,93 @@ def is_importable(name: str) -> bool:
     return name.lower().endswith(IMPORTABLE_SUFFIXES)
 
 
-def later_files_problems(rev: str | None = None) -> tuple[list[str], list[str]] | None:
-    """(refused, reported) over the paths under this folder that the freeze commit does not hold and no run writes, or None
-    before the freeze. Refused: an importable one at `rev`, or, with no `rev`, on disk. Reported, never failing: every other
-    such path, and one seen only in a commit between the freeze and `rev` (a file added, used and deleted was still there, and
-    the run line cannot be rewritten, so it stays a printed line in public CI). CI gives `rev` and runs the freeze commit's
-    copy of this file, so a file added later cannot shadow what reads it; run with no `rev` at HEAD, a shadow of the standard
-    library does run here first.
+def shadow_shaped(name: str, mode: str = "") -> bool:
+    """Can this path, in the repository but outside this folder, be what an `import` finds in a study process? Pre-freeze
+    review 9's M1: check_take.py, denials.py, fixture_walk.py, round2.py and live_box_cut.py put evals/ on sys.path, ahead of
+    the standard library (build_cases.py appends it), and a `python3 -c` from the repository root has the root there.
 
-    THE LIMITS. Only this folder is read, so the same file one folder up (evals/, the repository root) is not named. Code that
-    must run after the freeze cannot be added under this folder: CP8's reader of the labelling sheet's content (labelling/sheet.py,
-    "not built here") lives outside the study folder or is built before the freeze."""
+    evals/: a file at any depth whose folders can all be named by an import. So evals/shlex.py and evals/shlex/__init__.py; and
+    evals/graders/x.py, because this folder's graders/, box/, labelling/ and the like hold no __init__.py, so evals/graders/
+    joins them as one namespace package, ahead of them in the fixture_walk and round2 processes, and a regular package or a
+    module of that name in evals/ replaces them outright. evals/__pycache__/ is held too: an unchecked .pyc there runs in place
+    of the source beside it. A hyphen names no import, so evals/gap-study-5/ and evals/fixtures/planted-effect/ are not held.
+
+    The root: only a file directly in it and a top-level package's __init__. The root sits behind this folder, so a folder of
+    the root without an __init__ never wins, and gars/, tests/, scripts/ and ops/ hold other work that no study import names.
+    A link or a submodule at either place blocks whatever its name: a folder link replaces a module with no suffix to read."""
+    link, parts = mode in LINK_MODES, name.split("/")
+    if len(parts) == 1:
+        return link or is_importable(name)
+    head, rest = parts[0], parts[1:]
+    if head.lower() != "evals":
+        return len(parts) == 2 and is_importable(name) and (head == "__pycache__" or rest[0].lower().startswith("__init__."))
+    if name.lower().startswith(study.STUDY_REL.lower() + "/"):
+        return link or is_importable(name)     # a case-insensitive disk reads EVALS/gap-study-4/x.py as this folder's
+    return (link or is_importable(name)) and all(folder.isidentifier() for folder in rest[:-1])
+
+
+def on_the_import_path(name: str) -> bool:
+    """Directly in the repository root, or anywhere under evals/: what --later-files prints when it does not block."""
+    return "/" not in name or name.split("/")[0].lower() == "evals"
+
+
+def changed_on_disk(frozen: str, here: str) -> set[str]:
+    """Outside this folder, what this disk adds or changes against the freeze commit. Untracked caches are left out, as files_here."""
+    away = f":(exclude){here}"
+    new = git("ls-files", "--others", "-z", "--", away)
+    edited = git("diff", "--name-only", "--no-renames", "--diff-filter=d", "-z", frozen, "--", away)
+    for got in (new, edited):
+        if got.returncode != 0:
+            raise ManifestError(f"cannot read this disk against {frozen[:12]}: git exited {got.returncode}")
+    return {n for got in (new, edited) for n in got.stdout.decode("utf-8", "surrogateescape").split("\0") if n and not is_cache(n)}
+
+
+def later_files_problems(rev: str | None = None) -> tuple[list[str], list[str]] | None:
+    """(refused, reported) over what landed after the freeze commit, or None before the freeze.
+
+    Under this folder, the paths the freeze commit does not hold and no run writes. Refused: an importable one or a link at
+    `rev`, or, with no `rev`, on disk (an edit to a file the freeze holds is check_pins' to refuse). In evals/ and the repository
+    root, the other two folders a study process has on sys.path, any path the freeze commit does not hold or holds other bytes
+    or another mode for. Refused: a shadow_shaped one. Reported, never failing: every other such path in this folder, in evals/
+    or directly in the root, and one seen only in a commit between the freeze and `rev` (a file added, used and deleted was still
+    there, and the run line cannot be rewritten, so it stays a printed line in public CI). Deleting the file, or restoring the
+    freeze commit's bytes, clears a refusal: nothing is read from history. CI gives `rev` and runs the freeze commit's copy of
+    this file, whose own sys.path holds this folder only, so a file added later cannot shadow what reads it; run with no `rev`
+    at HEAD, a shadow in this folder does run here first.
+
+    THE LIMITS. An edit to evals/*.py or evals/graders/ on any line that descends from the freeze reads red until it is undone,
+    published or not: those files feed a study process, and this reader cannot be changed after the freeze. A file elsewhere in
+    the root's folders is not read, because no import reaches it without a link or a package that is read. Run data under
+    evals/ that a hyphen keeps from an import, and a data file any study process opens by path, are not read here. ci.yml, which
+    calls this, is not pinned; result.py calls it again, in a process of its own, before it writes or checks the page. Code
+    that must run after the freeze cannot be added under this folder or in evals/ under a name an import can reach: CP8's reader
+    of the labelling sheet's content (labelling/sheet.py, "not built here") lives elsewhere or is built before the freeze."""
     log = git("log", "--reverse", "--format=%H", "--", study.rel("prereg.json")).stdout.decode().split()
     if not log or not (HERE / "prereg.json").is_file():
         return None
     frozen, tip = log[0], rev or "HEAD"
     if git("merge-base", "--is-ancestor", frozen, tip).returncode != 0:
         raise ManifestError(f"{tip} does not descend from the freeze commit {frozen[:12]}, so what it added cannot be read")
+    here = study.STUDY_REL + "/"
+
+    def tree(commit: str) -> dict[str, tuple[str, str]]:
+        """{path: (mode, object id)} of the whole repository at a commit."""
+        got = git("ls-tree", "-r", "-z", commit)
+        if got.returncode != 0:
+            raise ManifestError(f"cannot read git ls-tree at {commit}: git exited {got.returncode}")
+        out = {}
+        for line in got.stdout.decode("utf-8", "surrogateescape").split("\0"):
+            if line:
+                meta, name = line.split("\t", 1)
+                mode, _, blob = meta.split(" ")
+                out[name] = (mode, blob)
+        return out
+
+    def later_names(*paths: str) -> set[str]:
+        got = git("log", "--full-history", "-m", "--no-renames", "--format=", "--name-only", "-z", f"{frozen}..{tip}", "--", *paths)
+        if got.returncode != 0:
+            raise ManifestError(f"cannot read git log at {tip}: git exited {got.returncode}")
+        return {name.strip("\n") for name in got.stdout.decode("utf-8", "surrogateescape").split("\0") if name.strip("\n")}
 
     def names(*args: str) -> set[str]:
         got = git(*args, "--", study.STUDY_REL)
@@ -582,8 +654,16 @@ def later_files_problems(rev: str | None = None) -> tuple[list[str], list[str]] 
         listed = got.stdout.decode("utf-8", "surrogateescape").split("\0")
         return {name.strip("\n")[len(study.STUDY_REL) + 1:] for name in listed if name.strip("\n")}
 
-    at_freeze = names("ls-tree", "-r", "-z", "--name-only", frozen)
-    at_tip = names("ls-tree", "-r", "-z", "--name-only", tip)
+    was, now = tree(frozen), tree(tip)
+
+    def mode_of(name: str) -> str:
+        """The tip's mode, or on this disk a link's, since files_here and changed_on_disk name paths no commit holds."""
+        if name in now:
+            return now[name][0]
+        return LINK_MODES[0] if (REPO / name).is_symlink() else ""
+
+    at_freeze = {name[len(here):] for name in was if name.startswith(here)}
+    at_tip = {name[len(here):] for name in now if name.startswith(here)}
     if rev is None:
         at_tip |= files_here()
     seen = at_tip | names(
@@ -592,11 +672,25 @@ def later_files_problems(rev: str | None = None) -> tuple[list[str], list[str]] 
     for name in sorted(seen - at_freeze):
         if is_run_output(name):
             continue
-        if name in at_tip and is_importable(name):
+        if name in at_tip and (is_importable(name) or mode_of(here + name) in LINK_MODES):
             refused.append(f"{name} is under {study.STUDY_REL}/, can be imported, the freeze commit {frozen[:12]} does not hold "
                            f"it and no run writes it")
         else:
             reported.append(name if name in at_tip else f"{name} (only in history)")
+
+    changed = {name for name, entry in now.items() if not name.startswith(here) and was.get(name) != entry}
+    if rev is None:
+        changed |= changed_on_disk(frozen, study.STUDY_REL)
+    for name in sorted(changed):
+        if shadow_shaped(name, mode_of(name)):
+            how = "holds other bytes for it" if name in was else "does not hold it"
+            refused.append(f"{name} is on a study process's import path and the freeze commit {frozen[:12]} {how}; delete it or "
+                           f"restore the freeze commit's bytes")
+        elif on_the_import_path(name):
+            reported.append(name)
+    for name in sorted(later_names(f":(exclude){study.STUDY_REL}") - changed):
+        if shadow_shaped(name) or on_the_import_path(name):
+            reported.append(f"{name} (only in history)")
     return refused, reported
 
 
@@ -615,8 +709,8 @@ def later_files_main(rev: str | None) -> int:
     for b in refused:
         print(f"FAIL {b}")
     if not refused:
-        print(f"later files: ok, no importable file added since the freeze commit but a run's; {len(reported)} other(s) "
-              f"reported ({rev or 'HEAD and this disk'})")
+        print(f"later files: ok, no importable file added since the freeze commit but a run's, and none added or changed in "
+              f"evals/ or the repository root; {len(reported)} other(s) reported ({rev or 'HEAD and this disk'})")
     return 1 if refused else 0
 
 
