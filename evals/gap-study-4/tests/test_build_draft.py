@@ -3440,8 +3440,12 @@ def setUpModule():
 
 
 # Explicit Athena-only whole-file witnesses. Never called by ordinary imports
-# or by a targeted Mac invocation. Six disjoint groups bound command time.
-WITNESS_GROUP_COUNT = 6
+# or by a targeted Mac invocation. Disjoint groups bound command time.
+# Lane fold12/battery-reds: six groups of 44 ran 3250-3472 s at fold 9 and timed out at run_checks.TIMEOUT_S (3600 s) on
+# groups 1 and 2 at b9503c2, about 4% later. Eight groups of 33 keep the same 264 witnesses; reckoned, not yet run, at
+# about 2800 s: a group's time is its unmutated baseline (265 s) plus about 76 s a child on athena.
+# checks.d/w5c-draft-ci.txt lists each group once, and WitnessEvidence.test_the_battery_lists_every_group binds the two.
+WITNESS_GROUP_COUNT = 8
 def witness_binding(name):
     if name in W7A_MUTANTS:
         return W7A_MUTANTS[name][:2]
@@ -3605,6 +3609,15 @@ class WitnessEvidence(unittest.TestCase):
             code = run_witnesses(1)
         return code, out.getvalue()
 
+    def test_the_battery_lists_every_group(self):
+        """Lane fold12/battery-reds: a group no battery line names runs nowhere, and its witnesses with it, while
+        witness_groups' own partition still reads whole."""
+        lines = (HERE / "checks.d" / "w5c-draft-ci.txt").read_text().splitlines()
+        listed = [int(m[1]) for m in (re.fullmatch(r"python3 -B -W ignore evals/gap-study-4/tests/test_build_draft\.py "
+                                                   r"--witnesses (\d+)", line) for line in lines) if m]
+        self.assertEqual(listed, list(range(1, WITNESS_GROUP_COUNT + 1)), "the battery's witness groups")
+        self.assertEqual(len(witness_groups()), WITNESS_GROUP_COUNT, "the partition's witness groups")
+
     def test_partition_and_attribution(self):
         names = witness_names()
         groups = witness_groups()
@@ -3699,7 +3712,7 @@ if __name__ == "__main__":
         index = sys.argv.index("--witnesses")
         group = int(sys.argv[index + 1])
         if group not in range(1, WITNESS_GROUP_COUNT + 1):
-            raise SystemExit("witness group must be 1 through 6")
+            raise SystemExit(f"witness group must be 1 through {WITNESS_GROUP_COUNT}")
         raise SystemExit(run_witnesses(group))
     if "--mutant" in sys.argv:
         index = sys.argv.index("--mutant")
