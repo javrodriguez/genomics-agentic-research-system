@@ -1,0 +1,20 @@
+{
+  "lane": "freeze",
+  "files": [
+    {
+      "path": "COPIED.json",
+      "status": "new",
+      "reason": "written once by freeze.py at the freeze"
+    },
+    {
+      "path": "prereg.json",
+      "status": "new",
+      "reason": "written once by freeze.py at the freeze"
+    },
+    {
+      "path": "COPIED.d/freeze.json",
+      "status": "new",
+      "reason": "written once by freeze.py at the freeze"
+    }
+  ]
+}
