@@ -45,6 +45,16 @@
       "path": "review_kit/prefreeze-9-blindness.txt",
       "status": "new",
       "reason": "Pre-freeze review 9's blindness record, committed by 81282ff29588 through review_kit/commit_review.py. A bound record, never edited."
+    },
+    {
+      "path": "review_kit/prefreeze-10.md",
+      "status": "new",
+      "reason": "Pre-freeze review 10's report, committed by 2e62b8efeb17 through review_kit/commit_review.py. A bound record, never edited."
+    },
+    {
+      "path": "review_kit/prefreeze-10-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 10's blindness record, committed by 2e62b8efeb17 through review_kit/commit_review.py. A bound record, never edited."
     }
   ]
 }
