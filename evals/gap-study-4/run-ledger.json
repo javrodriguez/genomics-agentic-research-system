@@ -6,6 +6,13 @@
       "usd": "16.87",
       "source": "computed, not a vendor read",
       "by": "glitch-45"
+    },
+    {
+      "vendor": "openai",
+      "at": "2026-11-05T12:25:09-05:00",
+      "usd": "0",
+      "source": "computed, not a vendor read",
+      "by": "glitch-45"
     }
   ],
   "trimmed": []
