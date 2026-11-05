@@ -411,5 +411,118 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-de4da25ab2c7cbe2504358abe2f3dc0695207e3f5226270bf38a0eb63c25a5c0",
+    "half_cell": "h-2baae7059c8e987a4518fdf3711b1681866af9184a5d50b8171142171b02aecb",
+    "attempt": 1,
+    "container_id": "554536008d28e1be48e0b07b7ca565f79e56c79946fb2198fc81e9cd0092cd46",
+    "state": "failed",
+    "reason": "commit failed: the lease file cannot be found (reconstructed: the loop recorded only the first stop; RUN-STOP-DIAGNOSIS-20261105); reconciled out of the loop: cgroup.oom_kill_delta and cgroup.pids_max_delta were not measured directly and are written 0 on the kernel-journal read made by Javier with sudo on athena (sudo journalctl -k --since \"2026-11-05 12:40\" --until \"2026-11-05 12:50\" --no-pager | grep -cE \"oom-kill|Killed process|fork rejected by pids controller\"; window 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09)): 0 matching lines, 156 kernel lines in the window, read 2026-11-05T15:53:58-0500",
+    "decision": {
+      "route": "graded",
+      "rows": [
+        "end-turn"
+      ],
+      "matched": [
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 0,
+        "reruns_per_half_cell": 0,
+        "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 3,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "model": "claude-haiku-4-5-20251001",
+        "harness": "claude-code"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": true,
+    "mask_basis": "the take is failed: masked fail-closed (annotations read)",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": false,
+    "rerun": false,
+    "beyond_cap": false,
+    "stop": "commit failed: the lease file cannot be found (reconstructed: the loop recorded only the first stop; RUN-STOP-DIAGNOSIS-20261105)",
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
