@@ -561,8 +561,8 @@ def is_importable(name: str) -> bool:
 
 def shadow_shaped(name: str, mode: str = "") -> bool:
     """Can this path, in the repository but outside this folder, be what an `import` finds in a study process? Pre-freeze
-    review 9's M1: check_take.py, denials.py, fixture_walk.py, round2.py and live_box_cut.py put evals/ on sys.path, ahead of
-    the standard library (build_cases.py appends it), and a `python3 -c` from the repository root has the root there.
+    review 9's M1: check_take.py, round 3's denials module, fixture_walk.py, round2.py and live_box_cut.py put evals/ on sys.path,
+    ahead of the standard library (build_cases.py appends it), and a `python3 -c` from the repository root has the root there.
 
     evals/: a file at any depth whose folders can all be named by an import. So evals/shlex.py and evals/shlex/__init__.py; and
     evals/graders/x.py, because this folder's graders/, box/, labelling/ and the like hold no __init__.py, so evals/graders/
