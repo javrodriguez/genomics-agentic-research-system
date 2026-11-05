@@ -371,6 +371,8 @@ def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
     """The real callback: bound take artifacts and specs, with the same pure grader path. A vendor take is admitted
     first (vendor_admission: `readers`, None for the production registry, and its driver ledger's cross-check)."""
     from graders import endstate
+    if "record_dir" not in row:                       # amendment run-amend-20261105: a registered row names no folder
+        row = dict(row, record_dir=f"{mode_binding.TAKES_DIR}/{row['slot']}/{row['attempt']}")
     path = (HERE / row["record_dir"]).resolve()
     takes_root = (HERE / mode_binding.TAKES_DIR).resolve()
     if path == takes_root or not path.is_relative_to(takes_root):          # W8A (L5): takes/ only, never a walk
@@ -387,6 +389,17 @@ def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
     if not takes._git_at(REPO, "ls-files", "--", rel):
         raise ValueError("take artifacts are not committed")
     task = variants.load_task(row["task"])
+    if "project" not in row:                          # amendment run-amend-20261105: the take's own driver ledger's
+        ledger = json.loads((path / "driver-ledger.json").read_text(encoding="utf-8"))
+        for key, led in (("task", "task"), ("half", "half"), ("wording", "wording"), ("arm", "arm"),
+                         ("model", "model_requested")):             # as walk_row binds a walk's entry
+            if ledger.get(led) != row[key]:
+                raise ValueError(f"the take's driver ledger in {rel} records {led} {ledger.get(led)!r}; its "
+                                 f"registered row says {row[key]!r}")
+        project = ledger.get("project")
+        if not (isinstance(project, str) and project):
+            raise ValueError(f"the take's driver ledger in {rel} records no project")
+        row = dict(row, project=project)
     spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
                                 project=row["project"])
     vendor_admission((row.get("agent") or {}).get("harness"), readers, ledger_cross_check(path))

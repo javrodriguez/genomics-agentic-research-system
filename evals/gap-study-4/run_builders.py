@@ -127,9 +127,15 @@ def ruled_deferral_problem(pre: dict, go):
 
 
 def final_slots(history: list) -> set:
-    """Every slot with a committed outcome that is final for it."""
+    """Every slot with a committed outcome that is final for it, or a route ruling that makes it final (Batch closes
+    such a slot and refuses its row: amendment run-amend-20261105). A history with no route ruling reads as before."""
     import batch
-    return {o["slot"] for o in history if batch.is_outcome(o) and o.get("final") is True}
+    from graders import labels4
+    done = {o["slot"] for o in history if batch.is_outcome(o) and o.get("final") is True}
+    if any(e.get("ruling") == labels4.RULE_ROUTE for e in history):     # only a ruling holds the key
+        import takes
+        done |= {o["slot"] for o in takes.registration_outcomes(history) if o["final"]}
+    return done
 
 
 def run_rows(pre: dict, history: list, *, go, arms=None, limit=None) -> list:

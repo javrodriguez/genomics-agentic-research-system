@@ -458,6 +458,28 @@ class S1Plan(Case):
         self.assertEqual(got, order[1:], "S1.plan: final slot kept or owed slot dropped")
         self.assertIn(order[3], got, "S1.plan")
 
+    def test_ruled_final_slots_dropped(self):
+        # Amendment run-amend-20261105: a slot a route ruling makes final is final for the row list, as Batch closes it.
+        pre = design()
+        order = self.slots(pre, ("A", "O"))
+
+        def taken(slot, attempt=1, state="failed", rerun=False):
+            return dict(outcome(slot, attempt, state, final=False), rerun=rerun, drive_started=True, cell_state=None,
+                        cell_reason=None, beyond_cap=False, window_event=None)
+
+        def ruled(slot, word, route, attempt=1):
+            return {"kind": "ruling", "slot": slot, "attempt": attempt, "ruling": word, "route": route, "by": "x",
+                    "why": "w", "cite": "c"}
+        history = [taken(order[0]), ruled(order[0], "route", "graded"),
+                   taken(order[1]), ruled(order[1], "route", "aborted"),
+                   taken(order[2]), ruled(order[2], "re-run", None),
+                   taken(order[3]), ruled(order[3], "route", "harness-error"),                   # a re-run left: owed
+                   dict(taken(order[4], state="harness-error", rerun=True), half_cell="hc2"),    # the slot's one re-run
+                   dict(taken(order[4], 2), half_cell="hc2"), ruled(order[4], "route", "harness-error", 2)]  # past it: final
+        self.assertEqual(self.must("S1.plan", rb().final_slots, history), {order[0], order[1], order[4]}, "S1.plan")
+        got = [r["slot"] for r in self.must("S1.plan", rb().run_rows, pre, history, go=no_go)]
+        self.assertEqual(got, [order[2], order[3]] + order[5:], "S1.plan: a ruled final slot kept, or an owed one lost")
+
     def test_arms_narrows_only(self):
         pre = design()
         got = [r["slot"] for r in self.must("S1.plan", rb().run_rows, pre, [], go=no_go, arms=["A"])]

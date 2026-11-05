@@ -1333,7 +1333,33 @@
   },
   "amendments": {
     "O": "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT",
-    "G": "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT"
+    "G": "Javier's letter \"D8: B2\", Tue 6 Oct 2026 23:43:50 EDT",
+    "run-amend-20261105": {
+      "by": "Javier (OD195, run-amend yes, 2026-11-05T20:25:56Z)",
+      "why": "Javier's word \"run-amend yes\" (OD195), Thu 5 Nov 2026 20:25:56 UTC; written by glitch-45 on his word. Two read-side defects stopped the counted run. A slot that a route ruling makes final stayed in the rows a restart hands the loop, so every restart after such a ruling was refused; the list of final slots (run_builders.final_slots) now counts those rulings, for both of its readers: the rows a run drives (run_rows) and the money gate's tries left (ledger_walks). Grading read two keys a registered row does not carry, so every graded take raised; run.grade_committed now takes the take folder from the row's slot and attempt, and the project from the take's own driver ledger, after checking that ledger names the row's task, half, wording, arm and model.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/run.py",
+          "sha256_before": "9f73455eea397b99ace46622ce33dd9dd091b6fc7e759ceff1ef353fd1a54fe6",
+          "sha256_after": "692f70b518b2e04b5ea0c7196ab10e6b764c2bc537a7569c80529b7f1d69ba67"
+        },
+        {
+          "path": "evals/gap-study-4/run_builders.py",
+          "sha256_before": "c0a2f72216b7f8eedf85092c2b090eb79ff14ca75f696edd1a31f0a18d10a318",
+          "sha256_after": "0250ad21b4ad084d6a6c4bb368e1b73471e0d8128f46cccb89347b301b892ea0"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_pipeline.py",
+          "sha256_before": "831ff96bb8300948707ad6caee1994053a3aa8ac43a33abb5d9186874fc90e0d",
+          "sha256_after": "f3b5b82d5e1ea3d79c7c19491c9051ade49c4a39e709a50aa1559c6f38210cbd"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_run_builders.py",
+          "sha256_before": "1afa8667efac85d35c0b477d4778559733a73e301b1ee74cf656580d89db2bec",
+          "sha256_after": "35f74e16a34c61f722ac0d2b031c6b9077ec70001d7b03127a351ddb6a0ced21"
+        }
+      ]
+    }
   },
   "n": 10,
   "wordings": 5,
@@ -49723,13 +49749,13 @@
     {
       "path": "evals/gap-study-4/run.py",
       "git_blob_sha": "c900ed0f3c92ba3ac98678e602f00a45d2be15ae",
-      "sha256": "9f73455eea397b99ace46622ce33dd9dd091b6fc7e759ceff1ef353fd1a54fe6",
+      "sha256": "692f70b518b2e04b5ea0c7196ab10e6b764c2bc537a7569c80529b7f1d69ba67",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study-4/run_builders.py",
       "git_blob_sha": "f382de199104d38c56c07f30b124d494bb3335e0",
-      "sha256": "c0a2f72216b7f8eedf85092c2b090eb79ff14ca75f696edd1a31f0a18d10a318",
+      "sha256": "0250ad21b4ad084d6a6c4bb368e1b73471e0d8128f46cccb89347b301b892ea0",
       "uncommitted": false
     },
     {
@@ -51937,7 +51963,7 @@
     {
       "path": "evals/gap-study-4/tests/test_pipeline.py",
       "git_blob_sha": "4cd68ae8efb272078b75313c53e104559991bf65",
-      "sha256": "831ff96bb8300948707ad6caee1994053a3aa8ac43a33abb5d9186874fc90e0d",
+      "sha256": "f3b5b82d5e1ea3d79c7c19491c9051ade49c4a39e709a50aa1559c6f38210cbd",
       "uncommitted": false
     },
     {
@@ -52021,7 +52047,7 @@
     {
       "path": "evals/gap-study-4/tests/test_run_builders.py",
       "git_blob_sha": "27bace611dd4d3a980080c48a459294edfc64abf",
-      "sha256": "1afa8667efac85d35c0b477d4778559733a73e301b1ee74cf656580d89db2bec",
+      "sha256": "35f74e16a34c61f722ac0d2b031c6b9077ec70001d7b03127a351ddb6a0ced21",
       "uncommitted": false
     },
     {

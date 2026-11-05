@@ -1975,6 +1975,41 @@ class PublishedArtifacts(unittest.TestCase):
                         with mock.patch.object(runner, "require_evidence_identity", lambda r, e: None):
                             runner.require_evidence_identity(r, loaded)
 
+    def test_a_registered_row_reads_its_take_folder_and_project(self):
+        # Amendment run-amend-20261105: takes.json rows name neither record_dir nor project: the folder is the row's own
+        # takes/<slot>/<attempt>, and the project is the one the take's own driver ledger recorded.
+        runner = get_run()
+        with repository() as repo:
+            root = repo.root / study.STUDY_REL
+            folder = root / "takes/s1/1"
+            folder.mkdir(parents=True)
+            r = dict(row(), slot="s1", attempt=1)
+            own = {"task": r["task"], "half": r["half"], "wording": r["wording"], "arm": r["arm"],
+                   "model_requested": r["model"]}
+            (folder / "driver-ledger.json").write_text(json.dumps(dict(own, project="from-the-ledger")))
+            commit(repo.root, [study.rel("takes/s1/1")], "Record a synthetic take folder")
+            self.assertNotIn("record_dir", r)
+            self.assertNotIn("project", r)
+            stop = RuntimeError("past the project")
+            with mock.patch.object(runner, "HERE", root), mock.patch.object(runner, "REPO", repo.root), \
+                    mock.patch.object(variants, "load_task", return_value={"grader_halves": None}), \
+                    mock.patch.object(variants, "grader_spec", side_effect=stop) as spec:
+                with self.assertRaises(RuntimeError) as got:
+                    runner.grade_committed(r, {})
+                self.assertIs(got.exception, stop)
+                self.assertEqual(spec.call_args.kwargs["project"], "from-the-ledger")
+                (folder / "driver-ledger.json").write_text(json.dumps(own))
+                commit(repo.root, [study.rel("takes/s1/1")], "A ledger with no project")
+                with self.assertRaisesRegex(ValueError, "no project"):
+                    runner.grade_committed(r, {})
+                for key in own:                                         # the ledger must be this row's take
+                    (folder / "driver-ledger.json").write_text(json.dumps(dict(own, project="p", **{key: "other"})))
+                    commit(repo.root, [study.rel("takes/s1/1")], f"A ledger naming another {key}")
+                    with self.assertRaisesRegex(ValueError, f"records {key} 'other'"):
+                        runner.grade_committed(r, {})
+                with self.assertRaisesRegex(ValueError, "not committed"):     # the row's own folder, nothing else
+                    runner.grade_committed(dict(r, attempt=2), {})
+
     def test_every_attempt_binds_its_registration_model_and_agent(self):
         runner = get_run()
         self.assertTrue(callable(getattr(runner, "require_registered_outcome", None)))
