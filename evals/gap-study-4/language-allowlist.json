@@ -728,6 +728,20 @@
       "line_text": "- **Outcome, walks, publication (steps 9-11).** `routing.py --check` proves the no-match defaults. `probes4.py --check` grades 1690 cells with 0 defects. Every take-side gate says it measured nothing rather than printing a pass. `lint_language` and `lint_pooling` are clean. `result.py` has no rate or model-comparison sentence that I could find (grep for `%`, \"better than\", \"outperform\": none outside comments).",
       "ruled": "2026-11-03",
       "why": "Bound record, never edited: review_kit/prefreeze-8.md is pre-freeze review 8 as committed by 5511d3af (sha256 f9ce9160c1b25844c2ab250d8f9bfa428ee1ead3fb393e2752f94a4897ef25b3); records are append-only, so the line is excused rather than reworded, as rounds 1-7 were, by lane fold11/freeze-recheck. The word is what the reviewer searched for and did not find."
+    },
+    {
+      "file": "evals/gap-study-4/outcomes.json",
+      "pattern": "out-of",
+      "line_text": "    \"reason\": \"commit failed: the lease file cannot be found; reconciled out of the loop: cgroup.oom_kill_delta and cgroup.pids_max_delta were not measured directly and are written 0 on the kernel-journal read made by Javier with sudo on athena (sudo journalctl -k --since \\\"2026-11-05 12:40\\\" --until \\\"2026-11-05 12:50\\\" --no-pager | grep -cE \\\"oom-kill|Killed process|fork rejected by pids controller\\\"; window 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09)): 0 matching lines, 156 kernel lines in the window, read 2026-11-05T15:53:58-0500\",",
+      "ruled": "2026-11-06",
+      "why": "Written by the run's reconcile helper (lane-reports/run-amend/reconcile_take.py, cgroup_note), which committed a held take of the counted run as failed outside the take loop under amendment run-amend-20261105 (OD195). The words 'out of the loop' in the take's committed reason describe how the take was committed, not a rate. outcomes.json is a committed run record and is never edited, so the exact line is excused; the helper's words were changed so no later reconcile writes them. Part of revision run-amend-20261105-rev2, which waits for Javier's word."
+    },
+    {
+      "file": "evals/gap-study-4/outcomes.json",
+      "pattern": "out-of",
+      "line_text": "    \"reason\": \"commit failed: the lease file cannot be found (reconstructed: the loop recorded only the first stop; RUN-STOP-DIAGNOSIS-20261105); reconciled out of the loop: cgroup.oom_kill_delta and cgroup.pids_max_delta were not measured directly and are written 0 on the kernel-journal read made by Javier with sudo on athena (sudo journalctl -k --since \\\"2026-11-05 12:40\\\" --until \\\"2026-11-05 12:50\\\" --no-pager | grep -cE \\\"oom-kill|Killed process|fork rejected by pids controller\\\"; window 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09)): 0 matching lines, 156 kernel lines in the window, read 2026-11-05T15:53:58-0500\",",
+      "ruled": "2026-11-06",
+      "why": "Written by the run's reconcile helper (lane-reports/run-amend/reconcile_take.py, cgroup_note), which committed a held take of the counted run as failed outside the take loop under amendment run-amend-20261105 (OD195). The words 'out of the loop' in the take's committed reason describe how the take was committed, not a rate. outcomes.json is a committed run record and is never edited, so the exact line is excused; the helper's words were changed so no later reconcile writes them. Part of revision run-amend-20261105-rev2, which waits for Javier's word."
     }
   ]
 }

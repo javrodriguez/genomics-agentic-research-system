@@ -371,9 +371,7 @@ def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
     """The real callback: bound take artifacts and specs, with the same pure grader path. A vendor take is admitted
     first (vendor_admission: `readers`, None for the production registry, and its driver ledger's cross-check)."""
     from graders import endstate
-    if "record_dir" not in row:                       # amendment run-amend-20261105: a registered row names no folder
-        row = dict(row, record_dir=f"{mode_binding.TAKES_DIR}/{row['slot']}/{row['attempt']}")
-    path = (HERE / row["record_dir"]).resolve()
+    row, path = amended_take_folder(row)              # amendment run-amend-20261105, its helpers at the file's end
     takes_root = (HERE / mode_binding.TAKES_DIR).resolve()
     if path == takes_root or not path.is_relative_to(takes_root):          # W8A (L5): takes/ only, never a walk
         raise ValueError(f"record_dir {row['record_dir']!r} is not a take folder under {mode_binding.TAKES_DIR}/; "
@@ -388,18 +386,7 @@ def grade_committed(row: dict, outcome: dict, *, readers=None) -> dict:
         raise ValueError("take artifacts have uncommitted changes")
     if not takes._git_at(REPO, "ls-files", "--", rel):
         raise ValueError("take artifacts are not committed")
-    task = variants.load_task(row["task"])
-    if "project" not in row:                          # amendment run-amend-20261105: the take's own driver ledger's
-        ledger = json.loads((path / "driver-ledger.json").read_text(encoding="utf-8"))
-        for key, led in (("task", "task"), ("half", "half"), ("wording", "wording"), ("arm", "arm"),
-                         ("model", "model_requested")):             # as walk_row binds a walk's entry
-            if ledger.get(led) != row[key]:
-                raise ValueError(f"the take's driver ledger in {rel} records {led} {ledger.get(led)!r}; its "
-                                 f"registered row says {row[key]!r}")
-        project = ledger.get("project")
-        if not (isinstance(project, str) and project):
-            raise ValueError(f"the take's driver ledger in {rel} records no project")
-        row = dict(row, project=project)
+    row, task = amended_ledger_project(row, path, rel, variants.load_task(row["task"]))  # amendment run-amend-20261105
     spec = variants.grader_spec(row["task"], row["half"], row["wording"], pressure=row["pressure"],
                                 project=row["project"])
     vendor_admission((row.get("agent") or {}).get("harness"), readers, ledger_cross_check(path))
@@ -685,6 +672,31 @@ def main(argv=None) -> int:
         paths = write_records(records)
         print(f"run: {len(records)} records in {len(paths)} files" if records else "run: no takes")
     return 0
+
+
+# ---- amendment run-amend-20261105 (OD195), placed here by its revision so no line a frozen text cites moves
+def amended_take_folder(row: dict):
+    """A registered row names no folder: its folder is its own takes/<slot>/<attempt>. Returns the row and the path."""
+    if "record_dir" not in row:
+        row = dict(row, record_dir=f"{mode_binding.TAKES_DIR}/{row['slot']}/{row['attempt']}")
+    return row, (HERE / row["record_dir"]).resolve()
+
+
+def amended_ledger_project(row: dict, path, rel: str, task: dict):
+    """A registered row names no project: it is the take's own driver ledger's, read after the task loads, once the
+    ledger is this row's take (as walk_row binds a walk's entry). Returns the row and the task, unchanged."""
+    if "project" not in row:
+        ledger = json.loads((path / "driver-ledger.json").read_text(encoding="utf-8"))
+        for key, led in (("task", "task"), ("half", "half"), ("wording", "wording"), ("arm", "arm"),
+                         ("model", "model_requested")):
+            if ledger.get(led) != row[key]:
+                raise ValueError(f"the take's driver ledger in {rel} records {led} {ledger.get(led)!r}; its "
+                                 f"registered row says {row[key]!r}")
+        project = ledger.get("project")
+        if not (isinstance(project, str) and project):
+            raise ValueError(f"the take's driver ledger in {rel} records no project")
+        row = dict(row, project=project)
+    return row, task
 
 
 if __name__ == "__main__":

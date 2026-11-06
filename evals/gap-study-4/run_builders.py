@@ -127,15 +127,9 @@ def ruled_deferral_problem(pre: dict, go):
 
 
 def final_slots(history: list) -> set:
-    """Every slot with a committed outcome that is final for it, or a route ruling that makes it final (Batch closes
-    such a slot and refuses its row: amendment run-amend-20261105). A history with no route ruling reads as before."""
+    """Every slot with a committed outcome that is final for it, or that a route ruling makes final (amendment)."""
     import batch
-    from graders import labels4
-    done = {o["slot"] for o in history if batch.is_outcome(o) and o.get("final") is True}
-    if any(e.get("ruling") == labels4.RULE_ROUTE for e in history):     # only a ruling holds the key
-        import takes
-        done |= {o["slot"] for o in takes.registration_outcomes(history) if o["final"]}
-    return done
+    return {o["slot"] for o in history if batch.is_outcome(o) and o.get("final") is True} | route_ruled_final(history)
 
 
 def run_rows(pre: dict, history: list, *, go, arms=None, limit=None) -> list:
@@ -1550,6 +1544,17 @@ def rehearse(out, *, source=None, review=None, runner=None, takes_runner=None, b
         write_summary(out, rehearsal_summary([], {}, {}, refused="takes-timeout"))
         return 1
     return code
+
+
+# ---- amendment run-amend-20261105 (OD195), placed here by its revision so no line a frozen text cites moves
+def route_ruled_final(history: list) -> set:
+    """The slots a route ruling makes final (Batch closes such a slot and refuses its row: amendment
+    run-amend-20261105), read by final_slots. A history with no route ruling adds none, so it reads as before."""
+    from graders import labels4
+    if any(e.get("ruling") == labels4.RULE_ROUTE for e in history):     # only a ruling holds the key
+        import takes
+        return {o["slot"] for o in takes.registration_outcomes(history) if o["final"]}
+    return set()
 
 
 if __name__ == "__main__":

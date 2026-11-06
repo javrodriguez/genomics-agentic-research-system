@@ -1359,6 +1359,27 @@
           "sha256_after": "35f74e16a34c61f722ac0d2b031c6b9077ec70001d7b03127a351ddb6a0ced21"
         }
       ]
+    },
+    "run-amend-20261105-rev2": {
+      "by": "waits for Javier's word (not given; drafted by glitch-45's builder, lane run-amend-rev2-20261106)",
+      "why": "A revision of amendment run-amend-20261105 (OD195) that keeps its behaviour exactly. That amendment added lines inside run.py and run_builders.py, which moved code that frozen texts and a frozen test cite by line number (run.py STOPPED_ROUTES at line 411 and stopped_counts at line 461; run_builders.py exported_gars_tree at line 667 and prepare_take at line 685, cited in prereg.json, prereg-draft.json and build_draft.py, and asserted by tests/test_build_draft.py), so the battery's citation test failed. This revision moves the amendment's code into new functions at the end of each file (run.amended_take_folder, run.amended_ledger_project, run_builders.route_ruled_final) and calls them from lines edited in place, so every line before them keeps its frozen number and the code does what the approved amendment does. It also excuses, in language-allowlist.json, the two lines of outcomes.json where the run's reconcile helper wrote its words about committing a take outside the loop into the take's reason: they describe how the take was committed, not a rate, and a committed run record is never edited. Drafted for glitch-45; it waits for Javier's word.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/language-allowlist.json",
+          "sha256_before": "ff6c20d2b4cfccee98be9e2105c05d83ec01c5591df53af340d4f8d2e5d61161",
+          "sha256_after": "a3f230406108f9365f5b43fb9ac72fcd36367d7a200634b359c9620bb8a08358"
+        },
+        {
+          "path": "evals/gap-study-4/run.py",
+          "sha256_before": "692f70b518b2e04b5ea0c7196ab10e6b764c2bc537a7569c80529b7f1d69ba67",
+          "sha256_after": "9e1fcd3fdc767b8d4187fef0ac1d8451c8459883925bad0ed649e4c8f50303d8"
+        },
+        {
+          "path": "evals/gap-study-4/run_builders.py",
+          "sha256_before": "0250ad21b4ad084d6a6c4bb368e1b73471e0d8128f46cccb89347b301b892ea0",
+          "sha256_after": "9aa7f613e65b3e46306468471d2cfca073963c5c2ea4528e5df38cad8ad8cf6e"
+        }
+      ]
     }
   },
   "n": 10,
@@ -49365,7 +49386,7 @@
     {
       "path": "evals/gap-study-4/language-allowlist.json",
       "git_blob_sha": "79b09f2fba1187dbbb4cc7415133b34dd1789463",
-      "sha256": "ff6c20d2b4cfccee98be9e2105c05d83ec01c5591df53af340d4f8d2e5d61161",
+      "sha256": "a3f230406108f9365f5b43fb9ac72fcd36367d7a200634b359c9620bb8a08358",
       "uncommitted": false
     },
     {
@@ -49749,13 +49770,13 @@
     {
       "path": "evals/gap-study-4/run.py",
       "git_blob_sha": "c900ed0f3c92ba3ac98678e602f00a45d2be15ae",
-      "sha256": "692f70b518b2e04b5ea0c7196ab10e6b764c2bc537a7569c80529b7f1d69ba67",
+      "sha256": "9e1fcd3fdc767b8d4187fef0ac1d8451c8459883925bad0ed649e4c8f50303d8",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study-4/run_builders.py",
       "git_blob_sha": "f382de199104d38c56c07f30b124d494bb3335e0",
-      "sha256": "0250ad21b4ad084d6a6c4bb368e1b73471e0d8128f46cccb89347b301b892ea0",
+      "sha256": "9aa7f613e65b3e46306468471d2cfca073963c5c2ea4528e5df38cad8ad8cf6e",
       "uncommitted": false
     },
     {
