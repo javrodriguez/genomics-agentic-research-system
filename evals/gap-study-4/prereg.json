@@ -1361,7 +1361,7 @@
       ]
     },
     "run-amend-20261105-rev2": {
-      "by": "waits for Javier's word (not given; drafted by glitch-45's builder, lane run-amend-rev2-20261106)",
+      "by": "Javier (OD196, run-amend2 yes, 2026-11-06T13:47:53Z)",
       "why": "A revision of amendment run-amend-20261105 (OD195) that keeps its behaviour exactly. That amendment added lines inside run.py and run_builders.py, which moved code that frozen texts and a frozen test cite by line number (run.py STOPPED_ROUTES at line 411 and stopped_counts at line 461; run_builders.py exported_gars_tree at line 667 and prepare_take at line 685, cited in prereg.json, prereg-draft.json and build_draft.py, and asserted by tests/test_build_draft.py), so the battery's citation test failed. This revision moves the amendment's code into new functions at the end of each file (run.amended_take_folder, run.amended_ledger_project, run_builders.route_ruled_final) and calls them from lines edited in place, so every line before them keeps its frozen number and the code does what the approved amendment does. It also excuses, in language-allowlist.json, the two lines of outcomes.json where the run's reconcile helper wrote its words about committing a take outside the loop into the take's reason: they describe how the take was committed, not a rate, and a committed run record is never edited. Drafted for glitch-45; it waits for Javier's word.",
       "files": [
         {
