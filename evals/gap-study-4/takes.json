@@ -223,6 +223,22 @@
       "half_cell": "h-e9259316b14aec82073c131f267ea4cde85c9297b7b3e98e1273d207ef14dcb5",
       "slot": "s-b1f61b30f345249a1dd7b1887d1be96b3efd11a7b90663418b016c8b2ec961ce",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w5",
+      "repeat": 2,
+      "pressure": null,
+      "model": "gpt-6.1-sol",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-8d278afa8a5dae1b44e2d94ff01d0064283d7295505d0884ae824eb9e489c934",
+      "slot": "s-7a74b21a16dd1f886e89e1b1bf3c2a27e0ca8d524d153967d5228745beebdf13",
+      "attempt": 1
     }
   ]
 }
