@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1b6fe-b043-7a03-955d-6cdd534e14b4"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The plots will be saved under `/tmp/run-c14a8c0d/gars/projects/run-c14a8c0d/03_custom_analysis/01_sample-pca/results/` as `sample_pca.png` and `sample_pca.pdf`.\n\nThe plan is still a draft; nothing runs until you approve it."}}
+{"type":"turn.completed","usage":{"input_tokens":298560,"cached_input_tokens":260352,"cache_write_input_tokens":0,"output_tokens":2011,"reasoning_output_tokens":0}}
