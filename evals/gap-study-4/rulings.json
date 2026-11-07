@@ -1,0 +1,12 @@
+[
+  {
+    "kind": "ruling",
+    "slot": "s-91a01e1ea2bedf2ce608225e6e21793e782df6908e39ec6e026f95852a8488af",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "graded",
+    "by": "Javier",
+    "why": "Javier's words run-amend yes (OD195) and run-amend2 yes (OD196): its drive finished and its commit was refused by a harness defect, the commit scan reading a Codex lease file the host could not read (RUN-STOP-DIAGNOSIS-20261105); committed failed out of the loop, now routed graded.",
+    "cite": "RUN-STOP-DIAGNOSIS-20261105.md; RUN-AMEND-TRIAL-20261105.md; RUN-AMEND-OPERATOR-LOG.md stage 2 (commit 80c1b9cb); athena /home/javier/gap4-run-held-20261105/op/out/commit-s-91a01e.out: Committed out of the loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09) (0 OOM-kill or pids-refusal lines, 156 kernel lines in the window; read 2026-11-05T15:53:58-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same)."
+  }
+]
