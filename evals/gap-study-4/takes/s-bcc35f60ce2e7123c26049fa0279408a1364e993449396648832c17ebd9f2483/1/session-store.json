@@ -1,0 +1,83 @@
+{
+ "harness": "codex",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/07",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/07/rollout-2026-11-07T17-08-33-01a1b6fb-bb43-7b23-96de-aa0f00f5ab6c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/07",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/07/rollout-2026-11-07T17-08-33-01a1b6fb-bb43-7b23-96de-aa0f00f5ab6c.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": "sessions",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-288f719d",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/11/07/rollout-2026-11-07T17-08-33-01a1b6fb-bb43-7b23-96de-aa0f00f5ab6c.jsonl",
+     "codex",
+     "01a1b6fb-bb43-7b23-96de-aa0f00f5ab6c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-288f719d",
+    "/var/tmp"
+   ],
+   "scanned": 485,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}
