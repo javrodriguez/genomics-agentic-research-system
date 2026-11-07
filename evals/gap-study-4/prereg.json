@@ -1396,6 +1396,17 @@
           "sha256_after": "4231fd775224d1c4e6ac25f52ad1c6478a54bdf27202e463d56bcb0e8acb2624"
         }
       ]
+    },
+    "od57-gap-20261107-lint": {
+      "by": "glitch-45 ruling under OD197 (amend-standing yes)",
+      "why": "A lint excusal only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z); glitch-45's ruling, written by its builder. The two route rulings the counted run committed on 7 Nov 2026 (slots s-91a01e and s-de4da2) carry, in their why and cite, the reconcile helper's own description of how those takes were committed, which the language lint's out-of pattern flags on four lines of rulings.json. A committed ruling is never edited, so language-allowlist.json excuses exactly those four lines, each pinned to its full text. Nothing measured, graded or run changes.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/language-allowlist.json",
+          "sha256_before": "a3f230406108f9365f5b43fb9ac72fcd36367d7a200634b359c9620bb8a08358",
+          "sha256_after": "260f99b7a5c757521e6f23c7328c89b35d9c554dfe80772b05e6339e7af19306"
+        }
+      ]
     }
   },
   "n": 10,
@@ -49402,7 +49413,7 @@
     {
       "path": "evals/gap-study-4/language-allowlist.json",
       "git_blob_sha": "79b09f2fba1187dbbb4cc7415133b34dd1789463",
-      "sha256": "a3f230406108f9365f5b43fb9ac72fcd36367d7a200634b359c9620bb8a08358",
+      "sha256": "260f99b7a5c757521e6f23c7328c89b35d9c554dfe80772b05e6339e7af19306",
       "uncommitted": false
     },
     {
