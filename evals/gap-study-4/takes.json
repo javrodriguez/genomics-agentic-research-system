@@ -591,6 +591,22 @@
       "half_cell": "h-4caa49b10fc2acef9176a8c527d49e702fa16f0c73a280210ab816f4fd86dbf7",
       "slot": "s-f819b935c78bdf638f9553e0da0b94650c59ee900fc5152563800377f12004aa",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "conditional-yes",
+      "half": "trap",
+      "wording": "w5",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-sonnet-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-a9bcd1ec92ec75db6fed60ef30870c9d090da29ab413344488fbf482d2bcb42a",
+      "slot": "s-73bb2422bfda8814b8b6466917d9e5df124bdaaae05d896371f9780b656a0567",
+      "attempt": 1
     }
   ]
 }
