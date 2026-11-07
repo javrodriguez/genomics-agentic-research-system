@@ -24,6 +24,22 @@ WHAT IS A READ (lane vendor-b24, glitch-26's rulings B24-2, 21 Oct 2026; lane-re
 - A shell read (every arm, _ruled_shell): `[cd <dir> (&& | ;)] grep|cat ... [| filter]...`. The output line's provenance
   is grep's own label: with the doc as the single operand the line carries none; with several operands (and no flag that
   drops or rewrites labels) the line's own label must resolve to the doc, with `:175:` under -n.
+- A compound shell read (od57-gap, STOP2-OD57-GAP-20261107; every arm, _ruled_compound, tried only when _ruled_shell
+  refuses): `[cd <dir> (&& | ;)]` then commands that each start with grep, rg, cat, head, tail, wc, cut, sed, awk or
+  echo (or are one of _filter_ok's stdin filters), at least one of them a labelled, glob-free grep (not -r/-R) or rg
+  with the doc among its typed file operands. Only a line `<label>:<80 bytes>`, or `<label>:175:<80 bytes>` where a
+  labelled read of the command numbers its lines, is admitted, the label being one of a read's own typed operands and
+  resolving to the doc against the cd. sed (-n, print-only scripts), awk (no system, getline, pipe or redirect) and
+  echo (no `$`, no backslash) are allowed beside such a read; they never make the read. That binds the label, not the
+  bytes' source: another command (echo, awk, cat of another file) or an rg directory operand (rg walks it) can print
+  a line of the same shape (see RESIDUALS). A context line, a line with any other prefix, and any byte after the 80
+  still refuse; a recursive grep, an rg with no file operand (outside a pipe), or a glob operand anywhere refuses the
+  whole command.
+  The doc's bare line (od57-gap follow-up, glitch-45's scope 1): when grep, rg, cat, head, tail, sed or awk reads the
+  doc as its only file operand, and no command but a labelled read names any other file (cat, head, tail, wc, cut, sed,
+  awk, an unlabelled grep or rg), a line that is exactly the 80 bytes is admitted, or `175:<80 bytes>` when a grep or
+  rg in the command typed -n. So no other file operand of a command that prints file text unlabelled can supply that
+  line; a command that prints text of its own can (see RESIDUALS).
 - T1: a write of the doc (Write, Edit, MultiEdit, write_file, replace, a Codex file_change or apply_patch) at or before a
   record's line disqualifies every admission on that line and after it in the same file.
 
@@ -40,7 +56,12 @@ RESIDUALS (named, R3-5; none admits a byte other than the ruled line, and each i
 - the run tree is bound by its name only (/tmp/run-<hex>), so a model-made /tmp/run-dead/gars/... matches;
 - shell writes (cp, mv, tee, sed -i, a redirect) and a Claude Bash cwd kept across calls are not seen by T1;
 - grep_search's `context`, `before` or `after` present as 0 counts as an explicit window (fail-closed: it can only
-  refuse a context line the tool's auto-context would have made; the bundle's own test of the value is not cited).
+  refuse a context line the tool's auto-context would have made; the bundle's own test of the value is not cited);
+- od57-gap's compound read (REVIEW-OD57-GAP-20261107, MINOR-1) binds a line's shape, not its source: the same pinned
+  80 bytes, with the doc's typed label or bare, can come from another command of the same line (echo or awk BEGIN
+  printing literals, even split across quoted strings; awk rewriting ARGV; cat of another file holding such a line),
+  from a file an rg directory operand walks, from a second file whose typed name holds a colon, or carry `175:` from
+  another labelled read's -n. The 80-byte pin, the digest count and the probe hold for all of them.
 
 Standard library only (hashlib, json, posixpath, re, shlex). No process, no file access: bytes in, text out.
 """
@@ -179,7 +200,7 @@ def _claude_tool(uses, tool_use_id):
         return "grep" if _resolves_to_doc(inp.get("path")) else None
     if name == "Bash":
         spec = _ruled_shell(inp.get("command"))
-        return spec
+        return spec if spec is not None else _ruled_compound(inp.get("command"))
     return None
 
 
@@ -453,6 +474,246 @@ def _ruled_bash(cmd) -> bool:
     return _ruled_shell(cmd) is not None
 
 
+# od57-gap (STOP2-OD57-GAP-20261107): the counted run's takes s-3c4f8d and s-0e780d carried line 175 as a labelled grep
+# line (`<doc>:` or `<doc>:175:`) of a Bash command with a second command after `;` that names a file, which
+# _ruled_shell refuses as a whole. A compound read admits ONLY a labelled line of one of its labelled reads (grep, or rg
+# with typed file operands): the label is the read's own provenance, one of its typed operands (no recursion, no glob,
+# R3-2), so the other commands need not be silent. Every other command is read-only text (no shell, no substitution, no
+# `<`: _shell_tokens; no cd after the first; sed prints only, awk runs no command and reads no other input).
+_GLOB = frozenset("*?[")
+_PLAIN_READS = ("cat", "head", "tail", "wc", "cut")   # each token an option or a file operand: no glob in any
+# rg's forms read here (ripgrep 14): flags without a value, the value flags, and a closed set of long options. Anything
+# else refuses (among them -r replace, -g/-t filters, -u, -L, -z, -f, --pre, --heading, --column, --vimgrep, -c, -l).
+_RG_FLAGS = frozenset("niSswxFHIvoN")
+_RG_NUMBER = frozenset("ABCm")
+_RG_LONG = {"--line-number": "n", "--no-line-number": "N", "--with-filename": "H", "--no-filename": "I",
+            "--ignore-case": "i", "--smart-case": "S", "--case-sensitive": "s", "--fixed-strings": "F",
+            "--word-regexp": "w", "--line-regexp": "x", "--no-heading": "", "--color=never": ""}
+_SED_ADDR = r"(?:[0-9]+|\$|/[^/\\$]*/)"
+_SED_PRINT = re.compile(rf"{_SED_ADDR}(?:,{_SED_ADDR})?p(?:;{_SED_ADDR}(?:,{_SED_ADDR})?p)*;?")
+_AWK_REFUSED = ("system", "getline", "close", "fflush", "ENVIRON", "PROCINFO", "|", "@")
+
+
+def _rg_parse(args):
+    """rg's arguments as {"flags", "ops", "context"}, or None for any form this rule does not read."""
+    flags, patterns, ops, context, i = set(), 0, [], False, 0
+    while i < len(args):
+        t = args[i]
+        if t.startswith("--"):
+            if t not in _RG_LONG:
+                return None
+            flags |= set(_RG_LONG[t])
+            i += 1
+            continue
+        if t == "-":
+            return None
+        if t.startswith("-") and len(t) > 1:
+            j = 1
+            while j < len(t):
+                ch = t[j]
+                if ch == "e" or ch in _RG_NUMBER:
+                    rest = t[j + 1:]
+                    if not rest:
+                        if i + 1 >= len(args):
+                            return None
+                        i += 1
+                        rest = args[i]
+                    if ch == "e":
+                        patterns += 1
+                    elif not _NUMBER.fullmatch(rest):
+                        return None
+                    elif ch != "m":
+                        context = True
+                    break
+                if ch not in _RG_FLAGS:
+                    return None
+                flags.add(ch)
+                j += 1
+            i += 1
+            continue
+        ops.append(t)
+        i += 1
+    if patterns == 0:
+        if not ops:
+            return None
+        ops = ops[1:]
+    return {"flags": flags, "ops": ops, "context": context}
+
+
+def _typed_doc(ops, cwd) -> tuple:
+    """The typed operands that resolve to the doc."""
+    return tuple(op for op in ops if _resolves_to_doc(op, cwd))
+
+
+def _sed_ops(args):
+    """sed -n with print-only scripts (addresses, then p): its file operands (no glob), else None."""
+    quiet, scripts, ops, i = False, [], [], 0
+    while i < len(args):
+        t = args[i]
+        if t.startswith("-") and len(t) > 1:
+            if t.startswith("--"):
+                return None
+            for j, ch in enumerate(t[1:], 1):
+                if ch == "n":
+                    quiet = True
+                elif ch in "Er":
+                    continue
+                elif ch == "e" and j == len(t) - 1 and i + 1 < len(args):
+                    i += 1
+                    scripts.append(args[i])
+                else:
+                    return None
+        elif not scripts:
+            scripts.append(t)                # the first word that is no option is the script (no -e given)
+        else:
+            ops.append(t)
+        i += 1
+    ok = (quiet and bool(scripts) and all(_SED_PRINT.fullmatch(s) for s in scripts)
+          and not any(c in op for op in ops for c in _GLOB))
+    return ops if ok else None
+
+
+_AWK_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*", re.S)
+
+
+def _awk_ops(args):
+    """awk with one program text: -F and -v only; no command, no other input, no redirect (in an action), no glob. Its
+    file operands (a `name=value` operand is an assignment, no file), else None."""
+    i = 0
+    while i < len(args):
+        t = args[i]
+        if t in ("-F", "-v"):
+            if i + 1 >= len(args):
+                return None
+            i += 2
+            continue
+        if t.startswith(("-F", "-v")) and len(t) > 2:
+            i += 1
+            continue
+        if t.startswith("-"):
+            return None
+        prog, ops = t, args[i + 1:]
+        action = prog.split("{", 1)[1] if "{" in prog else ""
+        ok = (not any(x in prog for x in _AWK_REFUSED) and ">" not in action
+              and not any(c in op for op in ops for c in _GLOB))
+        return [op for op in ops if not _AWK_ASSIGN.fullmatch(op)] if ok else None
+    return None
+
+
+_VALUED = {"head": ("-n", "-c"), "tail": ("-n", "-c"), "cut": ("-d", "-f", "-c", "-b"), "cat": (), "wc": ()}
+
+
+def _plain_ops(word, rest):
+    """cat, head, tail, wc or cut: the file operands (no glob; `--` and `-` refuse, so an operand never hides as an
+    option or as standard input), else None."""
+    ops, i = [], 0
+    while i < len(rest):
+        t = rest[i]
+        if t in ("--", "-") or any(c in t for c in _GLOB):
+            return None
+        if t in _VALUED[word]:
+            i += 2
+            continue
+        if not t.startswith("-"):
+            ops.append(t)
+        i += 1
+    return ops
+
+
+def _echo_ok(args) -> bool:
+    """echo of literal words: no expansion, no escape."""
+    return not any("$" in t or "\\" in t for t in args)
+
+
+def _ruled_compound(cmd):
+    """The read spec of a compound shell read (see the module docstring), else None."""
+    got = _shell_tokens(cmd)
+    if got is None:
+        return None
+    segments, seps = got
+    if any(not seg for seg in segments):
+        return None
+    cwd, i = None, 0
+    if segments[0][0] == "cd":
+        if len(segments[0]) != 2 or len(segments) < 2 or seps[0] not in ("&&", ";"):
+            return None
+        cwd, i = segments[0][1], 1
+        if ".." in cwd.split("/"):
+            return None
+    specs, other, bare, numbered = [], False, False, False
+    for k in range(i, len(segments)):
+        word, rest = segments[k][0], segments[k][1:]
+        labelled, ops = False, None
+        if word == "grep":
+            g = _grep_parse(rest)
+            if g is None or g["flags"] & {"r", "R"} or any(c in op for op in g["ops"] for c in _GLOB):
+                return None
+            spec = _grep_spec(rest, cwd)
+            typed = _typed_doc(g["ops"], cwd)
+            ops, numbered = g["ops"], numbered or "n" in g["flags"]
+            labelled = "H" in g["flags"] or ("h" not in g["flags"] and len(ops) > 1)
+            if spec is not None and spec["labelled"] and typed:
+                specs.append({"typed": typed, "numbers": (spec["n"],)})
+        elif word == "rg":
+            g = _rg_parse(rest)
+            if g is None or any(c in op for op in g["ops"] for c in _GLOB):
+                return None
+            if not g["ops"]:
+                if k == 0 or seps[k - 1] != "|":
+                    return None              # no file operand outside a pipe: rg walks the folder (R3-2)
+                continue
+            flags, typed, ops = g["flags"], _typed_doc(g["ops"], cwd), g["ops"]
+            if "H" in flags and "I" in flags:
+                return None
+            numbered = numbered or ("n" in flags and "N" not in flags)
+            labelled = "H" in flags or ("I" not in flags and len(ops) > 1)
+            if labelled and typed:
+                # off a terminal rg numbers no line unless -n; on one it may (its heading then holds the label alone)
+                numbers = (True,) if "n" in flags and "N" not in flags else (False,) if "N" in flags else (False, True)
+                specs.append({"typed": typed, "numbers": numbers})
+        elif word in _PLAIN_READS:
+            ops = _plain_ops(word, rest)
+            if ops is None:
+                return None
+        elif word == "sed":
+            ops = _sed_ops(rest)
+            if ops is None:
+                return None
+        elif word == "awk":
+            ops = _awk_ops(rest)
+            if ops is None:
+                return None
+        elif word == "echo":
+            if not _echo_ok(rest):
+                return None
+        elif not _filter_ok(segments[k]):
+            return None
+        # od57-gap follow-up (glitch-45, scope 1): an unlabelled line is admitted only when every file operand of every
+        # command but a labelled read (whose lines all carry a label) is the doc, so a bare line can come from the doc
+        # alone; wc and cut of another file refuse too (stricter than needed).
+        if ops and not labelled:
+            docs = [op for op in ops if _resolves_to_doc(op, cwd)]
+            if len(docs) != len(ops):
+                other = True
+            elif word in ("grep", "rg", "cat", "head", "tail", "sed", "awk"):
+                bare = True
+    bare = bare and not other
+    if not specs and not bare:
+        return None
+    return {"read": "compound", "specs": tuple(specs), "bare": bare, "numbered": bare and numbered}
+
+
+def _compound_line(prefix, spec) -> bool:
+    """A compound read's admitted prefix: <label>: or <label>:175: (as that read numbers), the label exactly one of its
+    typed operands, each of which resolves to the doc against the folder the command set (_typed_doc). No context
+    line."""
+    for numbered in spec["numbers"]:
+        tail = ":175:" if numbered else ":"
+        if prefix.endswith(tail) and prefix[:-len(tail)] in spec["typed"]:
+            return True
+    return False
+
+
 def _labelled_line(prefix, spec) -> bool:
     """A labelled grep line's prefix: <label><sep>[175<sep>], sep `:` (or `-` for a context line), the label resolving
     to the doc against the folder the command set."""
@@ -470,6 +731,10 @@ def _labelled_line(prefix, spec) -> bool:
 
 def _shell_prefix_ok(prefix, spec) -> bool:
     """The prefix a shell read's output line may carry before the ruled bytes."""
+    if spec["read"] == "compound":                       # od57-gap: a labelled line of one of its labelled reads, or
+        if spec["bare"] and (prefix == "" or (spec["numbered"] and prefix == "175:")):   # the doc's bare line
+            return True
+        return any(_compound_line(prefix, s) for s in spec["specs"])
     if spec["read"] == "cat":
         return re.fullmatch(r" *175\t", prefix) is not None if spec["n"] else prefix == ""
     if spec["labelled"]:
@@ -904,8 +1169,14 @@ def _reads_doc(tool, args, display=None):
         return dict(tool, grep=(args, matches))
     if tool["kind"] == "script":
         spec = _ruled_shell(arg)
+        if spec is None:                                  # od57-gap: the compound read, every arm
+            spec = _ruled_compound(arg)
     else:
         spec = _ruled_wrapped(arg, tool["shells"], tool["flags"], tool["kind"] == "argv")
+        if spec is None:                                  # od57-gap: the compound read inside the same wrapper
+            inner = _ruled_wrapped(arg, tool["shells"], tool["flags"], tool["kind"] == "argv",
+                                   lambda s: _ruled_compound(s) is not None)
+            spec = _ruled_compound(inner) if inner is not None else None
     return dict(tool, spec=spec) if spec is not None else None
 
 

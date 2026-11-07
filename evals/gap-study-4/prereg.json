@@ -1380,6 +1380,22 @@
           "sha256_after": "9aa7f613e65b3e46306468471d2cfca073963c5c2ea4528e5df38cad8ad8cf6e"
         }
       ]
+    },
+    "od57-gap-20261107": {
+      "by": "Javier (OD199, od57-gap b, 2026-11-07T19:09:32Z)",
+      "why": "Javier's word \"od57-gap b\" (OD199); written by glitch-45 on his word. The counted run stopped twice on one false positive: in takes s-3c4f8d and s-0e780d the agent printed line 175 of gars/_references/environment.md, the line Javier ruled safe in October (OD57), as a labelled grep line of a shell command that ran a second read after it (STOP2-OD57-GAP-20261107). OD57's shell rule admitted the line only when every later command named no file, so both takes' drive scans refused. The rule now also reads such a compound command of ordinary read commands: it admits only a line whose last bytes are the same 80 pinned bytes, bare or after the doc's label as a grep or rg typed it, when the command reads the doc and names no other file an unlabelled line could come from; sed, awk and echo may sit beside that read. The shape is checked, not where the bytes came from: another command of the same line could print the same public line, a residual the rule names. A recursive grep, an rg with no file to read, or a glob anywhere still refuses the whole command, and the probe still refuses anything else on the line. Nothing measured or graded changes: the ruling's text and its sha256 pin are the same, and a take is still refused for any other finding.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/box/od57_rule.py",
+          "sha256_before": "1ae981e59e56523d3165e0ba9d4ca6df0209f95bdbcaa52617ad587c4bc5717d",
+          "sha256_after": "06cc044f5abf748750f84ede030b8c68c85cc9064edbd8d632c214bbba43dc79"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_scan_record.py",
+          "sha256_before": "8cbed5543d44a420e72a89de2c355464aa6af7c214afa6ce9fe4d3072cde6059",
+          "sha256_after": "4231fd775224d1c4e6ac25f52ad1c6478a54bdf27202e463d56bcb0e8acb2624"
+        }
+      ]
     }
   },
   "n": 10,
@@ -48084,7 +48100,7 @@
     {
       "path": "evals/gap-study-4/box/od57_rule.py",
       "git_blob_sha": "899874b4a0f88df31fe530b8d551790c183c17b3",
-      "sha256": "1ae981e59e56523d3165e0ba9d4ca6df0209f95bdbcaa52617ad587c4bc5717d",
+      "sha256": "06cc044f5abf748750f84ede030b8c68c85cc9064edbd8d632c214bbba43dc79",
       "uncommitted": false
     },
     {
@@ -52092,7 +52108,7 @@
     {
       "path": "evals/gap-study-4/tests/test_scan_record.py",
       "git_blob_sha": "f43668bd6b0c2e806d89d55f1c0c9303ae84af4b",
-      "sha256": "8cbed5543d44a420e72a89de2c355464aa6af7c214afa6ce9fe4d3072cde6059",
+      "sha256": "4231fd775224d1c4e6ac25f52ad1c6478a54bdf27202e463d56bcb0e8acb2624",
       "uncommitted": false
     },
     {

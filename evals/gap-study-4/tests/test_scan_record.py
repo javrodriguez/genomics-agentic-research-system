@@ -1387,7 +1387,8 @@ class TestOD57Ruling(Case):
                 {"type": "user", "message": {"content": [
                     {"type": "tool_result", "tool_use_id": "toolu_R", "content": f"175\t{self.text}"},
                     {"type": "text", "text": self.text}]}}),
-            "a Bash that is not cat or grep": self.bash_record(f"sed -n 175p {self.doc}", self.text + "\n"),
+            # od57-gap follow-up: `sed -n 175p <doc>` is now a ruled bare read of the doc; `sort <doc>` stays no read
+            "a Bash that is not cat or grep": self.bash_record(f"sort {self.doc}", self.text + "\n"),
             "a Bash that only starts with grep's letters": self.bash_record(f"grepx {self.doc}", self.text + "\n"),
             "a result whose tool_use is missing": _cc(_result("toolu_X", f"175\t{self.text}")),
             "an Agent's result": _cc(_use("toolu_A", "Agent", {"prompt": "read it"}),
@@ -1554,7 +1555,8 @@ class TestOD57Chain(TestOD57Ruling):
         cases = (
             ("the doc path dropped", "grep -n pinned _references/other.md", "175:%s\n" % LINE,
              "_grep_spec", ("if not _resolves_to_doc(ops[0], cwd):", "if False:")),
-            ("the grep-or-cat first word dropped", "cd gars && head -200 _references/environment.md", LINE + "\n",
+            # od57-gap follow-up: `head -200 <doc>` is now a ruled bare read (_ruled_compound); `nl` is still no read
+            ("the grep-or-cat first word dropped", "cd gars && nl _references/environment.md", LINE + "\n",
              "_ruled_shell", ("    else:\n        return None\n    if spec is None:",
                               "    else:\n        spec = _cat_spec([a for a in read[1:] if a[:1] != '-'], cwd)\n"
                               "    if spec is None:")),
@@ -3060,6 +3062,314 @@ class TestB20GitReads(TestB17Round6):
         self.b20_witness("the wrapped script", "rollout.jsonl", self.cx_rollout(_git_out(self.text), "git diff 7bd5b8b"),
                          "session", [3, 4], "_ruled_git", ('t[:2] == ["git", "show"]', 't[0] == "git"'))
 
+
+class TestOD57Gap(TestOD57Chain):
+    """od57-gap (STOP2-OD57-GAP-20261107): a compound shell read admits only a labelled line of its labelled reads (grep,
+    or rg with typed file operands), the label one of that read's typed operands. The two stop shapes carry the closed
+    features of the counted run's s-0e780d and s-3c4f8d (synthetic commands; the takes' own words were never read);
+    the widened shapes (rg, sed -n, awk, echo) are the open shell reads STOP2-OD57-GAP-20261107 section 4 lists."""
+
+    DOC = "_references/environment.md"
+    OTHER = "_references/gars-bio.lock.txt"
+
+    def labelled(self, n=False, text=None, label=None):
+        return f"{label or self.DOC}:{'175:' if n else ''}{self.text if text is None else text}\n"
+
+    def both_kinds(self, cmd, out):
+        for kind, side in (("transcript", False), ("stream", True)):
+            with self.subTest(cmd=cmd, kind=kind):
+                self.assertFalse(sr._ruled_bash(cmd))            # the frozen allow-list still refuses it whole
+                self.assertTrue(self.admitted(self.bash_record(cmd, out, side), kind))
+
+    def test_the_two_stop_shapes_are_admitted(self):
+        doc = self.DOC
+        # s-0e780d's features: no cd, grep (2 operands) ; grep (3 operands, the doc among them) | head; no -n
+        self.both_kinds("grep -i pinned " + doc + " _references/gars-bio.conda.txt; grep -i pinned README.md " + doc
+                        + " docs/setup.md | head -20", self.labelled())
+        # s-3c4f8d's features: cd &&, grep -n (2 operands) | head ; head <file> | cut
+        self.both_kinds("cd /tmp/run-c8021046/gars && grep -n Key " + doc + " " + self.OTHER + " | head -40; "
+                        "head -5 _references/gars-bio.conda.txt | cut -c1-80", self.labelled(n=True))
+
+    # each widened shape: (name, command, its admitted output line); red on the frozen rule, green on the amended one
+    def widened(self):
+        doc, other = self.DOC, self.OTHER
+        two = "grep -n Key " + doc + " " + other
+        return [
+            ("rg -n, two typed files", "rg -n Key " + doc + " " + other, self.labelled(n=True)),
+            ("rg, two typed files, unnumbered", "rg -i pinned " + doc + " " + other, self.labelled()),
+            ("rg --line-number --no-heading, then head", "rg --line-number --no-heading Key " + doc + " " + other
+             + "; head -3 " + other, self.labelled(n=True)),
+            ("rg -H, the doc alone", "rg -H -n Key " + doc, self.labelled(n=True)),
+            ("rg -H, numbered on a terminal", "rg -H Key " + doc, self.labelled(n=True)),
+            ("cd, then rg", "cd /tmp/run-c8021046/gars && rg -n Key " + doc + " " + other, self.labelled(n=True)),
+            ("rg as a stdin filter", two + " | rg -i pinned", self.labelled(n=True)),
+            ("sed -n on another file", two + "; sed -n 1,5p " + other, self.labelled(n=True)),
+            ("sed -n on the doc beside the read", two + "; sed -n 170,180p " + doc, self.labelled(n=True)),
+            ("sed -ne, a regex address", two + "; sed -ne /Key/p " + other, self.labelled(n=True)),
+            ("sed -n as a filter", two + " | sed -n 1,40p", self.labelled(n=True)),
+            ("awk on another file", two + "; awk 'NR>=1 && NR<=3' " + other, self.labelled(n=True)),
+            ("awk -F on the doc beside the read", two + "; awk -F: '{print $1}' " + doc, self.labelled(n=True)),
+            ("echo between commands", two + "; echo ---; head -3 " + other, self.labelled(n=True)),
+            ("echo first", "echo checking && " + two, self.labelled(n=True)),
+        ]
+
+    def test_each_widened_shape_is_admitted(self):
+        for name, cmd, out in self.widened():
+            with self.subTest(name):
+                self.both_kinds(cmd, out)
+
+    # od57-gap follow-up: these shapes also read the doc bare, with no other file read unlabelled, so the doc's bare
+    # line (or 175: under the grep's -n) is admitted there too
+    BARE_BESIDE = ("sed -n on the doc beside the read", "awk -F on the doc beside the read")
+
+    def test_each_widened_shape_refuses_other_bytes_another_label_and_a_glob(self):
+        for name, cmd, out in self.widened():
+            n = ":175:" in out
+            with self.subTest(name, case="an unlabelled line"):
+                self.assertEqual(self.admitted(self.bash_record(cmd, f"{'175:' if n else ''}{self.text}\n")),
+                                 name in self.BARE_BESIDE)
+            for case, body in (
+                    ("other bytes", self.labelled(n=n, text=_one_char_off(self.text))),
+                    ("a byte after the line", out[:-1] + "x\n"),
+                    ("a label to another file", self.labelled(n=n, label=self.OTHER)),
+                    ("a label resolving to the doc but not typed", self.labelled(n=n, label="./" + self.DOC)),
+                    ("a context line", f"{self.DOC}-175-{self.text}\n")):
+                with self.subTest(name, case=case):
+                    self.assertFalse(self.admitted(self.bash_record(cmd, body)))
+            globbed = cmd.replace(self.OTHER, "_references/*.txt") if self.OTHER in cmd else cmd + " _references/*.md"
+            with self.subTest(name, case="a glob operand"):
+                self.assertFalse(self.admitted(self.bash_record(globbed, out)))
+
+    def test_everything_else_still_refuses(self):
+        doc, other = self.DOC, self.OTHER
+        two = "grep -n Key " + doc + " " + other
+        cases = {
+            "an unlabelled line": (two + "; head -3 " + other, f"175:{self.text}\n"),
+            "the bare line": (two + "; head -3 " + other, f"{self.text}\n"),
+            "a -h grep": ("grep -h -n Key " + doc + " " + other + "; head " + other, f"175:{self.text}\n"),
+            "a single-operand grep then a file": ("grep -n Key " + doc + "; head " + other, f"175:{self.text}\n"),
+            "a recursive grep": ("grep -rn Key _references; head " + other, self.labelled(n=True)),
+            "a recursive grep beside a typed one": (two + "; grep -rn Key gars", self.labelled(n=True)),
+            "a glob operand": ("grep -n Key _references/*.md; head " + other, self.labelled(n=True)),
+            "a glob in a later read": (two + "; head _references/*.txt", self.labelled(n=True)),
+            "a label that is not the doc": ("grep -n Key a.md " + other + "; head x.md", f"a.md:175:{self.text}\n"),
+            "a number other than 175": (two + "; head " + other, f"{doc}:174:{self.text}\n"),
+            "a python": (two + "; python3 -c 'print(1)'", self.labelled(n=True)),
+            "a second cd": (two + "; cd /tmp; head " + other, self.labelled(n=True)),
+            "a shell": (two + "; sh -c 'cat x'", self.labelled(n=True)),
+            "a substitution": (two + "; head $(cat x)", self.labelled(n=True)),
+            "an input redirect": (two + "; head < " + other, self.labelled(n=True)),
+            "a dotdot cd": ("cd ../gars && " + two + "; head " + other, self.labelled(n=True)),
+            "a dotdot cd, absolute operands": ("cd ../gars && grep -n Key /tmp/run-c8021046/gars/" + doc + " " + other
+                                               + "; head " + other,
+                                               self.labelled(n=True, label="/tmp/run-c8021046/gars/" + doc)),
+            # rg: no unlabelled read, no folder walk, no filter, no rewrite, no option outside the closed set
+            "rg with no file operand": ("rg -n Key", self.labelled(n=True)),
+            "rg with no file operand after ;": (two + "; rg -n Key", self.labelled(n=True)),
+            "rg -r": ("rg -r X Key " + doc + " " + other, self.labelled()),
+            "rg -g": ("rg -n -g x Key " + doc + " " + other, self.labelled(n=True)),
+            "rg -u": ("rg -u -n Key " + doc + " " + other, self.labelled(n=True)),
+            "rg --pre": ("rg --pre cat -n Key " + doc + " " + other, self.labelled(n=True)),
+            "rg -H -I": ("rg -H -I -n Key " + doc + " " + other, self.labelled(n=True)),
+            "rg -N, a numbered line": ("rg -N Key " + doc + " " + other, self.labelled(n=True)),
+            "rg -n, an unnumbered line": ("rg -n Key " + doc + " " + other, self.labelled()),
+            "rg a folder (label from disk)": ("rg -n Key _references " + other, self.labelled(n=True)),
+            "rg, the doc alone, a label-shaped line": ("rg -n Key " + doc, self.labelled(n=True)),
+            "rg -I, a label-shaped line": ("rg -I -n Key " + doc + " " + other, self.labelled(n=True)),
+            "a glob grep beside a typed rg": ("rg -n Key " + doc + " " + other + "; grep -n Key _references/*.md",
+                                              self.labelled(n=True)),
+            "a recursive grep beside a typed rg": ("rg -n Key " + doc + " " + other + "; grep -rn Key gars",
+                                                   self.labelled(n=True)),
+            # sed and awk never read as the read: their output carries no typed label
+            "sed -n with a label-shaped line": ("sed -n 175p " + doc, self.labelled(n=True)),
+            "sed without -n": (two + "; sed 1p " + other, self.labelled(n=True)),
+            "sed w": (two + "; sed -n 1w/tmp/x " + other, self.labelled(n=True)),
+            "sed -i": (two + "; sed -i -n 1p " + other, self.labelled(n=True)),
+            "sed s": (two + "; sed -n s/a/b/p " + other, self.labelled(n=True)),
+            "sed e": (two + "; sed -n 1e " + other, self.labelled(n=True)),
+            "sed regex with $": (two + '; sed -n "/$X/p" ' + other, self.labelled(n=True)),
+            "awk system": (two + "; awk 'BEGIN{system(\"id\")}'", self.labelled(n=True)),
+            "awk getline": (two + "; awk '{getline x < \"/etc/x\"; print x}' " + other, self.labelled(n=True)),
+            "awk a redirect": (two + "; awk '{print > \"x\"}' " + other, self.labelled(n=True)),
+            "awk a pipe": (two + "; awk '{print | \"sh\"}' " + other, self.labelled(n=True)),
+            "awk -f": (two + "; awk -f prog.awk " + other, self.labelled(n=True)),
+            "awk ENVIRON": (two + "; awk 'BEGIN{print ENVIRON[\"HOME\"]}'", self.labelled(n=True)),
+            "echo an expansion": (two + "; echo $HOME", self.labelled(n=True)),
+            "echo an escape": (two + "; echo 'a\\x41'", self.labelled(n=True)),
+            "echo alone": ("echo " + doc + ":175:x", self.labelled(n=True)),
+        }
+        for name, (cmd, out) in cases.items():
+            with self.subTest(name):
+                self.assertFalse(self.admitted(self.bash_record(cmd, out)))
+
+    # od57-gap follow-up (glitch-45, scope 1): the doc's bare line from a read that types the doc as its only file
+    # operand, the command naming no other file an unlabelled line could come from.
+    # (name, command, its admitted line, the same read with a second file operand, the command plus another file read)
+    def bare(self):
+        doc, other, t = self.DOC, self.OTHER, self.text
+        return [
+            ("sed -n", "sed -n 170,180p " + doc, f"{t}\n", "sed -n 170,180p " + doc + " " + other),
+            ("rg, no -H", "rg pinned " + doc, f"{t}\n", "rg -I pinned " + doc + " " + other),
+            ("rg -n", "rg -n Key " + doc, f"175:{t}\n", "rg -n -I Key " + doc + " " + other),
+            ("awk", "awk 'NR==175' " + doc, f"{t}\n", "awk 'NR==175' " + doc + " " + other),
+            ("awk, an assignment operand", "awk 'NR==n' n=175 " + doc, f"{t}\n", "awk 'NR==n' n=175 " + doc + " " + other),
+            ("head | tail", "head -n 200 " + doc + " | tail -n 30", f"{t}\n", "head -n 200 " + doc + " " + other),
+            ("tail +N", "tail -n +170 " + doc, f"{t}\n", "tail -n +170 " + doc + " " + other),
+            ("cd, sed ; echo", "cd /tmp/run-c8021046/gars && sed -n 170,180p " + doc + "; echo ---", f"{t}\n",
+             "cd /tmp/run-c8021046/gars && sed -n 170,180p " + doc + " " + other + "; echo ---"),
+            ("grep -n ; sed", "grep -n Key " + doc + "; sed -n 175p " + doc, f"175:{t}\n",
+             "grep -n -h Key " + doc + " " + other + "; sed -n 175p " + doc),
+            ("cat && wc", "cat " + doc + " && wc -l " + doc, f"{t}\n", "cat " + doc + " " + other + " && wc -l " + doc),
+            ("labelled grep ; bare sed", "grep -n Key " + doc + " " + other + "; sed -n 170,180p " + doc, f"{t}\n",
+             "grep -n Key " + doc + " " + other + "; sed -n 170,180p " + doc + " " + other),
+        ]
+
+    def test_bare_doc_reads_are_admitted(self):
+        for name, cmd, out, _ in self.bare():
+            with self.subTest(name):
+                self.both_kinds(cmd, out)
+
+    def test_bare_doc_reads_refuse_a_second_file_other_bytes_an_extra_byte_and_a_glob(self):
+        for name, cmd, out, second in self.bare():
+            n = out.startswith("175:")
+            glob = cmd.replace(self.DOC, "_references/*.md")
+            cases = (("a second file operand", second, out),
+                     ("another file read after it", cmd + "; cat " + self.OTHER, out),
+                     ("another file read first", "head -3 " + self.OTHER + " && " + cmd, out),
+                     ("other bytes", cmd, f"{'175:' if n else ''}{_one_char_off(self.text)}\n"),
+                     ("an extra byte", cmd, out[:-1] + "x\n"),
+                     ("a byte before", cmd, " " + out),
+                     ("a glob", glob, out),
+                     ("a label", cmd, self.labelled(n=n)))
+            for case, c, body in cases:
+                with self.subTest(name, case=case):
+                    self.assertFalse(self.admitted(self.bash_record(c, body)))
+
+    def test_bare_lines_need_a_read_that_prints_the_doc_whole(self):
+        for cmd in ("wc -l " + self.DOC, "cut -c1-80 " + self.DOC, "echo x; wc -c " + self.DOC):
+            with self.subTest(cmd):
+                self.assertFalse(self.admitted(self.bash_record(cmd, f"{self.text}\n")))
+
+    def test_a_dashdash_or_stdin_operand_refuses(self):
+        """REVIEW-OD57-GAP-20261107 MINOR-2: after `--` a file may be named like an option, and `-` is standard input;
+        either could supply the bare line, so either refuses the whole command."""
+        for cmd in ("cat -- -notes; cat " + self.DOC, "head -n 5 -- -x " + self.DOC, "cat " + self.DOC + " -"):
+            with self.subTest(cmd):
+                self.assertFalse(self.admitted(self.bash_record(cmd, f"{self.text}\n")))
+
+    def test_bare_numbered_only_where_n_was_typed(self):
+        for cmd in ("sed -n 175p " + self.DOC, "rg pinned " + self.DOC, "cat -n " + self.DOC + " | head",
+                    "awk 'NR==175' " + self.DOC + "; echo ---"):
+            with self.subTest(cmd):
+                self.assertFalse(self.admitted(self.bash_record(cmd, f"175:{self.text}\n")))
+
+    def test_an_agent_or_task_copy_stays_out_of_scope(self):
+        """A sub-agent's report quoting the labelled line is no read (a separate gap, not this amendment)."""
+        for tool in ("Agent", "Task"):
+            with self.subTest(tool):
+                body = _cc(_use("toolu_A", tool, {"description": "read", "prompt": "grep -n Key " + self.DOC}),
+                           _result("toolu_A", self.labelled(n=True)))
+                self.assertFalse(self.admitted(body))
+
+    def test_the_probe_still_refuses_a_second_finding_on_the_line(self):
+        for cmd in ("grep -n Key " + self.DOC + " " + self.OTHER + "; head -3 " + self.OTHER,
+                    "rg -n Key " + self.DOC + " " + self.OTHER + "; echo ---; sed -n 1,3p " + self.OTHER):
+            with self.subTest(cmd):
+                out = self.labelled(n=True) + self.OTHER + ":9:PLANTED\n"
+                scanner = _Gitleaks(self.text[:40], {"PLANTED": OD57_RULE})
+                self.assertFalse(self.admitted(self.bash_record(cmd, out), scanner=scanner))
+                self.assertTrue(self.admitted(self.bash_record(cmd, self.labelled(n=True) + self.OTHER + ":9:ok\n"),
+                                              scanner=scanner))
+
+    def test_a_write_of_the_doc_first_still_refuses(self):
+        for cmd in ("grep -n Key " + self.DOC + " " + self.OTHER + "; head -3 " + self.OTHER,
+                    "rg -n Key " + self.DOC + " " + self.OTHER):
+            with self.subTest(cmd):
+                body = _cc(_use("toolu_W", "Write", {"file_path": "/tmp/run-c8021046/gars/" + self.DOC, "content": "x"}),
+                           _result("toolu_W", "ok")) + self.bash_record(cmd, self.labelled(n=True))
+                self.assertFalse(self.admitted(body))
+
+    def test_the_frozen_shell_rule_is_unchanged(self):
+        """The amendment adds a fallback only: _ruled_shell and _ruled_bash answer as frozen (walk_launch.od57_bound and
+        the door's _ruled_bash read them)."""
+        from box import od57_rule
+        doc = self.DOC
+        self.assertTrue(od57_rule._ruled_bash("grep -n Key " + doc + " " + self.OTHER + " | head"))
+        # an unlabelled read beside another file read unlabelled: no read at all
+        self.assertIsNone(od57_rule._ruled_compound("grep -n Key " + doc + "; head " + self.OTHER))
+        for cmd in ("grep -n Key " + doc + " " + self.OTHER + "; echo done", "rg -n Key " + doc + " " + self.OTHER,
+                    "grep -n Key " + doc + " " + self.OTHER + "; head " + self.OTHER):
+            with self.subTest(cmd):
+                self.assertIsNone(od57_rule._ruled_shell(cmd))
+                self.assertIsNotNone(od57_rule._ruled_compound(cmd))
+
+
+for _name in [n for n in vars(TestOD57Chain) if n.startswith("test_")]:
+    setattr(TestOD57Gap, _name, None)  # TestOD57Chain's own tests run once, in their own class
+
+
+class TestOD57GapCodex(TestOD57Ruling):
+    """od57-gap through the read shapes (arm O): the compound read inside Codex's `/bin/bash -lc` wrapper, in the turn
+    stream's command_execution and in the rollout's CommandExecution and its exec output copy."""
+
+    DOC = "_references/environment.md"
+    OTHER = "_references/gars-bio.lock.txt"
+
+    def scan(self, files, scanner=None):
+        scanner = scanner or _Gitleaks(self.text[:40])
+        return sr.scan(files, SECRETS, rules_scanner=scanner, read_shapes=CODEX_SHAPES), scanner
+
+    def outcome(self, name, body, kind):
+        p = self.write(name, body)
+        r, _ = self.scan([(p, kind)])
+        return sorted(x["line"] for x in r["ruled"]), sorted(x["line"] for x in r["refused"])
+
+    def stream(self, cmd, out):
+        command = _cx_wrap(cmd)
+        return _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                   _cx_item("item.started", "item_1", command, "", "in_progress"),
+                   _cx_item("item.completed", "item_1", command, out))
+
+    def rollout(self, cmd, out):
+        return _cc(_cx_meta(), _cx_custom(1, "call-o1"), _cx_end(2, "exec-cmd-1", ["/bin/bash", "-lc", cmd], out),
+                   _cx_custom_out(3, "call-o1", f"Script completed\n{out}exit code 0"))
+
+    def cases(self):
+        doc, other = self.DOC, self.OTHER
+        good = f"{doc}:175:{self.text}\n"
+        return [("rg -n, two files", "rg -n Key " + doc + " " + other, good),
+                ("sed -n, the doc bare", "sed -n 170,180p " + doc, f"{self.text}\n"),
+                ("grep ; sed -n", "grep -n Key " + doc + " " + other + "; sed -n 1,5p " + other, good),
+                ("grep ; echo ; head", "grep -n Key " + doc + " " + other + "; echo ---; head -3 " + other, good)]
+
+    def test_codex_compound_reads_are_admitted(self):
+        for name, cmd, out in self.cases():
+            with self.subTest(name):
+                self.assertFalse(sr._ruled_bash(cmd))
+                self.assertEqual(self.outcome("turn-1.jsonl", self.stream(cmd, out), "stream"), ([4], []))
+                self.assertEqual(self.outcome("rollout.jsonl", self.rollout(cmd, out), "session"), ([3, 4], []))
+
+    def test_codex_compound_refusals(self):
+        for name, cmd, out in self.cases():
+            bare = "bare" in name
+            for case, body in (("other bytes", f"{self.DOC}:175:{_one_char_off(self.text)}\n"),
+                               ("another label", f"{self.OTHER}:175:{self.text}\n"),
+                               ("unlabelled" if not bare else "a bare 175: with no -n", f"175:{self.text}\n")):
+                with self.subTest(name, case=case):
+                    self.assertEqual(self.outcome("turn-1.jsonl", self.stream(cmd, body), "stream")[0], [])
+            with self.subTest(name, case="a second file operand" if bare else "a glob operand"):
+                globbed = cmd + " " + self.OTHER if bare else cmd.replace(self.OTHER, "_references/*.txt")
+                self.assertEqual(self.outcome("turn-1.jsonl", self.stream(globbed, out), "stream")[0], [])
+        # the wrapper itself is unchanged: -c, another shell, or more words still refuse
+        cmd, out = self.cases()[0][1], self.cases()[0][2]
+        for argv in (["/bin/bash", "-c", cmd], ["/bin/zsh", "-lc", cmd], ["/bin/bash", "-lc", cmd, "x"]):
+            with self.subTest(argv=argv):
+                body = _cc(_cx_meta(), _cx_end(1, "exec-cmd-1", argv, out))
+                self.assertEqual(self.outcome("rollout.jsonl", body, "session")[0], [])
+
+
+for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
+    setattr(TestOD57GapCodex, _name, None)  # TestOD57Ruling's own tests run once, in their own class
 
 for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Round4, TestB17Round5, TestB17Round6):
     for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:
