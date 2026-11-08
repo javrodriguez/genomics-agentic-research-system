@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1bd18-2f52-7381-af5c-cad0e4677cc9"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"For the path you provided, the registrar found 12 raw FASTQ files and 6 samples. It excluded one top-level file, `RUNSHEET.txt`. Symlinks have not been created.\n\nConfirm this path, or provide a different path to inspect."}}
+{"type":"turn.completed","usage":{"input_tokens":228956,"cached_input_tokens":208512,"cache_write_input_tokens":0,"output_tokens":1511,"reasoning_output_tokens":236}}
