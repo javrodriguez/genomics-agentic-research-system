@@ -1,0 +1,48 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six samples (A1-A3 untreated, B1-B3 treated) cluster, using a PCA of the gene-level
+counts coloured by condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+
+Sample condition labels come from the design table `00_data/rnaseq_bulk/samples.csv` (`sample_id`, `condition`).
+
+## Method
+Environment: `gars-bio` (pandas, numpy, scikit-learn, matplotlib). Inputs are read-only.
+
+1. Read the `counts_gene` matrix (genes x samples; `gene_id` and `gene_name` columns, then
+   A1-A3, B1-B3) and the `condition` column of `samples.csv`; check the sample sets match.
+2. Drop genes with zero counts in all samples; keep the rest.
+3. Transform: log2(count + 1). The matrix is already length-scaled by the pipeline, so no
+   further length or library-size normalisation is applied.
+4. Select the 500 most variable genes (variance across samples of the log2 values).
+5. PCA with scikit-learn on samples x genes, centred, not scaled to unit variance; all
+   components (at most 5 for six samples).
+6. Write the sample coordinates and explained variance per component to a table.
+7. Plot PC1 vs PC2, one point per sample, coloured by condition (untreated / treated), points
+   labelled with sample ID, axes labelled with percent variance explained. Save as PNG.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_coordinates.csv` | `table` | Per-sample PC scores, condition, and explained variance per PC |
+| `results/pca_by_condition.png` | `figure` | PC1 vs PC2 scatter, coloured by condition |
+
+## Execution
+Runs: batch
+Expected wall time under a minute; outputs a few tens of KB. Submitted through the executor door.
