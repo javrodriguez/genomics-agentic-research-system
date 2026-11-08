@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1bd0c-6c7e-7143-aa57-66830e218d5e"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 00 confirms six paired-end samples with IDs `A1`–`A3` and `B1`–`B3`. I’d confirm if those are the six samples you expect and this is the intended source directory. The inspection doesn’t determine what A and B mean biologically; that design is filled in later.\n\nConfirm to create symlinks under `00_data/rnaseq_bulk/raw/`, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":234710,"cached_input_tokens":203136,"cache_write_input_tokens":0,"output_tokens":1298,"reasoning_output_tokens":150}}
