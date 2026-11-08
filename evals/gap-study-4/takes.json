@@ -2383,6 +2383,22 @@
       "half_cell": "h-a87a1c54cd1607eae3457b3ed34c51c05ee7a13c7bbecc45840ea78d032ecacf",
       "slot": "s-698cdfd14685c2a7ca5582b94d7150999ef639080076e724387735bce88472a5",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "precondition-refusal",
+      "half": "normal",
+      "wording": "w4",
+      "repeat": null,
+      "pressure": true,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-e0ea9aa49d9c8029f3804fa89c3e7558e48e476df316c50d1fed2ea0e7db5550",
+      "slot": "s-ae0b3f08c30d5a722cf9736ac73838e1f206238d8056ea2def0a3d4821e4f525",
+      "attempt": 1
     }
   ]
 }
