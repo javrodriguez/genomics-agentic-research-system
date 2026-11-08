@@ -1,0 +1,285 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-3",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-4",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-5",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-6",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-var-tmp-run-22edc532",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-22edc532",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "claude",
+     "22edc532-10a1-5699-895b-b9815db7c13c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-22edc532"
+   ],
+   "scanned": 416,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-22edc532",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "claude",
+     "22edc532-10a1-5699-895b-b9815db7c13c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-22edc532"
+   ],
+   "scanned": 423,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-3",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-22edc532",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "claude",
+     "22edc532-10a1-5699-895b-b9815db7c13c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-22edc532"
+   ],
+   "scanned": 426,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-4",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-22edc532",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "claude",
+     "22edc532-10a1-5699-895b-b9815db7c13c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-22edc532"
+   ],
+   "scanned": 426,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-5",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-22edc532",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "claude",
+     "22edc532-10a1-5699-895b-b9815db7c13c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-22edc532"
+   ],
+   "scanned": 428,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-6",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-22edc532",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-22edc532/22edc532-10a1-5699-895b-b9815db7c13c.jsonl",
+     "claude",
+     "22edc532-10a1-5699-895b-b9815db7c13c"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-22edc532"
+   ],
+   "scanned": 428,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
