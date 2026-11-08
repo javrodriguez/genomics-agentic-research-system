@@ -1,0 +1,33 @@
+{
+ "checks": [
+  {
+   "detail": "no credential file",
+   "id": "no-credential-file",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "admitted_credential": [],
+  "admitted_session_pair": [],
+  "credential_files": [],
+  "listing": [
+   ".claude.json",
+   ".last-cleanup",
+   "backups",
+   "backups/.claude.json.backup.1794073093459",
+   "backups/.claude.json.backup.1794073167904",
+   "policy-limits.json",
+   "policy-limits.json.signature.json",
+   "policy-limits.json.stamp.json",
+   "projects",
+   "projects/-tmp-run-4ebf8538",
+   "projects/-tmp-run-4ebf8538/4ebf8538-f060-5372-94e6-61932327b56c.jsonl",
+   "remote-settings.json",
+   "session-env",
+   "session-env/4ebf8538-f060-5372-94e6-61932327b56c",
+   "sessions",
+   "shell-snapshots"
+  ]
+ }
+}
