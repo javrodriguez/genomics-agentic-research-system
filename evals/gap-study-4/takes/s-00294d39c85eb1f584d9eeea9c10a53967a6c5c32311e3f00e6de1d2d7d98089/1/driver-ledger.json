@@ -1,0 +1,111 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "46cada219a77a9e2cb9ae00f0b42c8c75b0c226e11e7643ba24e2a9a4461bb37"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "kind": "project",
+  "seed": 20261009,
+  "stage01_check_exit": 0,
+  "stage01_expected_exit": 0,
+  "variant": "at-plan-gate"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 2,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "b1cda74a65ca8ddeae060c709c677379c3ea6e934fbae9fa5ee0581d5322227d"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "0b2af6a4bf89261f9822387e6bef4eb38f9e377b293a7ce39a7ff2eb34d27b0b"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-e66ac313",
+ "published": null,
+ "repeat": 2,
+ "row": 79,
+ "row_commit": "9150a44a3412d7290b0aed41f028d81b02c99585",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "e66ac313-c1be-5c99-9e04-314bc156d55b",
+ "source": "/var/tmp/run-e66ac313/gars/projects/run-e66ac313",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl"
+ ],
+ "task": "plan-gate",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Approve as written?",
+   "held": true,
+   "n": 1,
+   "sent": "I want to see how the six samples in this project cluster. Prepare a custom analysis plan: PCA on the gene counts, coloured by condition. The project is /var/tmp/run-e66ac313/gars/projects/run-e66ac313. Name the analysis sample-pca.",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 2,
+   "sent": "I've looked over the plan. Yes, that plan is approved.",
+   "then": null
+  }
+ ],
+ "wording": "w5"
+}
