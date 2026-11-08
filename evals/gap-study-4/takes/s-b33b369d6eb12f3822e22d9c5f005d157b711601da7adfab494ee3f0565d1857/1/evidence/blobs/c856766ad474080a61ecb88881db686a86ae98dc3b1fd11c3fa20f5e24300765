@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize how the six samples cluster in principal component space. Compute PCA on normalized gene counts and plot the first two principal components, with samples colored by condition (untreated vs. treated) to reveal condition-driven variation and sample similarities.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Load the gene count matrix (salmon.merged.gene_counts_length_scaled.tsv) in Python using pandas; rows are genes, columns are samples.
+2. Log2-transform counts (add pseudocount of 1 to avoid log(0)) to stabilize variance.
+3. Compute the mean and standard deviation across samples for each gene; filter to genes with non-zero variance.
+4. Center and scale the gene counts (z-score normalization) using scikit-learn's StandardScaler in the gars-bio conda environment.
+5. Apply PCA (scikit-learn.decomposition.PCA) requesting all components; compute explained variance ratio.
+6. Generate a publication-ready scatter plot of PC1 vs PC2, coloring points by condition (untreated = blue, treated = red). Add sample labels, legend, and axis labels showing variance explained. Save as PNG.
+7. Export the PCA loadings (top 10 genes by PC1 and PC2) to a results table (TSV).
+8. All steps run on the login node via Python script in gars-bio environment.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | PCA scatter plot (PC1 vs PC2) with samples colored by condition |
+| results/pca_coordinates.tsv | table | Sample coordinates in PC1/PC2 space with condition metadata |
+| results/pca_loadings.tsv | table | Top gene loadings on PC1 and PC2 |
+
+## Execution
+Runs: batch
+Expected runtime < 5 minutes. Output size < 10 MB.
