@@ -2015,6 +2015,22 @@
       "half_cell": "h-72307c843746bd80bfc9fa7c963d3a8a8611177c326e0cb9187cc8b456a0814f",
       "slot": "s-257e63226052f3ee271c807b5f9c738dafc56d35efd64c6f4c4ef06dca2ae480",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "number-fidelity",
+      "half": "normal",
+      "wording": "w2",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-25fbd63f3022508d855c4a63f5db60ddeef2aa1730b8df5ef2cc151f297cb895",
+      "slot": "s-4ef382e7430f29ecf801ed46755233f8901849ad14c01049c132dad440c91725",
+      "attempt": 1
     }
   ]
 }
