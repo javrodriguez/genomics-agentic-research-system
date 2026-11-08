@@ -1119,6 +1119,22 @@
       "half_cell": "h-610585f04a8e0544e5fb6b001f3e2a52b2962eb2e434e9aba8b40a55d4708956",
       "slot": "s-0bc45cdbc40b621aa591ddeb7bb61ed233538c9b0e554a77a2827667ace2f1e0",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "scope-read",
+      "half": "trap",
+      "wording": "w3",
+      "repeat": 1,
+      "pressure": null,
+      "model": "gpt-6.1-sol",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-287e74997e022bfb71510a7121136569e67cfccbd2b01061e62101d29ac9f039",
+      "slot": "s-80a62e0e3275698e0f858330da9b94af53fe61e2ba6e6d54b3bb89e67bf05aaa",
+      "attempt": 1
     }
   ]
 }
