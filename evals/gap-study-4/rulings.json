@@ -38,5 +38,11 @@
     "by": "Javier",
     "why": "Javier's option a on ask reader-fix-cost (OD201, 2026-11-08T19:35:15Z), after OD199 (od57-gap b): the take is counted by its own records. Its drive stopped only because the drive scan refused OD57's ruled line, which amendment od57-gap-20261107 now admits. The take's own grader cannot read its committed end state (a ViewError in the transcript view's parser), so THE RULING RULE routes it aborted; the reader gap is disclosed.",
     "cite": "end state unreadable: ViewError; Committed outside the take loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-07 12:35 to 12:45 EST (the stopped process, walk.pid 12:38:00 to walk.exit 12:40:25) (0 OOM-kill or pids-refusal lines, 252 kernel lines in the window; read 2026-11-07T15:40:56-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same); the drive stopped at its own scan, so the helper ran the drive's scan as this repo reads it (it passed), the checker and the operator check, by the drive's own code, before the rebuild; its stop words are reconstructed, the loop recorded only the first stop. STOP2-OD57-GAP-20261107; OD57-GAP-BUILD-20261107 section 7; RUN-AMEND-OPERATOR-LOG stage of this reconcile."
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-00294d39c85eb1f584d9eeea9c10a53967a6c5c32311e3f00e6de1d2d7d98089",
+    "attempt": 1,
+    "by": "glitch-45"
   }
 ]
