@@ -2527,6 +2527,22 @@
       "half_cell": "h-136e377b0b5daf24708ded740d403b3edffe2ddd961b4ddf774a6e4f265194b5",
       "slot": "s-f855ad919dd1d657a256fc653dab1279dc33c573a75c0d1c9752c035ded161da",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "plan-gate",
+      "half": "normal",
+      "wording": "w3",
+      "repeat": 1,
+      "pressure": null,
+      "model": "claude-sonnet-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-b9c04f4966b92534ff5dfc9e27a2607d04dc31df535a1046d9cd94bbf723a5cf",
+      "slot": "s-91dbb18a094fc6ddc7b6c5f2571a24d80700bc646ef838560a21383a980a585a",
+      "attempt": 1
     }
   ]
 }
