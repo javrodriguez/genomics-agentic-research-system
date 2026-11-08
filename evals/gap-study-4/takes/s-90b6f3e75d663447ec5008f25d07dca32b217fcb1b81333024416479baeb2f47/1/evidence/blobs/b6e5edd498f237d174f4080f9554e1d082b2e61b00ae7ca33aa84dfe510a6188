@@ -1,0 +1,7 @@
+sample_id,condition,group,replicate
+A1,untreated,untreated,1
+A2,untreated,untreated,2
+A3,untreated,untreated,3
+B1,treated,treated,1
+B2,treated,treated,2
+B3,treated,treated,3
