@@ -571,7 +571,7 @@ def description_problems(d):
          and unread == sorted(leak_grep.KNOWN_UNREADABLE) == ["rehearsals/w-g24"]
          and ca.get("sessions_read") == len(set(held) - set(unread))
          and sorted(s.get("session") for s in ca.get("sessions") or []) == held
-         and all(s.get("words_the_checker_would_void_on") == [] for s in ca["sessions"]), "R9.sessions")
+         and r9_sessions_void_on_nothing(ca, held), "R9.sessions")   # aborted-leak: the rule, at the file's end
     need(d["not_poolable"]["rounds"] == ["evals/gap-study", "evals/gap-study-2", "evals/gap-study-3"] and
          d["not_poolable"]["rule"] == d["commitments"]["not_poolable"] and
          d["not_poolable"]["enforced_by"] == [study.rel("lint_pooling.py"), study.rel("result.py")], "R10.earlier")
@@ -3699,12 +3699,278 @@ def setUpModule():
     def derive():
         pre = leak_grep.prereg.load()
         stats_ = [(str(p), p.stat().st_size, p.stat().st_mtime_ns) for p in leak_grep.sessions()]
-        key = json.dumps([pre["leak_words"], pre.get("leak_context_excusals", []), stats_], sort_keys=True)
+        # aborted-leak: derive also reads the takes ruled aborted, so the memo is keyed on them too
+        aborted = sorted(leak_grep.ruled_aborted()) if stats_ else []
+        key = json.dumps([pre["leak_words"], pre.get("leak_context_excusals", []), stats_, aborted], sort_keys=True)
         if key not in memo:
             memo[key] = real_derive()
         return copy.deepcopy(memo[key])
+    derive.real = real_derive
     patch = mock.patch.object(leak_grep, "derive", derive)
     patch.start(); PATCHES.append(patch)
+
+
+# ---------------------------------------------------------------- aborted-leak (ask T242, glitch-45's road a-prime)
+def r9_sessions_void_on_nothing(ca, held):
+    """R9.sessions (aborted-leak, OD204): every checked session voids on nothing; the sessions not checked are exactly
+    the held takes whose latest take ruling routes them aborted, each marked leak_grep.NOT_CHECKED. Defined here, at
+    the file's end, so no line above moves (the gate manifest names failing frames by line)."""
+    import leak_grep
+    aborted = leak_grep.ruled_aborted()
+    sessions = ca.get("sessions") or []
+    return (all(s.get("words_the_checker_would_void_on") == [] for s in sessions if "leak_check" not in s)
+            and all(s.get("leak_check") == leak_grep.NOT_CHECKED for s in sessions if "leak_check" in s)
+            and sorted(s.get("session") for s in sessions if "leak_check" in s)
+            == sorted(h for h in held if leak_grep.take_key(h) in aborted))
+
+
+class AbortedLeak(unittest.TestCase):
+    """A take whose latest committed take ruling routes it aborted is read and listed NOT_CHECKED, and its leak words
+    never refuse the draft; every other take (graded, harness-error, unruled, re-ruled after aborted) is checked as
+    before. Synthetic sessions in a temporary study root, a synthetic leak word, the history loader mocked; each guard
+    has a mutant that goes red alone, and a null mutant stays green."""
+    WORD = "zzsyntheticleakword"
+
+    def setUp(self):
+        import tempfile
+        import leak_grep
+        import takes
+        self.lg, self.takes = leak_grep, takes
+        self.tmp = Path(tempfile.mkdtemp(prefix="aborted-leak-"))
+        if not hasattr(AbortedLeak, "CT"):
+            AbortedLeak.CT = leak_grep.checker()          # the real take checker, loaded once from the real study
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+        self.pre = {"leak_words": [self.WORD], "leak_context_excusals": []}
+        self.rulings = []
+
+    def slot(self, n):
+        return "s-" + hashlib.sha256(("aborted-leak %d" % n).encode()).hexdigest()
+
+    def take(self, n, attempt=1, hit=True):
+        folder = self.tmp / "takes" / self.slot(n) / str(attempt)
+        folder.mkdir(parents=True)
+        att = {"type": "command_permissions", ("x" + self.WORD if not hit else self.WORD): []}
+        rec = {"type": "attachment", "attachment": att, "uuid": "u"}
+        (folder / "transcript.jsonl").write_text(json.dumps(rec) + "\n", encoding="utf-8")
+        (folder / "driver-ledger.json").write_text(json.dumps({"agent": {"harness": "claude-code"}}), encoding="utf-8")
+        return "takes/%s/%d" % (self.slot(n), attempt)
+
+    def walk(self, name="w001", hit=True):
+        """A rehearsal walk session (review NIT-1): never a take, so never left out of the check."""
+        folder = self.tmp / "rehearsals" / name
+        folder.mkdir(parents=True)
+        att = {"type": "command_permissions", ("x" + self.WORD if not hit else self.WORD): []}
+        (folder / "transcript.jsonl").write_text(json.dumps({"type": "attachment", "attachment": att}) + "\n",
+                                                 encoding="utf-8")
+        (folder / "driver-ledger.json").write_text(json.dumps({"agent": {"harness": "claude-code"}}), encoding="utf-8")
+        return "rehearsals/" + name
+
+    def rule(self, n, route, attempt=1, ruling="route"):
+        from graders import labels4
+        self.rulings.append({"kind": labels4.RULING, "ruling": ruling, "route": route, "slot": self.slot(n),
+                             "attempt": attempt, "by": "test", "why": "w", "cite": "c"})
+
+    def patches(self):
+        return [mock.patch.object(self.lg, "HERE", self.tmp), mock.patch.object(self.lg, "KNOWN_UNREADABLE", {}),
+                mock.patch.object(self.lg, "checker", lambda: AbortedLeak.CT),
+                mock.patch.object(self.takes, "read_history", lambda **k: list(self.rulings))]
+
+    def checked(self):
+        """build_draft's checked_sessions on the synthetic root: the dict, or the ValueError's words."""
+        import contextlib
+        with contextlib.ExitStack() as st:
+            for p in self.patches():
+                st.enter_context(p)
+            try:
+                return b.checked_sessions(self.pre)
+            except ValueError as e:
+                return str(e)
+
+    def voids(self):
+        """leak_grep.derive()'s words_that_would_void_a_session on the synthetic root."""
+        import contextlib
+        with contextlib.ExitStack() as st:
+            for p in self.patches() + [mock.patch.object(self.lg.prereg, "load", return_value=self.pre)]:
+                st.enter_context(p)
+            return self.lg.derive()["words_that_would_void_a_session"]
+
+    def cli(self):
+        import contextlib, io
+        out = io.StringIO()
+        with contextlib.ExitStack() as st:
+            for p in self.patches() + [mock.patch.object(self.lg.prereg, "load", return_value=self.pre),
+                                       mock.patch.object(sys, "argv", ["leak_grep.py", "--check"])]:
+                st.enter_context(p)
+            st.enter_context(contextlib.redirect_stdout(out))
+            return self.lg.main()
+
+    VOIDS = "the leak list would void a recorded session"
+
+    def test_an_aborted_take_with_a_hit_builds(self):
+        s = self.take(1)
+        self.rule(1, "aborted")
+        got = self.checked()
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual([(x["session"], x.get("leak_check")) for x in got["sessions"]], [(s, self.lg.NOT_CHECKED)])
+        self.assertEqual(self.cli(), 0)
+
+    def test_other_routes_and_unruled_takes_with_the_same_hit_refuse(self):
+        for name, rulings in (("graded", [("graded", 1)]), ("harness-error", [("harness-error", 1)]), ("unruled", []),
+                              ("aborted on another attempt", [("aborted", 2)])):
+            with self.subTest(name):
+                self.setUp()
+                self.take(1)
+                for route, attempt in rulings:
+                    self.rule(1, route, attempt)
+                    if attempt != 1:                  # that attempt's own clean session, so only attempt 1 is in question
+                        self.take(1, attempt=attempt, hit=False)
+                self.assertEqual(self.checked(), self.VOIDS)
+                self.assertEqual(self.cli(), 1)
+
+    def test_the_latest_ruling_decides(self):
+        self.take(1)
+        self.rule(1, "aborted")
+        self.rule(1, "graded")
+        self.assertEqual(self.checked(), self.VOIDS)
+        self.setUp()
+        self.take(1)
+        self.rule(1, "graded")
+        self.rule(1, "aborted")
+        self.assertIsInstance(self.checked(), dict)
+
+    def test_the_not_checked_set_is_the_aborted_set(self):
+        a = self.take(1)
+        c = self.take(2, hit=False)
+        g = self.take(3, hit=False)
+        self.rule(1, "aborted")
+        self.rule(2, "aborted")
+        self.rule(3, "graded")
+        got = self.checked()
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(sorted(x["session"] for x in got["sessions"] if "leak_check" in x), sorted([a, c]))
+        self.assertNotIn("leak_check", next(x for x in got["sessions"] if x["session"] == g))
+
+    def test_a_walk_with_a_hit_refuses_beside_aborted_takes(self):
+        self.take(1)
+        self.rule(1, "aborted")
+        w = self.walk()
+        self.assertEqual(self.checked(), self.VOIDS)
+        self.setUp()
+        self.take(1)
+        self.rule(1, "aborted")
+        w = self.walk(hit=False)
+        got = self.checked()
+        self.assertIsInstance(got, dict, got)
+        self.assertNotIn("leak_check", next(x for x in got["sessions"] if x["session"] == w))
+
+    def test_an_aborted_take_whose_session_is_missing_refuses(self):
+        """Review MINOR-1: the marked takes must be every take ruled aborted, read apart from leak_grep."""
+        self.take(1)
+        self.rule(1, "aborted")
+        self.rule(2, "aborted")                       # take 2 is ruled aborted, but its session was never recorded
+        self.assertEqual(self.checked(), "the sessions left out of the leak check are not exactly the takes ruled "
+                                         "aborted")
+
+    def test_a_mark_on_a_take_not_ruled_aborted_refuses(self):
+        self.take(1, hit=False)
+        real = self.lg.derive
+
+        def forged():
+            r = real()
+            for x in r["per_session"]:
+                x["leak_check"] = self.lg.NOT_CHECKED
+            return r
+        with mock.patch.object(self.lg, "derive", forged):
+            self.assertEqual(self.checked(), "the sessions left out of the leak check are not exactly the takes ruled "
+                                             "aborted")
+
+    # ---- mutant witnesses
+    def mutant(self, mod, fn, old, new):
+        import inspect
+        import textwrap
+        target = getattr(mod, fn)
+        target = getattr(target, "real", target)           # the module memo wraps leak_grep.derive (setUpModule)
+        src = textwrap.dedent(inspect.getsource(target))
+        self.assertEqual(src.count(old), 1, (fn, old))
+        import types
+        ns = dict(vars(mod))
+        exec(compile(src.replace(old, new), fn + "_mutant", "exec"), ns)
+        f = ns[fn]                                         # run against the live module globals, so test patches hold
+        return mock.patch.object(mod, fn, types.FunctionType(f.__code__, vars(mod), fn, f.__defaults__, f.__closure__))
+
+    def test_mutation_witnesses(self):
+        cases = (
+            ("the route check dropped (a graded take builds)", "ruled_aborted", self.lg,
+             'e.get("route") == labels4.ABORTED', "True", [("graded", 1)]),
+            ("the latest ruling dropped (aborted then graded builds)", "ruled_aborted", self.lg,
+             'latest[(e.get("slot"), e.get("attempt"))] = e', 'latest.setdefault((e.get("slot"), e.get("attempt")), e)',
+             [("aborted", 1), ("graded", 1)]),
+            ("the attempt dropped (attempt 2's ruling covers attempt 1)", "ruled_aborted", self.lg,
+             '(e.get("slot"), e.get("attempt"))', '(e.get("slot"), 1)', [("aborted", 2)]),
+            ("the exception given to every take (an unruled take builds)", "derive", self.lg,
+             "skipped = take_key(session) in aborted", "skipped = True", []),
+            ("a walk escapes the check", "derive", self.lg, "skipped = take_key(session) in aborted",
+             'skipped = take_key(session) in aborted or session.startswith("rehearsals/")', "walk"),
+            ("the route word dropped (a harness-error take builds)", "ruled_aborted", self.lg,
+             'e.get("ruling") == labels4.RULE_ROUTE and e.get("route") == labels4.ABORTED', "True",
+             [("harness-error", 1)]),
+        )
+        for name, fn, mod, old, new, rulings in cases:
+            with self.subTest(name):
+                self.setUp()
+                if rulings == "walk":                 # review NIT-1: only a walk carries the hit
+                    self.take(1, hit=False)
+                    self.rule(1, "aborted")
+                    self.walk()
+                    rulings = []
+                else:
+                    self.take(1)
+                for route, attempt in rulings:
+                    self.rule(1, route, attempt)
+                    if attempt != 1:
+                        self.take(1, attempt=attempt, hit=False)
+                self.assertEqual(self.checked(), self.VOIDS)
+                self.assertEqual(self.voids(), [self.WORD])
+                with self.mutant(mod, fn, old, new):
+                    self.assertEqual(self.voids(), [], "%s: the mutant still voids" % name)
+        with self.subTest("the independent ruling check dropped (a missing aborted session builds)"):
+            self.setUp()
+            self.take(1)
+            self.rule(1, "aborted")
+            self.rule(2, "aborted")
+            self.assertIsInstance(self.checked(), str)
+            with self.mutant(b, "checked_sessions", "or {_take_of(s) for s in marked} != _aborted_rulings():",
+                             "or False:"):
+                self.assertIsInstance(self.checked(), dict, "the independent check dropped: still refused")
+        with self.subTest("the set check dropped (a forged mark builds)"):
+            self.setUp()
+            self.take(1, hit=True)
+            real = self.lg.derive
+
+            def forged():
+                r = real()
+                for x in r["per_session"]:
+                    x["leak_check"] = self.lg.NOT_CHECKED
+                r["words_that_would_void_a_session"] = []
+                return r
+            with mock.patch.object(self.lg, "derive", forged):
+                self.assertIsInstance(self.checked(), str)
+                with self.mutant(b, "checked_sessions", "raise ValueError(\"the sessions left out of the leak check",
+                                 "pass  # (\"the sessions left out of the leak check"):
+                    self.assertIsInstance(self.checked(), dict, "the set check dropped: still refused")
+
+    def test_the_null_mutant_stays_green(self):
+        self.take(1)
+        self.rule(1, "aborted")
+        with self.mutant(self.lg, "ruled_aborted", "latest = {}", "latest = {}"), \
+                self.mutant(self.lg, "derive", "skipped = take_key(session) in aborted",
+                            "skipped = take_key(session) in aborted"):
+            self.assertIsInstance(self.checked(), dict)
+        self.setUp()
+        self.take(1)
+        self.rule(1, "graded")
+        with self.mutant(self.lg, "ruled_aborted", "latest = {}", "latest = {}"):
+            self.assertEqual(self.checked(), self.VOIDS)
 
 
 if __name__ == "__main__":

@@ -1438,6 +1438,27 @@
           "sha256_after": "d749c49c945315919cc50b50ba384b8cd3c57c1abe10c5591986bd5113d69de4"
         }
       ]
+    },
+    "aborted-leak-20261109": {
+      "by": "Javier (OD204, aborted-leak a, 2026-11-09T19:41:01Z)",
+      "why": "Javier's word on ask aborted-leak (OD204); written by glitch-45 on his word. The od57-line ship's post-run gate (line 9544fbd3) failed because the draft writer refused: the leak list would void a recorded session. The one session is take s-0e780d attempt 1, already ruled aborted (OD201), whose loaded context holds one round-3 leak word as a key name of a command_permissions attachment (OD57-LINE-SHIP-20261109, D1 to D5). A take whose latest committed take ruling routes it aborted is now read and listed in checked_against but marked 'not checked: ruled aborted' and never counted as voided, in leak_grep (derive and --check) and build_draft (which refuses unless the marked set is exactly the takes ruled aborted); the route is read only through the history loader. A take with no ruling, or whose latest ruling routes it anywhere else, is checked as before. The leak list, its excusals and the take checker are unchanged, so the checker digest does not move; nothing measured or graded changes, since an aborted take is not graded.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/build_draft.py",
+          "sha256_before": "2f4a7d18c4d6c535f5eda11e707dcc6df8e49a9d289072ac8eca062b4a4cff11",
+          "sha256_after": "660957ce990eeec7f7e6adc745943ee6a8a86f80846bdf739e99322774efb5f3"
+        },
+        {
+          "path": "evals/gap-study-4/leak_grep.py",
+          "sha256_before": "e3cba90262d5d39da8e7ea9bbe67f1b38456e540e487ea4d206d7efbe26dc8b5",
+          "sha256_after": "f4f0bc0cd5ae385213b007ccf544ea731c1bdd8440ba32429b076858c135a814"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_build_draft.py",
+          "sha256_before": "cb6f2721eadd4b1c207fdadbcdec28f820219b1bb3249bb0d265f43c8e6229d4",
+          "sha256_after": "834c117d667c62a1dbfb7a2fd36fda27b663880f1e7336bf66095c2b36b15194"
+        }
+      ]
     }
   },
   "n": 10,
@@ -48328,7 +48349,7 @@
     {
       "path": "evals/gap-study-4/build_draft.py",
       "git_blob_sha": "1a5fa1f78be1125bb53338fb93bcdd6a5f1bfcb6",
-      "sha256": "2f4a7d18c4d6c535f5eda11e707dcc6df8e49a9d289072ac8eca062b4a4cff11",
+      "sha256": "660957ce990eeec7f7e6adc745943ee6a8a86f80846bdf739e99322774efb5f3",
       "uncommitted": false
     },
     {
@@ -49450,7 +49471,7 @@
     {
       "path": "evals/gap-study-4/leak_grep.py",
       "git_blob_sha": "13a04f44f609063c625aeaf1801ddd59d2275657",
-      "sha256": "e3cba90262d5d39da8e7ea9bbe67f1b38456e540e487ea4d206d7efbe26dc8b5",
+      "sha256": "f4f0bc0cd5ae385213b007ccf544ea731c1bdd8440ba32429b076858c135a814",
       "uncommitted": false
     },
     {
@@ -51424,7 +51445,7 @@
     {
       "path": "evals/gap-study-4/tests/test_build_draft.py",
       "git_blob_sha": "1a1bd5ff59a91ef5d0549a49d9c54be4e5d60ece",
-      "sha256": "cb6f2721eadd4b1c207fdadbcdec28f820219b1bb3249bb0d265f43c8e6229d4",
+      "sha256": "834c117d667c62a1dbfb7a2fd36fda27b663880f1e7336bf66095c2b36b15194",
       "uncommitted": false
     },
     {

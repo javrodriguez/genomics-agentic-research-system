@@ -108,6 +108,45 @@ def session_context(ct, s) -> dict:
         return {"harness": harness, "reader": reader, "ctx": "", "unreadable": f"{type(e).__name__}: {str(e)[:200]}"}
 
 
+# aborted-leak (ask T242, Javier's word pending; glitch-45's road a-prime): a take whose latest committed take ruling
+# routes it aborted is read and listed, but left out of the void check, marked NOT_CHECKED. Its end state is already
+# not graded, so a leak word in its loaded context changes nothing measured; checking it would only let one aborted
+# take refuse the whole draft (the od57-line ship, gate of 9544fbd3: s-0e780d's command_permissions attachment). The
+# route is read only through the history loader (takes.read_history: outcomes.json and rulings.json in commit order),
+# from the latest take ruling per (slot, attempt); a take with no ruling, or whose latest ruling routes it anywhere
+# else, is checked as before.
+NOT_CHECKED = "not checked: ruled aborted"
+TAKE_SESSION = re.compile(r"takes/(s-[0-9a-f]{64})/([1-9][0-9]*)")
+
+
+def take_key(session: str):
+    """(slot, attempt) of a take session named takes/<slot>/<k>, else None (a walk)."""
+    m = TAKE_SESSION.fullmatch(session) if isinstance(session, str) else None
+    return (m.group(1), int(m.group(2))) if m else None
+
+
+_RULED_ABORTED: dict = {}         # {(the loader, the last history commit): the takes ruled aborted}
+
+
+def ruled_aborted() -> set:
+    """{(slot, attempt)} whose latest committed take ruling routes the take aborted (THE RULINGS, read through
+    takes.read_history only)."""
+    import batch
+    import takes
+    from graders import labels4
+    paths = [(takes.HERE / p).relative_to(takes.REPO).as_posix() for p in takes.HISTORY_FILES]
+    key = (takes.read_history, takes._git_at(takes.REPO, "log", "-1", "--format=%H", "--", *paths).strip())
+    if key in _RULED_ABORTED:                      # the history is the commits; the last one touching it names them all
+        return set(_RULED_ABORTED[key])
+    latest = {}
+    for e in takes.read_history():
+        if batch.is_ruling(e):
+            latest[(e.get("slot"), e.get("attempt"))] = e
+    out = {k for k, e in latest.items() if e.get("ruling") == labels4.RULE_ROUTE and e.get("route") == labels4.ABORTED}
+    _RULED_ABORTED[key] = frozenset(out)
+    return out
+
+
 def unread_problem(rec: dict) -> str | None:
     """None when the unread sessions are exactly KNOWN_UNREADABLE; else why the measurement does not stand."""
     got = sorted(u["session"] for u in rec["sessions_unread"])
@@ -125,10 +164,13 @@ def derive() -> dict:
     per_word: dict[str, dict] = {w: {"word": w, "sessions_hit": 0, "still_flagged_in": 0, "first": ""}
                                  for w in words}
     per_session, unread = [], []
+    aborted = ruled_aborted() if found else set()
     for s in found:
         read = session_context(ct, s)
         ctx = read["ctx"]
         flagged = {w.lower() for w in ct.context_leaks(ctx, pre)}
+        session = str(s.parent.relative_to(HERE))
+        skipped = take_key(session) in aborted           # aborted-leak: read and listed, never counted as voided
         hits = []
         for w in words:
             if not re.search(rf"\b{re.escape(w.lower())}\b", ctx):
@@ -137,13 +179,15 @@ def derive() -> dict:
             rec["sessions_hit"] += 1
             if not rec["first"]:
                 rec["first"] = snippet(ctx, w)
-            if w.lower() in flagged:
+            if w.lower() in flagged and not skipped:
                 rec["still_flagged_in"] += 1
             hits.append(w)
-        entry = {"session": str(s.parent.relative_to(HERE)),
+        entry = {"session": session,
                  "context_records_bytes": len(ctx),
                  "words_present": sorted(hits),
                  "words_the_checker_would_void_on": sorted(flagged)}
+        if skipped:
+            entry["leak_check"] = NOT_CHECKED
         if read["harness"] in VENDOR_HARNESSES:                    # stage W: which reader read it, and any refusal
             entry.update(harness=read["harness"], reader=read["reader"], context_unreadable=read["unreadable"])
         if not ctx:                                                 # review 0df1437 MINOR 3: 0 characters is unread
@@ -184,7 +228,8 @@ def main() -> int:
         print()
         for s in rec["per_session"]:
             print(f"  {s['session']:42} context {s['context_records_bytes']:>8} bytes  "
-                  f"present {s['words_present']}  WOULD VOID {s['words_the_checker_would_void_on']}")
+                  f"present {s['words_present']}  WOULD VOID {s['words_the_checker_would_void_on']}"
+                  + (f"  ({s['leak_check']})" if "leak_check" in s else ""))
         if rec["per_word"]:
             print("\nwords present in some session's loaded context:")
             for w in rec["per_word"]:

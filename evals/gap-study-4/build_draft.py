@@ -767,6 +767,36 @@ def check_leak_users(words, users):
                 raise ValueError("a box user and a leak word overlap")
 
 
+_ABORTED_RULINGS: dict = {}       # {(the loader, the last history commit): the takes ruled aborted}
+
+
+def _aborted_rulings() -> set:
+    """Review of a164b3cf, MINOR-1: {(slot, attempt)} whose latest committed take ruling routes it aborted, read here
+    from the history loader on its own (never through leak_grep), so a take ruled aborted whose session is missing,
+    or a fault in leak_grep's own reading, refuses the draft."""
+    import takes
+    paths = [(takes.HERE / p).relative_to(takes.REPO).as_posix() for p in takes.HISTORY_FILES]
+    key = (takes.read_history, takes._git_at(takes.REPO, "log", "-1", "--format=%H", "--", *paths).strip())
+    if key in _ABORTED_RULINGS:                    # the history is the commits; the last one touching it names them all
+        return set(_ABORTED_RULINGS[key])
+    latest = {}
+    for e in takes.read_history():
+        if isinstance(e, dict) and e.get("kind") == labels4.RULING:
+            latest[(e.get("slot"), e.get("attempt"))] = e
+    out = {k for k, e in latest.items() if e.get("ruling") == labels4.RULE_ROUTE and e.get("route") == labels4.ABORTED}
+    _ABORTED_RULINGS[key] = frozenset(out)
+    return out
+
+
+def _take_of(session):
+    """(slot, attempt) of a session named takes/<slot>/<k>, parsed here on its own; None for anything else."""
+    parts = session.split("/") if isinstance(session, str) else []
+    if len(parts) == 3 and parts[0] == "takes" and re.fullmatch(r"s-[0-9a-f]{64}", parts[1]) \
+            and re.fullmatch(r"[1-9][0-9]*", parts[2]):
+        return parts[1], int(parts[2])
+    return None
+
+
 def checked_sessions(draft):
     # The existing reader consumes prereg.load(). Supply the in-memory draft,
     # restoring it even on failure, without requiring yesterday's draft bytes.
@@ -777,8 +807,16 @@ def checked_sessions(draft):
     from unittest.mock import patch
     with patch.object(leak_grep.prereg, "load", return_value=draft):
         result = leak_grep.derive()
+    # aborted-leak (ask T242): the sessions left out of the void check are exactly the takes ruled aborted, each marked
+    # leak_grep.NOT_CHECKED, and every other session is checked
     if result["words_that_would_void_a_session"]:
         raise ValueError("the leak list would void a recorded session")
+    aborted = leak_grep.ruled_aborted()
+    marked = sorted(s["session"] for s in result["per_session"] if "leak_check" in s)
+    if any(s["leak_check"] != leak_grep.NOT_CHECKED for s in result["per_session"] if "leak_check" in s) or marked != \
+            sorted(s["session"] for s in result["per_session"] if leak_grep.take_key(s["session"]) in aborted) \
+            or {_take_of(s) for s in marked} != _aborted_rulings():
+        raise ValueError("the sessions left out of the leak check are not exactly the takes ruled aborted")
     problem = leak_grep.unread_problem(result)       # review 0df1437 MINOR 3: an unread session is never read as clean
     if problem:
         raise ValueError(problem)
