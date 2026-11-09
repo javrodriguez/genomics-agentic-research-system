@@ -1323,6 +1323,30 @@ class TestOD57Ruling(Case):
         scanner = scanner or _Gitleaks(self.text[:40])
         return sr.scan(files, SECRETS, rules_scanner=scanner), scanner
 
+    # ---- od57-line (SCANREFUSAL-ROAD-20261108; Javier's word pending, ask od57-line): an older refusal witness the
+    # widening admits is retargeted, never dropped. The record is admitted as is (a whole shell output line after a
+    # closed prefix); with the fallback off (reads_only) its read rule refuses it exactly as before, its mutants
+    # included; and its nearest shape, one byte after every copy of the pinned bytes (line_twin), still refuses.
+    @staticmethod
+    def reads_only():
+        """box/od57_rule with od57-line's fallback off (_any_text admits nothing): the read rules alone."""
+        from box import od57_rule
+        return mock.patch.object(od57_rule, "_any_text", lambda *a, **k: None)
+
+    def line_twin(self, body: bytes) -> bytes:
+        """The record with one byte after every copy of the pinned bytes: od57-line's nearest refusal."""
+        t = self.text.encode()
+        self.assertIn(t, body)
+        return body.replace(t, t + b"~")
+
+    def od57_line(self, refuses, admits, body):
+        """A retargeted witness: `admits(body)` as is, `refuses(body)` with the fallback off (the old witness), and
+        `refuses(line_twin(body))` as is."""
+        admits(body)
+        with self.reads_only():
+            refuses(body)
+        refuses(self.line_twin(body))
+
     def test_the_pin_is_the_docs_line_175(self):
         b = self.text.encode()
         (ruling,) = sr.RULED_LINES
@@ -1395,12 +1419,25 @@ class TestOD57Ruling(Case):
                                      _result("toolu_A", f"{self.text}\n")),
             "the line with more on it": self.bash_record(f"cat {self.doc}", f"{self.text} and more\n"),
         }
+        # od57-line: a Bash result's whole line is admitted whatever the command (retargeted, see od57_line)
+        line = ("a Bash that is not cat or grep", "a Bash that only starts with grep's letters")
+
+        def refuses(body):
+            p = self.write("transcript.jsonl", body)
+            r, _ = self.scan([(p, "transcript")])
+            self.assertEqual(r["ruled"], [])
+            self.assertEqual([x["why"] for x in r["refused"]], [f"the rules scanner's rule {OD57_RULE!r}"])
+
+        def admits(body):
+            p = self.write("transcript.jsonl", body)
+            r, _ = self.scan([(p, "transcript")])
+            self.assertEqual((r["refused"], [x["line"] for x in r["ruled"]]), ([], [2]))
         for name, body in cases.items():
             with self.subTest(name):
-                p = self.write("transcript.jsonl", body)
-                r, _ = self.scan([(p, "transcript")])
-                self.assertEqual(r["ruled"], [])
-                self.assertEqual([x["why"] for x in r["refused"]], [f"the rules scanner's rule {OD57_RULE!r}"])
+                if name in line:
+                    self.od57_line(refuses, admits, body)
+                else:
+                    refuses(body)
 
     def test_a_match_the_line_does_not_explain_refuses(self):
         p = self.write("transcript.jsonl", self.bash_record(f"cat {self.doc}", f"{self.text}\napi_key_SECOND\n"))
@@ -1489,6 +1526,11 @@ class TestOD57Chain(TestOD57Ruling):
         r, _ = self.scan([(p, kind)], scanner)
         return r["ruled"] != [] and r["refused"] == []
 
+    def line_retarget(self, body, kind="transcript"):
+        """od57-line: an older refusal witness, retargeted (TestOD57Ruling.od57_line) on `admitted`."""
+        self.od57_line(lambda b: self.assertFalse(self.admitted(b, kind)),
+                       lambda b: self.assertTrue(self.admitted(b, kind)), body)
+
     def test_witness_w167s_command_is_admitted_in_its_transcript_and_its_stream(self):
         for kind, side in (("transcript", False), ("stream", True)):
             with self.subTest(kind=kind):
@@ -1546,7 +1588,10 @@ class TestOD57Chain(TestOD57Ruling):
         }
         for name, body in cases.items():
             with self.subTest(name):
-                self.assertFalse(self.admitted(body))
+                if name == "a user-text copy":          # no Bash result: od57-line never reads it
+                    self.assertFalse(self.admitted(body))
+                else:                                   # od57-line: a whole Bash output line, retargeted
+                    self.line_retarget(body)
 
     def test_mutation_witnesses_of_the_bash_shapes(self):
         LINE = self.text
@@ -1572,9 +1617,15 @@ class TestOD57Chain(TestOD57Ruling):
         )
         for name, cmd, out, fn, edit in cases:
             with self.subTest(name):
-                self.assertFalse(self.admitted(self.bash_record(cmd, out)))
-                with _mutant(fn, edit):
-                    self.assertTrue(self.admitted(self.bash_record(cmd, out)), f"{name}: the mutant still refuses")
+                body = self.bash_record(cmd, out)
+                # od57-line admits each whole line as is, and refuses it with a byte after the pinned bytes; each
+                # guard keeps its witness on the read rules alone (the fallback off)
+                self.assertTrue(self.admitted(body))
+                self.assertFalse(self.admitted(self.line_twin(body)))
+                with self.reads_only():
+                    self.assertFalse(self.admitted(body))
+                    with _mutant(fn, edit):
+                        self.assertTrue(self.admitted(body), f"{name}: the mutant still refuses")
                 red(f"OD57 w167: {name}")
 
     def test_mutation_witnesses_of_the_hash_fixes(self):
@@ -1811,6 +1862,11 @@ class TestOD57OtherArms(TestOD57Ruling):
         self.assertEqual([(x["line"], x["why"]) for x in r["refused"]],
                          [(n, f"the rules scanner's rule {OD57_RULE!r}") for n in lines])
 
+    def assert_line_retargeted(self, name, body, kind, lines):
+        """od57-line: a refusal on `lines` that the widening admits there, retargeted (TestOD57Ruling.od57_line)."""
+        self.od57_line(lambda b: self.assert_refused(name, b, kind, lines),
+                       lambda b: self.assert_admitted(name, b, kind, lines), body)
+
     # ---- Gemini CLI 0.64.0, the turn stream (stream-json): run_shell_command's output is its stdout; read_file's is
     # a summary string that never carries the file's text (design note, section 1)
     def test_gemini_stream_shell_reads_are_admitted(self):
@@ -1875,7 +1931,10 @@ class TestOD57OtherArms(TestOD57Ruling):
                  "call id twice": [3]}
         for case, recs in stream.items():
             with self.subTest(file="stream", case=case):
-                self.assert_refused("turn-1.jsonl", _cc(*recs), "stream", lines[case])
+                if case == "another file":       # od57-line: a whole line of run_shell_command's output (retargeted)
+                    self.assert_line_retargeted("turn-1.jsonl", _cc(*recs), "stream", lines[case])
+                else:
+                    self.assert_refused("turn-1.jsonl", _cc(*recs), "stream", lines[case])
         session = {
             "own text": ([_gem_message("msg-g1", [], content=f"the doc says:\n{self.text}")], [2]),
             "own text beside a ruled read": ([_gem_message("msg-g1", [read], content=self.text)], [2]),
@@ -1907,8 +1966,8 @@ class TestOD57OtherArms(TestOD57Ruling):
                 body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                            _cx_item("item.started", "item_1", command, "", "in_progress"),
                            _cx_item("item.completed", "item_1", command, out))
-                if how == "-c":
-                    self.assert_refused(f"turn-1-{how}.jsonl", body, "stream", [4])
+                if how == "-c":                  # od57-line: admitted whatever the flag (retargeted)
+                    self.assert_line_retargeted(f"turn-1-{how}.jsonl", body, "stream", [4])
                 else:
                     self.assert_admitted(f"turn-1-{how}.jsonl", body, "stream", [4])
 
@@ -1944,7 +2003,10 @@ class TestOD57OtherArms(TestOD57Ruling):
         }
         for case, (recs, want) in stream.items():
             with self.subTest(file="stream", case=case):
-                self.assert_refused("turn-1.jsonl", _cc(*start, *recs), "stream", want)
+                if case == "another file":       # od57-line: a whole line of the shell's output (retargeted)
+                    self.assert_line_retargeted("turn-1.jsonl", _cc(*start, *recs), "stream", want)
+                else:
+                    self.assert_refused("turn-1.jsonl", _cc(*start, *recs), "stream", want)
         nested = "sh -c 'cat _references/environment.md'"
         rollout = {
             "own text": ([_cx_line(1, "response_item", {"type": "message", "role": "assistant", "content": [
@@ -1963,7 +2025,18 @@ class TestOD57OtherArms(TestOD57Ruling):
         }
         for case, (recs, want) in rollout.items():
             with self.subTest(file="rollout", case=case):
-                self.assert_refused("rollout.jsonl", _cc(_cx_meta(), *recs), "session", want)
+                if case == "a shell inside the script":
+                    # od57-line: the CommandExecution's whole output line is admitted (line 3); the function_call
+                    # output (line 4) is no shape's shell tool and still refuses. Retargeted: the read rules alone
+                    # refuse both, and a byte after the pinned bytes refuses both
+                    body = _cc(_cx_meta(), *recs)
+                    p, r = self.scanned("rollout.jsonl", body, "session")
+                    self.assertEqual(([x["line"] for x in r["ruled"]], [x["line"] for x in r["refused"]]), ([3], [4]))
+                    with self.reads_only():
+                        self.assert_refused("rollout.jsonl", body, "session", want)
+                    self.assert_refused("rollout.jsonl", self.line_twin(body), "session", want)
+                else:
+                    self.assert_refused("rollout.jsonl", _cc(_cx_meta(), *recs), "session", want)
 
 
 for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
@@ -1981,8 +2054,19 @@ OTHER = "cat _references/other.md"
 class TestB17ReadShapes(TestOD57OtherArms):
     """Round 2: the default, the schema, B17-6 and B17-7's refusals, and one witness per admission conjunct."""
 
-    def witness(self, label, name, body, kind, lines, fn, *edits):
-        """Refused as is, on `lines`; admitted on exactly those lines with only `edits` made to sr.<fn>."""
+    def witness(self, label, name, body, kind, lines, fn, *edits, line=False):
+        """Refused as is, on `lines`; admitted on exactly those lines with only `edits` made to sr.<fn>. With `line`
+        (od57-line, retargeted): admitted as is and refused with a byte after the pinned bytes, the witness itself
+        held on the read rules alone (the fallback off)."""
+        if line:
+            self.assert_admitted(name, body, kind, lines)
+            self.assert_refused(name, self.line_twin(body), kind, lines)
+            with self.reads_only():
+                self.assert_refused(name, body, kind, lines)
+                with _mutant(fn, *edits):
+                    self.assert_admitted(name, body, kind, lines)
+            red(f"B17 {label}")
+            return
         self.assert_refused(name, body, kind, lines)
         with _mutant(fn, *edits):
             self.assert_admitted(name, body, kind, lines)
@@ -2068,7 +2152,7 @@ class TestB17ReadShapes(TestOD57OtherArms):
         body = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
                    _cx_item("item.completed", "item_1", command, self.stdout("cat")))
         self.witness("the wrapper's flag", "turn-1.jsonl", body, "stream", [3], "_ruled_wrapped",
-                     ("argv[1] not in flags", "False"))
+                     ("argv[1] not in flags", "False"), line=True)
 
     # ---- one witness per admission conjunct
     def test_gemini_witness_the_path_names_the_doc(self):
@@ -2079,14 +2163,14 @@ class TestB17ReadShapes(TestOD57OtherArms):
     def test_gemini_witness_the_script_reads_the_doc(self):
         call = self.shell_call(command=OTHER, output=_gem_shell(self.stdout("cat").rstrip("\n")))
         self.witness("the script", "session.jsonl", _cc(GEM_HEAD, _gem_message("msg-g1", [call])), "session", [2],
-                     "_reads_doc", ("spec = _ruled_shell(arg)", 'spec = _ruled_shell("cat " + _RULED_DOC)'))
+                     "_reads_doc", ("spec = _ruled_shell(arg)", 'spec = _ruled_shell("cat " + _RULED_DOC)'), line=True)
 
     def test_codex_witness_the_wrapper_has_three_words(self):
         # round 3: a CommandExecution item's call is its function_call (B17-12), so the rollout carries it
         body = _cc(_cx_meta(), _cx_call(1, "call-o1", SHELL_READS[0][1]),
                    _cx_end(2, "call-o1", ["/bin/bash", "-lc", SHELL_READS[0][1], "x"], self.stdout("cat")))
         self.witness("the wrapper's length", "rollout.jsonl", body, "session", [3], "_ruled_wrapped",
-                     ("len(argv) == 3", "len(argv) >= 3"))
+                     ("len(argv) == 3", "len(argv) >= 3"), line=True)
 
     def test_codex_witness_the_wrapper_is_a_shell(self):
         for shell in ("/usr/bin/fish", "/tmp/x/bash", "bash", "/bin/zsh", "/bin/sh"):
@@ -2094,7 +2178,7 @@ class TestB17ReadShapes(TestOD57OtherArms):
                 body = _cc(_cx_meta(), _cx_call(1, "call-o1", SHELL_READS[0][1]),
                            _cx_end(2, "call-o1", [shell, "-lc", SHELL_READS[0][1]], self.stdout("cat")))
                 self.witness("the wrapper's shell", "rollout.jsonl", body, "session", [3], "_ruled_wrapped",
-                             ("argv[0] not in shells", "False"))
+                             ("argv[0] not in shells", "False"), line=True)
 
     def test_gemini_witness_a_stream_call_is_found_once(self):
         use = _gem_use("call-g1", "run_shell_command", {"command": SHELL_READS[0][1]})
@@ -2214,8 +2298,15 @@ class TestB17Round3(TestB17ReadShapes):
     """Round 3: forged nested nodes refuse on every arm and file kind and on the Claude path; the shell argument, tty
     output, debug output, grep_search and read_file's display refuse; each with a witness that goes red alone."""
 
-    def data_witness(self, label, name, body, kind, lines, shapes):
-        """Refused as is, on `lines`; admitted on exactly those lines with only the shapes changed to `shapes`."""
+    def data_witness(self, label, name, body, kind, lines, shapes, line=False):
+        """Refused as is, on `lines`; admitted on exactly those lines with only the shapes changed to `shapes`. With
+        `line` (od57-line, retargeted), as TestB17ReadShapes.witness."""
+        if line:
+            self.assert_admitted(name, body, kind, lines)
+            self.assert_refused(name, self.line_twin(body), kind, lines)
+            with self.reads_only():
+                self.data_witness(label, name, body, kind, lines, shapes)
+            return
         self.assert_refused(name, body, kind, lines)
         self.shapes_override = shapes
         try:
@@ -2417,12 +2508,14 @@ class TestB17Round4(TestB17Round3):
 
     def test_codex_off_shape_command_execution_refuses(self):
         cmd = SHELL_READS[0][1]
+        # od57-line: the CommandExecution's whole output line is admitted whatever its wrapper or script (retargeted)
         self.witness("16a the CommandExecution's -lc", "rollout.jsonl",
                      self.code_mode(call=False, out=False, argv=["/bin/bash", "-c", cmd]), "session", [2],
-                     "_ruled_wrapped", ("argv[1] not in flags", "False"))
+                     "_ruled_wrapped", ("argv[1] not in flags", "False"), line=True)
         for argv in (["/bin/bash", "-lc", OTHER], ["/bin/bash", "-lc", "sh -c '" + cmd + "'"]):
             with self.subTest(argv=argv[2]):
-                self.assert_refused("rollout.jsonl", self.code_mode(call=False, out=False, argv=argv), "session", [2])
+                self.assert_line_retargeted("rollout.jsonl", self.code_mode(call=False, out=False, argv=argv),
+                                            "session", [2])
 
     # ---- B17-16b and 16c: the exec output's verbatim copy of an admitted read
     def test_codex_exec_output_copy_is_admitted(self):
@@ -2432,17 +2525,25 @@ class TestB17Round4(TestB17Round3):
                 self.assert_admitted("rollout.jsonl", self.code_mode(out=text), "session", [3, 4])
 
     def test_codex_exec_output_needs_an_admitted_read(self):
+        # od57-line: the exec output is the shell's output copy, so its whole line is admitted with or without an
+        # admitted read (retargeted)
         self.witness("16b an admitted read in the file", "rollout.jsonl", self.code_mode(ce=False), "session", [3],
-                     "_copy_hits", ("for a, tool in srcs:", 'for a, tool in srcs + [(s, {"kind": "exact"})]:'))
-        self.assert_refused("rollout.jsonl", self.code_mode(cmd=OTHER), "session", [3, 4])
+                     "_copy_hits", ("for a, tool in srcs:", 'for a, tool in srcs + [(s, {"kind": "exact"})]:'),
+                     line=True)
+        self.assert_line_retargeted("rollout.jsonl", self.code_mode(cmd=OTHER), "session", [3, 4])
 
     def test_codex_exec_output_span_must_be_a_copy(self):
         stdout = self.stdout("cat")
         changed = stdout.replace("line after", "LINE AFTER")
         body = self.code_mode(out=f"Script completed\n{changed}exit code 0")
-        self.assert_split("rollout.jsonl", body, "session", [3], [4])
-        with _mutant("_copy_hits", ("s[p:p + len(a)] == a", "True")):
-            self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        # od57-line: the copy's whole line is admitted even where the span is no verbatim copy, and a byte after the
+        # pinned bytes refuses both lines; the copy rule's witness holds on the read rules alone (retargeted)
+        self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
+        self.assert_split("rollout.jsonl", self.line_twin(body), "session", [], [3, 4])
+        with self.reads_only():
+            self.assert_split("rollout.jsonl", body, "session", [3], [4])
+            with _mutant("_copy_hits", ("s[p:p + len(a)] == a", "True")):
+                self.assert_split("rollout.jsonl", body, "session", [3, 4], [])
         red("B17 16b the span is a verbatim copy")
 
     def test_codex_exec_output_needs_the_exec_tool(self):
@@ -2608,11 +2709,17 @@ class TestB17Round5(TestB17Round4):
         body = _cc(_cx_meta(), *self.pair("a", 1, [(SHELL_READS[0][1], "ok\n")], "ok\n"),
                    _cx_custom(4, "b", inp="text('x')"), _cx_custom_out(5, "b", go),
                    _cx_end(6, "c-0", ["/bin/bash", "-lc", grep], go))
-        self.assert_split("rollout.jsonl", body, "session", [7], [6])
-        # round 6 (B17-21): a read outside every window is no source either, so the witness drops both window checks
-        with _mutant("_shape_strings", ("cl[0] < ln < line", "True")), \
-                _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
-            self.assert_split("rollout.jsonl", body, "session", [6, 7], [])
+        # od57-line: the exec output outside its pair is a shell output copy, so its whole line is admitted; a byte
+        # after the pinned bytes refuses both; the window's witness holds on the read rules alone (retargeted)
+        self.assert_split("rollout.jsonl", body, "session", [6, 7], [])
+        self.assert_split("rollout.jsonl", self.line_twin(body), "session", [], [6, 7])
+        with self.reads_only():
+            self.assert_split("rollout.jsonl", body, "session", [7], [6])
+            # round 6 (B17-21): a read outside every window is no source either, so the witness drops both window
+            # checks
+            with _mutant("_shape_strings", ("cl[0] < ln < line", "True")), \
+                    _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
+                self.assert_split("rollout.jsonl", body, "session", [6, 7], [])
         red("B17 round 5 the exec pair's window")
 
     # ---- NIT 2: the event's payload type, the file kind, a response's own entry
@@ -2644,8 +2751,9 @@ class TestB17Round5(TestB17Round4):
         item = {"type": "CommandExecution", "id": "e1", "command": _cx_wrap(SHELL_READS[0][1]),
                 "aggregated_output": self.stdout("cat")}
         body = _cc(_cx_meta(), _cx_line(1, "event_msg", {"type": "item_completed", "item": item}))
+        # od57-line: the shell tool's whole output line is admitted whatever the argv's form (retargeted)
         wide = _with_tool(CODEX_SHAPES, CX_ITEM, "shell", kind="wrapped")
-        self.data_witness("NIT 5 the argv's list form", "rollout.jsonl", body, "session", [2], wide)
+        self.data_witness("NIT 5 the argv's list form", "rollout.jsonl", body, "session", [2], wide, line=True)
 
     # ---- NIT 3: the schema's copy_of and wrapped-tool cases
     def test_the_copy_and_wrapped_schema_refuses(self):
@@ -2741,19 +2849,29 @@ class TestB17Round6(TestB17Round5):
         body = _cc(_cx_meta(), _cx_custom(1, "a", inp="text('x')"), _cx_custom(2, "b"),
                    _cx_end(3, "b-0", ["/bin/bash", "-lc", cat], co), _cx_custom_out(4, "b", co),
                    _cx_custom_out(5, "a", co))
-        self.assert_split("rollout.jsonl", body, "session", [4], [5, 6])
-        with _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
-            self.assert_split("rollout.jsonl", body, "session", [4, 5, 6], [])
+        # od57-line: both outputs are shell output copies, so their whole lines are admitted; a byte after the pinned
+        # bytes refuses all three; the window's witness holds on the read rules alone (retargeted)
+        self.assert_split("rollout.jsonl", body, "session", [4, 5, 6], [])
+        self.assert_split("rollout.jsonl", self.line_twin(body), "session", [], [4, 5, 6])
+        with self.reads_only():
+            self.assert_split("rollout.jsonl", body, "session", [4], [5, 6])
+            with _mutant("_shape_calls", ("sum(1 for c, o in windows if c < n < o) == 1", "True")):
+                self.assert_split("rollout.jsonl", body, "session", [4, 5, 6], [])
         red("B17 round 6 one window per read")
 
     def test_codex_call_with_two_outputs_refuses(self):
         cat, co = SHELL_READS[0][1], self.stdout("cat")
         body = _cc(_cx_meta(), _cx_custom(1, "a"), _cx_end(2, "a-0", ["/bin/bash", "-lc", cat], co),
                    _cx_custom_out(3, "a", co), _cx_custom_out(4, "a", co))
-        self.assert_split("rollout.jsonl", body, "session", [3], [4, 5])
-        with _mutant("_shape_strings", ("len(out_lines.get(node[spec[\"id\"]]) or ()) != 1", "False")), \
-                _mutant("_shape_calls", ("len(out_lines[c]) == 1", "True")):
-            self.assert_split("rollout.jsonl", body, "session", [3, 4, 5], [])
+        # od57-line: both outputs are shell output copies, so their whole lines are admitted; a byte after the pinned
+        # bytes refuses all three; the one-output witness holds on the read rules alone (retargeted)
+        self.assert_split("rollout.jsonl", body, "session", [3, 4, 5], [])
+        self.assert_split("rollout.jsonl", self.line_twin(body), "session", [], [3, 4, 5])
+        with self.reads_only():
+            self.assert_split("rollout.jsonl", body, "session", [3], [4, 5])
+            with _mutant("_shape_strings", ("len(out_lines.get(node[spec[\"id\"]]) or ()) != 1", "False")), \
+                    _mutant("_shape_calls", ("len(out_lines[c]) == 1", "True")):
+                self.assert_split("rollout.jsonl", body, "session", [3, 4, 5], [])
         red("B17 round 6 one output per call")
 
 
@@ -2890,7 +3008,10 @@ class TestB20GitReads(TestB17Round6):
         }
         for case, out in outs.items():
             with self.subTest(case=case):
-                self.assert_refused("turn-1.jsonl", self.gem_stream(out), "stream", [3])
+                if case == "no prefix":          # od57-line: a whole bare line of the shell's output (retargeted)
+                    self.assert_line_retargeted("turn-1.jsonl", self.gem_stream(out), "stream", [3])
+                else:
+                    self.assert_refused("turn-1.jsonl", self.gem_stream(out), "stream", [3])
         for cmd in GIT_REFUSED:
             with self.subTest(cmd=cmd):
                 self.assert_refused("turn-1.jsonl", self.gem_stream(_git_out(self.text), cmd), "stream", [3])
@@ -3126,19 +3247,26 @@ class TestOD57Gap(TestOD57Chain):
         for name, cmd, out in self.widened():
             n = ":175:" in out
             with self.subTest(name, case="an unlabelled line"):
-                self.assertEqual(self.admitted(self.bash_record(cmd, f"{'175:' if n else ''}{self.text}\n")),
-                                 name in self.BARE_BESIDE)
+                # od57-line: the unlabelled line is admitted whatever the command; the read rules alone admit it only
+                # beside a bare read of the doc, and a byte after it refuses
+                body = self.bash_record(cmd, f"{'175:' if n else ''}{self.text}\n")
+                self.assertTrue(self.admitted(body))
+                with self.reads_only():
+                    self.assertEqual(self.admitted(body), name in self.BARE_BESIDE)
+                self.assertFalse(self.admitted(self.line_twin(body)))
             for case, body in (
                     ("other bytes", self.labelled(n=n, text=_one_char_off(self.text))),
                     ("a byte after the line", out[:-1] + "x\n"),
                     ("a label to another file", self.labelled(n=n, label=self.OTHER)),
-                    ("a label resolving to the doc but not typed", self.labelled(n=n, label="./" + self.DOC)),
                     ("a context line", f"{self.DOC}-175-{self.text}\n")):
                 with self.subTest(name, case=case):
                     self.assertFalse(self.admitted(self.bash_record(cmd, body)))
+            # od57-line: `./<doc>` resolves to the doc with no cwd, so od57-line admits the label (retargeted)
+            with self.subTest(name, case="a label resolving to the doc but not typed"):
+                self.line_retarget(self.bash_record(cmd, self.labelled(n=n, label="./" + self.DOC)))
             globbed = cmd.replace(self.OTHER, "_references/*.txt") if self.OTHER in cmd else cmd + " _references/*.md"
             with self.subTest(name, case="a glob operand"):
-                self.assertFalse(self.admitted(self.bash_record(globbed, out)))
+                self.line_retarget(self.bash_record(globbed, out))
 
     def test_everything_else_still_refuses(self):
         doc, other = self.DOC, self.OTHER
@@ -3198,9 +3326,15 @@ class TestOD57Gap(TestOD57Chain):
             "echo an escape": (two + "; echo 'a\\x41'", self.labelled(n=True)),
             "echo alone": ("echo " + doc + ":175:x", self.labelled(n=True)),
         }
+        # od57-line admits every case below whose line is the doc's label, 175: or bare (retargeted); a label naming
+        # another file or another number still refuses as is
+        still = ("a label that is not the doc", "a number other than 175")
         for name, (cmd, out) in cases.items():
             with self.subTest(name):
-                self.assertFalse(self.admitted(self.bash_record(cmd, out)))
+                if name in still:
+                    self.assertFalse(self.admitted(self.bash_record(cmd, out)))
+                else:
+                    self.line_retarget(self.bash_record(cmd, out))
 
     # od57-gap follow-up (glitch-45, scope 1): the doc's bare line from a read that types the doc as its only file
     # operand, the command naming no other file an unlabelled line could come from.
@@ -3241,27 +3375,36 @@ class TestOD57Gap(TestOD57Chain):
                      ("a byte before", cmd, " " + out),
                      ("a glob", glob, out),
                      ("a label", cmd, self.labelled(n=n)))
+            # od57-line admits the whole line whatever else the command reads, and the doc's label (retargeted);
+            # other bytes, a byte after the line and a byte before it still refuse as is
+            line = ("a second file operand", "another file read after it", "another file read first", "a glob",
+                    "a label")
             for case, c, body in cases:
                 with self.subTest(name, case=case):
-                    self.assertFalse(self.admitted(self.bash_record(c, body)))
+                    if case in line:
+                        self.line_retarget(self.bash_record(c, body))
+                    else:
+                        self.assertFalse(self.admitted(self.bash_record(c, body)))
 
     def test_bare_lines_need_a_read_that_prints_the_doc_whole(self):
+        # od57-line: the bare line is admitted whatever printed it (retargeted)
         for cmd in ("wc -l " + self.DOC, "cut -c1-80 " + self.DOC, "echo x; wc -c " + self.DOC):
             with self.subTest(cmd):
-                self.assertFalse(self.admitted(self.bash_record(cmd, f"{self.text}\n")))
+                self.line_retarget(self.bash_record(cmd, f"{self.text}\n"))
 
     def test_a_dashdash_or_stdin_operand_refuses(self):
         """REVIEW-OD57-GAP-20261107 MINOR-2: after `--` a file may be named like an option, and `-` is standard input;
         either could supply the bare line, so either refuses the whole command."""
+        # od57-line: the bare line is admitted whatever the operands (retargeted)
         for cmd in ("cat -- -notes; cat " + self.DOC, "head -n 5 -- -x " + self.DOC, "cat " + self.DOC + " -"):
             with self.subTest(cmd):
-                self.assertFalse(self.admitted(self.bash_record(cmd, f"{self.text}\n")))
+                self.line_retarget(self.bash_record(cmd, f"{self.text}\n"))
 
     def test_bare_numbered_only_where_n_was_typed(self):
         for cmd in ("sed -n 175p " + self.DOC, "rg pinned " + self.DOC, "cat -n " + self.DOC + " | head",
                     "awk 'NR==175' " + self.DOC + "; echo ---"):
-            with self.subTest(cmd):
-                self.assertFalse(self.admitted(self.bash_record(cmd, f"175:{self.text}\n")))
+            with self.subTest(cmd):          # od57-line: `175:` is a closed prefix whatever was typed (retargeted)
+                self.line_retarget(self.bash_record(cmd, f"175:{self.text}\n"))
 
     def test_an_agent_or_task_copy_stays_out_of_scope(self):
         """A sub-agent's report quoting the labelled line is no read (a separate gap, not this amendment)."""
@@ -3350,26 +3493,336 @@ class TestOD57GapCodex(TestOD57Ruling):
                 self.assertEqual(self.outcome("rollout.jsonl", self.rollout(cmd, out), "session"), ([3, 4], []))
 
     def test_codex_compound_refusals(self):
+        # od57-line: a whole line of the shell's output after `175:` or the doc's label is admitted whatever the
+        # command or the wrapper (retargeted, TestOD57Ruling.od57_line); other bytes and another label still refuse
+        def refuses(name, kind, line):
+            return lambda b: self.assertEqual(self.outcome(name, b, kind), ([], [line]))
+
+        def admits(name, kind, line):
+            return lambda b: self.assertEqual(self.outcome(name, b, kind), ([line], []))
         for name, cmd, out in self.cases():
             bare = "bare" in name
             for case, body in (("other bytes", f"{self.DOC}:175:{_one_char_off(self.text)}\n"),
-                               ("another label", f"{self.OTHER}:175:{self.text}\n"),
-                               ("unlabelled" if not bare else "a bare 175: with no -n", f"175:{self.text}\n")):
+                               ("another label", f"{self.OTHER}:175:{self.text}\n")):
                 with self.subTest(name, case=case):
                     self.assertEqual(self.outcome("turn-1.jsonl", self.stream(cmd, body), "stream")[0], [])
+            with self.subTest(name, case="unlabelled" if not bare else "a bare 175: with no -n"):
+                self.od57_line(refuses("turn-1.jsonl", "stream", 4), admits("turn-1.jsonl", "stream", 4),
+                               self.stream(cmd, f"175:{self.text}\n"))
             with self.subTest(name, case="a second file operand" if bare else "a glob operand"):
                 globbed = cmd + " " + self.OTHER if bare else cmd.replace(self.OTHER, "_references/*.txt")
-                self.assertEqual(self.outcome("turn-1.jsonl", self.stream(globbed, out), "stream")[0], [])
-        # the wrapper itself is unchanged: -c, another shell, or more words still refuse
+                self.od57_line(refuses("turn-1.jsonl", "stream", 4), admits("turn-1.jsonl", "stream", 4),
+                               self.stream(globbed, out))
+        # the wrapper itself is unchanged for the read rules: -c, another shell, or more words still refuse there
         cmd, out = self.cases()[0][1], self.cases()[0][2]
         for argv in (["/bin/bash", "-c", cmd], ["/bin/zsh", "-lc", cmd], ["/bin/bash", "-lc", cmd, "x"]):
             with self.subTest(argv=argv):
                 body = _cc(_cx_meta(), _cx_end(1, "exec-cmd-1", argv, out))
-                self.assertEqual(self.outcome("rollout.jsonl", body, "session")[0], [])
+                self.od57_line(refuses("rollout.jsonl", "session", 2), admits("rollout.jsonl", "session", 2), body)
+
+
+class TestOD57Line(TestOD57Ruling):
+    """od57-line (SCANREFUSAL-ROAD-20261108, candidate 3 narrowed; Javier's word pending): the 80 pinned bytes as a
+    whole output line of a Bash, BashOutput, Read or Grep call (or a read shape's tool), after exactly one of a closed
+    list of prefixes, whatever the command. The STOP4 shape (s-91dbb18a: `175:<80 bytes>` in a Bash tool_result's
+    content and its toolUseResult stdout, suffix 0) is built from closed features only; the commands are synthetic."""
+
+    DOC = "_references/environment.md"
+    OTHER = "_references/gars-bio.lock.txt"
+
+    def outcome(self, body, kind="transcript", scanner=None, name=None):
+        p = self.write(name or f"{kind}.jsonl", body)
+        r, _ = self.scan([(p, kind)], scanner)
+        return sorted(x["line"] for x in r["ruled"]), sorted(x["line"] for x in r["refused"])
+
+    def commands(self):
+        doc = self.DOC
+        return [("find -exec grep -n", "find . -name environment.md -exec grep -n Key {} +"),
+                ("xargs grep -n", "ls " + doc + " | xargs grep -n Key"),
+                ("a for loop", "for f in " + doc + " " + self.OTHER + "; do grep -n Key \"$f\"; done"),
+                ("python3 -c", "python3 -c 'print(open(\"" + doc + "\").read())' | grep -n Key"),
+                ("a globbed grep", "grep -n Key _references/*.md"),
+                ("bash -c", "bash -c 'grep -n Key " + doc + "'"),
+                ("a heredoc", "cat <<'EOF' | sh\ngrep -n Key " + doc + "\nEOF")]
+
+    def stop4(self, cmd, prefix="175:", tail="\n", side=False, text=None):
+        return self.bash_record(cmd, f"{prefix}{self.text if text is None else text}{tail}", side)
+
+    # ---------------------------------------------------------------------------------------------- admitted
+    def test_the_stop4_shape_is_admitted_whatever_the_command(self):
+        for name, cmd in self.commands():
+            for kind, side in (("transcript", False), ("stream", True)):
+                with self.subTest(name, kind=kind):
+                    self.assertFalse(sr._ruled_bash(cmd))                    # no read rule admits the command
+                    self.assertEqual(self.outcome(self.stop4(cmd, side=side), kind), ([2], []))
+
+    def test_every_listed_prefix_is_admitted(self):
+        abs_doc = self.doc
+        for prefix in ("", "175:", "175\t", "   175\t", "175→", abs_doc + ":", abs_doc + ":175:", self.DOC + ":",
+                       self.DOC + ":175:", "gars/" + self.DOC + ":175:"):
+            with self.subTest(prefix=prefix):
+                self.assertEqual(self.outcome(self.stop4("grep -rn Key .", prefix=prefix)), ([2], []))
+
+    def test_the_line_among_other_output_lines_is_admitted(self):
+        out = f"12:first\n175:{self.text}\n200:last\n"
+        self.assertEqual(self.outcome(self.bash_record("grep -rn Key .", out)), ([2], []))
+
+    def test_bash_output_and_cat_n_results_are_admitted(self):
+        cases = (("BashOutput", "BashOutput", {"bash_id": "b1"}, f"175:{self.text}\n", {"stdout": f"175:{self.text}"}),
+                 ("cat -n of a copy", "Bash", {"command": "cat -n /tmp/copy.md"}, f"   175\t{self.text}\n", None))
+        for name, tool, inp, out, tur in cases:
+            with self.subTest(name):
+                body = _cc(_use("toolu_Z", tool, inp), _result("toolu_Z", out, tur))
+                self.assertEqual(self.outcome(body), ([2], []))
+
+    def test_the_seventh_of_november_shapes_are_still_admitted(self):
+        doc = self.DOC
+        for cmd, out in (
+                ("grep -i pinned " + doc + " _references/gars-bio.conda.txt; grep -i pinned README.md " + doc
+                 + " docs/setup.md | head -20", f"{doc}:{self.text}\n"),
+                ("cd /tmp/run-c8021046/gars && grep -n Key " + doc + " " + self.OTHER + " | head -40; "
+                 "head -5 _references/gars-bio.conda.txt | cut -c1-80", f"{doc}:175:{self.text}\n"),
+                ("sed -n 170,180p " + doc, f"{self.text}\n"),
+                (f"grep -n pinned {self.doc}", f"175:{self.text}\n")):
+            with self.subTest(cmd=cmd[:30]):
+                self.assertEqual(self.outcome(self.bash_record(cmd, out)), ([2], []))
+        self.assertEqual(self.outcome(self.read_record()), ([3], []))
+
+    # ---------------------------------------------------------------------------------------------- refused
+    def test_a_trailing_byte_refuses(self):
+        for tail in (" ", "x\n", "\r\n", " # note\n", "\t\n"):
+            with self.subTest(tail=tail):
+                self.assertEqual(self.outcome(self.stop4("grep -rn Key .", tail=tail)), ([], [2]))
+
+    def test_a_different_prefix_refuses(self):
+        for prefix in ("176:", "175-", "175: ", " 175:", "1175:", "x", "README.md:175:", self.OTHER + ":175:",
+                       "./../" + self.DOC + ":175:", "../" + self.DOC + ":", "/tmp/run-dead/x/" + self.DOC + ":",
+                       "a" * 300 + ":175:", "api_key=zz9f3c2a1b7e6d5c4b3a2f1e:", self.DOC + ":175:175:",
+                       self.DOC + "-175-", "--", "175\t\t"):
+            with self.subTest(prefix=prefix[:40]):
+                self.assertEqual(self.outcome(self.stop4("grep -rn Key .", prefix=prefix)), ([], [2]))
+
+    def test_one_changed_byte_refuses(self):
+        self.assertEqual(self.outcome(self.stop4("grep -rn Key .", text=_one_char_off(self.text))), ([], [2]))
+
+    def test_the_bytes_inside_a_longer_line_refuse(self):
+        for prefix, tail in (("", " and more\n"), ("175:x", "\n"), ("noise ", " noise\n")):
+            with self.subTest(prefix=prefix, tail=tail):
+                self.assertEqual(self.outcome(self.stop4("grep -rn Key .", prefix=prefix, tail=tail)), ([], [2]))
+
+    def test_the_bytes_split_across_two_lines_refuse(self):
+        half = len(self.text) // 2
+        out = f"175:{self.text[:half]}\n{self.text[half:]}\n"
+        p = self.write("transcript.jsonl", self.bash_record("grep -rn Key .", out))
+        r, _ = self.scan([(p, "transcript")], _Gitleaks(self.text[:20]))
+        self.assertEqual(r["ruled"], [])
+        self.assertEqual([x["line"] for x in r["refused"]], [2])
+
+    def test_a_write_of_the_doc_first_refuses(self):
+        for tool in ("Write", "Edit"):
+            with self.subTest(tool=tool):
+                body = _cc(_use("toolu_W", tool, {"file_path": self.doc, "content": "x"}),
+                           _result("toolu_W", "ok"), _use("toolu_B", "Bash", {"command": "grep -rn Key ."}),
+                           _result("toolu_B", f"175:{self.text}\n", {"stdout": f"175:{self.text}"}))
+                self.assertEqual(self.outcome(body), ([], [4]))
+        # the same file with the write after the line: admitted
+        body = _cc(_use("toolu_B", "Bash", {"command": "grep -rn Key ."}),
+                   _result("toolu_B", f"175:{self.text}\n", {"stdout": f"175:{self.text}"}),
+                   _use("toolu_W", "Write", {"file_path": self.doc, "content": "x"}))
+        self.assertEqual(self.outcome(body), ([2], []))
+
+    def test_a_raw_count_mismatch_refuses(self):
+        t = self.text
+        cases = {
+            "the agent's own text beside the result": _cc(
+                _use("toolu_B", "Bash", {"command": "grep -rn Key ."}),
+                {"type": "user", "message": {"content": [
+                    {"type": "tool_result", "tool_use_id": "toolu_B", "content": f"175:{t}\n"},
+                    {"type": "text", "text": t}]}}),
+            "a second copy under another key": _cc(
+                _use("toolu_B", "Bash", {"command": "grep -rn Key ."}),
+                dict(_result("toolu_B", f"175:{t}\n", {"stdout": f"175:{t}"}), note=t)),
+            "a second copy inside a longer string of the result": _cc(
+                _use("toolu_B", "Bash", {"command": "grep -rn Key ."}),
+                _result("toolu_B", f"175:{t}\n", {"stdout": f"175:{t}", "stderr": f"warn {t} again"})),
+            "an Agent result beside a Bash result": _cc(
+                _use("toolu_B", "Bash", {"command": "grep -rn Key ."}),
+                _use("toolu_A", "Agent", {"prompt": "read it"}),
+                {"type": "user", "message": {"content": [
+                    {"type": "tool_result", "tool_use_id": "toolu_B", "content": f"175:{t}\n"},
+                    {"type": "tool_result", "tool_use_id": "toolu_A", "content": f"{t}\n"}]}}),
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                ruled, refused = self.outcome(body)
+                self.assertEqual(ruled, [])
+                self.assertEqual(len(refused), 1)
+
+    def test_a_json_escaped_copy_refuses(self):
+        # a record whose raw bytes hold the text only escaped: the decoded and raw counts disagree
+        t = self.text
+        rec = json.dumps(_result("toolu_B", f"175:{t}\n", {"stdout": f"175:{t}"}), ensure_ascii=True)
+        body = _cc(_use("toolu_B", "Bash", {"command": "grep -rn Key ."})) + rec.replace(" ", "\\u0020").encode() \
+            + b"\n"
+        p = self.write("transcript.jsonl", body)
+        r, _ = self.scan([(p, "transcript")], _Gitleaks("Key"))
+        self.assertEqual(r["ruled"], [])
+
+    def test_tools_off_the_whitelist_refuse(self):
+        t = self.text
+        cases = {
+            "an Agent result": _cc(_use("toolu_A", "Agent", {"prompt": "x"}), _result("toolu_A", f"{t}\n")),
+            "a Task result": _cc(_use("toolu_A", "Task", {"prompt": "x"}), _result("toolu_A", f"175:{t}\n")),
+            "a WebFetch result": _cc(_use("toolu_A", "WebFetch", {"url": "https://x"}),
+                                     _result("toolu_A", f"{t}\n")),
+            "a Read of another file": _cc(_use("toolu_A", "Read", {"file_path": "/tmp/run-c8021046/gars/" + self.OTHER}),
+                                          _result("toolu_A", f"   175\t{t}\n")),
+            "a Read of a lookalike run tree": _cc(_use("toolu_A", "Read", {"file_path": "/tmp/run-dead/x/" + self.DOC}),
+                                                  _result("toolu_A", f"   175\t{t}\n")),
+            "a Grep of another file": _cc(_use("toolu_A", "Grep", {"pattern": "Key", "output_mode": "content",
+                                                                    "path": self.OTHER}),
+                                          _result("toolu_A", f"175:{t}\n")),
+            "a result with no call": _cc(_result("toolu_X", f"175:{t}\n")),
+            "a result whose call appears twice": _cc(_use("toolu_B", "Bash", {"command": "ls"}),
+                                                     _use("toolu_B", "Bash", {"command": "ls"}),
+                                                     _result("toolu_B", f"175:{t}\n")),
+            "the agent's own text": _cc({"type": "assistant", "message": {"content": [
+                {"type": "text", "text": f"175:{t}\n"}]}}),
+            "a tool_use input": _cc(_use("toolu_B", "Bash", {"command": f"echo '{t}'"})),
+        }
+        for name, body in cases.items():
+            with self.subTest(name):
+                ruled, refused = self.outcome(body)
+                self.assertEqual(ruled, [])
+                self.assertEqual(len(refused), 1)
+
+    def test_a_non_agent_kind_refuses_the_line(self):
+        for kind in ("ledger", "evidence", "preflight", "launch"):
+            with self.subTest(kind=kind):
+                self.assertEqual(self.outcome(self.stop4("grep -rn Key ."), kind)[0], [])
+                data = self.stop4("grep -rn Key .")
+                rec = data.split(b"\n")[1]
+                self.assertIsNone(sr._od57._any_text(json.loads(rec), rec, sr._od57._tool_uses(data), (), (), kind,
+                                                     sr.RULED_LINES[0]))
+
+    def test_another_rule_or_a_second_finding_on_the_line_refuses(self):
+        body = self.stop4("grep -rn Key .")
+        self.assertEqual(self.outcome(body, scanner=_Gitleaks(self.text[:40], {self.text[:20]: "curl-auth-header"})),
+                         ([2], [2]))
+        out = f"175:{self.text}\napi_key_SECOND\n"
+        body = self.bash_record("grep -rn Key .", out)
+        self.assertEqual(self.outcome(body, scanner=_Gitleaks(self.text[:40], {"api_key_SECOND": OD57_RULE})),
+                         ([], [2, 2]))
+
+    # ---------------------------------------------------------------------------------------------- vendor shapes
+    def test_codex_stream_and_rollout_any_command(self):
+        cmd = "find . -name environment.md -exec grep -n Key {} +"
+        out = f"175:{self.text}\n"
+        stream = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                     _cx_item("item.started", "item_1", _cx_wrap(cmd), "", "in_progress"),
+                     _cx_item("item.completed", "item_1", _cx_wrap(cmd), out))
+        rollout = _cc(_cx_meta(), _cx_custom(1, "call-o1"), _cx_end(2, "exec-cmd-1", ["/bin/bash", "-lc", cmd], out),
+                      _cx_custom_out(3, "call-o1", f"Script completed\n{out}exit code 0"))
+
+        def run(body, kind, name):
+            p = self.write(name, body)
+            r = sr.scan([(p, kind)], SECRETS, rules_scanner=_Gitleaks(self.text[:40]), read_shapes=CODEX_SHAPES)
+            return sorted(x["line"] for x in r["ruled"]), sorted(x["line"] for x in r["refused"])
+        self.assertEqual(run(stream, "stream", "turn-1.jsonl"), ([4], []))
+        self.assertEqual(run(rollout, "session", "rollout.jsonl"), ([3, 4], []))
+        bad = out.replace("175:", "176:")
+        stream_bad = _cc({"type": "thread.started", "thread_id": "thread-1"}, {"type": "turn.started"},
+                         _cx_item("item.completed", "item_1", _cx_wrap(cmd), bad))
+        self.assertEqual(run(stream_bad, "stream", "turn-1.jsonl"), ([], [3]))
+
+    # ---------------------------------------------------------------------------------------------- mutants
+    def test_mutation_witnesses_of_the_od57_line_guards(self):
+        t = self.text
+        bash = "grep -rn Key ."
+        cases = (
+            ("the prefix set opened", self.stop4(bash, prefix="176:"), "_any_prefix_ok",
+             ('if prefix in ("", "175:")', 'if True or prefix in ("", "175:")')),
+            ("the label resolve dropped", self.stop4(bash, prefix="README.md:175:"), "_any_prefix_ok",
+             ("_resolves_to_doc(prefix[:-len(tail)])", "True")),
+            ("the tool whitelist dropped", _cc(_use("toolu_A", "Agent", {"prompt": "x"}),
+                                               _result("toolu_A", f"{t}\n")), "_any_claude_strings",
+             ("got[0][0] in _ANY_CLAUDE_TOOLS", "True")),
+            ("one call per id dropped", _cc(_use("toolu_B", "Bash", {"command": "ls"}),
+                                            _use("toolu_B", "Bash", {"command": "ls"}),
+                                            _result("toolu_B", f"175:{t}\n")), "_any_claude_strings",
+             ("and len(got) == 1 ", "")),
+            ("the kind gate dropped", None, "_any_text", ("kind not in AGENT_TEXT_KINDS or ", "")),
+            ("the decoded count dropped", _cc(_use("toolu_B", "Bash", {"command": bash})) + json.dumps(
+                dict(_result("toolu_B", f"175:{t}\n"), note="NOTE")).replace(
+                "NOTE", t.replace(" ", "\\u0020")).encode() + b"\n", "_any_text",
+             ("sum(x.count(found) for x in _strings(rec, [])) != hits", "False")),
+            ("the T1 write check dropped", _cc(_use("toolu_W", "Write", {"file_path": self.doc, "content": "x"}),
+                                               _result("toolu_W", "ok"), _use("toolu_B", "Bash", {"command": bash}),
+                                               _result("toolu_B", f"175:{t}\n")), "ruled_text",
+             ("if writes is not None and writes <= line:", "if False:")),
+            ("the 80-byte pin dropped", self.stop4(bash, text=_one_char_off(t)), "_line_text",
+             ('if _sha(rest) != ruling["sha256"]:', "if False:")),
+        )
+        for name, body, fn, edit in cases:
+            with self.subTest(name):
+                if body is None:          # scan_record never hands a non-agent kind over: witnessed on the function
+                    data = self.stop4(bash)
+                    rec = data.split(b"\n")[1]
+                    args = (json.loads(rec), rec, sr._od57._tool_uses(data), (), ())
+                    self.assertIsNotNone(sr._od57._any_text(*args, "transcript", sr.RULED_LINES[0]))
+                    self.assertIsNone(sr._od57._any_text(*args, "ledger", sr.RULED_LINES[0]))
+                    with _mutant(fn, edit):
+                        self.assertIsNotNone(sr._od57._any_text(*args, "ledger", sr.RULED_LINES[0]))
+                    red(f"od57-line: {name}")
+                    continue
+                kind = "transcript"
+                scanner = _Gitleaks(t[:20]) if "pin" in name else None
+                self.assertEqual(self.outcome(body, kind, scanner)[0], [])
+                with _mutant(fn, edit):
+                    self.assertNotEqual(self.outcome(body, kind, scanner)[0], [], f"{name}: the mutant still refuses")
+                red(f"od57-line: {name}")
+        # the fallback itself: the STOP4 shape refuses without it
+        with _mutant("ruled_text", ("return _any_text(rec, body, uses, shapes, indexes, kind, ruling)", "return None")):
+            self.assertEqual(self.outcome(self.stop4(bash)), ([], [2]))
+        red("od57-line: the fallback removed (the STOP4 shape refused)")
+
+    # ---------------------------------------------------------------------------------------------- the vendor filter
+    def test_the_vendor_tool_filter_keeps_path_and_grep_tools_out(self):
+        """REVIEW-OD57-LINE-20261108 F2: _ANY_SHAPE_KINDS admits only a vendor shape's shell tools and their output
+        copy. A Gemini session read_file of another path, or a grep_search of another folder, printing the line as a
+        whole output line refuses; with the filter widened to the path and grep kinds both are admitted (red); the
+        shell tool's same output is admitted (the positive control); an identity edit changes nothing (null)."""
+        out = f"175:{self.text}\n"
+        cases = (("read_file of another path", "read_file", {"file_path": "/etc/other"}),
+                 ("grep_search of another folder", "grep_search", {"pattern": "Key", "dir_path": "/etc"}))
+
+        def run(tool, args):
+            body = _cc(GEM_HEAD, _gem_message("msg-g1", [_gem_call("call-g1", tool, args, out)]))
+            p = self.write("session.jsonl", body)
+            r = sr.scan([(p, "session")], SECRETS, rules_scanner=_Gitleaks(self.text[:40]), read_shapes=GEM_SHAPES)
+            return sorted(x["line"] for x in r["ruled"]), sorted(x["line"] for x in r["refused"])
+        self.assertEqual(run("run_shell_command", {"command": "find . -exec grep -n Key {} +"}), ([2], []))
+        same = ('tool["kind"] not in _ANY_SHAPE_KINDS', 'tool["kind"] not in _ANY_SHAPE_KINDS')
+        widen = ('tool["kind"] not in _ANY_SHAPE_KINDS', 'tool["kind"] not in _ANY_SHAPE_KINDS + ("path", "grep")')
+        for name, tool, args in cases:
+            with self.subTest(name):
+                self.assertEqual(run(tool, args), ([], [2]))
+                with _mutant("_any_shape_strings", same):
+                    self.assertEqual(run(tool, args), ([], [2]))
+                with _mutant("_any_shape_strings", widen):
+                    self.assertEqual(run(tool, args), ([2], []), f"{name}: the widened filter still refuses")
+                red(f"od57-line: the vendor tool filter widened to path and grep ({name})")
+
+    def test_the_null_mutant_stays_green(self):
+        with _mutant("_any_text", ("found, hits = None, 0", "found, hits = None, 0")), \
+                _mutant("_any_prefix_ok", ('for tail in (":175:", ":"):', 'for tail in (":175:", ":"):')):
+            self.assertEqual(self.outcome(self.stop4("grep -rn Key .")), ([2], []))
+            self.assertEqual(self.outcome(self.stop4("grep -rn Key .", prefix="176:")), ([], [2]))
 
 
 for _name in [n for n in vars(TestOD57Ruling) if n.startswith("test_")]:
     setattr(TestOD57GapCodex, _name, None)  # TestOD57Ruling's own tests run once, in their own class
+    setattr(TestOD57Line, _name, None)
 
 for _cls_from in (TestOD57OtherArms, TestB17ReadShapes, TestB17Round3, TestB17Round4, TestB17Round5, TestB17Round6):
     for _name in [n for n in vars(_cls_from) if n.startswith("test_")]:

@@ -5,8 +5,9 @@
 
 `body` is one record (a JSON line, no newline) of the file whose bytes are `data`, at 1-based `line`, of file kind
 `kind`; `shapes` are the arm's read shapes (box/od57_shapes; () for a Claude Code file). The text is returned only when
-the record carries the ruled line nowhere but as whole lines of ruled reads of the doc, each counted, and only when no
-write of the doc comes first in the file. The caller keeps its own probe (the file rescanned with exactly those
+the record carries the ruled line nowhere but as whole lines of ruled reads of the doc (or, failing that, as whole
+output lines of a shell tool after a closed prefix: od57-line), each counted, and only when no write of the
+doc comes first in the file. The caller keeps its own probe (the file rescanned with exactly those
 occurrences removed) and its own listing of each admission.
 
 THE RULING. OD57 (Javier's own ruling, his verified terminal reply "scan-envmd-1 safe" at 2026-10-16T12:52:33Z, outcome
@@ -40,6 +41,16 @@ WHAT IS A READ (lane vendor-b24, glitch-26's rulings B24-2, 21 Oct 2026; lane-re
   awk, an unlabelled grep or rg), a line that is exactly the 80 bytes is admitted, or `175:<80 bytes>` when a grep or
   rg in the command typed -n. So no other file operand of a command that prints file text unlabelled can supply that
   line; a command that prints text of its own can (see RESIDUALS).
+- A whole output line (od57-line, SCANREFUSAL-ROAD-20261108; Javier's word pending, ask od57-line; _any_text, tried
+  only when the reads above admit nothing): the 80 bytes as a whole line of a tool's output, whatever command printed
+  them. The output is a Claude tool_result (and the record's toolUseResult) answering one Bash or BashOutput call, or
+  a read shape's result text whose call names one of that shape's shell tools (or their output copy); Read, Grep and
+  the vendors' path and grep tools keep their path-bound rules; Agent and Task results, a result with no call, and
+  the agent's own text stay out. The line is the 80 bytes after exactly one of: nothing,
+  `175:`, Claude Read's prefix (_READ_PREFIX), `<label>:` or `<label>:175:` with the label resolving to the doc (no
+  cwd); no byte may follow. Only in an agent-text kind. T1, the digest count and the caller's probe hold unchanged.
+  This widens OD57 from "inside a read of that doc" to "a whole output line of a shell tool" (STOP4,
+  s-91dbb18a: the line as `175:<80 bytes>` from a command no read rule above admits).
 - T1: a write of the doc (Write, Edit, MultiEdit, write_file, replace, a Codex file_change or apply_patch) at or before a
   record's line disqualifies every admission on that line and after it in the same file.
 
@@ -62,6 +73,9 @@ RESIDUALS (named, R3-5; none admits a byte other than the ruled line, and each i
   printing literals, even split across quoted strings; awk rewriting ARGV; cat of another file holding such a line),
   from a file an rg directory operand walks, from a second file whose typed name holds a colon, or carry `175:` from
   another labelled read's -n. The 80-byte pin, the digest count and the probe hold for all of them.
+- od57-line's whole output line binds the line's shape and its producer (a shell tool), not its source: any
+  command (echo, printf, awk, a copy of the doc, grep -n of another file whose line 175 holds the same bytes) can print
+  it. The 80-byte pin, the closed prefix, nothing after the bytes, the digest count and the probe hold for all of them.
 
 Standard library only (hashlib, json, posixpath, re, shlex). No process, no file access: bytes in, text out.
 """
@@ -1353,11 +1367,105 @@ def _line_text(lines, i, tool, ruling, extra):
             ok = _claude_grep_prefix(prefix)
         elif kind in ("script", "wrapped", "argv", "shell"):
             ok = _shell_prefix_ok(prefix, tool["spec"])
+        elif kind == "any":
+            ok = _any_prefix_ok(prefix)
         else:
             ok = False
         if ok:
             return rest.decode()
     return None
+
+
+# ------------------------------------------------------------------------------------------------- od57-line
+# A whole output line of a shell tool (SCANREFUSAL-ROAD-20261108, candidate 3 narrowed), the fallback after the reads
+# above: the producer is whitelisted (Claude's Bash and BashOutput; for a vendor, a shell tool its read shape names, or
+# that tool's output copy), the prefix is closed and the 80 bytes end the line. Read, Grep and the vendors' path and
+# grep tools keep their own path-bound rules: a read of another path is no read of the doc.
+_ANY_CLAUDE_TOOLS = ("Bash", "BashOutput")
+_ANY_SHAPE_KINDS = ("script", "wrapped", "argv", "copy")    # a vendor shape's shell tools and their output copy
+_ANY = {"kind": "any"}
+
+
+def _any_prefix_ok(prefix) -> bool:
+    """A whole output line's prefix: none, `175:`, Claude Read's, or a label naming the doc with or without `175:`."""
+    if prefix in ("", "175:") or _READ_PREFIX.fullmatch(prefix) is not None:
+        return True
+    for tail in (":175:", ":"):
+        if prefix.endswith(tail) and len(prefix) > len(tail) and _resolves_to_doc(prefix[:-len(tail)]):
+            return True
+    return False
+
+
+def _any_claude_strings(rec, uses) -> list:
+    """(string, _ANY) for each tool_result block answering exactly one whitelisted call, and every string under the
+    record's own tool-result keys when every tool_result block of the record does. Blocks only at the record's own
+    positions (B17-11)."""
+    blocks, out, named = _top_blocks(rec, "tool_result"), [], []
+    for b in blocks:
+        tid = b.get("tool_use_id")
+        got = uses.get(tid) if isinstance(tid, str) else None
+        ok = bool(got) and len(got) == 1 and got[0][0] in _ANY_CLAUDE_TOOLS
+        named.append(ok)
+        if not ok:
+            continue
+        c = b.get("content")
+        if isinstance(c, str):
+            out.append((c, _ANY))
+        elif isinstance(c, list):
+            out += [(i["text"], _ANY) for i in c if isinstance(i, dict) and i.get("type") == "text"
+                    and isinstance(i.get("text"), str)]
+    if isinstance(rec, dict) and blocks and all(named):
+        for k, v in rec.items():
+            if k in _TOOL_RESULT_KEYS:
+                out += [(s, _ANY) for s in _strings(v, [])]
+    return out
+
+
+def _any_shape_strings(rec, shapes, indexes) -> list:
+    """(string, _ANY) for each string a read shape's result (or joined call) carries in this record, its call found as
+    _shape_read finds it (the id's copies, the same each, the result's own name) and naming one of the shape's shell
+    tools (or their output copy), whatever its arguments; a path or grep tool stays with its own read rule."""
+    out = []
+    for shape, (calls, _, _, _, _) in zip(shapes, indexes):
+        joined = shape["result"] is None
+        spec = shape["call"] if joined else shape["result"]
+        for node in _shape_nodes(rec, spec):
+            if joined and _shape_call(node, spec) is None:
+                continue
+            name = None
+            if not joined and spec["name"] is not None:
+                name = node.get(spec["name"])
+                if not isinstance(name, str):
+                    continue
+            got = calls.get(node[spec["id"]])
+            if not got or (shape["copies"] == "one" and len(got) != 1) or any(g != got[0] for g in got):
+                continue
+            tool = shape["tools"].get(got[0][0])
+            if tool is None or tool["kind"] not in _ANY_SHAPE_KINDS or (name is not None and name != got[0][0]):
+                continue
+            for path in spec["text"]:
+                out += [(s, _ANY) for s in _path_values(node, path, []) if isinstance(s, str)]
+    return out
+
+
+def _any_text(rec, body, uses, shapes, indexes, kind, ruling):
+    """od57-line: the ruled text when this record carries it only as whole output lines of whitelisted tools, each
+    counted the way ruled_text counts; else None. T1 is ruled_text's, checked before this is reached."""
+    if kind not in AGENT_TEXT_KINDS or not isinstance(rec, dict):
+        return None
+    found, hits = None, 0
+    for s, tool in _any_claude_strings(rec, uses) + _any_shape_strings(rec, shapes, indexes):
+        lines = s.split("\n")
+        for i in range(len(lines)):
+            text = _line_text(lines, i, tool, ruling, None)
+            if text is not None:
+                found, hits = text, hits + 1
+    if found is None:
+        return None
+    if json.dumps(found)[1:-1] != found or sum(x.count(found) for x in _strings(rec, [])) != hits \
+            or body.count(found.encode()) != hits:
+        return None
+    return found
 
 
 # ------------------------------------------------------------------------------------------------- T1: writes first
@@ -1457,7 +1565,7 @@ def ruled_text(body, ruling, data, shapes=(), kind=None, line=None):
             if text is not None:
                 found, hits = text, hits + 1
     if found is None:
-        return None
+        return _any_text(rec, body, uses, shapes, indexes, kind, ruling)       # od57-line
     # the text must sit in the record only where it was counted, and appear raw exactly as often (it needs no JSON
     # escape), so the probe removes those occurrences and nothing else
     if json.dumps(found)[1:-1] != found or sum(x.count(found) for x in _strings(rec, [])) != hits \

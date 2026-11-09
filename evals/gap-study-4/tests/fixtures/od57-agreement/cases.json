@@ -3686,7 +3686,9 @@
    "why": "Codex rollout: the CommandExecution and the exec output's verbatim copy"
   },
   {
-   "admit": [],
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-h-several",
@@ -3724,10 +3726,52 @@
      "type": "user"
     }
    ],
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: grep -h with several operands, no label to bind)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-h-several-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -h pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@~\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@~\n"
+     },
+     "type": "user"
+    }
+   ],
    "refuse": [
     2
    ],
-   "why": "grep -h with several operands: no label to bind"
+   "why": "od57-line twin: one byte after the pinned bytes"
   },
   {
    "admit": [],
@@ -3862,7 +3906,9 @@
    "why": "a label naming an environment.md outside the run tree"
   },
   {
-   "admit": [],
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-label-flag",
@@ -3900,13 +3946,57 @@
      "type": "user"
     }
    ],
-   "refuse": [
-    2
-   ],
-   "why": "--label rewrites the label"
+   "refuse": [],
+   "why": "od57-line: the doc's label, a whole output line (was: --label rewrites the label)"
   },
   {
    "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-label-flag-changed",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep --label=_references/environment.md -H pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "_references/environment.md:176:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "_references/environment.md:176:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one changed byte in the prefix (:176:)"
+  },
+  {
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-unlabelled-other-only",
@@ -3944,13 +4034,57 @@
      "type": "user"
     }
    ],
-   "refuse": [
-    2
-   ],
-   "why": "a single operand that is not the doc"
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: a single operand that is not the doc)"
   },
   {
    "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-unlabelled-other-only-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@ \n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@ \n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte (a space) after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-cat-two",
@@ -3988,13 +4122,57 @@
      "type": "user"
     }
    ],
-   "refuse": [
-    2
-   ],
-   "why": "cat of two files: cat labels nothing"
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: cat of two files, cat labels nothing)"
   },
   {
    "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-cat-two-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@.\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@.\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-then-cat-other",
@@ -4032,13 +4210,57 @@
      "type": "user"
     }
    ],
-   "refuse": [
-    2
-   ],
-   "why": "a second command after the read reads another file"
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: a second command after the read reads another file)"
   },
   {
    "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-then-cat-other-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned _references/environment.md && cat /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@x\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@x\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-filter-with-file",
@@ -4076,13 +4298,57 @@
      "type": "user"
     }
    ],
-   "refuse": [
-    2
-   ],
-   "why": "a filter that names a file"
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: a filter that names a file)"
   },
   {
    "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-filter-with-file-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat _references/environment.md | head /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\t\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\t\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte (a tab) after the pinned bytes"
+  },
+  {
+   "admit": [
+    4
+   ],
    "family": "o",
    "kind": "stream",
    "name": "t2-codex-c-flag",
@@ -4117,10 +4383,49 @@
      "type": "item.completed"
     }
    ],
+   "refuse": [],
+   "why": "od57-line: a whole bare line of a shell tool's output (was: bash -c, which no committed record uses, F-RS-6)"
+  },
+  {
+   "admit": [],
+   "family": "o",
+   "kind": "stream",
+   "name": "t2-codex-c-flag-trailing",
+   "records": [
+    {
+     "thread_id": "thread-1",
+     "type": "thread.started"
+    },
+    {
+     "type": "turn.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "",
+      "command": "/bin/bash -c 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "in_progress",
+      "type": "command_execution"
+     },
+     "type": "item.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "line 174\n@OD57@~\nline 176\n",
+      "command": "/bin/bash -c 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "completed",
+      "type": "command_execution"
+     },
+     "type": "item.completed"
+    }
+   ],
    "refuse": [
     4
    ],
-   "why": "bash -c, which no committed record uses (F-RS-6)"
+   "why": "od57-line twin: one byte after the pinned bytes"
   },
   {
    "admit": [
@@ -4779,7 +5084,9 @@
    "why": "grep_search over a look-alike tree outside the run tree, its display naming the same"
   },
   {
-   "admit": [],
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-rgrep-newline-filename",
@@ -4817,13 +5124,57 @@
      "type": "user"
     }
    ],
-   "refuse": [
-    2
-   ],
-   "why": "grep -r over a folder: a filename holding a newline forges the doc's label"
+   "refuse": [],
+   "why": "od57-line: the doc's label and :175:, a whole output line (was: grep -r over a folder, a filename holding a newline forges the doc's label)"
   },
   {
    "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-rgrep-newline-filename-changed",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -rn Key gars"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "gars/x\ngars/_references/environment.md:176:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "gars/x\ngars/_references/environment.md:176:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one changed byte in the prefix (:176:)"
+  },
+  {
+   "admit": [
+    3
+   ],
    "family": "g",
    "kind": "session",
    "name": "t2-rgrep-newline-filename-gemini",
@@ -4886,13 +5237,82 @@
      "type": "gemini"
     }
    ],
-   "refuse": [
-    3
-   ],
-   "why": "the same through Gemini's shell"
+   "refuse": [],
+   "why": "od57-line: the same through Gemini's shell"
   },
   {
    "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "t2-rgrep-newline-filename-gemini-changed",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "command": "grep -rn Key gars",
+        "description": "r"
+       },
+       "description": "",
+       "displayName": "run_shell_command",
+       "id": "call-g1",
+       "name": "run_shell_command",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "run_shell_command",
+          "response": {
+           "output": "<untrusted_context>\nOutput: gars/x\ngars/_references/environment.md:176:@OD57@\nProcess Group PGID: 4242\n</untrusted_context>"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "gars/x\ngars/_references/environment.md:176:@OD57@",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "od57-line twin: the same through Gemini's shell, :176:"
+  },
+  {
+   "admit": [
+    2
+   ],
    "family": "c",
    "kind": "transcript",
    "name": "t2-glob-operand",
@@ -4930,10 +5350,52 @@
      "type": "user"
     }
    ],
+   "refuse": [],
+   "why": "od57-line: the doc's label and :175:, a whole output line (was: a glob operand, the shell, not the command, names the files)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-glob-operand-second-key",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -n Key gars/_references/* /dev/null"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "gars/_references/environment.md:175:@OD57@\ngars/_references/notes.md:3:@SECOND@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "gars/_references/environment.md:175:@OD57@\ngars/_references/notes.md:3:@SECOND@\n"
+     },
+     "type": "user"
+    }
+   ],
    "refuse": [
     2
    ],
-   "why": "a glob operand: the shell, not the command, names the files"
+   "why": "od57-line twin: another rule on the line (a second key on the record: the probe refuses)"
   },
   {
    "admit": [],

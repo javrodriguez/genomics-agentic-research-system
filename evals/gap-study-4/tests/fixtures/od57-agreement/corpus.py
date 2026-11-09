@@ -350,9 +350,16 @@ def build() -> list:
     add(case("t2-codex-single", "o", "stream", o_stream("cat " + DOC_REL, lines3), [4], [], "Codex: a cat"))
     add(case("t2-codex-rollout", "o", "session", o_rollout("grep -n pinned " + DOC_REL, f"175:{L}\n"), [3, 4], [],
              "Codex rollout: the CommandExecution and the exec output's verbatim copy"))
+    # od57-line (SCANREFUSAL-ROAD-20261108; Javier's word pending, ask od57-line): ten T2 refusals of this corpus print
+    # the pinned bytes as a whole Bash or shell output line after a closed prefix, so they are admitted whatever the
+    # command. Each was its read rule's refusal (still witnessed with the fallback off: RED_ALONE_READS in the runner),
+    # and each has a refusal twin one residual edge away: a trailing byte, a changed byte, or another rule on the line.
     add(case("t2-h-several", "c", "transcript",
-             c_bash(f"grep -h pinned {DOC_REL} /tmp/notes.md", f"{L}\n"), [], [2],
-             "grep -h with several operands: no label to bind"))
+             c_bash(f"grep -h pinned {DOC_REL} /tmp/notes.md", f"{L}\n"), [2], [],
+             "od57-line: a whole bare output line (was: grep -h with several operands, no label to bind)"))
+    add(case("t2-h-several-trailing", "c", "transcript",
+             c_bash(f"grep -h pinned {DOC_REL} /tmp/notes.md", f"{L}~\n"), [], [2],
+             "od57-line twin: one byte after the pinned bytes"))
     add(case("t2-other-label", "c", "transcript",
              c_bash(f"grep pinned {DOC_REL} /tmp/notes.md", f"/tmp/notes.md:{L}\n"), [], [2],
              "the line labelled with another file"))
@@ -364,19 +371,39 @@ def build() -> list:
                     f"/home/someone/gars/_references/environment.md:{L}\n"), [], [2],
              "a label naming an environment.md outside the run tree"))
     add(case("t2-label-flag", "c", "transcript",
-             c_bash(f"grep --label={DOC_REL} -H pinned {DOC_REL} /tmp/notes.md", f"{DOC_REL}:{L}\n"), [], [2],
-             "--label rewrites the label"))
+             c_bash(f"grep --label={DOC_REL} -H pinned {DOC_REL} /tmp/notes.md", f"{DOC_REL}:{L}\n"), [2], [],
+             "od57-line: the doc's label, a whole output line (was: --label rewrites the label)"))
+    add(case("t2-label-flag-changed", "c", "transcript",
+             c_bash(f"grep --label={DOC_REL} -H pinned {DOC_REL} /tmp/notes.md", f"{DOC_REL}:176:{L}\n"), [], [2],
+             "od57-line twin: one changed byte in the prefix (:176:)"))
     add(case("t2-unlabelled-other-only", "c", "transcript",
-             c_bash("grep pinned /tmp/notes.md", f"{L}\n"), [], [2], "a single operand that is not the doc"))
-    add(case("t2-cat-two", "c", "transcript", c_bash(f"cat {DOC_REL} /tmp/notes.md", f"{L}\n"), [], [2],
-             "cat of two files: cat labels nothing"))
+             c_bash("grep pinned /tmp/notes.md", f"{L}\n"), [2], [],
+             "od57-line: a whole bare output line (was: a single operand that is not the doc)"))
+    add(case("t2-unlabelled-other-only-trailing", "c", "transcript",
+             c_bash("grep pinned /tmp/notes.md", f"{L} \n"), [], [2],
+             "od57-line twin: one byte (a space) after the pinned bytes"))
+    add(case("t2-cat-two", "c", "transcript", c_bash(f"cat {DOC_REL} /tmp/notes.md", f"{L}\n"), [2], [],
+             "od57-line: a whole bare output line (was: cat of two files, cat labels nothing)"))
+    add(case("t2-cat-two-trailing", "c", "transcript", c_bash(f"cat {DOC_REL} /tmp/notes.md", f"{L}.\n"), [], [2],
+             "od57-line twin: one byte after the pinned bytes"))
     add(case("t2-then-cat-other", "c", "transcript",
-             c_bash(f"grep pinned {DOC_REL} && cat /tmp/notes.md", f"{L}\n"), [], [2],
-             "a second command after the read reads another file"))
+             c_bash(f"grep pinned {DOC_REL} && cat /tmp/notes.md", f"{L}\n"), [2], [],
+             "od57-line: a whole bare output line (was: a second command after the read reads another file)"))
+    add(case("t2-then-cat-other-trailing", "c", "transcript",
+             c_bash(f"grep pinned {DOC_REL} && cat /tmp/notes.md", f"{L}x\n"), [], [2],
+             "od57-line twin: one byte after the pinned bytes"))
     add(case("t2-filter-with-file", "c", "transcript",
-             c_bash(f"cat {DOC_REL} | head /tmp/notes.md", f"{L}\n"), [], [2], "a filter that names a file"))
-    add(case("t2-codex-c-flag", "o", "stream", o_stream("cat " + DOC_REL, lines3, flag="-c"), [], [4],
-             "bash -c, which no committed record uses (F-RS-6)"))
+             c_bash(f"cat {DOC_REL} | head /tmp/notes.md", f"{L}\n"), [2], [],
+             "od57-line: a whole bare output line (was: a filter that names a file)"))
+    add(case("t2-filter-with-file-trailing", "c", "transcript",
+             c_bash(f"cat {DOC_REL} | head /tmp/notes.md", f"{L}\t\n"), [], [2],
+             "od57-line twin: one byte (a tab) after the pinned bytes"))
+    add(case("t2-codex-c-flag", "o", "stream", o_stream("cat " + DOC_REL, lines3, flag="-c"), [4], [],
+             "od57-line: a whole bare line of a shell tool's output (was: bash -c, which no committed record uses, "
+             "F-RS-6)"))
+    add(case("t2-codex-c-flag-trailing", "o", "stream",
+             o_stream("cat " + DOC_REL, f"line 174\n{L}~\nline 176\n", flag="-c"), [], [4],
+             "od57-line twin: one byte after the pinned bytes"))
 
     # ---------------------------------------------------------------- Claude Read and Grep (item 3)
     add(case("c-read-doc", "c", "transcript", c_read(DOC_ABS), [2], [], "Read of the doc"))
@@ -415,18 +442,35 @@ def build() -> list:
                             replays=False), [], [3, 4],
              "grep_search over a look-alike tree outside the run tree, its display naming the same"))
     # R3-2: in labelled mode no label may come from a filename on disk
+    # od57-line: a forged label is admitted only in front of the sha-pinned public bytes with nothing after them, and
+    # the probe still rescans the whole record, so a forgery can reproduce the public line and nothing more
     add(case("t2-rgrep-newline-filename", "c", "transcript",
-             c_bash("grep -rn Key gars", f"gars/x\ngars/_references/environment.md:175:{L}\n"), [], [2],
-             "grep -r over a folder: a filename holding a newline forges the doc's label"))
+             c_bash("grep -rn Key gars", f"gars/x\ngars/_references/environment.md:175:{L}\n"), [2], [],
+             "od57-line: the doc's label and :175:, a whole output line (was: grep -r over a folder, a filename "
+             "holding a newline forges the doc's label)"))
+    add(case("t2-rgrep-newline-filename-changed", "c", "transcript",
+             c_bash("grep -rn Key gars", f"gars/x\ngars/_references/environment.md:176:{L}\n"), [], [2],
+             "od57-line twin: one changed byte in the prefix (:176:)"))
     add(case("t2-rgrep-newline-filename-gemini", "g", "session",
              [G_HEAD, G_USER, g_msg("msg-g1", [g_call("call-g1", "run_shell_command",
                                                       {"command": "grep -rn Key gars", "description": "r"},
                                                       g_shell_out(f"gars/x\ngars/_references/environment.md:175:{L}"),
                                                       f"gars/x\ngars/_references/environment.md:175:{L}")])],
-             [], [3], "the same through Gemini's shell"))
+             [3], [], "od57-line: the same through Gemini's shell"))
+    add(case("t2-rgrep-newline-filename-gemini-changed", "g", "session",
+             [G_HEAD, G_USER, g_msg("msg-g1", [g_call("call-g1", "run_shell_command",
+                                                      {"command": "grep -rn Key gars", "description": "r"},
+                                                      g_shell_out(f"gars/x\ngars/_references/environment.md:176:{L}"),
+                                                      f"gars/x\ngars/_references/environment.md:176:{L}")])],
+             [], [3], "od57-line twin: the same through Gemini's shell, :176:"))
     add(case("t2-glob-operand", "c", "transcript",
              c_bash("grep -n Key gars/_references/* /dev/null", f"gars/_references/environment.md:175:{L}\n"),
-             [], [2], "a glob operand: the shell, not the command, names the files"))
+             [2], [], "od57-line: the doc's label and :175:, a whole output line (was: a glob operand, the shell, "
+                      "not the command, names the files)"))
+    add(case("t2-glob-operand-second-key", "c", "transcript",
+             c_bash("grep -n Key gars/_references/* /dev/null",
+                    f"gars/_references/environment.md:175:{L}\ngars/_references/notes.md:3:{SECOND_PLACEHOLDER}\n"),
+             [], [2], "od57-line twin: another rule on the line (a second key on the record: the probe refuses)"))
     # R3-3: T1 normalises the written path
     add(case("t1-write-dot-segment", "g", "session",
              [G_HEAD, G_USER, g_msg("msg-g0", [g_call("call-g0", "write_file",

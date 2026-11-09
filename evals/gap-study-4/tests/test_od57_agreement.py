@@ -148,6 +148,11 @@ def _mutant(fn_name, *edits):
     return mock.patch.object(od57_rule, fn_name, ns[fn_name])
 
 
+# od57-line's two residual guards, each as one edit: a byte after the pinned bytes read as no byte (the last 80 bytes
+# pinned, nothing after them), and a changed line number read as the doc's (the closed prefix set)
+_TRAILING = ("forms = [ln] + ", "forms = [ln, ln[:-1]] + ")
+_CHANGED = ('for tail in (":175:", ":"):', 'for tail in (":175:", ":176:", ":"):')
+
 # case -> (function of box/od57_rule, its one guard's edit): with only that edit, the refused lines are admitted
 RED_ALONE = {
     "g-grep-auto-one-outside": ("_grep_window", ('cl = 50 if', 'cl = 51 if')),
@@ -170,18 +175,10 @@ RED_ALONE = {
     "t1-gemini-replace-then-grep": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
     "t1-claude-edit-then-read": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
     "t1-codex-file-change-then-cat": ("ruled_text", ("if writes is not None and writes <= line:", "if False:")),
-    "t2-h-several": ("_grep_spec", ("if len(ops) != 1:", "if len(ops) < 1:")),
     "t2-other-label": ("_labelled_line", ("if not _resolves_to_doc(label, spec[\"cwd\"]):", "if False:")),
     "t2-label-wrong-number": ("_labelled_line", ('number = "175"', 'number = "176"')),
     "t2-label-outside-run-tree": ("_resolves_to_doc", ("return _DOC_ABS.fullmatch(n) is not None",
                                                        "return n.endswith('/' + _RULED_GIT_PATH)")),
-    "t2-label-flag": ("_grep_parse", ('if t.startswith("--"):', 'if t.startswith("--label="):\n            i += 1\n'
-                                                                '            continue\n        if t.startswith("--"):')),
-    "t2-unlabelled-other-only": ("_grep_spec", ("if not _resolves_to_doc(ops[0], cwd):", "if False:")),
-    "t2-cat-two": ("_cat_spec", ("if len(ops) != 1", "if len(ops) < 1")),
-    "t2-then-cat-other": ("_filter_ok", ("return not rest", "return True")),
-    "t2-filter-with-file": ("_filter_ok", ("return not rest", "return True")),
-    "t2-codex-c-flag": None,          # a shapes datum (the stream's flags), not a function: test_the_c_flag_is_data
     "c-read-other": ("_claude_tool", ('return "read" if _resolves_to_doc(', 'return "read" if True or _resolves_to_doc(')),
     "c-grep-dir": ("_claude_tool", ('return "grep" if _resolves_to_doc(', 'return "grep" if True or _resolves_to_doc(')),
     "c-grep-other-file": ("_claude_tool", ('return "grep" if _resolves_to_doc(',
@@ -196,12 +193,61 @@ RED_ALONE = {
     "g-read-file-dotdot": ("_reads_doc", ("return dict(tool) if _resolves_to_doc(arg) else None", "return dict(tool)")),
     "g-grep-lookalike-tree": ("_resolves_to_doc", ("return _DOC_ABS.fullmatch(n) is not None",
                                                    "return n.endswith('/' + _RULED_GIT_PATH)")),
+    "t1-write-dot-segment": ("_may_name_doc", ("n = posixpath.normpath(p)", "n = p")),
+    "t1-claude-write-doubleslash": ("_may_name_doc", ("n = posixpath.normpath(p)", "n = p")),
+    # od57-line's twins (SCANREFUSAL-ROAD-20261108): each refused by one od57-line guard alone
+    "t2-h-several-trailing": ("_line_text", _TRAILING),
+    "t2-unlabelled-other-only-trailing": ("_line_text", _TRAILING),
+    "t2-cat-two-trailing": ("_line_text", _TRAILING),
+    "t2-then-cat-other-trailing": ("_line_text", _TRAILING),
+    "t2-filter-with-file-trailing": ("_line_text", _TRAILING),
+    "t2-codex-c-flag-trailing": ("_line_text", _TRAILING),
+    "t2-label-flag-changed": ("_any_prefix_ok", _CHANGED),
+    "t2-rgrep-newline-filename-changed": ("_any_prefix_ok", _CHANGED),
+    "t2-rgrep-newline-filename-gemini-changed": ("_any_prefix_ok", _CHANGED),
+    "t2-glob-operand-second-key": None,   # the probe's (box/scan_record), not od57_rule's: test_the_second_key_is_the_probe_s
+}
+
+# od57-line (SCANREFUSAL-ROAD-20261108; Javier's word pending, ask od57-line): these ten were refusal witnesses of their
+# read rules and are now admitted as whole shell output lines. Each read-rule witness is kept with the fallback off
+# (_reads_only): the case refuses, and with only the named guard's edit it is admitted, as before od57-line.
+RED_ALONE_READS = {
+    "t2-h-several": ("_grep_spec", ("if len(ops) != 1:", "if len(ops) < 1:")),
+    "t2-label-flag": ("_grep_parse", ('if t.startswith("--"):', 'if t.startswith("--label="):\n            i += 1\n'
+                                                                '            continue\n        if t.startswith("--"):')),
+    "t2-unlabelled-other-only": ("_grep_spec", ("if not _resolves_to_doc(ops[0], cwd):", "if False:")),
+    "t2-cat-two": ("_cat_spec", ("if len(ops) != 1", "if len(ops) < 1")),
+    "t2-then-cat-other": ("_filter_ok", ("return not rest", "return True")),
+    "t2-filter-with-file": ("_filter_ok", ("return not rest", "return True")),
+    "t2-codex-c-flag": None,          # a shapes datum (the stream's flags), not a function: test_the_c_flag_is_data
     "t2-rgrep-newline-filename": ("_grep_spec", ("if labelled and recursive:", "if False:")),
     "t2-rgrep-newline-filename-gemini": ("_grep_spec", ("if labelled and recursive:", "if False:")),
     "t2-glob-operand": ("_grep_spec", ('if labelled and any(c in op for op in ops for c in "*?["):', "if False:")),
-    "t1-write-dot-segment": ("_may_name_doc", ("n = posixpath.normpath(p)", "n = p")),
-    "t1-claude-write-doubleslash": ("_may_name_doc", ("n = posixpath.normpath(p)", "n = p")),
 }
+
+
+_OD57_LINE_TWINS = ("t2-h-several-trailing", "t2-unlabelled-other-only-trailing", "t2-cat-two-trailing",
+                    "t2-then-cat-other-trailing", "t2-filter-with-file-trailing", "t2-codex-c-flag-trailing",
+                    "t2-label-flag-changed", "t2-rgrep-newline-filename-changed",
+                    "t2-rgrep-newline-filename-gemini-changed")
+_RED = []
+
+
+def red(what):
+    """A mutant seen red, listed at the end as tests/test_scan_record's red() lists its own."""
+    if what not in _RED:
+        _RED.append(what)
+        print(f"\nMUTANT {what}: red", end=" ")
+
+
+def tearDownModule():
+    print("\n".join(["", f"mutants run red in this file ({len(_RED)}):"] + [f"  {m}" for m in _RED]))
+
+
+def _reads_only():
+    """box/od57_rule with od57-line's fallback off (_any_text admits nothing): the read rules alone."""
+    from box import od57_rule
+    return mock.patch.object(od57_rule, "_any_text", lambda *a, **k: None)
 
 
 class Corpus(unittest.TestCase):
@@ -272,30 +318,63 @@ class Corpus(unittest.TestCase):
             fn, edit = spec
             with self.subTest(name), _mutant(fn, edit):
                 self.assertEqual(run_case(c, self.text, self.tmp.name), (c["refuse"], []), f"{name} under {fn}")
+            if name in _OD57_LINE_TWINS:
+                red(f"od57-line corpus: {name} admitted under {fn}")
+
+    def test_the_od57_line_admissions_are_the_fallback_s_and_keep_their_read_witnesses(self):
+        """od57-line: each of the ten is admitted only by the fallback (with it off, the read rules refuse the same
+        lines: the corpus's fallback-removed mutant), each read-rule guard still refuses it alone with the fallback off,
+        and each has a refusal twin one residual edge away."""
+        names = {c["name"]: c for c in self.cases}
+        for name, spec in RED_ALONE_READS.items():
+            c = names[name]
+            with self.subTest(name):
+                self.assertTrue(c["admit"] and not c["refuse"], name)
+                self.assertEqual(run_case(c, self.text, self.tmp.name), (c["admit"], []))
+                with _reads_only():
+                    self.assertEqual(run_case(c, self.text, self.tmp.name), ([], c["admit"]),
+                                     f"{name}: the read rules alone admit it")
+                red(f"od57-line corpus: the fallback removed ({name} refused)")
+                if spec is not None:
+                    fn, edit = spec
+                    with _reads_only(), _mutant(fn, edit):
+                        self.assertEqual(run_case(c, self.text, self.tmp.name), (c["admit"], []), f"{name} under {fn}")
+                twins = [t for t in names if t[len(name) + 1:] in ("trailing", "changed", "second-key")
+                         and t.startswith(name + "-")]
+                self.assertEqual(len(twins), 1, name)
+                self.assertTrue(names[twins[0]]["refuse"] and not names[twins[0]]["admit"], twins[0])
+                self.assertIn(twins[0], RED_ALONE)
 
     def test_the_c_flag_is_data(self):
         c = {x["name"]: x for x in self.cases}["t2-codex-c-flag"]
         from box import od57_shapes
         wrap = od57_shapes.CODEX[0]["tools"]["shell"]
         self.assertEqual(wrap["flags"], ("-lc",))
-        with mock.patch.dict(wrap, {"flags": ("-lc", "-c")}):
-            self.assertEqual(run_case(c, self.text, self.tmp.name), (c["refuse"], []))
+        # od57-line admits the line whatever the flag; the read shape's flags still decide with the fallback off
+        with _reads_only():
+            self.assertEqual(run_case(c, self.text, self.tmp.name), ([], c["admit"]))
+            with mock.patch.dict(wrap, {"flags": ("-lc", "-c")}):
+                self.assertEqual(run_case(c, self.text, self.tmp.name), (c["admit"], []))
 
     def test_the_second_key_is_the_probe_s(self):
-        c = {x["name"]: x for x in self.cases}["g-grep-second-key"]
-        blind = lambda paths: [f for f in Scanner(self.text[:40])(paths)            # noqa: E731
-                               if not os.path.basename(f["path"]).startswith(c["name"])]
-        p = os.path.join(self.tmp.name, f"{c['name']}.jsonl")
-        with open(p, "wb") as fh:
-            fh.write(b"".join(json.dumps(r, ensure_ascii=False).encode() + b"\n"
-                              for r in _fill(c["records"], self.text)))
-        calls = []
+        for name in ("g-grep-second-key", "t2-glob-operand-second-key"):
+            with self.subTest(name):
+                c = {x["name"]: x for x in self.cases}[name]
+                blind = lambda paths: [f for f in Scanner(self.text[:40])(paths)            # noqa: E731
+                                       if not os.path.basename(f["path"]).startswith(c["name"])]
+                p = os.path.join(self.tmp.name, f"{c['name']}.jsonl")
+                with open(p, "wb") as fh:
+                    fh.write(b"".join(json.dumps(r, ensure_ascii=False).encode() + b"\n"
+                                      for r in _fill(c["records"], self.text)))
+                self.assertEqual(run_case(c, self.text, self.tmp.name), ([], c["refuse"]))
+                calls = []
 
-        def scanner(paths):
-            calls.append(paths)
-            return Scanner(self.text[:40])(paths) if len(calls) == 1 else blind(paths)
-        r = sr.scan([(p, "session")], SECRETS, rules_scanner=scanner, read_shapes=shapes("g"))
-        self.assertEqual(sorted(x["line"] for x in r["ruled"]), c["refuse"])          # a blind probe admits it
+                def scanner(paths):
+                    calls.append(paths)
+                    return Scanner(self.text[:40])(paths) if len(calls) == 1 else blind(paths)
+                r = sr.scan([(p, c["kind"])], SECRETS, rules_scanner=scanner, read_shapes=shapes(c["family"]))
+                self.assertEqual(sorted(x["line"] for x in r["ruled"]), c["refuse"])  # a blind probe admits it
+                red(f"od57 corpus: the probe blinded ({name} admitted)")
 
 
 if __name__ == "__main__":

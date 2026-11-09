@@ -1407,6 +1407,37 @@
           "sha256_after": "260f99b7a5c757521e6f23c7328c89b35d9c554dfe80772b05e6339e7af19306"
         }
       ]
+    },
+    "od57-line-20261108": {
+      "by": "Javier (OD202, od57-line yes, 2026-11-09T13:38:59Z)",
+      "why": "Javier's word \"od57-line yes\" (OD202); written by glitch-45 on his word. The counted run stopped a fourth time on the same false positive: in take s-91dbb18a the agent's shell command printed line 175 of gars/_references/environment.md, the line Javier ruled safe in October (OD57), as a whole output line after the prefix 175:, from a command no read rule admits (SCANREFUSAL-ROAD-20261108), so the drive scan refused the take. The rule now has one fallback after the read rules: in an agent's transcript, stream or session it admits the same 80 pinned bytes when they end a whole output line of a shell tool (Claude Bash or BashOutput, or a vendor read shape's shell tool or its output copy) after exactly one closed prefix (none, 175:, Read's numbered prefix, or a label naming the doc, with or without :175:), whatever the command; Read, Grep and the vendors' path and grep tools keep their own path rules. The source of the line is not bound: any command printing the same public line is admitted, so 10 agreement-corpus cases that used to refuse now admit, each kept with one refusing twin, and 201 older test subtests were retargeted with their read-rule witnesses held with the fallback off (none deleted). The counts, the write check and the probe are unchanged, so anything else on the line or record still refuses. Nothing measured or graded changes: the ruling's text and its sha256 pin are the same, no checker or reader file changes, and a take is still refused for any other finding.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/box/od57_rule.py",
+          "sha256_before": "06cc044f5abf748750f84ede030b8c68c85cc9064edbd8d632c214bbba43dc79",
+          "sha256_after": "8799892b8c339603cb4a51706f125a7a6978cfcc503f18db8c309b4838a02ac9"
+        },
+        {
+          "path": "evals/gap-study-4/tests/fixtures/od57-agreement/cases.json",
+          "sha256_before": "104b9dc293b4d77c05f3efc275eced92642931aa17a10052a45bd1c6487d3d9b",
+          "sha256_after": "07e5a5f26f8a6d808bcfd0b904a4e6e97c1a96aa75b948b6cb920df4ac6eb30e"
+        },
+        {
+          "path": "evals/gap-study-4/tests/fixtures/od57-agreement/corpus.py",
+          "sha256_before": "25e0624bf9c1b6c097e05491106857c922648fc00f06fe629e37c766e2ec788f",
+          "sha256_after": "e1899400a811ed8c94b854ba3ea2f7254554202507b710330ef16127acfd60bb"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_od57_agreement.py",
+          "sha256_before": "3c163437660ae6a21fdabc1923a31d034d41b2e3c83aed92b181d72f5f733e71",
+          "sha256_after": "beb8cc5ddc37255994bc0405b803b3381a09bc4eb4018de4de7424e1cf141b39"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_scan_record.py",
+          "sha256_before": "4231fd775224d1c4e6ac25f52ad1c6478a54bdf27202e463d56bcb0e8acb2624",
+          "sha256_after": "d749c49c945315919cc50b50ba384b8cd3c57c1abe10c5591986bd5113d69de4"
+        }
+      ]
     }
   },
   "n": 10,
@@ -48111,7 +48142,7 @@
     {
       "path": "evals/gap-study-4/box/od57_rule.py",
       "git_blob_sha": "899874b4a0f88df31fe530b8d551790c183c17b3",
-      "sha256": "06cc044f5abf748750f84ede030b8c68c85cc9064edbd8d632c214bbba43dc79",
+      "sha256": "8799892b8c339603cb4a51706f125a7a6978cfcc503f18db8c309b4838a02ac9",
       "uncommitted": false
     },
     {
@@ -50409,13 +50440,13 @@
     {
       "path": "evals/gap-study-4/tests/fixtures/od57-agreement/cases.json",
       "git_blob_sha": "5159da342b55fb2f7ebbfb0b7fed9bcdcb03697f",
-      "sha256": "104b9dc293b4d77c05f3efc275eced92642931aa17a10052a45bd1c6487d3d9b",
+      "sha256": "07e5a5f26f8a6d808bcfd0b904a4e6e97c1a96aa75b948b6cb920df4ac6eb30e",
       "uncommitted": false
     },
     {
       "path": "evals/gap-study-4/tests/fixtures/od57-agreement/corpus.py",
       "git_blob_sha": "d561f4685f1d23def7fac606bb8dd6b7c8d3c4a5",
-      "sha256": "25e0624bf9c1b6c097e05491106857c922648fc00f06fe629e37c766e2ec788f",
+      "sha256": "e1899400a811ed8c94b854ba3ea2f7254554202507b710330ef16127acfd60bb",
       "uncommitted": false
     },
     {
@@ -51885,7 +51916,7 @@
     {
       "path": "evals/gap-study-4/tests/test_od57_agreement.py",
       "git_blob_sha": "98ba005000acad0763623eacd6872d779981fd85",
-      "sha256": "3c163437660ae6a21fdabc1923a31d034d41b2e3c83aed92b181d72f5f733e71",
+      "sha256": "beb8cc5ddc37255994bc0405b803b3381a09bc4eb4018de4de7424e1cf141b39",
       "uncommitted": false
     },
     {
@@ -52119,7 +52150,7 @@
     {
       "path": "evals/gap-study-4/tests/test_scan_record.py",
       "git_blob_sha": "f43668bd6b0c2e806d89d55f1c0c9303ae84af4b",
-      "sha256": "4231fd775224d1c4e6ac25f52ad1c6478a54bdf27202e463d56bcb0e8acb2624",
+      "sha256": "d749c49c945315919cc50b50ba384b8cd3c57c1abe10c5591986bd5113d69de4",
       "uncommitted": false
     },
     {
