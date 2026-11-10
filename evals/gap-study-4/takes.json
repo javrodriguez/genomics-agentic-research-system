@@ -7567,6 +7567,22 @@
       "half_cell": "h-765d3e0e724dad318a26639f323a268a3f9c286e0d98fbaeb42617b6bb29ede2",
       "slot": "s-066ab136efa57a1a409c6c8edceae5def9a98deff6094a973853bcac9051010c",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w2",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-haiku-4-5-20251001",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-9e774c95514c975d94e6126bfd654cbd197bc460c22b557694895bd0e0bb3fcf",
+      "slot": "s-94a20b37dbfd1c661b62c19ba5a3945be5e5e1d304a69df9ce673364305a6cba",
+      "attempt": 1
     }
   ]
 }
