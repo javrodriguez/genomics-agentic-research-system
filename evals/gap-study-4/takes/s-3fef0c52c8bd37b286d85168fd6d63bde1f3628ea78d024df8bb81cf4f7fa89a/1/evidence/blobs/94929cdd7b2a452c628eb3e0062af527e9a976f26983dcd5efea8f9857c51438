@@ -1,0 +1,39 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize whether the treated and untreated samples separate in a principal component analysis (PCA) of the gene-level counts. The plot will show each sample and its condition, with the first two principal components and their variance explained.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_samplesheets (generated design table) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. At execution time, resolve the `counts_gene` artifact with `_system/resolve_artifact.py` for assay `rnaseq_bulk`. Read that exact resolved file without modifying it.
+2. Read the six-sample design from `01_samplesheets/rnaseq_bulk_design.csv` and match count-matrix sample columns to `sample_id`; stop with an error if any of the six samples are missing, duplicated, or unmatched.
+3. In the `gars-bio` environment, use R and base `stats` to calculate counts per million from the gene-level counts, then transform to `log2(CPM + 1)`. Retain genes with CPM >= 1 in at least three samples. Select the 500 retained genes with greatest variance across samples (or all retained genes if fewer than 500), center each gene across samples, and run `prcomp` with scaling disabled. Do not use condition labels in filtering or component calculation.
+4. Save a PCA scatter plot of PC1 versus PC2 with points labeled by sample ID and colored by `condition` (treated or untreated). Include the percent variance explained on both axes and a legend. Save a companion CSV with sample ID, condition, PC1, PC2, and variance-explained percentages. Save a short report recording the filtering and normalization parameters, genes retained/used, and the per-component variance explained.
+5. Write all outputs only under this analysis directory's `results/`. The steps run as one batch job through the workspace's configured executor.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PCA scatter plot with treatment labels and variance explained |
+| results/sample_pca_scores.csv | table | PC1 and PC2 scores and condition for each sample |
+| results/sample_pca_report.md | report | Method parameters, gene counts, and variance explained |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes; expected output size: under 5 MB.
