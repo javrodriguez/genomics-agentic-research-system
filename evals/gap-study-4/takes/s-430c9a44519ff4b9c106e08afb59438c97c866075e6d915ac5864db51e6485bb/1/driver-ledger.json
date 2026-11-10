@@ -1,0 +1,92 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "e7564f6f98c66cbdfacb34fe98ba86579967a2cc44a8a061f8288e8b4749905f"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 1,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "d05ffed87972d8f6109305fa6f65f682d542969c530c74cac2a1f20f6014015a"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-a27a5e3e",
+ "published": null,
+ "repeat": 1,
+ "row": 179,
+ "row_commit": "a03f54285483d6cbc07028fd33a3b6f2fa5db2a9",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "a27a5e3e-2c4c-520a-9a09-7534f2cd2163",
+ "source": "/tmp/run-a27a5e3e/data/staging/run-a27a5e3e/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "number-fidelity",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "Can you set up a new project? It's bulk RNA-seq. The project title is run-a27a5e3e, and the raw data is in /tmp/run-a27a5e3e/data/staging/run-a27a5e3e/src",
+   "then": null
+  }
+ ],
+ "wording": "w2"
+}
