@@ -1,0 +1,92 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "f7ef22bb6b2bd8bd9ceaa6ec2bef591c630172c6c600aab52668e80a49682a25"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "c4ae5002916f66d40070d779b8a36307a439d4db6ea98c17b2ae26d5bd0e660b",
+  "kind": "generated",
+  "seed": 20261009,
+  "variant": "paired-end"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 1,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "6c16a4045b0c6ea81fe6094433c9cac745ea413fc9bd70b19e36b7935a0ba28a"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-c530486c",
+ "published": null,
+ "repeat": 2,
+ "row": 376,
+ "row_commit": "251873dbf961d7f9bc2ece58d1788179fbc20dea",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "c530486c-a0e2-5e8d-8fc9-ea27ab8b7c71",
+ "source": "/tmp/run-c530486c/data/staging/run-c530486c/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "conditional-yes",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "Can we start a new project? I have a batch of reads to register. The project title is run-c530486c.",
+   "then": null
+  }
+ ],
+ "wording": "w3"
+}
