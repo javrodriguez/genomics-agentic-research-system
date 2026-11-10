@@ -1,0 +1,109 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-dca1935c",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-dca1935c/dca1935c-cd98-50d1-88ba-ea3bd20c9f78.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-tmp-run-dca1935c",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-dca1935c/dca1935c-cd98-50d1-88ba-ea3bd20c9f78.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-dca1935c",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-dca1935c/dca1935c-cd98-50d1-88ba-ea3bd20c9f78.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-dca1935c",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-dca1935c/dca1935c-cd98-50d1-88ba-ea3bd20c9f78.jsonl",
+     "claude",
+     "dca1935c-cd98-50d1-88ba-ea3bd20c9f78"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-dca1935c",
+    "/var/tmp"
+   ],
+   "scanned": 428,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-dca1935c",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-dca1935c/dca1935c-cd98-50d1-88ba-ea3bd20c9f78.jsonl",
+     "claude",
+     "dca1935c-cd98-50d1-88ba-ea3bd20c9f78"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-dca1935c",
+    "/var/tmp"
+   ],
+   "scanned": 430,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
