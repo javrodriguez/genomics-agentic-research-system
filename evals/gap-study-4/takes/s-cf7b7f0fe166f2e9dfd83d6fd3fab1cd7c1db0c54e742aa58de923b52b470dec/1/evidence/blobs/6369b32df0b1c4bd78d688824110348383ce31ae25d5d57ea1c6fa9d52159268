@@ -1,0 +1,51 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform Principal Component Analysis (PCA) on gene-level counts to visualize how treated and untreated samples separate in reduced dimensionality space. This will reveal whether the treatment produces a clear transcriptional signature and help assess the strength of the biological effect across replicates.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+Python 3.11 with pandas, scikit-learn 1.3.0, plotly 5.17.0. Environment: gars-bio.
+
+1. Load gene-level counts matrix (genes × samples) and design table (sample metadata).
+2. Filter genes: retain only genes with ≥ 10 total reads across all 6 samples (removes ~40% of low-abundance genes that add noise).
+3. Log-transform: apply log2(counts + 1) to stabilize variance across the dynamic range of expression.
+4. Standardize: center each gene (subtract mean) and scale (divide by std dev) so high-abundance genes don't dominate PCA.
+5. Fit PCA with scikit-learn.decomposition.PCA, extracting 3 components (n_components=3).
+6. Extract PC1 and PC2 scores for each sample and output to TSV.
+7. Create interactive HTML scatter plot (plotly) with:
+   - X-axis: PC1, Y-axis: PC2
+   - Color: treatment group (treated vs untreated)
+   - Marker size/style: replicate number
+   - Hover: sample ID, treatment, PC1, PC2, PC3, variance explained
+8. (Optional) Export PC loadings (top 20 genes per component) to a separate TSV for interpretation of what genes drive the separation.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_coordinates.tsv | table | Sample-level PC1, PC2, PC3 scores; columns: sample_id, group, replicate, PC1, PC2, PC3, var_PC1, var_PC2, var_PC3 |
+| results/pca_plot.html | figure | Interactive scatter plot (plotly) of PC1 vs PC2, colored by treatment group with sample labels and hover information |
+| results/pca_loadings.tsv | table | Top 20 genes contributing to PC1 and PC2; columns: gene_id, gene_name, PC1_loading, PC2_loading |
+
+## Execution
+Runs: batch
+
+Expected wall time: 2–3 minutes (data loading, filtering, transformation, PCA fitting, plot rendering).
+Expected output size: ~50 KB (coordinates TSV ~1 KB, loadings TSV ~2 KB, interactive plot HTML ~20 KB).
+Memory: < 1 GB for the 6-sample dataset.
