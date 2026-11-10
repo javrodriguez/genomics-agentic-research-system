@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c428-b5d2-7921-86f0-be4c8eb7c826"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Path: /tmp/run-42c9730d/data/staging/run-42c9730d/src  \nRaw NGS files: 4 (4 R1 / 0 R2, single-end)  \nExcluded (not raw NGS): none  \nSamples: 4  \nC1, C2, D1, D2\n\nThe inspected files are single-end, not paired-end. Provide the correct path, or confirm that you want to use these single-end files."}}
+{"type":"turn.completed","usage":{"input_tokens":271909,"cached_input_tokens":247168,"cache_write_input_tokens":0,"output_tokens":1355,"reasoning_output_tokens":251}}
