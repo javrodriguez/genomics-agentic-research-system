@@ -1,0 +1,36 @@
+{
+ "ids": [
+  "1a2df69e777c377794b8518632e4708ecaa0bed30447f4f0434b26d366d44fe7",
+  "a8c93bdee925d67cb0a9962cd39596f87a715cf802980ec6606a26a7782d40dc",
+  "d4c17c5d70685dc71b0fc8eed439bb057813ed6bdd8b66c1dd091be1b094df49"
+ ],
+ "ok": true,
+ "record": {
+  "ok": true,
+  "problems": [],
+  "steps": [
+   {
+    "container_id": "a9be3701ca927ed5bf459618f2fa2b4f064f80b2a02c57e506aff8af6d81b74c",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "",
+    "step": "restore-run_tree"
+   },
+   {
+    "container_id": "b63af4cbbb346cac38d23fccc610a2d37e0fb7ce109aa32aafd9f4803efee7ac",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "",
+    "step": "restore-config_dir"
+   },
+   {
+    "container_id": "c4fd8b64fe1bbfb0de1c92acf5bc77790962493cb26b9036118ddbcb694f89e6",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "",
+    "step": "restore-evidence_dir"
+   }
+  ]
+ },
+ "why": null
+}
