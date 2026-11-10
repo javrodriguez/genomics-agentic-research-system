@@ -1,0 +1,109 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-feacc190",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-feacc190/feacc190-4271-5668-acc3-e75b54da5517.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-tmp-run-feacc190",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-feacc190/feacc190-4271-5668-acc3-e75b54da5517.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-feacc190",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-feacc190/feacc190-4271-5668-acc3-e75b54da5517.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-feacc190",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-feacc190/feacc190-4271-5668-acc3-e75b54da5517.jsonl",
+     "claude",
+     "feacc190-4271-5668-acc3-e75b54da5517"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-feacc190",
+    "/var/tmp"
+   ],
+   "scanned": 432,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-feacc190",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-feacc190/feacc190-4271-5668-acc3-e75b54da5517.jsonl",
+     "claude",
+     "feacc190-4271-5668-acc3-e75b54da5517"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-feacc190",
+    "/var/tmp"
+   ],
+   "scanned": 443,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
