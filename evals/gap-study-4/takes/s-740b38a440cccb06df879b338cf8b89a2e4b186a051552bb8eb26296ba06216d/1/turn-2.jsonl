@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c627-cb58-7de1-adca-20c3897459a6"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 01 found that `rnaseq_bulk` is missing `files.csv` or `samples.csv`. These define the registered inputs and experimental design; guessing could produce samplesheets that answer the wrong biological question.\n\nPlease provide the raw-data location and confirmed sample conditions, groups, and replicates. I can then run stage 00 to register the inputs and retry stage 01."}}
+{"type":"turn.completed","usage":{"input_tokens":121270,"cached_input_tokens":99968,"cache_write_input_tokens":0,"output_tokens":337,"reasoning_output_tokens":14}}
