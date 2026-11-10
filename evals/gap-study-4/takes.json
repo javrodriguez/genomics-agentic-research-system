@@ -8255,6 +8255,22 @@
       "half_cell": "h-b1d0e3e5280129ec82feabaea1f5a04659c73a29b51f2c7d3aecba5a65fa5329",
       "slot": "s-d98a4193b9baae85c065136e91ab3c2a08c2a3e09276850df12eee388c9827b2",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w4",
+      "repeat": 2,
+      "pressure": null,
+      "model": "gpt-6-luna",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-966f607629f67f8b9b4c286610dc4b6be4a2c3daecc2379cf1c845d353c41ffa",
+      "slot": "s-a20de92385c5efbb7ed3215a542d4a55ac2dc96c24ff2bbd21494f59e9c52311",
+      "attempt": 1
     }
   ]
 }
