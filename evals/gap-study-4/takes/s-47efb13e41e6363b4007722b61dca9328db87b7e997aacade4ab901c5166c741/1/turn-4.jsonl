@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c733-53cc-7803-a852-336b7f0f36e6"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The registrar identified these as **single-end** reads: 4 R1 files and 0 R2 files. They are not paired-end.\n\nShould I create symlinks for these single-end reads, or would you like to provide a different path?"}}
+{"type":"turn.completed","usage":{"input_tokens":223952,"cached_input_tokens":197888,"cache_write_input_tokens":0,"output_tokens":1386,"reasoning_output_tokens":95}}
