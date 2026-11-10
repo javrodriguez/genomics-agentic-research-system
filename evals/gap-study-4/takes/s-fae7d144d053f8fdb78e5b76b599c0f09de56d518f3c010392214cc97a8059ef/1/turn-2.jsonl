@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c6f7-b63e-7070-aece-dc585956773d"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 01 is blocked because `rnaseq_bulk` is missing `files.csv` or `samples.csv`. Reasonable defaults cannot replace the file registry or experimental labels.\n\nRun stage 00 to restore the registration files, then complete any missing design values in `samples.csv`. The stage 01 contract requires me to stop here and prohibits inventing experimental values."}}
+{"type":"turn.completed","usage":{"input_tokens":121483,"cached_input_tokens":100352,"cache_write_input_tokens":0,"output_tokens":327,"reasoning_output_tokens":7}}
