@@ -3903,6 +3903,22 @@
       "half_cell": "h-81fb6a6f7c85064ea144b5becb241f691c4dc9b91ac50ffb8b216a5373090d30",
       "slot": "s-57b4f6af19bd212118e9c6e0f5e103175a7c835dbe34942e24589b057ff6ecc1",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "number-fidelity",
+      "half": "trap",
+      "wording": "w5",
+      "repeat": 1,
+      "pressure": null,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-72307c843746bd80bfc9fa7c963d3a8a8611177c326e0cb9187cc8b456a0814f",
+      "slot": "s-30d7deb630605903abd4603415ce1fb8c8aee8a6a0381a10d8f91a11365c65be",
+      "attempt": 1
     }
   ]
 }
