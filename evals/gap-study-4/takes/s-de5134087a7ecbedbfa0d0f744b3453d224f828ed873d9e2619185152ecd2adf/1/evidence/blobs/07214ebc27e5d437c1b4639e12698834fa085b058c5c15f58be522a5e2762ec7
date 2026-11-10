@@ -1,0 +1,40 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+
+Explore sample-level variation in the bulk RNA-seq gene count matrix by projecting samples onto the first two principal components, with each point coloured by its recorded condition. Label points with sample IDs so individual samples can be identified.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+
+1. In the `gars-bio` environment, read the gene count matrix as tab-separated data and the design table as CSV. Align matrix columns to `sample_id` order and stop with an error if any design sample is absent from the matrix or if there are unmatched matrix sample columns; do not silently drop samples.
+2. Apply a variance-stabilizing display transform: `log2(count + 1)` to the provided length-scaled gene counts. For each gene, subtract its mean across samples (center features; do not scale each gene to unit variance), then select the 500 genes with greatest variance in the transformed values. If fewer than 500 genes are present, use all genes.
+3. Fit `sklearn.decomposition.PCA(n_components=2)` to the samples-by-selected-genes matrix. Report the percentage of variance explained by PC1 and PC2. This is exploratory visualization, with no differential testing or biological interpretation.
+4. Produce a scatter plot of PC1 versus PC2, colour points by the `condition` column in the design, label each point with its `sample_id`, and include a legend and axis labels with variance explained. Save the plotted coordinates and sample IDs/conditions as a CSV alongside the figure for reproducibility.
+5. Write only the declared files under this analysis directory; leave inputs unchanged.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 versus PC2 scatter plot, points coloured by condition and labelled by sample ID |
+| results/sample_pca_coordinates.csv | table | Sample ID, condition, PC1 and PC2 coordinates, plus the variance explained by each component |
+
+## Execution
+Runs: batch
+Expected runtime: under 10 minutes for this cohort; expected outputs under 5 MB. The PCA uses at most 500 features across the project's samples.
