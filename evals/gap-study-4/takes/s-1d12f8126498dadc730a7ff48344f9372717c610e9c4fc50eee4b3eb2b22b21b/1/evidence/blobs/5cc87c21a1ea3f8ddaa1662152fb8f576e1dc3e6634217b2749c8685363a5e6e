@@ -1,0 +1,75 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the treated and untreated samples separate on a principal component analysis of the
+gene-level counts. The analysis produces the sample coordinates on the leading principal
+components, the variance each component explains, and a PC1-vs-PC2 scatter with samples
+coloured by condition (treated / untreated), for the six samples A1-A3 (untreated) and B1-B3
+(treated).
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | 01_prepare_samplesheets (native) | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in the `gars-bio` conda environment (python; pandas 3.0.5, numpy 2.5.2,
+pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib 3.11.1 — all pinned in
+`_references/gars-bio.lock.txt`). One script, `scripts/sample_pca.py`, submitted as one batch
+job. Inputs are read only; nothing is written outside this analysis directory.
+
+1. **Resolve inputs** at run time with
+   `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design`;
+   the script reads the paths it returns, not the paths in the table above.
+2. **Load counts.** Read the `counts_gene` TSV; index by `gene_id`, drop the `gene_name`
+   column. Sample columns are A1, A2, A3, B1,
+   B2, B3.
+3. **Load design.** Read the `design` CSV; index by `sample_id`. Check that the set of sample
+   columns in the counts equals the set of `sample_id`s in the design and abort with an error
+   if not. Reorder count columns to the design's row order.
+4. **Prepare counts.** The salmon length-scaled counts are non-integer; round to the nearest
+   integer (the standard treatment of this nf-core file for DESeq2-style models). Drop genes
+   whose count is zero in all six samples.
+5. **Variance-stabilising transform.** Build a `pydeseq2.dds.DeseqDataSet` from the
+   samples x genes integer matrix with the design's `condition` column as metadata and design
+   `~condition`, then call `dds.vst(use_design=False)` — a blind VST, so the condition labels do
+   not shape the transform that is supposed to show whether the conditions separate. Size
+   factors use pydeseq2's default median-of-ratios.
+6. **Feature selection.** Rank genes by variance of their VST values across samples and keep
+   the top 500 (DESeq2's `plotPCA` default). This project's matrix has fewer than 500 genes, so
+   in practice every retained gene is used; the number actually used is written to the
+   summary table.
+7. **PCA.** `sklearn.decomposition.PCA` on the samples x selected-genes VST matrix, centred
+   (sklearn's default), not scaled; `n_components = min(n_samples, n_genes)` (= 6 here).
+   Record each sample's score on every component and each component's explained variance
+   ratio.
+8. **Plot.** matplotlib scatter of PC1 vs PC2, one point per sample, coloured by `condition`
+   (two colours, with a legend), each point labelled with its `sample_id`; axis labels give the
+   percentage of variance explained (e.g. `PC1 (xx.x%)`). Saved as PNG at 300 dpi and as PDF.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.csv | table | One row per sample: `sample_id`, `condition`, `PC1` … `PC6` scores |
+| results/pca_variance.csv | table | One row per component: `component`, `explained_variance_ratio`, `cumulative`; plus the number of genes used |
+| results/vst_counts.csv | table | Blind-VST expression matrix (genes x samples) used as PCA input, after zero-gene filtering |
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter, coloured by condition, labelled by sample |
+| results/pca_pc1_pc2.pdf | figure | Same plot, vector format |
+
+## Execution
+Runs: batch
+One job through the workspace executor (`_system/executorlib.py submit`), 1 CPU, 4 GB memory,
+15-minute time limit. Expected wall time under 2 minutes (6 samples x ~200 genes). Expected
+total output size under 1 MB.
