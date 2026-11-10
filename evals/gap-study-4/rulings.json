@@ -44,5 +44,15 @@
     "slot": "s-00294d39c85eb1f584d9eeea9c10a53967a6c5c32311e3f00e6de1d2d7d98089",
     "attempt": 1,
     "by": "glitch-45"
+  },
+  {
+    "kind": "ruling",
+    "slot": "s-91dbb18a094fc6ddc7b6c5f2571a24d80700bc646ef838560a21383a980a585a",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "graded",
+    "by": "glitch-45",
+    "why": "glitch-45's ruling under Javier's standing delegation, route chosen blind (without reading any outcome, grade or agent text): the take ran to its end; the drive then stopped at its own commit scan, which refused the pinned public OD57 line in the take's records. Javier's OD202 (od57-line yes) widened the rule to admit that exact line; at line commit 617adde9 the drive's scan, as this repo reads it, passes, and reconcile_take committed the take with the checker and operator check by the drive's own code. The stop was the scanner, not the agent or the harness, so the take is graded like any finished take.",
+    "cite": "OD202 (Javier, od57-line yes); line commit 617adde9; J6 drive scan (box/scan_record.scan, this repo's own code at 617adde9) on takes/s-91dbb18a/1: passed, 0 refused, 4 admitted under OD57; J7 reconcile_take commit 1a2684c8 (its cite sentence in athena /home/javier/gap4-run-held-20261105/stop4-20261108/j7-617adde9/commit.out); route chosen blind by glitch-45 under the standing delegation."
   }
 ]
