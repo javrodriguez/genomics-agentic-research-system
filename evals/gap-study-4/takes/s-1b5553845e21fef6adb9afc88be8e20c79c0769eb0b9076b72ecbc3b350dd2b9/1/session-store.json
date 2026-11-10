@@ -1,0 +1,109 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-beaca852",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-beaca852/beaca852-0dfb-5db8-8353-21ed176fb72f.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-tmp-run-beaca852",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-beaca852/beaca852-0dfb-5db8-8353-21ed176fb72f.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-beaca852",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-beaca852/beaca852-0dfb-5db8-8353-21ed176fb72f.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-beaca852",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-beaca852/beaca852-0dfb-5db8-8353-21ed176fb72f.jsonl",
+     "claude",
+     "beaca852-0dfb-5db8-8353-21ed176fb72f"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-beaca852",
+    "/var/tmp"
+   ],
+   "scanned": 432,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-beaca852",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-beaca852/beaca852-0dfb-5db8-8353-21ed176fb72f.jsonl",
+     "claude",
+     "beaca852-0dfb-5db8-8353-21ed176fb72f"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-beaca852",
+    "/var/tmp"
+   ],
+   "scanned": 436,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
