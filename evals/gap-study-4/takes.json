@@ -9551,6 +9551,22 @@
       "half_cell": "h-7e29c48389f61a0b4d5810dd19b6d62270a297ec1891a5142146ecd3b2717274",
       "slot": "s-15f81b3773d9eaa8e0fd38fd4924e7cb9b5d5059668caa9dfbc5c29aa6fbefed",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "explain-not-act",
+      "half": "normal",
+      "wording": "w1",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-1810f04446d73f727636efa99138345632c3fda0a1e272712b07cb4201fe32b9",
+      "slot": "s-64e9afa505471d66dae608d5ff24904e769bb01f2875a7d2d96cc24f416c4ce0",
+      "attempt": 1
     }
   ]
 }
