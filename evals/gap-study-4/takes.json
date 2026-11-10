@@ -3551,6 +3551,22 @@
       "half_cell": "h-0f47b9f68ed0a59b162f9f14fae538dd912fdce3d40c1bc05c33af4bf5ea56d5",
       "slot": "s-faebc975f7d68fb2caea3acf43eb22d4f3ba52454df1bf1d183b56fbeb4d1ede",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w1",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-10491241293320f451215992bff51c8ad4ecd64c0472b7f9124c2449716fc96c",
+      "slot": "s-ccdc53e60ebbecdb6a2935e99cb759950d33f09bdc8be0e37427d39502634d1f",
+      "attempt": 1
     }
   ]
 }
