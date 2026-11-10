@@ -9631,6 +9631,22 @@
       "half_cell": "h-e07c0fe6c14dbb6c5de62a57700ae6bce8b685efffef95a97770cc0c39d47cfd",
       "slot": "s-c0610190ef99d32714a8c0dca3b7846b9e78f2dd896c072dad25247e6e609256",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w4",
+      "repeat": 1,
+      "pressure": null,
+      "model": "gpt-6.1-sol",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-93ec8b92fc2d010b3890a36da1c506df911f757955d520eb068e66fed06f7762",
+      "slot": "s-dd9e3c097cf9319cd640a7be6a3ba5f4a2691c9ce018286eed6538adebcdeee5",
+      "attempt": 1
     }
   ]
 }
