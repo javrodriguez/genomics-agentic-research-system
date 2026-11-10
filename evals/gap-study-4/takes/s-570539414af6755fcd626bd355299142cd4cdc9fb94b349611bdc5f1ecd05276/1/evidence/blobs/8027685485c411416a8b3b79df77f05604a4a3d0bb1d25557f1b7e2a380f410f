@@ -1,0 +1,40 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+
+Run a principal component analysis (PCA) of the project’s gene count matrix and plot the samples with points coloured by their condition (untreated or treated). Provide the plotted sample coordinates so the PCA can be reviewed numerically.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+
+1. In `gars-bio`, read the resolved `counts_gene` TSV and design CSV. Match count-matrix sample columns to `sample_id` in the design and stop with an error if any sample is missing or duplicated, or if a count value is not numeric or finite. Keep the gene identifiers only as row labels; do not use a gene annotation column as a sample.
+2. Retain genes with a count of at least 10 in at least 3 samples. Apply `log2(count + 1)` to the retained gene counts, center each gene across samples, and do not scale genes to unit variance.
+3. Run PCA across samples using scikit-learn `PCA` with all available components. Write the first two principal component scores per sample, joined to the design's `condition`, to `results/pca_sample_scores.csv`.
+4. Create `results/sample_pca.png`, plotting PC1 against PC2, with one point per sample, points coloured by `condition`, and sample IDs labelled. Include the explained variance percentage in each axis label and a legend for condition. Do not modify either input.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 versus PC2 scatter plot with samples coloured by condition and labelled by sample ID |
+| results/pca_sample_scores.csv | table | Per-sample PC1 and PC2 scores, condition, and explained variance fractions |
+
+## Execution
+Runs: batch
+
+Expected wall time: under 10 minutes. Expected output size: under 10 MB. The PCA uses six samples and a gene-by-sample matrix; execution uses the configured batch executor in `gars-bio`.
