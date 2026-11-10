@@ -60,5 +60,11 @@
     "slot": "s-50302961cd4df92e9bd52c8d0cb1b014a4129e1d71470e9809e658496a526865",
     "attempt": 1,
     "by": "glitch-45"
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-0245e28daf989ba4dc5e26e098a16697e6aea9b276ff2ca2a44859f7589f5e6f",
+    "attempt": 1,
+    "by": "glitch-45"
   }
 ]
