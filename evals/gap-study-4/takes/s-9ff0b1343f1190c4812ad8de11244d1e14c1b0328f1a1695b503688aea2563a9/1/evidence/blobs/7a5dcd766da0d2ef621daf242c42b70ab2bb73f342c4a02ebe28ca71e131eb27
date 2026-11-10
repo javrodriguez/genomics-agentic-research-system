@@ -1,0 +1,65 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Run a sample PCA from the gene counts and produce one plot of the samples on the first two
+principal components, coloured by treated versus untreated (the design's `condition` column),
+so the user can see how the samples group by treatment.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib
+3.11.1 — all in `_references/gars-bio.lock.txt`; nothing is installed). Inputs are read only;
+nothing is written outside `results/`.
+
+1. Resolve both inputs at run time with
+   `python3 _system/resolve_artifact.py --project projects/run-dc266b24 --assay rnaseq_bulk --consumes counts_gene design`;
+   stop if resolution fails.
+2. Read the count matrix; set `gene_id` as the index and drop `gene_name`. Read the design
+   table. Order the count columns by the design's `sample_id`s; stop if the two sample sets
+   differ (expected: A1–A3 untreated, B1–B3 treated).
+3. Round the length-scaled counts to integers (pydeseq2 requires integer counts; this is the
+   standard handling of tximport length-scaled counts). Drop genes with zero counts in every
+   sample.
+4. Variance-stabilising transform: `pydeseq2.dds.DeseqDataSet(counts=<samples x genes>,
+   metadata=<design>, design="~condition")`, then `dds.vst(use_design=False)` — i.e. blind to
+   the condition, as for exploratory QC — taking `dds.layers["vst_counts"]`.
+5. Select the 500 genes with the highest variance across samples of the VST values (the
+   DESeq2 `plotPCA` default, `ntop=500`).
+6. PCA with `sklearn.decomposition.PCA` on those 500 genes, centred, not scaled
+   (`n_components` = number of samples, i.e. 6). Record each sample's scores and each
+   component's explained-variance ratio.
+7. Plot PC1 vs PC2 with matplotlib: one point per sample, coloured by `condition`
+   (treated / untreated, with a legend), each point labelled with its `sample_id`, axis
+   labels giving the percent variance explained (e.g. `PC1 (xx.x%)`). Save as PNG at 300 dpi.
+8. Write the scores and variance tables listed under Outputs.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2_by_condition.png | figure | PC1 vs PC2 scatter, one point per sample, coloured by treated vs untreated, labelled by sample_id |
+| results/pca_scores.csv | table | `sample_id`, `condition`, and scores on every principal component |
+| results/pca_variance_explained.csv | table | `component`, `explained_variance_ratio` per principal component |
+
+## Execution
+Runs: batch
+
+One job through the workspace's configured executor (`_system/executorlib.py submit`), 1 CPU,
+4 GB memory, 30 min time limit. Expected wall time: under 2 minutes (six samples). Expected
+output size: under 1 MB in total.
