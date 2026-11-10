@@ -46991,5 +46991,110 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-42d1482d23e4b193bb22d813b0fa46997620136ee16600e9c5e0c713477282f0",
+    "half_cell": "h-10491241293320f451215992bff51c8ad4ecd64c0472b7f9124c2449716fc96c",
+    "attempt": 1,
+    "container_id": "48ec757bba2a063b05d7edc3adf73dedb970c360007714ed36b52d73cc38e232",
+    "state": "graded",
+    "reason": null,
+    "decision": {
+      "route": "graded",
+      "rows": [
+        "end-turn"
+      ],
+      "matched": [
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 0,
+        "reruns_per_half_cell": 0,
+        "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 2,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        {
+          "model": "claude-opus-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-opus-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "model": "claude-opus-5-5",
+        "harness": "claude-code"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": false,
+    "mask_basis": "annotations",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": true,
+    "rerun": false,
+    "beyond_cap": false,
+    "stop": null,
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
