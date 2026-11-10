@@ -1,0 +1,44 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six samples cluster using PCA on gene counts, coloured by condition. This is an exploratory view of sample relationships, with sample labels and the variance explained by each displayed component.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+Paths are relative to the project. The design contains A1, A2, A3 (untreated) and B1, B2, B3 (treated).
+
+## Method
+1. After approval, write `scripts/sample_pca.py` and `scripts/submit.sh`. Run all analysis steps in the batch job using Python in `gars-bio`, with pandas, NumPy, scikit-learn and Matplotlib. Resolve `counts_gene` and `design` again with `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design`; stop if resolution fails or the supplying artifacts differ from this plan.
+2. Read the tab-separated native gene matrix and CSV design. Use `gene_id` as the feature identifier; exclude the annotation column `gene_name` from numeric data. Require unique gene identifiers and sample IDs, exactly the six design samples as matrix columns, non-missing conditions, finite nonnegative counts, and positive library totals. Match and reorder count columns by `sample_id`; stop on any mismatch. Preserve fractional counts without rounding.
+3. Compute each sample's library total over all genes. Normalize to counts per million (CPM = count / library total * 1,000,000). Retain genes with CPM >= 1 in at least 3 of the 6 samples; transform retained values with log2(CPM + 1). Remove zero-variance genes, then select up to 2,000 genes with greatest sample variance (sample variance, ddof=1), breaking ties by gene_id. Stop if fewer than two variable genes remain. Record gene counts before and after each filter. This explicit library-size normalization and log transform prevents raw count magnitude from dominating PCA.
+4. Transpose to samples by genes and run `sklearn.decomposition.PCA(n_components=5, svd_solver="full", whiten=False)`, which centres each gene without scaling it to unit variance. Use all six samples together; condition is only a plotting annotation and does not enter the PCA fit. No batch correction, sample exclusions or significance testing are planned.
+5. Plot PC1 versus PC2 with Matplotlib: one point per sample, untreated blue (#0072B2), treated orange (#D55E00), individual sample ID labels, a condition legend and axis labels giving explained variance percentages. Export PNG at 300 dpi and a vector PDF. Save scores for all five PCs with sample IDs and conditions, plus explained variance and variance ratios for all five PCs.
+6. Write a short report describing inputs, normalization, filtering, selected gene count, explained variance, tool versions and the descriptive scope of the plot. Record resolved input paths and SHA-256 hashes in the report. Do not infer biological mechanisms or statistical group separation from this exploratory figure. All generated files stay inside this analysis directory; input files remain read-only.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | Labelled PC1 versus PC2, coloured by condition, 300 dpi |
+| results/sample_pca.pdf | figure | Vector version of the same PCA plot |
+| results/pca_scores.csv | table | Six rows: sample_id, condition, PC1 through PC5 |
+| results/pca_variance.csv | table | Component, explained variance, explained variance ratio and cumulative ratio |
+| results/report.md | report | Method, filtering counts, provenance, tool versions and explained variance |
+
+## Execution
+Runs: batch
+Submit `scripts/submit.sh` through `python3 <workspace>/_system/executorlib.py submit --workspace <project> <script>`, using the configured executor. Source `<workspace>/_system/gars-env.sh` and invoke `$GARS_PY` in the job. Target resources: 1 CPU, 4 GB RAM, 10 minutes; expected runtime under 5 minutes and result files under 10 MB. Use the existing environment without installing packages. Missing dependencies or invalid inputs cause a reported failure. After successful execution, run `stage03_analysis.py verify` to check all five declared files and register completion and provenance through the stage's normal history procedure.
