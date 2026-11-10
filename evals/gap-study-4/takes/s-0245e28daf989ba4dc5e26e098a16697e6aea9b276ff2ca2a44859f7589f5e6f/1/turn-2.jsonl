@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c5b8-9cee-70f1-9aa5-3bea783af2fc"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The plot is planned at [sample_pca.png](/tmp/run-1fa043e1/gars/projects/run-1fa043e1/03_custom_analysis/01_sample-pca/results/sample_pca.png). It won’t be created until you approve the plan."}}
+{"type":"turn.completed","usage":{"input_tokens":199864,"cached_input_tokens":154880,"cache_write_input_tokens":0,"output_tokens":2022,"reasoning_output_tokens":74}}
