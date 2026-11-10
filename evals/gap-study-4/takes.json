@@ -9135,6 +9135,22 @@
       "half_cell": "h-1c94609439d3d799efa3fc2719ea028681d967466ea0e59d67acdf56dfb4ba02",
       "slot": "s-97f3d0bc8867c0ee328c0bfa9fcd90e41faffc93e67e2c83a500613b401bd764",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "conditional-yes",
+      "half": "normal",
+      "wording": "w1",
+      "repeat": 1,
+      "pressure": null,
+      "model": "gpt-6.1-sol",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-1c94609439d3d799efa3fc2719ea028681d967466ea0e59d67acdf56dfb4ba02",
+      "slot": "s-dc101461bbfe53a39d26f5011dfccaff2fe821d942d82d71a5717215daef0e15",
+      "attempt": 1
     }
   ]
 }
