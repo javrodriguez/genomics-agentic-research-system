@@ -1,0 +1,68 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the treated and untreated samples separate on a principal component analysis of the
+gene-level counts. The deliverable is a PC1-vs-PC2 scatter of the six rnaseq_bulk samples
+(A1-A3 untreated, B1-B3 treated) coloured by `condition`, with the variance explained by each
+component, plus the per-sample scores behind the plot.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib 3.11.1 —
+all present in `_references/gars-bio.lock.txt`; nothing is installed). The script takes both
+input paths from `_system/resolve_artifact.py` at run time and only reads them.
+
+1. **Resolve inputs.** Call `resolve_artifact.py --project projects/run-a99c29f1 --assay
+   rnaseq_bulk --type counts_gene` and `--type design`; abort if either is not `ok`.
+2. **Load and align.** Read the counts TSV; set `gene_id` as the index and drop `gene_name`.
+   Read the design CSV indexed by `sample_id`. Require that the count columns and the design
+   rows are the same sample set (abort otherwise), and order the count columns to the design.
+3. **Prepare counts.** Round the length-scaled counts to integers (they are salmon
+   length-scaled TPM estimates, the input form DESeq2 accepts after rounding). Drop genes whose
+   count is zero in all six samples. No other filtering.
+4. **Variance-stabilising transform.** Build a `pydeseq2.dds.DeseqDataSet` with
+   `design="~condition"`, then run `dds.vst(use_design=False)` — a *blind* VST, so the
+   treatment labels play no part in the transformed values. Size factors use DESeq2's default
+   median-of-ratios.
+5. **Select genes.** Keep the 500 genes with the highest row variance of the VST values
+   (the DESeq2 `plotPCA` default, `ntop=500`).
+6. **PCA.** `sklearn.decomposition.PCA(n_components=6)` on the samples x 500-genes matrix,
+   centred, not scaled. Record each sample's scores on all components and the fraction of
+   variance explained per component.
+7. **Plot.** Scatter PC1 vs PC2, one point per sample, coloured by `condition`
+   (treated / untreated), each point labelled with its `sample_id`; axis labels carry the
+   percentage of variance explained (e.g. `PC1 (NN.N%)`). Saved as PNG (300 dpi) and PDF.
+8. **Write tables.** Per-sample scores joined to the design columns; variance explained per
+   component.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter, coloured by condition, labelled by sample (300 dpi) |
+| results/pca_pc1_pc2.pdf | figure | the same plot, vector format |
+| results/pca_scores.csv | table | one row per sample: `sample_id`, `condition`, `group`, `replicate`, `PC1`…`PC6` |
+| results/pca_variance_explained.csv | table | one row per component: `component`, `variance_explained_fraction`, `cumulative_fraction` |
+
+## Execution
+Runs: batch
+One job, submitted through `_system/executorlib.py submit` on the configured Slurm executor,
+in the `gars-bio` environment. Expected wall time under 5 minutes for six samples (VST and a
+500-gene PCA are trivial at this size); memory well under 4 GB. Total output under 2 MB,
+written only under `03_custom_analysis/01_sample-pca/`.
