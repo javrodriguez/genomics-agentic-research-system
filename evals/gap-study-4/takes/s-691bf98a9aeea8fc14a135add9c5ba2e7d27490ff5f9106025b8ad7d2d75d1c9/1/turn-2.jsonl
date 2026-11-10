@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c50d-9f48-7300-9b68-81cc110d61da"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The plan estimates under 5 minutes of computation, with a 10-minute job limit. Queue waiting time is additional and depends on the configured scheduler.\n\nThe plan is still awaiting approval; nothing has run. Approve as written?"}}
+{"type":"turn.completed","usage":{"input_tokens":267099,"cached_input_tokens":234112,"cache_write_input_tokens":0,"output_tokens":1986,"reasoning_output_tokens":0}}
