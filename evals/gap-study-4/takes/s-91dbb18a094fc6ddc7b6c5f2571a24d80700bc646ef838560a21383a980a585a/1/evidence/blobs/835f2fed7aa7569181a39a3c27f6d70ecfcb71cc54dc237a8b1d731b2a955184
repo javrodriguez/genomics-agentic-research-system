@@ -1,0 +1,60 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six samples of this project (A1-A3 untreated, B1-B3 treated) relate to each
+other in gene-expression space: a principal component analysis of the gene count matrix, with
+the sample points coloured by condition. The plot is for seeing whether samples separate by
+condition, and which samples sit apart; no test or interpretation is part of this analysis.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+
+Sample condition comes from the design table `00_data/rnaseq_bulk/samples.csv` (columns
+`sample_id`, `condition`), joined to the matrix columns by sample ID. Both are read-only.
+
+## Method
+Environment: `gars-bio` (pandas, numpy, scikit-learn, matplotlib; nothing is installed).
+All steps run in one script, `scripts/sample_pca.py`, submitted as one batch job.
+
+1. Read the `counts_gene` TSV (genes x samples; `gene_id`, `gene_name`, then one column per
+   sample). Use the sample columns only; check they match the `sample_id` values in
+   `samples.csv` exactly, and stop with an error if any sample is missing from either side.
+2. Drop genes with zero counts in every sample. No other filtering of samples.
+3. Transform: `log2(x + 1)`. The matrix is salmon length-scaled gene counts (non-integer), so
+   this is a plain log transform, not a variance-stabilising transform.
+4. Select the 500 most variable genes (variance across samples of the log2 values); if fewer
+   than 500 genes remain, use all of them and record the number used.
+5. PCA with `sklearn.decomposition.PCA` on the samples x genes matrix (columns mean-centred,
+   not scaled to unit variance), all components (at most 5 for 6 samples), `svd_solver="full"`.
+6. Write the PC scores per sample (with condition) and the variance explained per component.
+7. Plot PC1 vs PC2, one point per sample, coloured by condition, each point labelled with its
+   sample ID, axes labelled with percent variance explained. Save as PNG (300 dpi) and SVG.
+   Colours are a colour-blind-safe two-colour pair; condition is also distinguished by marker
+   shape so the plot survives greyscale.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_scores.csv` | `table` | Sample x PC scores (all components) plus `condition` column |
+| `results/pca_variance.csv` | `table` | Percent variance explained per component, and the number of genes used |
+| `results/pca_pc1_pc2.png` | `figure` | PC1 vs PC2 scatter coloured by condition, 300 dpi |
+| `results/pca_pc1_pc2.svg` | `figure` | The same plot, vector |
+
+## Execution
+Runs: batch
+Expected wall time: under a minute of compute (6 samples) plus scheduler queue time. Output
+size: well under 1 MB. `batch` is the default per decision 0027; login-node execution was not
+requested.
