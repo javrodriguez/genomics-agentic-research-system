@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c581-458d-79a0-b58e-1cc94848d99c"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 01 is blocked because `rnaseq_bulk` is missing `files.csv` or `samples.csv`. Those files must come from stage 00; experimental values must come from you. Inventing them could produce a valid analysis of the wrong design.\n\nRun `00_initialize_project` first, then complete the design in `samples.csv` before rerunning stage 01."}}
+{"type":"turn.completed","usage":{"input_tokens":121861,"cached_input_tokens":97664,"cache_write_input_tokens":0,"output_tokens":380,"reasoning_output_tokens":15}}
