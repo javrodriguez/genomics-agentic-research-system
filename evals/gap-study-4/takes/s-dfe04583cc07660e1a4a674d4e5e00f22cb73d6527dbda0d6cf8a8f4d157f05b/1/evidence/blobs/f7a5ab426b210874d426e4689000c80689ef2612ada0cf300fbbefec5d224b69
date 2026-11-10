@@ -1,0 +1,52 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+How do the six samples relate to one another in gene-expression space, and do treated and
+untreated samples separate? A principal component analysis of the gene-level counts, shown as
+one plot with samples coloured by treated versus untreated.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | 01_prepare_samplesheets (native) | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+Environment: `gars-bio` (scikit-learn, pandas, numpy, matplotlib). Every step runs as one batch job.
+
+1. Read the `counts_gene` matrix (genes x samples; columns `gene_id`, `gene_name`, then A1-B3,
+   length-scaled salmon counts) and the `design` table. Inputs are read-only.
+2. Check the matrix's sample columns equal the design's `sample_id` set; stop with an error if not.
+3. Keep genes whose summed count across the 6 samples is >= 10 (drops unexpressed genes).
+4. Transform: `log2(count + 1)`.
+5. Centre each gene across samples (subtract its mean); no per-gene scaling.
+6. PCA with `sklearn.decomposition.PCA(n_components=6, svd_solver="full")` on the samples x genes
+   matrix; record the proportion of variance explained per component.
+7. Plot PC1 (x) against PC2 (y), one point per sample, coloured by the design's `condition`
+   (`treated` vs `untreated`), each point labelled with its sample ID, axis labels carrying
+   the percent variance explained, legend titled "condition". Saved as PNG at 200 dpi.
+8. Write the sample coordinates and variance explained to a CSV.
+
+Parameters (expression floor of 10, log2(x+1), centring without scaling, all passing genes
+rather than a top-variable subset) are choices of this plan; change them here before approval.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_condition.png` | `figure` | PC1 vs PC2 scatter of the 6 samples, coloured by condition |
+| `results/pca_coordinates.csv` | `table` | Per-sample PC1-PC6 coordinates, condition, and variance explained per component |
+
+## Execution
+Runs: batch
+Expected wall time under a minute (6 samples), plus scheduler queue time; outputs under 1 MB.
