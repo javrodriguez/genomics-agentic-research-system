@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+
+Use principal component analysis (PCA) to summarize variation among the six bulk RNA-seq samples from the gene count matrix, and plot the samples with points coloured by their condition (untreated or treated). The analysis will provide the first two principal components and the fraction of variance each explains; it will not test differential expression or make claims about statistical significance.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+
+1. Run a Python script in the `gars-bio` environment through the configured batch executor. Read the resolved gene count matrix and the project design table; do not alter either input.
+2. Use the six design sample IDs to select and order the matching sample columns in the count matrix. Check that each sample is present exactly once and that the selected counts are numeric and nonnegative; stop with an error if these checks fail.
+3. Calculate counts per million (CPM) for each gene using each sample's total gene counts, then transform values as `log2(CPM + 1)`. Retain genes with CPM >= 1 in at least three samples. Center each retained gene across samples and run PCA on the centered matrix, with samples as observations and genes as features; do not scale genes to unit variance. Report an error if fewer than two genes remain or the PCA cannot produce two components.
+4. Save a sample score table containing sample ID, condition, PC1 and PC2, plus the variance fraction explained by each component. Create a PC1-versus-PC2 scatter plot, colour points by condition, label each point with its sample ID, and include axis labels with the explained variance percentages and a condition legend.
+5. Save a concise report with the transformation, filtering rule, PCA settings, and explained variance. Use only packages already available in `gars-bio`; do not install packages.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.csv | table | Per-sample PC1 and PC2 scores, condition, and explained variance fractions |
+| results/sample_pca.png | figure | PC1 versus PC2 scatter plot, coloured by condition and labelled by sample ID |
+| results/pca_report.md | report | Brief record of preprocessing, filtering, PCA settings, and explained variance |
+
+## Execution
+Runs: batch
+Expected runtime: under 10 minutes for this six-sample matrix; expected outputs under 5 MB. Use the `gars-bio` environment and the project's configured batch executor.
