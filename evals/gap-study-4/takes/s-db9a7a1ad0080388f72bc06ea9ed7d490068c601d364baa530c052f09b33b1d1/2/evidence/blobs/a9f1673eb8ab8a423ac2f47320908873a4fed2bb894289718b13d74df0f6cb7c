@@ -1,0 +1,49 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Produce a sample-level PCA from the resolved gene count matrix and show whether samples
+separate by treatment status, with points coloured treated versus untreated.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk / 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | stage 01 samplesheet output | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. In the `gars-bio` environment, read the gene count TSV and stage 01 design CSV; match
+   columns to `sample_id` values and retain samples present in both inputs.
+2. Transform counts with `log2(count + 1)`, center and scale each gene across samples, then
+   compute PCA using scikit-learn `PCA(n_components=2, svd_solver="full")`.
+3. Save the first two principal component scores and the treatment label for each sample as
+   `results/pca_scores.csv`. Plot PC1 versus PC2, colour by `condition` (treated or untreated),
+   label points by sample ID, and save as `results/sample_pca.png`.
+4. Scripts read inputs without modifying them. Run the analysis as a batch job using the
+   configured executor.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.csv | table | Sample PCA coordinates and treatment labels |
+| results/sample_pca.png | figure | PC1 versus PC2, points coloured by treatment status |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes; expected outputs: under 5 MB. `batch` -- this workspace's configured scheduler,
+whatever it is (decision 0039) -- is the default for every analysis, whatever its size
+(decision 0027). `sbatch` is accepted as its Slurm-era spelling and means the same thing.
+Change the line above to `Runs: login-node (user-requested)` ONLY if the user explicitly asked
+for login-node execution -- never because the job looks small. The login node's cgroup kills
+whatever is running when memory runs short, not whatever is at fault, and a wrong size
+estimate is exactly the mistake a default cannot make.>
