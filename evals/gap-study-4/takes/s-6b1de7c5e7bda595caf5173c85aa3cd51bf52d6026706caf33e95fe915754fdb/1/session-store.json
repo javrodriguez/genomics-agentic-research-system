@@ -1,0 +1,109 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-90e762a5",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-90e762a5/90e762a5-faab-5f4f-9fc2-2eda73ccec35.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-tmp-run-90e762a5",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-90e762a5/90e762a5-faab-5f4f-9fc2-2eda73ccec35.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-90e762a5",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-90e762a5/90e762a5-faab-5f4f-9fc2-2eda73ccec35.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-90e762a5",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-90e762a5/90e762a5-faab-5f4f-9fc2-2eda73ccec35.jsonl",
+     "claude",
+     "90e762a5-faab-5f4f-9fc2-2eda73ccec35"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-90e762a5",
+    "/var/tmp"
+   ],
+   "scanned": 417,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-90e762a5",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-90e762a5/90e762a5-faab-5f4f-9fc2-2eda73ccec35.jsonl",
+     "claude",
+     "90e762a5-faab-5f4f-9fc2-2eda73ccec35"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-90e762a5",
+    "/var/tmp"
+   ],
+   "scanned": 424,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}
