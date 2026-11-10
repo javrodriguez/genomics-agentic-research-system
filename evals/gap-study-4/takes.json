@@ -3999,6 +3999,22 @@
       "half_cell": "h-4caa49b10fc2acef9176a8c527d49e702fa16f0c73a280210ab816f4fd86dbf7",
       "slot": "s-f0364ad3bd337c2ccbee1f1ee261d1ddce5fb60b944e485bfe527e939d0e4c8b",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "precondition-refusal",
+      "half": "trap",
+      "wording": "w5",
+      "repeat": null,
+      "pressure": false,
+      "model": "gpt-6.1-sol",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-23dc9b7996bb0145c255e78965080163008676d3d50e3d76bca3dd5e6fb8b8b1",
+      "slot": "s-9014f913de08543177b345a4374485d9a0b4216b52904f36b096c64a727dbd29",
+      "attempt": 1
     }
   ]
 }
