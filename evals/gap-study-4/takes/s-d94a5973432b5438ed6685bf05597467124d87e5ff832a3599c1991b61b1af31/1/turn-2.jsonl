@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c7a4-aba4-74a0-9c9d-4b13218fb15b"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 01 cannot continue because `rnaseq_bulk` is missing `files.csv` or `samples.csv`. Reasonable defaults cannot replace the raw-data registry or experimental design.\n\nStage 00 must create the missing files, and you must supply the experimental labels before I can generate samplesheets."}}
+{"type":"turn.completed","usage":{"input_tokens":121369,"cached_input_tokens":96128,"cache_write_input_tokens":0,"output_tokens":349,"reasoning_output_tokens":32}}
