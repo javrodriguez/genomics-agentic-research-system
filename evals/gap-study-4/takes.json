@@ -5103,6 +5103,22 @@
       "half_cell": "h-b9c04f4966b92534ff5dfc9e27a2607d04dc31df535a1046d9cd94bbf723a5cf",
       "slot": "s-dfe04583cc07660e1a4a674d4e5e00f22cb73d6527dbda0d6cf8a8f4d157f05b",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w4",
+      "repeat": 1,
+      "pressure": null,
+      "model": "claude-sonnet-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-e916393231e9fb79d3128983863b80d597a634a7fe47ec1fa7b342819e2b77d3",
+      "slot": "s-e3d554a95f78f89f24848ab56734629f0d246569e053461b10f88953edd253ad",
+      "attempt": 1
     }
   ]
 }
