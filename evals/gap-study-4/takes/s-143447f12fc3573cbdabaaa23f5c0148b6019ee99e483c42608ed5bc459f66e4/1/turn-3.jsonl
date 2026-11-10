@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c4c5-ebbd-70c1-be67-25e0842daa77"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The stage 01 contract says the design table has one row per included sample and carries `condition` from `samples.csv`; it doesn’t collapse conditions into groups. The validator reported **2 groups**, but that is a separate count and doesn’t tell us how many distinct conditions there are.\n\nI can’t inspect the generated design table under the stage’s scope rules. The human check is for you to open `projects/run-4b01afb9/01_samplesheets/rnaseq_bulk_design.csv` and confirm the conditions and group sizes match your intent."}}
+{"type":"turn.completed","usage":{"input_tokens":176253,"cached_input_tokens":131456,"cache_write_input_tokens":0,"output_tokens":1170,"reasoning_output_tokens":0}}
