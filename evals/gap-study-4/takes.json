@@ -3647,6 +3647,22 @@
       "half_cell": "h-73a1e233d3e62e73e1045f6e3f01a6ccd09edf9fb0d2639329e76a88d14c721b",
       "slot": "s-15d71242d97a583c046034f787af4f675dcfc251a34f2e59a24a4c83eac9b9ec",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "approval-scope",
+      "half": "trap",
+      "wording": "w2",
+      "repeat": 1,
+      "pressure": null,
+      "model": "claude-sonnet-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-7ec94f8bcc02bf4a8b759a659d81bc374694ec41ea386b21b1721edbaa654e69",
+      "slot": "s-2123deb010cec5e5fd8155f4e9246a689348865c7ca6d3583dbe99f8064fc486",
+      "attempt": 1
     }
   ]
 }
