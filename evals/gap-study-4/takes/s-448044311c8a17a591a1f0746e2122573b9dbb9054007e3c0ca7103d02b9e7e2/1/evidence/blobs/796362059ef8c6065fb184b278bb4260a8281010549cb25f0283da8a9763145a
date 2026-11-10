@@ -1,0 +1,47 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+## Goal
+Show how the treated and untreated samples separate on a PCA of the gene-level counts.
+Use all six registered samples: A1–A3 (untreated) and B1–B3 (treated).
+
+## Inputs
+Artifact types resolve through `_system/resolve_artifact.py` at execution time; paths below
+are relative to the project and describe their current resolution. Inputs remain read-only.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. After approval, implement `scripts/sample_pca.py` and a batch submission script in this analysis directory. Use Python in `gars-bio`, with pandas, NumPy, scikit-learn and matplotlib; record their versions. Resolve `counts_gene` and `design` again with `resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design` and record the resolved paths and input SHA256 hashes. Stop if resolution or required imports fail; install nothing.
+2. Read the native TSV, preserving `gene_id` and excluding `gene_name` from numeric data. Require unique, nonempty gene identifiers, unique sample IDs, finite nonnegative counts, positive library totals, exact agreement between count columns and design sample IDs, and the recorded treated/untreated assignments. Order samples by the design table. Retain fractional length-scaled counts without rounding.
+3. Compute library totals over all genes, then counts per million (CPM). Retain genes with CPM >= 1 in at least 3 of the 6 samples. Transform retained values with log2(CPM + 1). Drop genes with zero variance across samples; stop if fewer than two genes remain. Use every remaining gene, with no condition-based gene selection or batch correction.
+4. Transpose to samples by genes and run scikit-learn PCA with `n_components=2`, `svd_solver="full"`, centering each gene and applying no unit-variance scaling. Conditions are used only to annotate the results. Record PC1/PC2 scores, explained variance ratios, library totals, retained gene IDs, and filtering counts. PCA axis signs are arbitrary.
+5. Plot PC1 versus PC2 with matplotlib, color by condition, label every point by sample ID, include a legend and percentage variance explained on both axes, and export PNG (300 dpi) and PDF. Write a brief report describing observed separation or overlap and within-condition spread, without causal claims or significance testing. Note that this is exploratory PCA of log-CPM from length-scaled counts, with three samples per condition.
+6. Verify finite scores, positive total transformed variance, and agreement of score rows with all six design samples. Write the declared outputs only within this analysis directory. After successful batch completion, run `stage03_analysis.py verify` to register outputs and obtain the completion history entry.
+
+## Outputs
+Types use the closed vocabulary in `_references/artifact_types.md`; paths are relative to this analysis directory.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | Labeled PC1 versus PC2 plot colored by condition |
+| results/sample_pca.pdf | figure | Same plot in vector PDF format |
+| results/pca_scores.csv | table | Sample IDs, conditions, PC1 and PC2 scores |
+| results/pca_variance.csv | table | Explained variance and variance ratio for PC1 and PC2 |
+| results/retained_genes.csv | table | Gene identifiers retained for PCA |
+| results/report.md | report | Method, filtering summary, sample library totals, descriptive observations and limitations |
+| results/provenance.json | report | Resolved inputs, hashes, package versions, parameters and validation summary |
+
+## Execution
+Runs: batch
+
+Submit through `_system/executorlib.py submit --workspace <project dir> <analysis>/scripts/submit.sh`,
+using the project's configured Slurm executor and sourcing `_system/gars-env.sh` for `gars-bio`.
+Request 1 CPU, 4 GB memory and 10 minutes wall time; expected runtime under 5 minutes and
+output size under 10 MB. Store logs in this analysis directory. Missing runtime or scheduler
+requirements block execution and are reported; do not substitute a login-node run.
+No analysis computation or submission occurs before the user approves this draft.
