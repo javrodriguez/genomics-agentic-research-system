@@ -1,0 +1,291 @@
+{
+ "harness": "codex",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-3",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-4",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-5",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "sessions/2026",
+     "dir"
+    ],
+    [
+     "sessions/2026/11",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10",
+     "dir"
+    ],
+    [
+     "sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": "sessions",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-95b27b58",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "codex",
+     "01a1c620-e4c3-7451-9e4e-3039e667ad90"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-95b27b58",
+    "/var/tmp"
+   ],
+   "scanned": 477,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-95b27b58",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "codex",
+     "01a1c620-e4c3-7451-9e4e-3039e667ad90"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-95b27b58",
+    "/var/tmp"
+   ],
+   "scanned": 479,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-3",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-95b27b58",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "codex",
+     "01a1c620-e4c3-7451-9e4e-3039e667ad90"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-95b27b58",
+    "/var/tmp"
+   ],
+   "scanned": 486,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-4",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-95b27b58",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "codex",
+     "01a1c620-e4c3-7451-9e4e-3039e667ad90"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-95b27b58",
+    "/var/tmp"
+   ],
+   "scanned": 488,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-5",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-95b27b58",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/sessions/2026/11/10/rollout-2026-11-10T15-43-27-01a1c620-e4c3-7451-9e4e-3039e667ad90.jsonl",
+     "codex",
+     "01a1c620-e4c3-7451-9e4e-3039e667ad90"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-95b27b58",
+    "/var/tmp"
+   ],
+   "scanned": 486,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}
