@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize the principal component structure of the six RNA-seq samples, colored by treatment condition (untreated vs. treated). PCA will reveal sample relationships and whether the first two principal components separate the experimental groups.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Load gene count matrix from `counts_gene` and sample design from design CSV using Python (scikit-learn, pandas, seaborn, matplotlib). Environment: gars-bio.
+2. Filter genes retaining those with ≥5 counts in ≥3 samples.
+3. Log2-transform count data after adding pseudocount of 1 (log2(counts + 1)).
+4. Apply PCA with scikit-learn's PCA (n_components=2) to the transposed matrix (samples as rows, genes as columns).
+5. Generate scatter plot of PC1 vs PC2, coloring points by condition from design; mark replicate numbers as labels; include explained variance on axes.
+6. Export PC scores (sample coordinates on PC1/PC2) as a CSV table.
+7. Script location: scripts/pca_analysis.py
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.pdf | figure | PCA scatter plot with samples colored by condition (untreated vs treated), including PC1 and PC2 variance explained |
+| results/pc_scores.csv | table | Principal component scores for each sample; columns: sample_id, condition, PC1, PC2 |
+
+## Execution
+Runs: batch
+
+Expected wall time: <1 minute. Expected output size: ~2 KB (CSV) + ~50 KB (PDF figure). This is a lightweight analysis operating on one count matrix and six samples.
