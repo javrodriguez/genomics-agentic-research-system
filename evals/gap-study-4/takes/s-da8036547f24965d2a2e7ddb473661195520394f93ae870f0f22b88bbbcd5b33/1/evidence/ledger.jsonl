@@ -1,0 +1,8 @@
+{"agent": {"harness": "codex", "version": "0.162.1"}, "home": null, "kind": "take", "model": "gpt-6-luna", "run_tree": ""}
+{"ended_at": 1794321695.773602, "kind": "turn", "n": 1, "started_at": 1794321667.7620525}
+{"ended_at": 1794321729.3504725, "kind": "turn", "n": 2, "started_at": 1794321712.1787999}
+{"ended_at": 1794321759.147456, "kind": "turn", "n": 3, "started_at": 1794321745.6028194}
+{"at": 1794321763.9349506, "id": "wait-for-samples-csv-then-copy-design", "kind": "operator", "writes": [{"after": {"sha256": "4478b6a4605236af39c21164d96296f556240eb0ea4236e9b51b007a52e197a3", "type": "file"}, "path": "gars/projects/run-2f096456/00_data/rnaseq_bulk/samples.csv"}]}
+{"ended_at": 1794321789.238181, "kind": "turn", "n": 4, "started_at": 1794321776.1969676}
+{"ended_at": 1794321823.9017475, "kind": "turn", "n": 5, "started_at": 1794321805.441228}
+{"ended_at": 1794321851.1489592, "kind": "turn", "n": 6, "started_at": 1794321840.3356898}
