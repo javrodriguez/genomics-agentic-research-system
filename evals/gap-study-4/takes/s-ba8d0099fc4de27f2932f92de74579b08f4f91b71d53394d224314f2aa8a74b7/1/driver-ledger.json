@@ -1,0 +1,175 @@
+{
+ "agent": {
+  "harness": "claude-code",
+  "version": "2.1.296"
+ },
+ "arm": "A",
+ "budget_s": 900,
+ "claude_version": "2.1.296",
+ "cost": {
+  "calls": [
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 5479,
+     "5m": 0
+    },
+    "call_id": "msg_011Cgu7ZCD5BuvrQSGH9rtm8/req_011Cgu7ZBjYbyLPzmGbujMjV",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 5479,
+     "cache_read_input_tokens": 14379,
+     "input_tokens": 10,
+     "output_tokens": 416
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 15295,
+     "5m": 0
+    },
+    "call_id": "msg_011Cgu7ZWgZsR4KmtLensEbe/req_011Cgu7ZWSwXSvcgZrG4U2GN",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 15295,
+     "cache_read_input_tokens": 19858,
+     "input_tokens": 8,
+     "output_tokens": 422
+    },
+    "vendor": "anthropic"
+   }
+  ],
+  "model_requested": "claude-haiku-4-5-20251001",
+  "turns": [
+   {
+    "calls": [
+     "msg_011Cgu7ZCD5BuvrQSGH9rtm8/req_011Cgu7ZBjYbyLPzmGbujMjV",
+     "msg_011Cgu7ZWgZsR4KmtLensEbe/req_011Cgu7ZWSwXSvcgZrG4U2GN"
+    ],
+    "model_usage": {
+     "claude-haiku-4-5-20251001": {
+      "cacheCreationInputTokens": 20774,
+      "cacheReadInputTokens": 34237,
+      "canonicalModel": "claude-haiku-4-5",
+      "contextWindow": 200000,
+      "costBasis": "list",
+      "costUSD": 0.04917969999999999,
+      "inputTokens": 18,
+      "maxOutputTokens": 32000,
+      "outputTokens": 838,
+      "provider": "firstParty",
+      "thinkingTokens": 571,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 1,
+    "num_turns": 2,
+    "permission_denials": [],
+    "total_cost_usd": 0.04917969999999999,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 20774,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 20774,
+     "cache_read_input_tokens": 34237,
+     "fallback_credit": null,
+     "inference_geo": "not_available",
+     "input_tokens": 18,
+     "iterations": [],
+     "output_tokens": 838,
+     "output_tokens_details": {
+      "thinking_tokens": 571
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   }
+  ]
+ },
+ "cross_check": [],
+ "environment": {
+  "file": "environment.json",
+  "sha256": "657e1aa010feb208317b0303f4759c89d67880311a0cea571215e048c5d807dc"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "c4ae5002916f66d40070d779b8a36307a439d4db6ea98c17b2ae26d5bd0e660b",
+  "kind": "generated",
+  "seed": 20261009,
+  "variant": "paired-end"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "claude-haiku-4-5-20251001",
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "bypassPermissions",
+ "permission_mode_passed": "bypassPermissions",
+ "permission_mode_recorded": "bypassPermissions",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-871e32bd",
+ "published": {
+  "records_a_grader_reads": "identical before and after",
+  "removed": [],
+  "sha256_after": "bf95aee704f95408248ef9ec89d14941b11299171ec67ae05e5bab8e508f2d15",
+  "sha256_before": "bf95aee704f95408248ef9ec89d14941b11299171ec67ae05e5bab8e508f2d15",
+  "transcript": "transcript.jsonl",
+  "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+ },
+ "repeat": 1,
+ "row": 388,
+ "row_commit": "8b46fad181e9870aa15912a6b2b4eed455c48a47",
+ "session_id": "871e32bd-38f9-58ee-9538-9f7539303f11",
+ "source": "/tmp/run-871e32bd/data/staging/run-871e32bd/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "subagents": [],
+ "task": "conditional-yes",
+ "transcript": "transcript.jsonl",
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "Let's begin a new project. The project title is run-871e32bd.",
+   "then": null
+  }
+ ],
+ "wording": "w4"
+}
