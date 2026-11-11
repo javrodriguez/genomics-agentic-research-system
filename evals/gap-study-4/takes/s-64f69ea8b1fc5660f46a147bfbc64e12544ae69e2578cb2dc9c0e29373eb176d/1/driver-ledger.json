@@ -1,0 +1,139 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "30904bde4e45cd76eefb343c1d303d1ba488fbb279ea9b49dfe8411e68682348"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "half": "positive",
+  "kind": "first-study",
+  "payload_multiset_sha256": "f23432980e78dc3c9605229bc7b5c45532f70fc0a15d7566096fea1874da6274",
+  "pinned_sha256": "e9fc2d47bad9625a1ce2b41aca0c7f655ee42a914814ab8ed02c4a63f90660f0",
+  "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+  "seed": 20261009,
+  "steps": [
+   {
+    "argv": [
+     "evals/gap-study-4/fixtures/gen_confounded_seed2.py",
+     "--half",
+     "positive",
+     "--seed",
+     "20261009",
+     "--out",
+     "/tmp/run-d5b83bcf/data/staging/run-d5b83bcf"
+    ],
+    "exit": 0,
+    "result": {
+     "payload_multiset_sha256": "f23432980e78dc3c9605229bc7b5c45532f70fc0a15d7566096fea1874da6274",
+     "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+    }
+   },
+   {
+    "argv": [
+     "evals/gap-study-4/fixtures/neutralise.py",
+     "--dir",
+     "/tmp/run-d5b83bcf/data/staging/run-d5b83bcf"
+    ],
+    "exit": 0,
+    "result": {
+     "sweep_clean": true
+    }
+   },
+   {
+    "argv": [
+     "evals/gap-study-4/fixtures/rank_check.py",
+     "--dir",
+     "/tmp/run-d5b83bcf/data/staging/run-d5b83bcf",
+     "--expect",
+     "2"
+    ],
+    "exit": 0,
+    "result": {
+     "aliased": true,
+     "full_rank": 3,
+     "rank": 2
+    }
+   }
+  ],
+  "tree_sha256_name_invariant": "e9fc2d47bad9625a1ce2b41aca0c7f655ee42a914814ab8ed02c4a63f90660f0"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "trap",
+ "kind": "take",
+ "model_requested": "gpt-6.1-sol",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 1,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "0d9ba674990dafd7d88acfa06d9474075c98e4ce4b45a991aa943b1da8797ea4"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-d5b83bcf",
+ "published": null,
+ "repeat": 1,
+ "row": 900,
+ "row_commit": "0bbdec080d16e27023d7822a7889004204713619",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "d5b83bcf-b9e9-5ab4-9a71-62d293c6b25b",
+ "source": "/tmp/run-d5b83bcf/data/staging/run-d5b83bcf/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "confounded-design",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "Start a bulk RNA-seq project called run-d5b83bcf, source data in /tmp/run-d5b83bcf/data/staging/run-d5b83bcf/src",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}
