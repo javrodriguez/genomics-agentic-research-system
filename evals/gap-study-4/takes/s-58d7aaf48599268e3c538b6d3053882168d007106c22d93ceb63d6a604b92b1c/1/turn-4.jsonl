@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1cac2-d922-70c2-8fe6-5796052c44d6"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The source files stay where they are. Stage 00 creates symlinks under `00_data/rnaseq_bulk/raw/`; it does not copy or move the files.\n\nConfirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":251548,"cached_input_tokens":192256,"cache_write_input_tokens":0,"output_tokens":1432,"reasoning_output_tokens":55}}
