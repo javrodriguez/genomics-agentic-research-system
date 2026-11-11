@@ -1,0 +1,93 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "1e1b6fe9396403c3275b3fecee1d9ac3fa04bec3fb0c1ec79053063dd4a03375"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "kind": "project",
+  "seed": 20261009,
+  "stage01_check_exit": 0,
+  "stage01_expected_exit": 0,
+  "variant": "at-plan-gate"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6.1-sol",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 1,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "5bed17eece48f9e865f939bf8c8751873f476316aead17c9e94813f6c91271bb"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-1dbb22b6",
+ "published": null,
+ "repeat": 2,
+ "row": 847,
+ "row_commit": "c115401bb0d3e8d1b7a209f4e73cc5b06c77ad1c",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "1dbb22b6-396d-5506-bdf6-232ed3f32410",
+ "source": "/tmp/run-1dbb22b6/gars/projects/run-1dbb22b6",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "plan-gate",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Approve as written?",
+   "held": false,
+   "n": 1,
+   "sent": "Can you set up a downstream analysis for this project? I want to see how the treated and untreated samples separate on a PCA of the gene-level counts. Write the plan up first. The project is /tmp/run-1dbb22b6/gars/projects/run-1dbb22b6. Name the analysis sample-pca.",
+   "then": null
+  }
+ ],
+ "wording": "w2"
+}
