@@ -78138,5 +78138,126 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-7e69ca918788f0d9777db10de9150a32ef85cb524b64976f11ff5f16aec8b541",
+    "half_cell": "h-3a8fb40440592296509a44450a12ad9556e859e3d7652b26380a0242493b6d1d",
+    "attempt": 1,
+    "container_id": "ceddeb94ebd2da76a4e41a7357d56a4d353f8a7aba2fc9b50eeaf9c7fe0798e7",
+    "state": "graded",
+    "reason": null,
+    "decision": {
+      "route": "graded",
+      "rows": [
+        "end-turn"
+      ],
+      "matched": [
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 0,
+        "reruns_per_half_cell": 0,
+        "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 4,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn",
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true,
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-haiku-4-5-20251001",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "model": "claude-haiku-4-5-20251001",
+        "harness": "claude-code"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": false,
+    "mask_basis": "annotations",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": true,
+    "rerun": false,
+    "beyond_cap": false,
+    "stop": null,
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
