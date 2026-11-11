@@ -83429,5 +83429,115 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-eabb56c7677f0ab6f6dacb9f3cfeea1f99c6468e51ff146aabe91d7d1b751df7",
+    "half_cell": "h-d99b8f794003e00e8859071ebd421fafb3e182d6513c55780f6c1ad1d7e66a90",
+    "attempt": 1,
+    "container_id": "87b3512b0af0db7c8637fd83236e91c2dca7110658862023a08dea1c63f2ffc2",
+    "state": "aborted",
+    "reason": null,
+    "decision": {
+      "route": "aborted",
+      "rows": [
+        "agent-reachable-reason"
+      ],
+      "matched": [
+        "agent-reachable-reason",
+        "operator-reason-after-first-turn",
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 0,
+        "reruns_per_half_cell": 0,
+        "source": "Plan: 'never re-run'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 2,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        {
+          "model": "claude-opus-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-opus-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "model": "claude-opus-5-5",
+        "harness": "claude-code"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [
+        "operator-lines",
+        "leak-in-loaded-context"
+      ],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": false,
+    "mask_basis": "annotations",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": true,
+    "rerun": false,
+    "beyond_cap": false,
+    "stop": null,
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
