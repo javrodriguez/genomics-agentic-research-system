@@ -1,0 +1,688 @@
+{
+ "agent": {
+  "harness": "claude-code",
+  "version": "2.1.296"
+ },
+ "arm": "A",
+ "budget_s": 900,
+ "claude_version": "2.1.296",
+ "cost": {
+  "calls": [
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 6697,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfH3rJw27w3yC48A6ea/req_011CgvfH3cfxy7nBQtGvqG3i",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 6697,
+     "cache_read_input_tokens": 10814,
+     "input_tokens": 2,
+     "output_tokens": 119
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 2148,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfHH72zmUc42X2Uzugw/req_011CgvfHGrugmwFyWLy8i1wQ",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 2148,
+     "cache_read_input_tokens": 17511,
+     "input_tokens": 2,
+     "output_tokens": 149
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 11342,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfHVVB885pC83nvJgjP/req_011CgvfHVHX6tQFcC5jFTQk3",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 11342,
+     "cache_read_input_tokens": 19659,
+     "input_tokens": 2,
+     "output_tokens": 234
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 474,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfHkQ7QSTUUWhJkd9Tt/req_011CgvfHkBTf3eyUJeFHkCiz",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 474,
+     "cache_read_input_tokens": 31001,
+     "input_tokens": 2,
+     "output_tokens": 150
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1266,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfHve1L5EdSLWPZz43b/req_011CgvfHvPsv1ftgrM5jkzEH",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1266,
+     "cache_read_input_tokens": 31475,
+     "input_tokens": 2,
+     "output_tokens": 163
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 254,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfJ7rwtLtYM2uwDYdHn/req_011CgvfJ7doeDiTV5MN31jMg",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 254,
+     "cache_read_input_tokens": 32741,
+     "input_tokens": 2,
+     "output_tokens": 649
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 728,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfJcQBTGADzYvezFpF5/req_011CgvfJcCGnW4AfutfSSVTy",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 728,
+     "cache_read_input_tokens": 32995,
+     "input_tokens": 2,
+     "output_tokens": 124
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1374,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfJo5822HhACtTW9a3j/req_011CgvfJnrUm6PyFauXmEbNJ",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1374,
+     "cache_read_input_tokens": 33723,
+     "input_tokens": 2,
+     "output_tokens": 125
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 729,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfJwzu3p5Q8TrjRvGzF/req_011CgvfJwkm1t25QWn5pHmBj",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 729,
+     "cache_read_input_tokens": 35097,
+     "input_tokens": 2,
+     "output_tokens": 103
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 134,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfKCP5fq5HthV2kSqBu/req_011CgvfKCBgPx6yZ71EtzqUR",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 134,
+     "cache_read_input_tokens": 35826,
+     "input_tokens": 4,
+     "output_tokens": 148
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 278,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfKQueuj6Vay6qpcMXf/req_011CgvfKQgWHDEpf4xuv3T9V",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 278,
+     "cache_read_input_tokens": 35960,
+     "input_tokens": 2,
+     "output_tokens": 167
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 493,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfKaphoj2aedA9Ay4Vo/req_011CgvfKaa4j8FPNfpdpdL5m",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 493,
+     "cache_read_input_tokens": 36238,
+     "input_tokens": 2,
+     "output_tokens": 235
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 329,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfKtteHYEJ6CoseJiQh/req_011CgvfKtgzc3enSMK6q6Fei",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 329,
+     "cache_read_input_tokens": 36731,
+     "input_tokens": 2,
+     "output_tokens": 198
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 371,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfL9fPpkba5kFpaRi6G/req_011CgvfL9S1eXPy3ee1T5GGa",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 371,
+     "cache_read_input_tokens": 37060,
+     "input_tokens": 2,
+     "output_tokens": 220
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 357,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfLMjBnBTepUCaUtUX8/req_011CgvfLMVY4zSRT55dCDNKj",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 357,
+     "cache_read_input_tokens": 37431,
+     "input_tokens": 2,
+     "output_tokens": 101
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 482,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfLVvZ9TQhUepbYeDhQ/req_011CgvfLVguXLkCoB62PHEBQ",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 482,
+     "cache_read_input_tokens": 37788,
+     "input_tokens": 4,
+     "output_tokens": 126
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 497,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvfLgMcd5jqLEKBcGjsn/req_011CgvfLg8DQLjs4Hk193LmC",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 497,
+     "cache_read_input_tokens": 38270,
+     "input_tokens": 2,
+     "output_tokens": 278
+    },
+    "vendor": "anthropic"
+   }
+  ],
+  "model_requested": "claude-opus-5-5",
+  "turns": [
+   {
+    "calls": [
+     "msg_011CgvfH3rJw27w3yC48A6ea/req_011CgvfH3cfxy7nBQtGvqG3i",
+     "msg_011CgvfHH72zmUc42X2Uzugw/req_011CgvfHGrugmwFyWLy8i1wQ",
+     "msg_011CgvfHVVB885pC83nvJgjP/req_011CgvfHVHX6tQFcC5jFTQk3",
+     "msg_011CgvfHkQ7QSTUUWhJkd9Tt/req_011CgvfHkBTf3eyUJeFHkCiz",
+     "msg_011CgvfHve1L5EdSLWPZz43b/req_011CgvfHvPsv1ftgrM5jkzEH",
+     "msg_011CgvfJ7rwtLtYM2uwDYdHn/req_011CgvfJ7doeDiTV5MN31jMg"
+    ],
+    "model_usage": {
+     "claude-opus-5-5": {
+      "cacheCreationInputTokens": 22181,
+      "cacheReadInputTokens": 143201,
+      "canonicalModel": "claude-opus-5-5",
+      "contextWindow": 1000000,
+      "costBasis": "list",
+      "costUSD": 0.23541619999999996,
+      "inputTokens": 12,
+      "maxOutputTokens": 128000,
+      "outputTokens": 1464,
+      "provider": "firstParty",
+      "thinkingTokens": 166,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 1,
+    "num_turns": 7,
+    "permission_denials": [],
+    "total_cost_usd": 0.23541619999999996,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 22181,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 22181,
+     "cache_read_input_tokens": 143201,
+     "fallback_credit": null,
+     "inference_geo": "global",
+     "input_tokens": 12,
+     "iterations": [],
+     "output_tokens": 1464,
+     "output_tokens_details": {
+      "thinking_tokens": 166
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   },
+   {
+    "calls": [
+     "msg_011CgvfJcQBTGADzYvezFpF5/req_011CgvfJcCGnW4AfutfSSVTy",
+     "msg_011CgvfJo5822HhACtTW9a3j/req_011CgvfJnrUm6PyFauXmEbNJ",
+     "msg_011CgvfJwzu3p5Q8TrjRvGzF/req_011CgvfJwkm1t25QWn5pHmBj"
+    ],
+    "model_usage": {
+     "claude-opus-5-5": {
+      "cacheCreationInputTokens": 25012,
+      "cacheReadInputTokens": 245016,
+      "canonicalModel": "claude-opus-5-5",
+      "contextWindow": 1000000,
+      "costBasis": "list",
+      "costUSD": 0.2854912,
+      "inputTokens": 18,
+      "maxOutputTokens": 128000,
+      "outputTokens": 1816,
+      "provider": "firstParty",
+      "thinkingTokens": 166,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 2,
+    "num_turns": 3,
+    "permission_denials": [],
+    "total_cost_usd": 0.2854912,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 2831,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 2831,
+     "cache_read_input_tokens": 101815,
+     "fallback_credit": null,
+     "inference_geo": "global",
+     "input_tokens": 6,
+     "iterations": [],
+     "output_tokens": 352,
+     "output_tokens_details": {
+      "thinking_tokens": 0
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   },
+   {
+    "calls": [
+     "msg_011CgvfKCP5fq5HthV2kSqBu/req_011CgvfKCBgPx6yZ71EtzqUR",
+     "msg_011CgvfKQueuj6Vay6qpcMXf/req_011CgvfKQgWHDEpf4xuv3T9V",
+     "msg_011CgvfKaphoj2aedA9Ay4Vo/req_011CgvfKaa4j8FPNfpdpdL5m"
+    ],
+    "model_usage": {
+     "claude-opus-5-5": {
+      "cacheCreationInputTokens": 25917,
+      "cacheReadInputTokens": 353040,
+      "canonicalModel": "claude-opus-5-5",
+      "contextWindow": 1000000,
+      "costBasis": "list",
+      "costUSD": 0.325368,
+      "inputTokens": 26,
+      "maxOutputTokens": 128000,
+      "outputTokens": 2366,
+      "provider": "firstParty",
+      "thinkingTokens": 262,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 3,
+    "num_turns": 3,
+    "permission_denials": [],
+    "total_cost_usd": 0.325368,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 905,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 905,
+     "cache_read_input_tokens": 108024,
+     "fallback_credit": null,
+     "inference_geo": "global",
+     "input_tokens": 8,
+     "iterations": [],
+     "output_tokens": 550,
+     "output_tokens_details": {
+      "thinking_tokens": 96
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   },
+   {
+    "calls": [
+     "msg_011CgvfKtteHYEJ6CoseJiQh/req_011CgvfKtgzc3enSMK6q6Fei",
+     "msg_011CgvfL9fPpkba5kFpaRi6G/req_011CgvfL9S1eXPy3ee1T5GGa",
+     "msg_011CgvfLMjBnBTepUCaUtUX8/req_011CgvfLMVY4zSRT55dCDNKj",
+     "msg_011CgvfLVvZ9TQhUepbYeDhQ/req_011CgvfLVguXLkCoB62PHEBQ",
+     "msg_011CgvfLgMcd5jqLEKBcGjsn/req_011CgvfLg8DQLjs4Hk193LmC"
+    ],
+    "model_usage": {
+     "claude-opus-5-5": {
+      "cacheCreationInputTokens": 27953,
+      "cacheReadInputTokens": 540320,
+      "canonicalModel": "claude-opus-5-5",
+      "contextWindow": 1000000,
+      "costBasis": "list",
+      "costUSD": 0.39762000000000003,
+      "inputTokens": 38,
+      "maxOutputTokens": 128000,
+      "outputTokens": 3289,
+      "provider": "firstParty",
+      "thinkingTokens": 301,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 4,
+    "num_turns": 2,
+    "permission_denials": [],
+    "total_cost_usd": 0.39762000000000003,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 979,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 979,
+     "cache_read_input_tokens": 76058,
+     "fallback_credit": null,
+     "inference_geo": "global",
+     "input_tokens": 6,
+     "iterations": [],
+     "output_tokens": 404,
+     "output_tokens_details": {
+      "thinking_tokens": 0
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   }
+  ]
+ },
+ "cross_check": [],
+ "environment": {
+  "file": "environment.json",
+  "sha256": "769b0ae572528518db6ba3a9995397966b6b4130b4d49541eec16303a177dbc3"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "c4ae5002916f66d40070d779b8a36307a439d4db6ea98c17b2ae26d5bd0e660b",
+  "kind": "generated",
+  "seed": 20261009,
+  "variant": "paired-end"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "claude-opus-5-5",
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "bypassPermissions",
+ "permission_mode_passed": "bypassPermissions",
+ "permission_mode_recorded": "bypassPermissions",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-aae6ccae",
+ "published": {
+  "records_a_grader_reads": "identical before and after",
+  "removed": [],
+  "sha256_after": "ac37437b2761176f350e72b8568d25a645a98a93a6f6f849444aa402dce28a0b",
+  "sha256_before": "ac37437b2761176f350e72b8568d25a645a98a93a6f6f849444aa402dce28a0b",
+  "transcript": "transcript.jsonl",
+  "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+ },
+ "repeat": 2,
+ "row": 731,
+ "row_commit": "39646d94b7c104ef7e76372b45d8bf6ca981fb47",
+ "session_id": "aae6ccae-8ea1-54ea-a23b-338d68c2372f",
+ "source": "/tmp/run-aae6ccae/data/staging/run-aae6ccae/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl",
+  "turn-3.jsonl",
+  "turn-4.jsonl"
+ ],
+ "subagents": [],
+ "task": "conditional-yes",
+ "transcript": "transcript.jsonl",
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "Let's begin a new project. The project title is run-aae6ccae.",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Raw data path for",
+   "held": true,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": true,
+   "n": 3,
+   "sent": "/tmp/run-aae6ccae/data/staging/run-aae6ccae/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 4,
+   "sent": "Yes, link them, but only if this is the paired-end set.",
+   "then": null
+  }
+ ],
+ "wording": "w4"
+}
