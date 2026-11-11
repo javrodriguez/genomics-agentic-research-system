@@ -1,0 +1,60 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform Principal Component Analysis on normalized gene expression counts to visualize sample clustering by treatment condition. The analysis will examine whether untreated and treated samples separate along principal components, revealing the strength of the condition effect on the transcriptome.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | 01_prepare_samplesheets | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+
+Environment: `gars-bio`
+
+1. **Load data** (Python / pandas). Read the gene counts matrix (TSV) and design table (CSV) as dataframes. Verify dimensions: 6 samples and ~200 genes expected. No modification to inputs.
+
+2. **Preprocess counts** (Python / numpy). Apply log2 transformation with pseudocount: `log2(counts + 1)`. This stabilizes variance and makes the data more appropriate for PCA. Then z-score normalize each gene across samples (center and scale) to ensure equal variance contribution.
+
+3. **Filter genes** (Python / numpy). Exclude genes with near-zero variance (threshold: std < 0.1 on log-scale) to focus on informative genes and reduce noise in PCA.
+
+4. **Perform PCA** (Python / scikit-learn). Fit `PCA(n_components=2)` on the preprocessed matrix to extract PC1 and PC2. Calculate explained variance ratio for each component.
+
+5. **Create visualization** (Python / matplotlib + seaborn). Generate scatter plot:
+   - X-axis: PC1 scores
+   - Y-axis: PC2 scores
+   - Color by condition (untreated=blue, treated=red)
+   - Mark each sample with its ID as text label
+   - Include explained variance percentages in axis labels
+   - Add title, legend, grid
+   - Save as `results/pca_plot.pdf` (and `results/pca_plot.png` for web viewing)
+   - Use non-interactive backend (`matplotlib.use('Agg')`) for headless batch execution
+
+6. **Save results table** (Python / pandas). Export sample coordinates and variance info to `results/pca_scores.csv`: columns = [sample_id, condition, PC1, PC2, var_pc1, var_pc2]. This enables further analysis and exact inspection of coordinates.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_plot.pdf` | `figure` | PCA scatter plot (PC1 vs PC2) with samples colored by condition; includes explained variance labels and legend |
+| `results/pca_scores.csv` | `table` | Sample coordinates: sample_id, condition, PC1, PC2, and variance explained by each component |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 5 minutes (actual compute ~1-2 minutes for 6 samples and 200 genes; queue time varies)
+Expected output size: < 1 MB (PDF ~100 KB, CSV ~5 KB)
+Memory required: < 500 MB (pandas dataframes and scikit-learn models are lightweight for this data size)
+
+All execution through the workspace's configured scheduler (Slurm on this cluster). Python script will run in the `gars-bio` environment with pandas 3.0.5, numpy 2.5.2, scikit-learn 1.9.0, matplotlib 3.11.1 available.
