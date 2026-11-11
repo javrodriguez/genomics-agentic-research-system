@@ -1,0 +1,92 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "a53b085d8f150fd998e41de000a7b4d9d970fd83f7a1d105bc6a03ad3a85f47d"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6.1-sol",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 1,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "a753dfe9f5bd879c94f10fc8e55e3e0de18c735b6e7b45d016069dc46d25df5b"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-6c024932",
+ "published": null,
+ "repeat": 2,
+ "row": 902,
+ "row_commit": "339ff4f643093bdc0bae50f361b26ec215011766",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "6c024932-fcb8-57ce-8f75-5e9168755529",
+ "source": "/tmp/run-6c024932/data/staging/run-6c024932/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "template-adherence",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "Start a bulk RNA-seq project called run-6c024932, source data in /tmp/run-6c024932/data/staging/run-6c024932/src",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}
