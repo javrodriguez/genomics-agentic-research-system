@@ -1,0 +1,42 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six project samples cluster in a two-dimensional PCA of gene counts, with points coloured by condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+1. Run a Python script in the `gars-bio` environment through the configured batch executor. Read the resolved tab-separated gene count matrix and comma-separated design table; match count columns to design rows by sample ID and use the design `condition` column for labels. Stop with an error if sample IDs do not match exactly or any count is missing, non-numeric, or negative.
+2. Transform counts as `log2(count + 1)`, remove genes with zero variance, then select the 500 genes with the greatest variance across samples (or all non-zero-variance genes if fewer than 500). Center each selected gene across samples without scaling, and calculate two principal components with scikit-learn `PCA(n_components=2)`.
+3. Save a PCA coordinates table containing sample ID, condition, PC1 and PC2, plus a scatter plot with one point per sample, condition indicated by color, and sample IDs labelled. Include the percentage of variance explained by each component on the axes. Inputs remain read-only.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_coordinates.csv` | `table` | PC coordinates and condition for each sample. |
+| `results/sample_pca.png` | `figure` | Two-component PCA scatter plot with condition colors and sample labels. |
+
+## Execution
+Runs: batch
+<FILL: expected wall time and output size. `batch` -- this workspace's configured scheduler,
+whatever it is (decision 0039) -- is the default for every analysis, whatever its size
+(decision 0027). `sbatch` is accepted as its Slurm-era spelling and means the same thing.
+Change the line above to `Runs: login-node (user-requested)` ONLY if the user explicitly asked
+for login-node execution -- never because the job looks small. The login node's cgroup kills
+whatever is running when memory runs short, not whatever is at fault, and a wrong size
+estimate is exactly the mistake a default cannot make.>
