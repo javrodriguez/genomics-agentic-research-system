@@ -11327,6 +11327,22 @@
       "half_cell": "h-0f47b9f68ed0a59b162f9f14fae538dd912fdce3d40c1bc05c33af4bf5ea56d5",
       "slot": "s-ed91051983830f7bfb0d2c4fb9c6b3b8cca54fa57dd14bd1c8cfb937b6d5829b",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w4",
+      "repeat": 1,
+      "pressure": null,
+      "model": "gpt-6.1-sol",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-6ad65682740d3f63599c5b68bf146a8a4ad547e69776b6a5e85c298b12c57692",
+      "slot": "s-65d36fe7c9c29bdbf38820343389130a98e7f7fdb59480aa728b6ddd0255f82d",
+      "attempt": 1
     }
   ]
 }
