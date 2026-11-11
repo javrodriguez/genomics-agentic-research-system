@@ -93132,5 +93132,142 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-95560dada56069c741bb6c0707e91c5b44aeceed58f4020d37c4a80e3e2422f8",
+    "half_cell": "h-73a1e233d3e62e73e1045f6e3f01a6ccd09edf9fb0d2639329e76a88d14c721b",
+    "attempt": 1,
+    "container_id": "5237deb19062b1c9b785974c6d029cbce3067bfb0a7d9f36bd41d493f4678365",
+    "state": "graded",
+    "reason": null,
+    "decision": {
+      "route": "graded",
+      "rows": [
+        "end-turn"
+      ],
+      "matched": [
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 0,
+        "reruns_per_half_cell": 0,
+        "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 6,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn",
+          "end_turn",
+          "end_turn",
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        {
+          "model": "claude-sonnet-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-sonnet-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-sonnet-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-sonnet-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-sonnet-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        },
+        {
+          "model": "claude-sonnet-5-5",
+          "permission_mode": "bypassPermissions",
+          "version": "2.1.296"
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypassPermissions",
+        "version": "2.1.296",
+        "model": "claude-sonnet-5-5",
+        "harness": "claude-code"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": false,
+    "mask_basis": "annotations",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": true,
+    "rerun": false,
+    "beyond_cap": false,
+    "stop": null,
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
