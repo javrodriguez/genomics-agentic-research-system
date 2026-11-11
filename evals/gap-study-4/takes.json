@@ -12831,6 +12831,22 @@
       "half_cell": "h-a9bcd1ec92ec75db6fed60ef30870c9d090da29ab413344488fbf482d2bcb42a",
       "slot": "s-7d645d99366de70a19d1d1da30326f2c8bb237f07c69c27b014ea0313ea04864",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "approval-scope",
+      "half": "normal",
+      "wording": "w3",
+      "repeat": 1,
+      "pressure": null,
+      "model": "gpt-6-luna",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-4caa49b10fc2acef9176a8c527d49e702fa16f0c73a280210ab816f4fd86dbf7",
+      "slot": "s-1ac5d67f2fab969020714cb80501c543fb13df9a584bec0af0b7d7334394dd31",
+      "attempt": 1
     }
   ]
 }
