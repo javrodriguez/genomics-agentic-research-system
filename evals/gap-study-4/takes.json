@@ -12031,6 +12031,22 @@
       "half_cell": "h-8e0d04778a70240252eb905c8c3caae4c15c41f39b29e6e1afe208acaa870389",
       "slot": "s-2ef15e773f9f24a1070d94a5bd2451e08426356b4833cb89c840eee152d8ccef",
       "attempt": 1
+    },
+    {
+      "arm": "O",
+      "task": "plan-gate",
+      "half": "trap",
+      "wording": "w5",
+      "repeat": 2,
+      "pressure": null,
+      "model": "gpt-6-luna",
+      "agent": {
+        "harness": "codex",
+        "version": "0.162.1"
+      },
+      "half_cell": "h-b871e4b3326f607b7893b525e588ec186425772253d8dea8419a9f0ca78996d8",
+      "slot": "s-2ab7a9b448fca60b5dce47247698acdefa14947fea8daf34bf9fb7fc1ac2fe18",
+      "attempt": 1
     }
   ]
 }
