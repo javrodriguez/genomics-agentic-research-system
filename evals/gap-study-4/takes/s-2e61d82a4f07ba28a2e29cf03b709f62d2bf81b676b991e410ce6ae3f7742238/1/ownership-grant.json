@@ -1,0 +1,30 @@
+{
+ "ok": true,
+ "record": {
+  "ok": true,
+  "steps": [
+   {
+    "container_id": "85b49a00852705ea6a69134e248d9a58cfd20360263778a4fae5d9f49cf25c13",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "",
+    "step": "grant-run_tree"
+   },
+   {
+    "container_id": "ac23d4a624c5237ece230c7c2ac7c4424c8a7efd595c63cbbedda53f0aebdd7e",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "",
+    "step": "grant-config_dir"
+   },
+   {
+    "container_id": "271fe042bb166c98aa267c6e171b4ab0ba1fd8e679cf8620795dfc68fc9e21d8",
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "",
+    "step": "grant-evidence_dir"
+   }
+  ]
+ },
+ "why": null
+}
