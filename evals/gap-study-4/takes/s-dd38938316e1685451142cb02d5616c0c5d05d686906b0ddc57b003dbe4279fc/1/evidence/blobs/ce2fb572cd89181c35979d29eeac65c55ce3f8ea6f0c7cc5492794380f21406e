@@ -1,0 +1,44 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+This plan is awaiting user review. Approval freezes the plan; no analysis executes before approval.
+
+## Goal
+Perform principal component analysis of the gene count matrix, with sample points coloured by condition, to describe sample relationships on PC1 and PC2.
+
+## Inputs
+Resolve both types with `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design` again at execution time. Paths below are relative to the project and reflect current resolution; inputs remain read-only.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+The current design contains six samples: A1–A3 untreated and B1–B3 treated. The matrix contains gene_id and gene_name annotations followed by sample columns. Counts are length-scaled Salmon gene counts and may be fractional; preserve their values without rounding.
+
+## Method
+1. After approval, write `scripts/sample_pca.py` and `scripts/submit.sh` inside this analysis directory. Run all numerical analysis and plotting in one batch job using the existing `gars-bio` environment, sourced through `_system/gars-env.sh`. Use pandas for tables, NumPy for numerical operations and singular value decomposition, and matplotlib with the Agg backend for plotting. Record package versions; install nothing.
+2. Resolve the inputs by type and record their paths and SHA-256 checksums in the report. Read the tab-separated count matrix and comma-separated design. Require unique, nonempty gene_id values and sample_id values, nonempty condition labels, finite nonnegative numeric counts, positive sample library totals, and an exact match between matrix sample columns and design sample IDs. Exclude annotation columns from numeric data, align the design to matrix column order, and stop with the actual error on any validation failure. Include every design sample without automatic exclusions.
+3. Filter genes to counts per million (CPM) >= 1 in at least two samples, computing CPM using each sample's total across all input genes. Transform retained CPM values with log2(CPM + 1). Remove genes with zero variance after transformation and use all remaining genes; do not select genes by condition or differential expression. Record totals before and after each filter. Stop if fewer than three samples or two variable genes remain, or if the centred matrix has rank less than two.
+4. Transpose to samples by genes and centre each gene across samples without scaling genes to unit variance. Compute deterministic PCA with `numpy.linalg.svd(..., full_matrices=False)`. Scores are U multiplied by singular values; gene loadings are rows of Vt transposed. Orient each component so its largest absolute gene loading is positive (first gene in input order breaks ties), flipping the corresponding scores together. Retain all available components, with variance S squared / (n_samples - 1) and explained variance ratios using the sum across all components.
+5. Plot PC1 versus PC2 with one labelled point per sample, condition-based colours (untreated blue #0072B2; treated orange #D55E00), and a condition legend. Label axes with explained variance percentages, use equal physical units on both axes, and export PNG at 300 dpi and PDF. Do not draw confidence ellipses or perform significance tests, batch correction, or outlier removal.
+6. Export sample scores with sample_id, condition and all component scores; component variance and explained variance ratios; and gene loadings with gene_id and gene_name where available. Write a concise report documenting inputs, validation, filtering, normalisation, PCA settings, versions, sample counts per condition, and PC1/PC2 explained variance. Describe only the requested sample relationships, without causal or differential-expression claims.
+7. On success, run `_system/stage03_analysis.py verify` and append its returned history entry verbatim as required by the stage contract. On failure, record FAILED and report the actual error; do not silently alter the method or retry.
+
+## Outputs
+Paths are relative to this analysis directory; types use `_references/artifact_types.md`.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 versus PC2, labelled samples coloured by condition, 300 dpi |
+| results/sample_pca.pdf | figure | PDF version of the same PCA plot |
+| results/sample_scores.csv | table | Sample IDs, conditions and all principal component scores |
+| results/explained_variance.csv | table | Component variance, explained variance ratio and cumulative ratio |
+| results/gene_loadings.csv | table | Retained gene identifiers and loadings for all components |
+| results/report.md | report | Input provenance, settings, validation and filtering summaries, versions and PCA summary |
+
+## Execution
+Runs: batch
+
+Submit through `_system/executorlib.py submit --workspace <project directory> <analysis directory>/scripts/submit.sh` using the project's configured Slurm executor. Request 1 CPU, 4 GB RAM and 15 minutes, using the project's configured partition. Expected runtime is under 5 minutes for six samples, excluding queue time; expected output size is under 20 MB. Keep scripts, results and job logs inside this analysis directory. Confirm the named existing environment and required libraries when executing; missing dependencies block execution and must be reported without installation.
