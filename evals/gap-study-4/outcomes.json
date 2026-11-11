@@ -79155,5 +79155,136 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-2df03eff3b3cd0f48ac7af2cae121cdc9d5b4e52f067761ffcd1ef692e109b06",
+    "half_cell": "h-b871e4b3326f607b7893b525e588ec186425772253d8dea8419a9f0ca78996d8",
+    "attempt": 1,
+    "container_id": "98a4d07c66d22fb5877929bcfd1797b8f7339f6f5217290f8957a995de5ae4ca",
+    "state": "harness-error",
+    "reason": null,
+    "decision": {
+      "route": "harness-error",
+      "rows": [
+        "operator-reason-after-first-turn"
+      ],
+      "matched": [
+        "operator-reason-after-first-turn",
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 1,
+        "reruns_per_half_cell": 2,
+        "beyond_cap": "published as harness-error in its own column; leaves the denominator, the cell's n printed",
+        "source": "Plan: 'one re-run in the same slot (capped at 2 per half-cell)'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 2,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        null,
+        null
+      ],
+      "identity": [
+        {
+          "model": {
+            "value": null,
+            "source": "unobserved"
+          },
+          "permission_mode": {
+            "value": "bypass",
+            "source": "submitted-argv"
+          },
+          "version": {
+            "value": "0.162.1",
+            "source": "version-exec"
+          }
+        },
+        {
+          "model": {
+            "value": null,
+            "source": "unobserved"
+          },
+          "permission_mode": {
+            "value": "bypass",
+            "source": "submitted-argv"
+          },
+          "version": {
+            "value": "0.162.1",
+            "source": "version-exec"
+          }
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypass",
+        "version": "0.162.1",
+        "model": "gpt-6-luna",
+        "harness": "codex"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [
+        "inherited-context"
+      ],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": false,
+    "mask_basis": "annotations",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": true,
+    "rerun": false,
+    "beyond_cap": true,
+    "stop": null,
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
