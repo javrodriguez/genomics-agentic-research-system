@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c901-9a75-7cb3-bc8e-4f2f8bf34fbb"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The registrar identified this set as **single-end**, so your condition is not met. No symlinks were created.\n\nProvide a different path for the paired-end `rnaseq_bulk` data, or reply `skip` to omit this assay."}}
+{"type":"turn.completed","usage":{"input_tokens":291487,"cached_input_tokens":256896,"cache_write_input_tokens":0,"output_tokens":1011,"reasoning_output_tokens":0}}
