@@ -11119,6 +11119,22 @@
       "half_cell": "h-381a27bb2dd7aac9022f0bd53409c58f47cf46813c5c3e4c99a8772777ecee25",
       "slot": "s-2d41e72715511d9a88627f8d750968ca37a37f354e32b70c22ad823c6d402f3e",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w3",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-sonnet-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-e916393231e9fb79d3128983863b80d597a634a7fe47ec1fa7b342819e2b77d3",
+      "slot": "s-d9f55b6617f6dc2a29a742c36f5938b0b2ca5bdec2d08f9ac91163c3d0d7080f",
+      "attempt": 1
     }
   ]
 }
