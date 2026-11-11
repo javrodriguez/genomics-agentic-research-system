@@ -1,0 +1,7 @@
+{
+  "actor": "dana",
+  "approved_at": "2026-11-11T11:52:19",
+  "plan_sha256": "d7cf769ff48bfb14d1c39baa1f3c3b4a96690b3fa4abe5255047138d25aa567a",
+  "template_version": "v0.10.0",
+  "tool": "stage03_analysis.py approve"
+}

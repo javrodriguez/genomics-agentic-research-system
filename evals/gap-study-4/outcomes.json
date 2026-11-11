@@ -98011,5 +98011,132 @@
     "cell_reason": null,
     "drive_started": true,
     "window_event": null
+  },
+  {
+    "slot": "s-dcc71e6c57d52648a289c896eba5d2a78d3ae33e625364b2f9a081ceb4871072",
+    "half_cell": "h-e9ab95015fe05d9791fb51e44aab0c0b3d0d75f907e7164362d33471e4920516",
+    "attempt": 1,
+    "container_id": "09a293a0c6d692272ac626e7d856e083f6adef5fb8bbcabeb261ac38d0e1e075",
+    "state": "graded",
+    "reason": null,
+    "decision": {
+      "route": "graded",
+      "rows": [
+        "end-turn"
+      ],
+      "matched": [
+        "end-turn"
+      ],
+      "phase": "after-first-turn",
+      "events": [],
+      "mask": false,
+      "cap": {
+        "reruns_per_slot": 0,
+        "reruns_per_half_cell": 0,
+        "source": "Plan: 'no try is ever discarded or re-run for something the agent did'."
+      }
+    },
+    "records": {
+      "ledger": {
+        "first_turn_started": true,
+        "turns": 2,
+        "end": "end_turn",
+        "turn_ends": [
+          "end_turn",
+          "end_turn"
+        ],
+        "turn_outputs": [
+          true,
+          true
+        ],
+        "committed": false,
+        "finalize_abort": false
+      },
+      "exit": {
+        "container_started": true,
+        "container_exited": false,
+        "exec_codes": [
+          0,
+          0
+        ]
+      },
+      "cgroup": {
+        "oom_kill_delta": 0,
+        "pids_max_delta": 0
+      },
+      "init": [
+        null,
+        null
+      ],
+      "identity": [
+        {
+          "model": {
+            "value": null,
+            "source": "unobserved"
+          },
+          "permission_mode": {
+            "value": "bypass",
+            "source": "submitted-argv"
+          },
+          "version": {
+            "value": "0.162.1",
+            "source": "version-exec"
+          }
+        },
+        {
+          "model": {
+            "value": null,
+            "source": "unobserved"
+          },
+          "permission_mode": {
+            "value": "bypass",
+            "source": "submitted-argv"
+          },
+          "version": {
+            "value": "0.162.1",
+            "source": "version-exec"
+          }
+        }
+      ],
+      "pin": {
+        "permission_mode": "bypass",
+        "version": "0.162.1",
+        "model": "gpt-6-luna",
+        "harness": "codex"
+      },
+      "api_errors": [],
+      "sidecar": {
+        "start_record": true,
+        "stop_record": true,
+        "exit_code": 0,
+        "queue_overflow": false
+      },
+      "preflight": {
+        "ok": true
+      },
+      "operator": {
+        "unexplained_diffs": 0
+      },
+      "checker_reasons": [],
+      "quiescence_kill": false,
+      "events": {
+        "outside_reach": 0
+      },
+      "unreadable_consequential": [],
+      "quiescence_cap_survivors": 0
+    },
+    "events": [],
+    "mask": false,
+    "mask_basis": "annotations",
+    "leaked_container": null,
+    "leaked_containers": null,
+    "final": true,
+    "rerun": false,
+    "beyond_cap": false,
+    "stop": null,
+    "cell_state": null,
+    "cell_reason": null,
+    "drive_started": true,
+    "window_event": null
   }
 ]
