@@ -11807,6 +11807,22 @@
       "half_cell": "h-25fbd63f3022508d855c4a63f5db60ddeef2aa1730b8df5ef2cc151f297cb895",
       "slot": "s-f127f0979b1af6f79f635cdf743dccc3bd9f089c97f82c2b3d2fd20e84a19716",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "confounded-design",
+      "half": "trap",
+      "wording": "w1",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-11728769204b963a073a2dd9344986f61ea7477e52d69ea38da984f8044792f7",
+      "slot": "s-e4f6e65869db93c95aeab9e3ec97ffd0b23206f66c39fd125f66e59f24e90d3f",
+      "attempt": 1
     }
   ]
 }
