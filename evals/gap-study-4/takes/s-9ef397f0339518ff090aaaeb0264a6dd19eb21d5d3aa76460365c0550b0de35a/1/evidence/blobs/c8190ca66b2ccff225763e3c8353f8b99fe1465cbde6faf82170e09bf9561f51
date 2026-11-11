@@ -1,0 +1,69 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six rnaseq_bulk samples (A1-A3 untreated, B1-B3 treated) relate to one another in
+gene-expression space: a principal component analysis of the samples from the gene-level counts,
+plotted with each sample coloured by its `condition`. The plan reports the projection and the
+variance explained; what the separation (or lack of it) means is left to the reader.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+The count matrix is tab-separated: `gene_id`, `gene_name`, then one column per sample (200 genes
+x 6 samples). Values are length-scaled, so non-integer. The design supplies `condition` per
+`sample_id` (untreated: A1-A3; treated: B1-B3).
+
+## Method
+Environment: `gars-bio`. Needs `python3` with `numpy`, `pandas` and `matplotlib`; the PCA itself
+is done by SVD in numpy, so scikit-learn is not required. If any of these is missing from
+`gars-bio`, the plan is blocked (nothing is installed). All steps run in one script,
+`scripts/sample_pca.py`, submitted as one batch job. Inputs are opened read-only.
+
+1. Resolve both input paths with `_system/resolve_artifact.py` (types `counts_gene`, `design`)
+   and pass them to the script as arguments.
+2. Read the counts matrix; set `gene_id` as the index and drop `gene_name` (kept only for a
+   lookup column in the loadings table). Read the design; require that its `sample_id` set equals
+   the count matrix's sample columns exactly, else stop with an error.
+3. Transform: `log2(count + 1)`. No library-size normalisation is added, since the values are
+   already length-scaled by the pipeline.
+4. Filter: drop genes with zero variance across the six samples (they carry no information and
+   would break scaling). Report how many genes were kept. No expression-level or top-N variance
+   filter: all remaining genes are used.
+5. Centre each gene across samples (mean 0). No unit-variance scaling, so highly expressed,
+   highly variable genes contribute proportionally to their variance (the usual
+   `prcomp(scale=FALSE)` behaviour on log data).
+6. PCA by SVD of the samples x genes centred matrix. With 6 samples there are at most 5
+   non-trivial components. Compute the variance explained by each.
+7. Plot PC1 vs PC2: one point per sample, coloured by `condition` (a fixed categorical palette,
+   two colours, legend titled "condition"), each point labelled with its sample ID, axes labelled
+   with `PCn (x.x%)`. Written as PNG (200 dpi) and SVG.
+8. Write the sample coordinates (all PCs), the per-PC variance explained, and the gene loadings
+   (PC1-PC2, with `gene_name`) as tables.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_samples.png | figure | PC1 vs PC2 scatter, samples coloured by condition |
+| results/pca_samples.svg | figure | the same plot, vector |
+| results/pca_coordinates.tsv | table | per-sample scores on every PC, plus `condition` |
+| results/pca_variance.tsv | table | per-PC standard deviation, variance explained, cumulative |
+| results/pca_loadings.tsv | table | gene loadings on PC1 and PC2, with `gene_name` |
+
+## Execution
+Runs: batch
+Expected wall time under a minute once scheduled (200 genes x 6 samples; queue wait excluded),
+a few KB of tables and well under 1 MB of figures. Submitted through the workspace executor.
