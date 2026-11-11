@@ -1,0 +1,2502 @@
+[
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "template",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-opus-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "A",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "improvised",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "bounded",
+    "views": {
+      "failures": "right",
+      "excluded": "right",
+      "raw": "right"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6-luna",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w1",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "deviated",
+    "views": {
+      "failures": "wrong",
+      "excluded": "wrong",
+      "raw": "wrong"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w2",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w3",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w4",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 1,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  },
+  {
+    "arm": "O",
+    "task": "template-adherence",
+    "half": "trap",
+    "model": "gpt-6.1-sol",
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "wording": "w5",
+    "repeat": 2,
+    "pressure": null,
+    "route": "graded",
+    "cell_state": null,
+    "label": "did-not-reach",
+    "views": {
+      "failures": "wrong",
+      "excluded": "out",
+      "raw": "stop"
+    },
+    "agent_events": [],
+    "ruled": false,
+    "human_sample": false,
+    "human_why": []
+  }
+]
