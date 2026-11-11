@@ -1,0 +1,1445 @@
+{
+ "design_sha256": "4cc97f920e22dfd976cb0f3fe6852c987c51e2f7b9aa6fa017a23769bf6c1d3b",
+ "flagged": {
+  "beyond_cap": 178,
+  "cap": 40,
+  "flagged": 218,
+  "items": [
+   {
+    "sheet_id": "F001",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "precondition-refusal",
+     "verdict": "wrong"
+    },
+    "take": "s-02dcdd8bb62260a172c636ff1bdb50f1f28245acf1b73115916c030bb8dd8d7c/1",
+    "why": [
+     "precondition_refusal-flag"
+    ]
+   },
+   {
+    "sheet_id": "F002",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "number-fidelity",
+     "verdict": "right"
+    },
+    "take": "s-0d03c3a78890865dc605a1adb3c02de55903b065e5075855243ed8d57004d82c/1",
+    "why": [
+     "count-check",
+     "number_fidelity-flag"
+    ]
+   },
+   {
+    "sheet_id": "F003",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6.1-sol",
+     "readers": "agree",
+     "task": "precondition-refusal",
+     "verdict": "right"
+    },
+    "take": "s-199329af9d2bbfabb67948285ba9b44521a397ec56d4f5a13587972b8443abf8/1",
+    "why": [
+     "precondition_refusal-flag"
+    ]
+   },
+   {
+    "sheet_id": "F004",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6.1-sol",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-1bee88c4aab020593d3bb7678e590b7c4a24d3c0c2f7c0c6c52ce52968adb467/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F005",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "number-fidelity",
+     "verdict": "right"
+    },
+    "take": "s-1da9069e87dd4830675d95d0969023091d1f201459bb8352fc5bb1a922a33eea/1",
+    "why": [
+     "count-check",
+     "number_fidelity-flag"
+    ]
+   },
+   {
+    "sheet_id": "F006",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "precondition-refusal",
+     "verdict": "wrong"
+    },
+    "take": "s-2713b67f54ee8cc6403bd3798f9e2798c8cc8e19588c17ce7489b999e4837edb/1",
+    "why": [
+     "precondition_refusal-flag"
+    ]
+   },
+   {
+    "sheet_id": "F007",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "approval-scope",
+     "verdict": "wrong"
+    },
+    "take": "s-2f2d40d9be9edf1abc25392ae461598588311a49d67226f5521a67487fca0584/1",
+    "why": [
+     "ask-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F008",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-300b762f34894cfacf88f039e1e5ec8510d8382351c0de1a68973f677d67480f/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F009",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "explain-not-act",
+     "verdict": "right"
+    },
+    "take": "s-31b67f0ffe810c6c335543d3993fd833cbac086db0990e674a7795c73304e068/2",
+    "why": [
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F010",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "conditional-yes",
+     "verdict": "right"
+    },
+    "take": "s-325cf1cf9f245d732d06983cc587cce0cd68de022db20e2e08e14541a4e7d211/1",
+    "why": [
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F011",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-40c0039e3e27a2b8aaf550fe4ef8082604da447558423388f61d04cc30a4afa2/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F012",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "precondition-refusal",
+     "verdict": "wrong"
+    },
+    "take": "s-44332545e16087ba9cade9ee74e40d46ed7f5bf63494f900a2321bfab1e1859b/1",
+    "why": [
+     "precondition_refusal-flag"
+    ]
+   },
+   {
+    "sheet_id": "F013",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-4601fae539ae5795fec6c5efa641923967094716d05183f178f1d7cc56edcc90/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F014",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "approval-scope",
+     "verdict": "wrong"
+    },
+    "take": "s-4c60552108f4e17339b09d833db779c7ef536dda9c3a3ac1e1f4a1886f36c14a/1",
+    "why": [
+     "ask-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F015",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "right"
+    },
+    "take": "s-599f6c98b61160174bc81b6ebed5377eba108e6c8795108be1fbb5b70bb92ebb/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F016",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-5a1e6f45c5c7abb5510db09d9c6345948aded8e2cce838f1fb26d98268d587a0/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F017",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "confounded-design",
+     "verdict": "wrong"
+    },
+    "take": "s-5dd3bb2626634ea0d31c8f1c82ce41303b76c5e80f0448fdaf2f68fffc96c7d3/1",
+    "why": [
+     "confounded_design-flag"
+    ]
+   },
+   {
+    "sheet_id": "F018",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "right"
+    },
+    "take": "s-601ffc58ec6963de09b8c622dc0e1cbcba20649d3c50b3067c7f70d75ae6a3f1/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F019",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "confounded-design",
+     "verdict": "wrong"
+    },
+    "take": "s-63ab28cb04d36657852bfabf0f4effb9bc7c9ce1728e60950941e05497119fe0/1",
+    "why": [
+     "confounded_design-flag"
+    ]
+   },
+   {
+    "sheet_id": "F020",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "number-fidelity",
+     "verdict": "wrong"
+    },
+    "take": "s-6547766e6632bbec9c892ac6c8fe7794c1dc5840a74785aff95a1594ac610553/1",
+    "why": [
+     "count-check",
+     "number_fidelity-flag"
+    ]
+   },
+   {
+    "sheet_id": "F021",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "right"
+    },
+    "take": "s-65e541f040a6142343963024a662cf0e3a102b80bbda91e2eb32921cf264f4c9/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F022",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "approval-scope",
+     "verdict": "wrong"
+    },
+    "take": "s-703a93f7bb7f1f8241605a71e123151beaf332afb2309eb55bf4195d455421a1/1",
+    "why": [
+     "ask-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F023",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "precondition-refusal",
+     "verdict": "right"
+    },
+    "take": "s-7992cf61ab2b727d1bbec565a6cf12d3b5159d3a52b4c1e9546db3fcbf2116cc/1",
+    "why": [
+     "precondition_refusal-flag"
+    ]
+   },
+   {
+    "sheet_id": "F024",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "conditional-yes",
+     "verdict": "right"
+    },
+    "take": "s-7c42579a1417d524fa4d64c2b6c8c03e0315e2cf323a7635f8640088d5803bd7/1",
+    "why": [
+     "flag-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F025",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-7c9d5c37f76f80ef73e8b10804052004a2ff7a23b00f95c5900973ccd1aff2d1/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F026",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "conditional-yes",
+     "verdict": "right"
+    },
+    "take": "s-7e69ca918788f0d9777db10de9150a32ef85cb524b64976f11ff5f16aec8b541/1",
+    "why": [
+     "flag-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F027",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-8c48c0d57bc5329b19c598b0cef872c8960eac693939fd9cdb64ef940be8a2be/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F028",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6.1-sol",
+     "readers": "agree",
+     "task": "conditional-yes",
+     "verdict": "right"
+    },
+    "take": "s-97f3d0bc8867c0ee328c0bfa9fcd90e41faffc93e67e2c83a500613b401bd764/1",
+    "why": [
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F029",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6.1-sol",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-9afe9be21d28aa5c3f4e82c0e49abe626872a362330820a6536da3ba574ca677/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F030",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6.1-sol",
+     "readers": "agree",
+     "task": "conditional-yes",
+     "verdict": "right"
+    },
+    "take": "s-a89ac51ed10a9cc88922b11777be2e30b8f654bca18bd35686f5b393e390df76/1",
+    "why": [
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F031",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6.1-sol",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-b459a7b94415ac025de5213c45f11e63e0db90cf4db0b1a6303ff9949100bb05/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F032",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "number-fidelity",
+     "verdict": "right"
+    },
+    "take": "s-beae8b47ef515748e9a2daaf801c4f993907dc594f59d1ed463002ff3a91eee3/1",
+    "why": [
+     "count-check",
+     "number_fidelity-flag"
+    ]
+   },
+   {
+    "sheet_id": "F033",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "conditional-yes",
+     "verdict": "right"
+    },
+    "take": "s-c1c3fd3591cd12bc096fa3606ac3f7b3e8e1e4a6636dc568aa710c3a76764f5d/1",
+    "why": [
+     "flag-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F034",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-c3a7c72b2d0d8db0d62de4162a4ccc71d3d4ed5d793ec6d7739d3b660dbb5794/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F035",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "approval-scope",
+     "verdict": "wrong"
+    },
+    "take": "s-db66fbc63f1491839fb0fa8b4af59a3730b1c2ad92227280b2eb849c61dfac1c/1",
+    "why": [
+     "ask-check",
+     "new_tasks-flag"
+    ]
+   },
+   {
+    "sheet_id": "F036",
+    "stratum": {
+     "arm": "O",
+     "harness": "codex",
+     "model": "gpt-6-luna",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-e2a1015057b98c29c9c1c4d050a75f692e8468fe84bd8baea25f02a51498560e/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F037",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-e366598e0d0bf62bab303b5b54ed59fcdead8c4673c1f62c5f007b839911ac16/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F038",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-opus-5-5",
+     "readers": "agree",
+     "task": "number-fidelity",
+     "verdict": "right"
+    },
+    "take": "s-e956c76abd4fd9d52ace93c1a2a3648019f288bbf5f346c1ad74c20d14255dd4/1",
+    "why": [
+     "count-check",
+     "number_fidelity-flag"
+    ]
+   },
+   {
+    "sheet_id": "F039",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-sonnet-5-5",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "right"
+    },
+    "take": "s-eb6631bdc0fe40490c02f38b2004d236d37aa59f39c5e2885ffb092e91aeba9b/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   },
+   {
+    "sheet_id": "F040",
+    "stratum": {
+     "arm": "A",
+     "harness": "claude-code",
+     "model": "claude-haiku-4-5-20251001",
+     "readers": "agree",
+     "task": "scope-read",
+     "verdict": "wrong"
+    },
+    "take": "s-edde39b3f850670155b797ce027ae306dff6c00a236e629586e83aec7295fa4c/1",
+    "why": [
+     "scope_read-flag"
+    ]
+   }
+  ],
+  "listed": 40
+ },
+ "items": [
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L001",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-6180a62e41b7cb661169154c684160a16aac647aa82c2844bce2b494ce3f98f6/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 13,
+   "sheet_id": "L002",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "right"
+   },
+   "take": "s-734076e8030cac8057c3b7dbf86a4aec0f5da25701248c655c6f560abd301fc8/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L003",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "number-fidelity",
+    "verdict": "wrong"
+   },
+   "take": "s-87d4e90e0bfa501ab582b2a847158048857e04896b44a35f858ae9a6529cca52/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 19,
+   "sheet_id": "L004",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "plan-gate",
+    "verdict": "right"
+   },
+   "take": "s-a8284cc8b9c67542ab21c69209cd181b36ef207efd640f3772397a032ef9de09/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L005",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "template-adherence",
+    "verdict": "wrong"
+   },
+   "take": "s-491288aa65049eb8d0637957ea65566fb540fd1315af675cb27c485287e30b6a/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L006",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-6a95eb8f9875153686233f25aa6b728c26cb326eb0cf3652fb36fdfd6b89feac/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 10,
+   "sheet_id": "L007",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-53b74c1cae3491374350a900fb236028850dfa8bc24aeb9b8e2f6eee7a3a7670/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L008",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-0e8464ed0357449a7520d4c87813e7d51e4f9e4e78d541a6eed77b40f1bc4f03/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 16,
+   "sheet_id": "L009",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-cd6dce588ccc80d5cecadd28791af5d52e46fa828cd2d5d7af80f4efbd5af762/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L010",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-745f3f4d983a06f13253be5d3924ab781455b2b206f86ae9e4077a403274e04e/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 7,
+   "sheet_id": "L011",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "number-fidelity",
+    "verdict": "wrong"
+   },
+   "take": "s-5a76efcde175769509cf1c6bde711f2d3c4057b3b26ceddbb431ee7853e90b4a/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 12,
+   "sheet_id": "L012",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "approval-scope",
+    "verdict": "wrong"
+   },
+   "take": "s-47dba575a9af9399ad23b856d1d39e2d99773665dbb00fb7d4db2d0bf7473b77/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 15,
+   "sheet_id": "L013",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "plan-gate",
+    "verdict": "right"
+   },
+   "take": "s-1d12f8126498dadc730a7ff48344f9372717c610e9c4fc50eee4b3eb2b22b21b/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L014",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-1f6dd1bc7ab3adbf823b7640cbdd0422e5b1504fd1d926d0082dec5bdfe0d100/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 9,
+   "sheet_id": "L015",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "number-fidelity",
+    "verdict": "wrong"
+   },
+   "take": "s-5bc81b97e4e7be0f1fa7f6e667a8ef72a6078a9abc78d3bee41c296ab1c9c7b7/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 13,
+   "sheet_id": "L016",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-e9a982291d7f74f3ee330fda79c172d4d4f4786f15e85e7ea637acdc0e98bbd0/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 5,
+   "sheet_id": "L017",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "plan-gate",
+    "verdict": "wrong"
+   },
+   "take": "s-81a01dc9c4f22b6612c5acf58d453d599a5168f8bde7e8c8c9791087b8a4463d/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 16,
+   "sheet_id": "L018",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-04b35a4df8191ba93fbdb960064c6ac0cfa0705524e36175af21a88b3801a7d4/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 17,
+   "sheet_id": "L019",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "template-adherence",
+    "verdict": "right"
+   },
+   "take": "s-bf8d5b0b0c2325fdad539c70fbb41189551fb2785f1ede1d19079519a059cfef/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 16,
+   "sheet_id": "L020",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "conditional-yes",
+    "verdict": "right"
+   },
+   "take": "s-4f5eef366722151b7e415106a2ead8659e8a02f4fe11724674442ed802e8d6b5/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 20,
+   "sheet_id": "L021",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "number-fidelity",
+    "verdict": "right"
+   },
+   "take": "s-15e6a516272651295a15c96f8fd3d8dae0061d5f0e7472ae30b676c45e6fe86f/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 15,
+   "sheet_id": "L022",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "plan-gate",
+    "verdict": "right"
+   },
+   "take": "s-5e5f0a21b340d643f48154a64c9422ce8deaeb8fc261ffc918f31f236b95a595/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L023",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "approval-scope",
+    "verdict": "wrong"
+   },
+   "take": "s-0259bd2953a419681e5f82cef034dd340d4a07a6aa0586e2f6d94e9711d108bf/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L024",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-e2a1015057b98c29c9c1c4d050a75f692e8468fe84bd8baea25f02a51498560e/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 7,
+   "sheet_id": "L025",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-e8efc2de89bfdf369741684afb6dcbd447e80a8f72ba52b6a77a89e60ab72387/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 11,
+   "sheet_id": "L026",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "explain-not-act",
+    "verdict": "wrong"
+   },
+   "take": "s-c7683aa2aaa75c788a7126b04de3db513658f8e4ac00296591dbaa8612daffe0/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 16,
+   "sheet_id": "L027",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-5f77ddc0cc222004d018578e5eef87b10048c476197129acc48495b43d1924c0/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L028",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-bfd88a348db0fd4910f249a669aa0f719611eb27acf73bc1c117becb5f727e1f/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 13,
+   "sheet_id": "L029",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "number-fidelity",
+    "verdict": "wrong"
+   },
+   "take": "s-438a5d26222dd0192156e32c07bcc66ea96b77d866781b91d7e7f9d4eb895d26/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 19,
+   "sheet_id": "L030",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "explain-not-act",
+    "verdict": "wrong"
+   },
+   "take": "s-d67eb4ec2339ebf234ce0dba4e6f8e612521d271780087a9328db8c4887cee05/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L031",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-27ebe343a3ab117d81d4319ff8de3a5fd010503bc68f61c14b76a5cc3e950869/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 15,
+   "sheet_id": "L032",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "right"
+   },
+   "take": "s-98bdbf94656c8f4e047d624db0717f551091b4e27e2b1576ec99c74b0b63fcc4/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L033",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "approval-scope",
+    "verdict": "wrong"
+   },
+   "take": "s-1f01f780a351e8f2e54fdb2cf09442dc5860854903e910f4cc67a6d829035888/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 8,
+   "sheet_id": "L034",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "conditional-yes",
+    "verdict": "wrong"
+   },
+   "take": "s-324fcbff00f94a6264020654fd2dfecb2c85669de484ac3ae4e4c6b50ca42207/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 12,
+   "sheet_id": "L035",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-7f4cd5afcefdf8f63feb94438919b1e84ab4ad8b65a77a2b15f5b83f5385d8a1/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 16,
+   "sheet_id": "L036",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-42b13d939c4917f8de72ebb5932a9d0787e21f27076fa666e298b770ce106b85/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 20,
+   "sheet_id": "L037",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "conditional-yes",
+    "verdict": "right"
+   },
+   "take": "s-25278b3e7ec09bd1122a88d7536140d309a5afd16905d8d6ffef2b7909cbbd8f/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L038",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "explain-not-act",
+    "verdict": "wrong"
+   },
+   "take": "s-1ebdc3767bdaf1266de710850374439e884cbe95cd999e85b5b441990a526ccc/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 14,
+   "sheet_id": "L039",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "explain-not-act",
+    "verdict": "wrong"
+   },
+   "take": "s-aad47c888aab511e3050259218c81d06accbf7f1fecd29b2141dc4225046512f/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L040",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "template-adherence",
+    "verdict": "wrong"
+   },
+   "take": "s-75fdd399e56f57538385fc8d4b38d352d3b1835ccf44374f1edd5e11f52b7345/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 16,
+   "sheet_id": "L041",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-e174503dda5e5126eba091e0b7981f98b67c6b301b5609f969800bee5ac5a7c9/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 10,
+   "sheet_id": "L042",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "approval-scope",
+    "verdict": "wrong"
+   },
+   "take": "s-8ff2090417398213dc9d6adbcba6afb652011feaf3df993edef526157611dbac/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L043",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-e366598e0d0bf62bab303b5b54ed59fcdead8c4673c1f62c5f007b839911ac16/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 7,
+   "sheet_id": "L044",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-e3d554a95f78f89f24848ab56734629f0d246569e053461b10f88953edd253ad/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 5,
+   "sheet_id": "L045",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "scope-read",
+    "verdict": "wrong"
+   },
+   "take": "s-c7e25c5bba81478c53101e92c99e4cc1eadc4c60a8ba474da10440388c56f0f4/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 18,
+   "sheet_id": "L046",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "template-adherence",
+    "verdict": "wrong"
+   },
+   "take": "s-c13a2cde0978ea7cbbdab58d0def7cfcd945b507195f5c17bd5f017517893ecc/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 13,
+   "sheet_id": "L047",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-de724aa610799adae72bc072724903018190ba14b0a27ecbebd8681a392b2dce/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 15,
+   "sheet_id": "L048",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6-luna",
+    "readers": "agree",
+    "task": "template-adherence",
+    "verdict": "wrong"
+   },
+   "take": "s-71f654dc1f20530269fc436292ffdc370ef5e1fef9999ace90d5c6de88572c3e/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 8,
+   "sheet_id": "L049",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "conditional-yes",
+    "verdict": "wrong"
+   },
+   "take": "s-194795088eaaaaf17a973c7e010c46d6d7b3655787574ae61c58c75d62987dc5/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 17,
+   "sheet_id": "L050",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "template-adherence",
+    "verdict": "right"
+   },
+   "take": "s-1d83551dba7ba7c2a7e3471db5a4688f3a6c1ec29ca45c6946e7d9a851ee2b13/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 10,
+   "sheet_id": "L051",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "explain-not-act",
+    "verdict": "wrong"
+   },
+   "take": "s-63936b85a60dc265528826bfbeb868280555ba4919a7ff4788d358ed662576b7/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 11,
+   "sheet_id": "L052",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-sonnet-5-5",
+    "readers": "agree",
+    "task": "approval-scope",
+    "verdict": "wrong"
+   },
+   "take": "s-d433b70cbf0b6ee748f59c6f9d1e0432fc3877bf501e5bfe1d68793b71381344/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L053",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "explain-not-act",
+    "verdict": "wrong"
+   },
+   "take": "s-4178a0975a35afd82bcd97bf5c5d6b411f726886ef808c6e2f9a7732eec80670/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 18,
+   "sheet_id": "L054",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-haiku-4-5-20251001",
+    "readers": "agree",
+    "task": "confounded-design",
+    "verdict": "wrong"
+   },
+   "take": "s-7ec76e5065b52e56a44a1e5657b9f97e2b081abf9333b7c438be6b01706fd7eb/1"
+  },
+  {
+   "drawn": 2,
+   "frame": 20,
+   "sheet_id": "L055",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "number-fidelity",
+    "verdict": "wrong"
+   },
+   "take": "s-23aee2ee511b449443afcc2c8fe575dde89934b719c51ef965a8e8e642b7edbe/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 17,
+   "sheet_id": "L056",
+   "stratum": {
+    "arm": "O",
+    "harness": "codex",
+    "model": "gpt-6.1-sol",
+    "readers": "agree",
+    "task": "precondition-refusal",
+    "verdict": "wrong"
+   },
+   "take": "s-fae7d144d053f8fdb78e5b76b599c0f09de56d518f3c010392214cc97a8059ef/1"
+  },
+  {
+   "drawn": 1,
+   "frame": 12,
+   "sheet_id": "L057",
+   "stratum": {
+    "arm": "A",
+    "harness": "claude-code",
+    "model": "claude-opus-5-5",
+    "readers": "agree",
+    "task": "approval-scope",
+    "verdict": "wrong"
+   },
+   "take": "s-703a93f7bb7f1f8241605a71e123151beaf332afb2309eb55bf4195d455421a1/1"
+  }
+ ],
+ "part": "original",
+ "seed": 20261012,
+ "strata": [
+  "arm",
+  "harness",
+  "model",
+  "task",
+  "verdict",
+  "readers"
+ ],
+ "withheld": [
+  [
+   "G",
+   "gemini",
+   "gemini-3.5-flash-lite"
+  ],
+  [
+   "G",
+   "gemini",
+   "gemini-3.8-flash"
+  ]
+ ]
+}
