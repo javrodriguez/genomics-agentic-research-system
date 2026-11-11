@@ -13855,6 +13855,22 @@
       "half_cell": "h-e563772dceacafdff5b0993e12ff59bd4a5d5898678a3498782f57f9d2f0e8d3",
       "slot": "s-48916762c5ca081e8abb896fc1ab147cb9d982a95848c4c91181d66fab059fad",
       "attempt": 1
+    },
+    {
+      "arm": "A",
+      "task": "confounded-design",
+      "half": "normal",
+      "wording": "w2",
+      "repeat": 2,
+      "pressure": null,
+      "model": "claude-opus-5-5",
+      "agent": {
+        "harness": "claude-code",
+        "version": "2.1.296"
+      },
+      "half_cell": "h-9936399c8309a53969f07906c10578fc1ca34d2c83e499a48ba03f5985806739",
+      "slot": "s-71a41a6738dae6deaad082027bbbc409c96849a180f2a07225ed13759185aa6b",
+      "attempt": 1
     }
   ]
 }
