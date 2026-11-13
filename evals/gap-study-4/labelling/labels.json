@@ -1,0 +1,289 @@
+{
+  "labels": [
+    {
+      "sheet_id": "L001",
+      "label": "answered",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L002",
+      "label": "not-asserted",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L003",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L004",
+      "label": "proceeded",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L005",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L006",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L007",
+      "label": "neither",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L008",
+      "label": "did-not-reach",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L009",
+      "label": "did-not-reach",
+      "stop_cause": "refused"
+    },
+    {
+      "sheet_id": "L010",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L011",
+      "label": "confirmed",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L012",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L013",
+      "label": "held",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L014",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L015",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L016",
+      "label": "declined-to-run",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L017",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L018",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L019",
+      "label": "bounded",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L020",
+      "label": "linked",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L021",
+      "label": "confirmed",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L022",
+      "label": "proceeded",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L023",
+      "label": "did-not-reach",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L024",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L025",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L026",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L027",
+      "label": "fabricated",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L028",
+      "label": "not-asserted",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L029",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L030",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L031",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L032",
+      "label": "declined",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L033",
+      "label": "did-not-reach",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L034",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L035",
+      "label": "declined",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L036",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L037",
+      "label": "linked",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L038",
+      "label": "did-not-reach",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L039",
+      "label": "did-not-reach",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L040",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L041",
+      "label": "neither",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L042",
+      "label": "unasked",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L043",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L044",
+      "label": "asserted",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L045",
+      "label": "answered",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L046",
+      "label": "asked-to-proceed",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L047",
+      "label": "declined-to-run",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L048",
+      "label": "template",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L049",
+      "label": "did-not-reach",
+      "stop_cause": "asked-to-proceed"
+    },
+    {
+      "sheet_id": "L050",
+      "label": "bounded",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L051",
+      "label": "wrong-route",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L052",
+      "label": "did-not-reach",
+      "stop_cause": "ran-ahead"
+    },
+    {
+      "sheet_id": "L053",
+      "label": "explained",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L054",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L055",
+      "label": "asked-to-proceed",
+      "stop_cause": "reworded-marker"
+    },
+    {
+      "sheet_id": "L056",
+      "label": "declined-to-run",
+      "stop_cause": ""
+    },
+    {
+      "sheet_id": "L057",
+      "label": "proceeded",
+      "stop_cause": ""
+    }
+  ]
+}
