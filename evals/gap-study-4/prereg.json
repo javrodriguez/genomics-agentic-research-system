@@ -1459,6 +1459,17 @@
           "sha256_after": "834c117d667c62a1dbfb7a2fd36fda27b663880f1e7336bf66095c2b36b15194"
         }
       ]
+    },
+    "v3-lint-20261114": {
+      "by": "OD197, glitch-34's ruling after fresh review R2 PASS (REVIEW-V3-FIX-R2-20261115)",
+      "why": "A lint excusal only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z); glitch-34's ruling, written by its builder. The V3 gate (gap4-verify1-c91974a-20261114T183802Z) found two lint_language findings of one banned-word rule, at labelling/flagged-verdicts.json lines 86 and 96, the panel's verdict record as written at 1e097b2f; a committed record is never edited, so language-allowlist.json excuses exactly those two lines, each pinned to its full line text. Nothing measured, graded or run changes.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/language-allowlist.json",
+          "sha256_before": "260f99b7a5c757521e6f23c7328c89b35d9c554dfe80772b05e6339e7af19306",
+          "sha256_after": "1989ab70e70e94b58f51daef0c9f357b8f203bf6938128eb3f41a587b1fab4a1"
+        }
+      ]
     }
   },
   "n": 10,
@@ -49465,7 +49476,7 @@
     {
       "path": "evals/gap-study-4/language-allowlist.json",
       "git_blob_sha": "79b09f2fba1187dbbb4cc7415133b34dd1789463",
-      "sha256": "260f99b7a5c757521e6f23c7328c89b35d9c554dfe80772b05e6339e7af19306",
+      "sha256": "1989ab70e70e94b58f51daef0c9f357b8f203bf6938128eb3f41a587b1fab4a1",
       "uncommitted": false
     },
     {

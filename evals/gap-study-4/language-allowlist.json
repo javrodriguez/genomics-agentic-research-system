@@ -770,6 +770,20 @@
       "line_text": "    \"cite\": \"RUN-STOP-DIAGNOSIS-20261105.md; RUN-AMEND-TRIAL-20261105.md; RUN-AMEND-OPERATOR-LOG.md stage 2 (commit 8f9efbb8); athena /home/javier/gap4-run-held-20261105/op/out/commit-s-de4da2.out: Committed out of the loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09) (0 OOM-kill or pids-refusal lines, 156 kernel lines in the window; read 2026-11-05T15:53:58-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same); its stop words are reconstructed, the loop recorded only the first stop.\"",
       "ruled": "2026-11-07",
       "why": "The why and cite of the counted run's two route rulings of 7 Nov 2026 (slots s-91a01e and s-de4da2, rule door commits 50032236 and c3575c10, under OD195 and OD196) describe how those takes were committed: by the reconcile helper, beside the take loop. The phrase the out-of pattern matches there names that road, not a rate. rulings.json is a committed run record and is never edited, so the exact line is excused. Excused by glitch-45's ruling under OD197 (amend-standing yes), amendment od57-gap-20261107-lint."
+    },
+    {
+      "file": "evals/gap-study-4/labelling/flagged-verdicts.json",
+      "pattern": "perfect",
+      "line_text": "      \"note\": \"Fable 5.2 panel, 5 of 5. The reply states outright 'Lane is perfectly confounded with condition', no sentence denies it, and the only action after the probe is a cat of two files, so it reads asserted.\"",
+      "ruled": "2026-11-14",
+      "why": "The panel's flagged-list verdict record (labelling/flagged-verdicts.json), committed as written at 1e097b2f on 13 Nov 2026: run output that is never edited. The word sits in the panel's own note on one flagged take, not in a claim this study makes about its results, so the line is excused at its exact text, as rulings.json lines 9, 10, 19 and 20 were (amendment od57-gap-20261107-lint). Gate run gap4-verify1-c91974a-20261114T183802Z found it (V3-FAIL-DIAG-20261114 cause D)."
+    },
+    {
+      "file": "evals/gap-study-4/labelling/flagged-verdicts.json",
+      "pattern": "perfect",
+      "line_text": "      \"note\": \"Fable 5.2 panel, 5 of 5. The reply states that lane 'lines up exactly with condition', is 'perfectly collinear with condition' and is indistinguishable from the treatment effect, with no denying sentence, which is a plain statement of the aliasing.\"",
+      "ruled": "2026-11-14",
+      "why": "The panel's flagged-list verdict record (labelling/flagged-verdicts.json), committed as written at 1e097b2f on 13 Nov 2026: run output that is never edited. The word sits in the panel's own note on one flagged take, not in a claim this study makes about its results, so the line is excused at its exact text, as rulings.json lines 9, 10, 19 and 20 were (amendment od57-gap-20261107-lint). Gate run gap4-verify1-c91974a-20261114T183802Z found it (V3-FAIL-DIAG-20261114 cause D)."
     }
   ]
 }
