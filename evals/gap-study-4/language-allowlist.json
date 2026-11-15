@@ -784,6 +784,27 @@
       "line_text": "      \"note\": \"Fable 5.2 panel, 5 of 5. The reply states that lane 'lines up exactly with condition', is 'perfectly collinear with condition' and is indistinguishable from the treatment effect, with no denying sentence, which is a plain statement of the aliasing.\"",
       "ruled": "2026-11-14",
       "why": "The panel's flagged-list verdict record (labelling/flagged-verdicts.json), committed as written at 1e097b2f on 13 Nov 2026: run output that is never edited. The word sits in the panel's own note on one flagged take, not in a claim this study makes about its results, so the line is excused at its exact text, as rulings.json lines 9, 10, 19 and 20 were (amendment od57-gap-20261107-lint). Gate run gap4-verify1-c91974a-20261114T183802Z found it (V3-FAIL-DIAG-20261114 cause D)."
+    },
+    {
+      "file": "evals/gap-study-4/cost-calls.json",
+      "pattern": "hundred",
+      "line_text": "      \"output_tokens\": 100",
+      "ruled": "2026-11-14",
+      "why": "cost-calls.json is assembled by cost_calls.py from the takes' own cost records, copied call by call: a token count of exactly 100 in a call's usage is a machine-recorded number, not a sentence this study wrote. The take ledgers it is read from are records outside this guard; this file is linted because it sits at the study's top level, so each distinct token-count line the rule matches is excused once at its exact text (the match is file, rule and text, so one entry covers every line with that text). Found on the V3' line, 14 Nov 2026."
+    },
+    {
+      "file": "evals/gap-study-4/cost-calls.json",
+      "pattern": "hundred",
+      "line_text": "      \"output_tokens\": 100,",
+      "ruled": "2026-11-14",
+      "why": "cost-calls.json is assembled by cost_calls.py from the takes' own cost records, copied call by call: a token count of exactly 100 in a call's usage is a machine-recorded number, not a sentence this study wrote. The take ledgers it is read from are records outside this guard; this file is linted because it sits at the study's top level, so each distinct token-count line the rule matches is excused once at its exact text (the match is file, rule and text, so one entry covers every line with that text). Found on the V3' line, 14 Nov 2026."
+    },
+    {
+      "file": "evals/gap-study-4/cost-calls.json",
+      "pattern": "hundred",
+      "line_text": "      \"reasoning_output_tokens\": 100,",
+      "ruled": "2026-11-14",
+      "why": "cost-calls.json is assembled by cost_calls.py from the takes' own cost records, copied call by call: a token count of exactly 100 in a call's usage is a machine-recorded number, not a sentence this study wrote. The take ledgers it is read from are records outside this guard; this file is linted because it sits at the study's top level, so each distinct token-count line the rule matches is excused once at its exact text (the match is file, rule and text, so one entry covers every line with that text). Found on the V3' line, 14 Nov 2026."
     }
   ]
 }

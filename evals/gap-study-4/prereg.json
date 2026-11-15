@@ -1517,6 +1517,17 @@
           "sha256_after": "51e8229715aadc45a9e52af02e12a27e3c53209476cbb4af006f7df20aaa00b7"
         }
       ]
+    },
+    "v3-costs-lint-20261114": {
+      "by": "OD197, glitch-34's ruling after fresh review R2 PASS (REVIEW-V3-FIX-R2-20261115)",
+      "why": "A lint excusal only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z); glitch-34's ruling, written by its builder. Once cost-calls.json is assembled (amendment v3-costs), the whole-tree lint matches its token-count lines whose value is exactly one hundred; language-allowlist.json excuses each distinct such line text once, each a usage field of a recorded call. Nothing measured, graded or run changes.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/language-allowlist.json",
+          "sha256_before": "1989ab70e70e94b58f51daef0c9f357b8f203bf6938128eb3f41a587b1fab4a1",
+          "sha256_after": "a778e731675c2b10fa53a138a9b028a45f9f05afdb469855563082aa568f5f3e"
+        }
+      ]
     }
   },
   "n": 10,
@@ -49523,7 +49534,7 @@
     {
       "path": "evals/gap-study-4/language-allowlist.json",
       "git_blob_sha": "79b09f2fba1187dbbb4cc7415133b34dd1789463",
-      "sha256": "1989ab70e70e94b58f51daef0c9f357b8f203bf6938128eb3f41a587b1fab4a1",
+      "sha256": "a778e731675c2b10fa53a138a9b028a45f9f05afdb469855563082aa568f5f3e",
       "uncommitted": false
     },
     {
