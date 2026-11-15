@@ -46,12 +46,23 @@ TIMEOUT_S = 3600
 # Lane pf1-checker-digest (the lane orchestrator's ruling of Mon 26 Oct 2026 on review c99f114's note): the battery
 # ran in 3547.5-3595.8 s against TIMEOUT_S, so the battery command alone gets BATTERY_TIMEOUT_S. Operational headroom
 # only: what is checked does not change, and every other command keeps TIMEOUT_S.
-BATTERY_TIMEOUT_S = 7200
+BATTERY_TIMEOUT_S = 18000
+# v3-timeouts (the V3 gate, gap4-verify1-c91974a-20261114T183802Z, glitch-34's ruling under OD197): the lines that
+# read the graded records (stats, result, check_results, completeness and test_stats) ran in seconds before the
+# run and past TIMEOUT_S on its records, and the battery past 7200 s; the eight draft-witness groups rebuild the
+# draft, whose leak sweep now reads every recorded take, for each mutant; their code did not change between the
+# green battery (c2a2ef6) and H, so the time is the data's. Measured alone at H on athena (14-15 Nov 2026): stats.py --check exits 0 in 5393 s, tests/test_stats.py in 5431 s; draft-witness group 1 in 5917 s on the fixed line. The battery runs first in step 2, so its limit fires before the suite run's own cap (athena_suite_remote MAX_MINUTES_CAP, 360 minutes, step 1 included) and a slow battery fails by name; the post-run lines start about 75-90 minutes into step 2, so a hung post-run line can still reach the 360-minute run cap (the fold then is raising MAX_MINUTES_CAP in aegis ops). The battery is estimated, not measured, at about 224 minutes.
+# Operational headroom only, as on 26 Oct: what is checked does not change, and every other line keeps TIMEOUT_S.
+POST_RUN_TIMEOUT_S = 14400
+POST_RUN_LINES = frozenset(('pf1-l2b-labelling-stats.txt:5', 'w4e-cp5-stats.txt:3', 'w4e-cp5-stats.txt:4', 'w5b-cp5-pipeline.txt:8', 'w5b-cp5-pipeline.txt:10', 'w5b-cp5-pipeline.txt:12', 'w5c-draft-ci.txt:9', 'w5c-draft-ci.txt:10', 'w5c-draft-ci.txt:11', 'w5c-draft-ci.txt:12', 'w5c-draft-ci.txt:13', 'w5c-draft-ci.txt:14', 'w5c-draft-ci.txt:15', 'w5c-draft-ci.txt:16'))
 
 
 def timeout_for(where: str) -> int:
-    """The time limit of the command listed at `where`: BATTERY_TIMEOUT_S for the battery, TIMEOUT_S for the rest."""
-    return BATTERY_TIMEOUT_S if where == "test_round4" else TIMEOUT_S
+    """The time limit of the command listed at `where`: BATTERY_TIMEOUT_S for the battery, POST_RUN_TIMEOUT_S for
+    the post-run lines, TIMEOUT_S for the rest."""
+    if where == "test_round4":
+        return BATTERY_TIMEOUT_S
+    return POST_RUN_TIMEOUT_S if where in POST_RUN_LINES else TIMEOUT_S
 # Lines a PASSING command's output keeps in the log, matched at the line start: the battery's run and skip count
 # (review round 2) and every witness group's summary and collateral lines (S4).
 ECHO_ON_PASS = ("test_round4: ", "test_build_draft witnesses", "test_ci_job witnesses", "red without collateral",

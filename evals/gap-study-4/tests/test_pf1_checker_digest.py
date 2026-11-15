@@ -496,8 +496,13 @@ def run_checks_problems(mod=None) -> list:
     import run_checks
     mod = mod or run_checks
     out = []
-    if (mod.TIMEOUT_S, mod.BATTERY_TIMEOUT_S) != (3600, 7200):
-        out.append(f"D12-timeout: the limits are {(mod.TIMEOUT_S, mod.BATTERY_TIMEOUT_S)}, not (3600, 7200)")
+    if (mod.TIMEOUT_S, mod.BATTERY_TIMEOUT_S, mod.POST_RUN_TIMEOUT_S) != (3600, 18000, 14400):
+        out.append(f"D12-timeout: the limits are {(mod.TIMEOUT_S, mod.BATTERY_TIMEOUT_S, mod.POST_RUN_TIMEOUT_S)}, "
+                   f"not (3600, 18000, 14400)")
+    if mod.POST_RUN_LINES != frozenset(('pf1-l2b-labelling-stats.txt:5', 'w4e-cp5-stats.txt:3', 'w4e-cp5-stats.txt:4', 'w5b-cp5-pipeline.txt:8', 'w5b-cp5-pipeline.txt:10', 'w5b-cp5-pipeline.txt:12', 'w5c-draft-ci.txt:9', 'w5c-draft-ci.txt:10', 'w5c-draft-ci.txt:11', 'w5c-draft-ci.txt:12', 'w5c-draft-ci.txt:13', 'w5c-draft-ci.txt:14', 'w5c-draft-ci.txt:15', 'w5c-draft-ci.txt:16')):
+        out.append("D12-timeout: the post-run lines are not the ones v3-timeouts named")
+    if any(mod.timeout_for(w) != mod.POST_RUN_TIMEOUT_S for w in mod.POST_RUN_LINES):
+        out.append("D12-timeout: a post-run line is not run under POST_RUN_TIMEOUT_S")
     if mod.timeout_for("test_round4") != mod.BATTERY_TIMEOUT_S:
         out.append("D12-timeout: the battery is not run under BATTERY_TIMEOUT_S")
     if any(mod.timeout_for(w) != mod.TIMEOUT_S for w in ("pf1-checker-digest.txt:5", "test_round4.py", "x")):
@@ -563,10 +568,13 @@ WR_MUTANTS = (
      '"walk": walk, "walk_commit"'),
 )
 RC_MUTANTS = (
-    ("battery-on-the-common-timeout", '    return BATTERY_TIMEOUT_S if where == "test_round4" else TIMEOUT_S',
-     "    return TIMEOUT_S"),
-    ("every-command-on-the-battery-timeout", '    return BATTERY_TIMEOUT_S if where == "test_round4" else TIMEOUT_S',
-     "    return BATTERY_TIMEOUT_S"),
+    ("battery-on-the-common-timeout", "        return BATTERY_TIMEOUT_S\n", "        return TIMEOUT_S\n"),
+    ("every-command-on-the-battery-timeout",
+     "    return POST_RUN_TIMEOUT_S if where in POST_RUN_LINES else TIMEOUT_S", "    return BATTERY_TIMEOUT_S"),
+    ("every-command-on-the-post-run-timeout",
+     "    return POST_RUN_TIMEOUT_S if where in POST_RUN_LINES else TIMEOUT_S", "    return POST_RUN_TIMEOUT_S"),
+    ("post-run-lines-on-the-common-timeout",
+     "    return POST_RUN_TIMEOUT_S if where in POST_RUN_LINES else TIMEOUT_S", "    return TIMEOUT_S"),
     ("run-all-on-the-common-timeout", "text=True, errors=\"replace\", timeout=timeout_for(where))",
      "text=True, errors=\"replace\", timeout=TIMEOUT_S)"),
 )

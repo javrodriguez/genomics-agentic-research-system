@@ -1470,6 +1470,22 @@
           "sha256_after": "1989ab70e70e94b58f51daef0c9f357b8f203bf6938128eb3f41a587b1fab4a1"
         }
       ]
+    },
+    "v3-timeouts-20261114": {
+      "by": "OD197, glitch-34's ruling after fresh review R2 PASS (REVIEW-V3-FIX-R2-20261115)",
+      "why": "Operational headroom only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z); glitch-34's ruling, written by its builder. The V3 gate (gap4-verify1-c91974a-20261114T183802Z) timed out on six lines: the battery past BATTERY_TIMEOUT_S and five lines that read the graded records past TIMEOUT_S; their code did not change between the green battery (c2a2ef6) and H, so the time is the records'. The eight draft-witness groups (w5c-draft-ci.txt:9-16) refused fast at V3 but take about twice their 5 Nov time once the draft builds, since its leak sweep now reads every recorded take. run_checks.py gives those lines (and completeness, which passed just under the limit) POST_RUN_TIMEOUT_S = 14400 and the battery BATTERY_TIMEOUT_S = 18000; every other line keeps 3600 s. What is checked does not change. Measured alone at H on athena (14-15 Nov 2026): stats.py --check exits 0 in 5393 s, tests/test_stats.py in 5431 s; draft-witness group 1 in 5917 s on the fixed line. The battery runs first in step 2, so its limit fires before the suite run's own cap (athena_suite_remote MAX_MINUTES_CAP, 360 minutes, step 1 included) and a slow battery fails by name; the post-run lines start about 75-90 minutes into step 2, so a hung post-run line can still reach the 360-minute run cap (the fold then is raising MAX_MINUTES_CAP in aegis ops). The battery is estimated, not measured, at about 224 minutes.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/run_checks.py",
+          "sha256_before": "61184533870c6e5024a3246aee1360fb2b99d0f1633eaac70d5bca96a17c84f1",
+          "sha256_after": "7f30a1d9e2d77ecc8a1dcfb2ff137fc8399f233490988dc2f3ab479d18c8b911"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_pf1_checker_digest.py",
+          "sha256_before": "32e88554fa73cbe0a80dd098446d5767535cd25e5635e02f3f9b1d46dceff037",
+          "sha256_after": "dc725e67a6b17e9547419b62956fe55109a1f30ccec6bc566802377cf553a6de"
+        }
+      ]
     }
   },
   "n": 10,
@@ -49872,7 +49888,7 @@
     {
       "path": "evals/gap-study-4/run_checks.py",
       "git_blob_sha": "a7e9ba902d9ec58475a7d99dac5f0d7996d5f4ae",
-      "sha256": "61184533870c6e5024a3246aee1360fb2b99d0f1633eaac70d5bca96a17c84f1",
+      "sha256": "7f30a1d9e2d77ecc8a1dcfb2ff137fc8399f233490988dc2f3ab479d18c8b911",
       "uncommitted": false
     },
     {
@@ -51978,7 +51994,7 @@
     {
       "path": "evals/gap-study-4/tests/test_pf1_checker_digest.py",
       "git_blob_sha": "6f3e7d7cbc7da25b47f971e0d765cee89d1e3d0c",
-      "sha256": "32e88554fa73cbe0a80dd098446d5767535cd25e5635e02f3f9b1d46dceff037",
+      "sha256": "dc725e67a6b17e9547419b62956fe55109a1f30ccec6bc566802377cf553a6de",
       "uncommitted": false
     },
     {
