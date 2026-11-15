@@ -788,6 +788,26 @@ def _aborted_rulings() -> set:
     return out
 
 
+_ABORTED_OUTCOMES: dict = {}      # v3-routed-leak: {(the loader, the last history commit): the takes routed aborted}
+
+
+def _aborted_outcomes() -> set:
+    """v3-routed-leak: {(slot, attempt)} whose latest committed history entry is its outcome with state aborted,
+    read here from the history loader on its own (never through leak_grep), as _aborted_rulings is."""
+    import takes
+    paths = [(takes.HERE / p).relative_to(takes.REPO).as_posix() for p in takes.HISTORY_FILES]
+    key = (takes.read_history, takes._git_at(takes.REPO, "log", "-1", "--format=%H", "--", *paths).strip())
+    if key in _ABORTED_OUTCOMES:
+        return set(_ABORTED_OUTCOMES[key])
+    latest = {}
+    for e in takes.read_history():
+        if isinstance(e, dict) and e.get("kind") != batch.NIGHT_RULING and "slot" in e and "attempt" in e:
+            latest[(e.get("slot"), e.get("attempt"))] = e
+    out = {k for k, e in latest.items() if e.get("kind") != labels4.RULING and e.get("state") == labels4.ABORTED}
+    _ABORTED_OUTCOMES[key] = frozenset(out)
+    return out
+
+
 def _take_of(session):
     """(slot, attempt) of a session named takes/<slot>/<k>, parsed here on its own; None for anything else."""
     parts = session.split("/") if isinstance(session, str) else []
@@ -812,11 +832,19 @@ def checked_sessions(draft):
     if result["words_that_would_void_a_session"]:
         raise ValueError("the leak list would void a recorded session")
     aborted = leak_grep.ruled_aborted()
-    marked = sorted(s["session"] for s in result["per_session"] if "leak_check" in s)
-    if any(s["leak_check"] != leak_grep.NOT_CHECKED for s in result["per_session"] if "leak_check" in s) or marked != \
+    marked = sorted(s["session"] for s in result["per_session"] if s.get("leak_check") == leak_grep.NOT_CHECKED)
+    if any(s["leak_check"] not in (leak_grep.NOT_CHECKED, leak_grep.NOT_CHECKED_ROUTED) for s in result["per_session"]
+           if "leak_check" in s) or marked != \
             sorted(s["session"] for s in result["per_session"] if leak_grep.take_key(s["session"]) in aborted) \
             or {_take_of(s) for s in marked} != _aborted_rulings():
         raise ValueError("the sessions left out of the leak check are not exactly the takes ruled aborted")
+    # v3-routed-leak: the takes routed aborted by their own outcome, each marked NOT_CHECKED_ROUTED, read twice
+    routed = leak_grep.routed_aborted()
+    rmarked = sorted(s["session"] for s in result["per_session"] if s.get("leak_check") == leak_grep.NOT_CHECKED_ROUTED)
+    if rmarked != sorted(s["session"] for s in result["per_session"]
+                         if leak_grep.take_key(s["session"]) in routed - aborted) \
+            or {_take_of(s) for s in rmarked} != _aborted_outcomes() - _aborted_rulings():
+        raise ValueError("the takes routed aborted are not exactly the sessions marked routed aborted")
     problem = leak_grep.unread_problem(result)       # review 0df1437 MINOR 3: an unread session is never read as clean
     if problem:
         raise ValueError(problem)

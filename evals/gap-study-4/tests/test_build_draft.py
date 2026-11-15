@@ -3700,7 +3700,7 @@ def setUpModule():
         pre = leak_grep.prereg.load()
         stats_ = [(str(p), p.stat().st_size, p.stat().st_mtime_ns) for p in leak_grep.sessions()]
         # aborted-leak: derive also reads the takes ruled aborted, so the memo is keyed on them too
-        aborted = sorted(leak_grep.ruled_aborted()) if stats_ else []
+        aborted = [sorted(leak_grep.ruled_aborted()), sorted(leak_grep.routed_aborted())] if stats_ else []
         key = json.dumps([pre["leak_words"], pre.get("leak_context_excusals", []), stats_, aborted], sort_keys=True)
         if key not in memo:
             memo[key] = real_derive()
@@ -3716,12 +3716,12 @@ def r9_sessions_void_on_nothing(ca, held):
     the held takes whose latest take ruling routes them aborted, each marked leak_grep.NOT_CHECKED. Defined here, at
     the file's end, so no line above moves (the gate manifest names failing frames by line)."""
     import leak_grep
-    aborted = leak_grep.ruled_aborted()
-    sessions = ca.get("sessions") or []
+    aborted, routed = leak_grep.ruled_aborted(), leak_grep.routed_aborted()   # v3-routed-leak: routed too, own mark
+    sessions, routed = ca.get("sessions") or [], routed - aborted
     return (all(s.get("words_the_checker_would_void_on") == [] for s in sessions if "leak_check" not in s)
-            and all(s.get("leak_check") == leak_grep.NOT_CHECKED for s in sessions if "leak_check" in s)
+            and all(s.get("leak_check") == _r9_mark(s, aborted) for s in sessions if "leak_check" in s)
             and sorted(s.get("session") for s in sessions if "leak_check" in s)
-            == sorted(h for h in held if leak_grep.take_key(h) in aborted))
+            == sorted(h for h in held if leak_grep.take_key(h) in aborted | routed))
 
 
 class AbortedLeak(unittest.TestCase):
@@ -3971,6 +3971,110 @@ class AbortedLeak(unittest.TestCase):
         self.rule(1, "graded")
         with self.mutant(self.lg, "ruled_aborted", "latest = {}", "latest = {}"):
             self.assertEqual(self.checked(), self.VOIDS)
+
+
+
+def _r9_mark(s, aborted):
+    """v3-routed-leak: the mark R9.sessions expects on a session left out of the check (ruled, else routed)."""
+    import leak_grep
+    return leak_grep.NOT_CHECKED if leak_grep.take_key(s.get("session")) in aborted else leak_grep.NOT_CHECKED_ROUTED
+
+
+class RoutedAbortedLeak(AbortedLeak):
+    """v3-routed-leak (V3 gate, 14 Nov 2026): a take whose latest committed history entry is its OUTCOME with state
+    aborted is read and listed NOT_CHECKED_ROUTED and never refuses the draft; a graded outcome, or an aborted outcome
+    followed by a re-run or graded ruling, is checked as before. Reuses AbortedLeak's synthetic root; the history
+    holds outcomes and rulings in commit order."""
+
+    def outcome(self, n, state, attempt=1):
+        self.rulings.append({"slot": self.slot(n), "attempt": attempt, "state": state, "half_cell": "h"})
+
+    def test_a_routed_aborted_take_with_a_hit_builds(self):
+        s = self.take(1)
+        self.outcome(1, "aborted")
+        got = self.checked()
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual([(x["session"], x.get("leak_check")) for x in got["sessions"]],
+                         [(s, self.lg.NOT_CHECKED_ROUTED)])
+        self.assertEqual(self.voids(), [])
+
+    def test_a_graded_outcome_with_a_hit_voids(self):
+        self.take(1)
+        self.outcome(1, "graded")
+        self.assertEqual(self.checked(), self.VOIDS)
+
+    def test_a_later_ruling_takes_it_out(self):
+        for word, route in (("re-run", "graded"), ("route", "graded"), ("route", "harness-error")):
+            with self.subTest(word=word, route=route):
+                self.setUp()
+                self.take(1)
+                self.outcome(1, "aborted")
+                self.rule(1, route, ruling=word)
+                self.assertEqual(self.checked(), self.VOIDS)
+
+    def test_ruled_and_routed_keep_their_own_marks(self):
+        a = self.take(1)
+        self.outcome(1, "aborted")
+        self.rule(1, "aborted")
+        r = self.take(2)
+        self.outcome(2, "aborted")
+        got = self.checked()
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual(sorted((x["session"], x.get("leak_check")) for x in got["sessions"]),
+                         sorted([(a, self.lg.NOT_CHECKED), (r, self.lg.NOT_CHECKED_ROUTED)]))
+
+    def test_a_forged_routed_mark_refuses(self):
+        self.take(1)
+        self.outcome(1, "graded")
+        real = self.lg.derive
+
+        def forged():
+            res = real()
+            for x in res["per_session"]:
+                x["leak_check"] = self.lg.NOT_CHECKED_ROUTED
+            res["words_that_would_void_a_session"] = []
+            return res
+        with mock.patch.object(self.lg, "derive", forged):
+            self.assertIsInstance(self.checked(), str)
+
+    def test_routed_mutation_witnesses(self):
+        cases = (("the state check dropped (a graded outcome builds)", "routed_aborted",
+                  'e.get("state") == labels4.ABORTED', "True", "graded"),
+                 ("the latest entry dropped (aborted then re-run builds)", "routed_aborted",
+                  'latest[(e.get("slot"), e.get("attempt"))] = e',
+                  'latest.setdefault((e.get("slot"), e.get("attempt")), e)', "rerun"))
+        for name, fn, old, new, shape in cases:
+            with self.subTest(name):
+                self.setUp()
+                self.take(1)
+                if shape == "graded":
+                    self.outcome(1, "graded")
+                else:
+                    self.outcome(1, "aborted")
+                    self.rule(1, "graded", ruling="re-run")
+                self.assertEqual(self.voids(), [self.WORD])
+                with self.mutant(self.lg, fn, old, new):
+                    self.assertEqual(self.voids(), [], "%s: the mutant still voids" % name)
+
+    def test_a_night_ruling_after_the_outcome_changes_nothing(self):
+        import batch
+        s = self.take(1)
+        self.outcome(1, "aborted")
+        self.rulings.append({"kind": batch.NIGHT_RULING, "slot": self.slot(1), "attempt": 1, "by": "test"})
+        got = self.checked()
+        self.assertIsInstance(got, dict, got)
+        self.assertEqual([(x["session"], x.get("leak_check")) for x in got["sessions"]],
+                         [(s, self.lg.NOT_CHECKED_ROUTED)])
+
+    def test_routed_null_mutant_stays_green(self):
+        self.take(1)
+        self.outcome(1, "aborted")
+        with self.mutant(self.lg, "routed_aborted", "latest = {}", "latest = {}"):
+            self.assertIsInstance(self.checked(), dict)
+
+
+for _name in [n for n in vars(AbortedLeak) if n.startswith("test")]:   # AbortedLeak's own tests run once, there
+    setattr(RoutedAbortedLeak, _name, None)
 
 
 if __name__ == "__main__":

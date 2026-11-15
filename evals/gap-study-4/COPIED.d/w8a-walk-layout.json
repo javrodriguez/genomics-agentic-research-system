@@ -40,7 +40,7 @@
       "path": "leak_grep.py",
       "status": "edited",
       "source": "evals/gap-study-3/leak_grep.py",
-      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1). W8A (lane w8a-walk-layout): Option A: ROOTS = mode_binding.RECORD_ROOTS, each read at its records' top level (mode_binding.record_transcripts): round 4's walks and takes, never round 3's walks/, transcripts/ or pauses/; sessions(base). Bound by tests/test_walk_layout.py L1, L9."
+      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1). W8A (lane w8a-walk-layout): Option A: ROOTS = mode_binding.RECORD_ROOTS, each read at its records' top level (mode_binding.record_transcripts): round 4's walks and takes, never round 3's walks/, transcripts/ or pauses/; sessions(base). Bound by tests/test_walk_layout.py L1, L9. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source since amendment v3-routed-leak (the V3 gate, 14 Nov 2026), which adds the routed-aborted exemption beside amendment aborted-leak's ruled-aborted one. The commits that changed it after its copy commit and before that amendment, oldest first: 01b53dbb4, a43d55ea5, b7b1f4d0b, 66800f90b, 617adde99."
     },
     {
       "path": "run.py",

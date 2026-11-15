@@ -116,6 +116,11 @@ def session_context(ct, s) -> dict:
 # from the latest take ruling per (slot, attempt); a take with no ruling, or whose latest ruling routes it anywhere
 # else, is checked as before.
 NOT_CHECKED = "not checked: ruled aborted"
+# v3-routed-leak (V3 gate, 14 Nov 2026; Javier's word on the ask): a take whose latest committed history entry
+# is its own outcome with state aborted -- routed aborted by the frozen routing table, as agent-reachable-reason
+# routes leak-in-loaded-context after the first turn -- is not graded either, so it is read and listed the same
+# way, under its own mark. A take with a later ruling is the ruling's (ruled_aborted above), never this one's.
+NOT_CHECKED_ROUTED = "not checked: routed aborted"
 TAKE_SESSION = re.compile(r"takes/(s-[0-9a-f]{64})/([1-9][0-9]*)")
 
 
@@ -147,6 +152,28 @@ def ruled_aborted() -> set:
     return out
 
 
+_ROUTED_ABORTED: dict = {}        # {(the loader, the last history commit): the takes routed aborted}
+
+
+def routed_aborted() -> set:
+    """{(slot, attempt)} whose latest committed history entry is its outcome, with state aborted (read through
+    takes.read_history only; a ruling, of either word, after the outcome takes the take out of this set)."""
+    import batch
+    import takes
+    from graders import labels4
+    paths = [(takes.HERE / p).relative_to(takes.REPO).as_posix() for p in takes.HISTORY_FILES]
+    key = (takes.read_history, takes._git_at(takes.REPO, "log", "-1", "--format=%H", "--", *paths).strip())
+    if key in _ROUTED_ABORTED:
+        return set(_ROUTED_ABORTED[key])
+    latest = {}
+    for e in takes.read_history():
+        if batch.is_ruling(e) or batch.is_outcome(e):
+            latest[(e.get("slot"), e.get("attempt"))] = e
+    out = {k for k, e in latest.items() if batch.is_outcome(e) and e.get("state") == labels4.ABORTED}
+    _ROUTED_ABORTED[key] = frozenset(out)
+    return out
+
+
 def unread_problem(rec: dict) -> str | None:
     """None when the unread sessions are exactly KNOWN_UNREADABLE; else why the measurement does not stand."""
     got = sorted(u["session"] for u in rec["sessions_unread"])
@@ -165,12 +192,14 @@ def derive() -> dict:
                                  for w in words}
     per_session, unread = [], []
     aborted = ruled_aborted() if found else set()
+    routed = routed_aborted() if found else set()        # v3-routed-leak
     for s in found:
         read = session_context(ct, s)
         ctx = read["ctx"]
         flagged = {w.lower() for w in ct.context_leaks(ctx, pre)}
         session = str(s.parent.relative_to(HERE))
         skipped = take_key(session) in aborted           # aborted-leak: read and listed, never counted as voided
+        routed_skip = not skipped and take_key(session) in routed     # v3-routed-leak: the same, its own mark
         hits = []
         for w in words:
             if not re.search(rf"\b{re.escape(w.lower())}\b", ctx):
@@ -179,7 +208,7 @@ def derive() -> dict:
             rec["sessions_hit"] += 1
             if not rec["first"]:
                 rec["first"] = snippet(ctx, w)
-            if w.lower() in flagged and not skipped:
+            if w.lower() in flagged and not skipped and not routed_skip:
                 rec["still_flagged_in"] += 1
             hits.append(w)
         entry = {"session": session,
@@ -188,6 +217,8 @@ def derive() -> dict:
                  "words_the_checker_would_void_on": sorted(flagged)}
         if skipped:
             entry["leak_check"] = NOT_CHECKED
+        elif routed_skip:
+            entry["leak_check"] = NOT_CHECKED_ROUTED
         if read["harness"] in VENDOR_HARNESSES:                    # stage W: which reader read it, and any refusal
             entry.update(harness=read["harness"], reader=read["reader"], context_unreadable=read["unreadable"])
         if not ctx:                                                 # review 0df1437 MINOR 3: 0 characters is unread

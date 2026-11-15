@@ -1486,6 +1486,37 @@
           "sha256_after": "dc725e67a6b17e9547419b62956fe55109a1f30ccec6bc566802377cf553a6de"
         }
       ]
+    },
+    "v3-routed-leak-20261114": {
+      "by": "Javier (OD219, v3-routed-leak yes, 2026-11-15T18:39:35Z)",
+      "why": "The V3 gate (gap4-verify1-c91974a-20261114T183802Z) failed 29 of its lines on one refusal: the leak list would void a recorded session, take s-eabb56 attempt 1, whose loaded context carries the harness's own command_permissions attachment, as s-0e780d's did (OD204). That take was not ruled aborted: the frozen routing table routed it aborted by itself (agent-reachable-reason on leak-in-loaded-context, after the first turn), so the 9 Nov exemption, which reads take rulings only, did not reach it. A take whose latest committed history entry is its outcome with state aborted is now read and listed, marked 'not checked: routed aborted', and never counted as voided; build_draft refuses unless the marked set is exactly the takes ruled or routed aborted, each read on its own from the history loader. The leak list, its excusals and the take checker are unchanged: no CHECKER_CODE_FILES or READER_SOURCES file changes, and no take's route, label or count moves. The draft (prereg-draft.json, a pinned file) is regenerated in the same commit: built before any take was recorded, its checked_against listed the walks only; it now lists every recorded session, the takes ruled or routed aborted marked not checked, so its pin moves too. leak_grep.py is now a near-rewrite of its round-3 source, so its COPIED.d reason carries the citation sentence copy_manifest requires, and that file's pin moves too.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/leak_grep.py",
+          "sha256_before": "f4f0bc0cd5ae385213b007ccf544ea731c1bdd8440ba32429b076858c135a814",
+          "sha256_after": "a084cd013c473b061948eddf615884ca4402d12c2cc4e2cbaad7f88a0d588716"
+        },
+        {
+          "path": "evals/gap-study-4/build_draft.py",
+          "sha256_before": "660957ce990eeec7f7e6adc745943ee6a8a86f80846bdf739e99322774efb5f3",
+          "sha256_after": "c2a749b42261925bf04c4c96e010b8ea9cfc44a358fd57c348e46f9a2c5fe255"
+        },
+        {
+          "path": "evals/gap-study-4/tests/test_build_draft.py",
+          "sha256_before": "834c117d667c62a1dbfb7a2fd36fda27b663880f1e7336bf66095c2b36b15194",
+          "sha256_after": "78a5546e5b6b347dd058550cba9ecf662933604ac697b0d92fef2d4826f84a11"
+        },
+        {
+          "path": "evals/gap-study-4/prereg-draft.json",
+          "sha256_before": "37fd08047b66cbaee8cc12cd05a823692e2bafebaaa599d6db53178482b5c0e3",
+          "sha256_after": "e80d43108ca55a16e10975743238ea10bb6e26fd584e95ed6136941e81f0dd47"
+        },
+        {
+          "path": "evals/gap-study-4/COPIED.d/w8a-walk-layout.json",
+          "sha256_before": "92ea6951005b3910feb42c3cb2f3c961e05a0fdc4bbf767a902fea3d23f3b719",
+          "sha256_after": "51e8229715aadc45a9e52af02e12a27e3c53209476cbb4af006f7df20aaa00b7"
+        }
+      ]
     }
   },
   "n": 10,
@@ -48034,7 +48065,7 @@
     {
       "path": "evals/gap-study-4/COPIED.d/w8a-walk-layout.json",
       "git_blob_sha": "27176a2afabd87f9c0bd03478565f952e8d92dde",
-      "sha256": "92ea6951005b3910feb42c3cb2f3c961e05a0fdc4bbf767a902fea3d23f3b719",
+      "sha256": "51e8229715aadc45a9e52af02e12a27e3c53209476cbb4af006f7df20aaa00b7",
       "uncommitted": false
     },
     {
@@ -48376,7 +48407,7 @@
     {
       "path": "evals/gap-study-4/build_draft.py",
       "git_blob_sha": "1a5fa1f78be1125bb53338fb93bcdd6a5f1bfcb6",
-      "sha256": "660957ce990eeec7f7e6adc745943ee6a8a86f80846bdf739e99322774efb5f3",
+      "sha256": "c2a749b42261925bf04c4c96e010b8ea9cfc44a358fd57c348e46f9a2c5fe255",
       "uncommitted": false
     },
     {
@@ -49498,7 +49529,7 @@
     {
       "path": "evals/gap-study-4/leak_grep.py",
       "git_blob_sha": "13a04f44f609063c625aeaf1801ddd59d2275657",
-      "sha256": "f4f0bc0cd5ae385213b007ccf544ea731c1bdd8440ba32429b076858c135a814",
+      "sha256": "a084cd013c473b061948eddf615884ca4402d12c2cc4e2cbaad7f88a0d588716",
       "uncommitted": false
     },
     {
@@ -49612,7 +49643,7 @@
     {
       "path": "evals/gap-study-4/prereg-draft.json",
       "git_blob_sha": "6760f74b48cd3299ade98698eb72a9dafa2d9748",
-      "sha256": "37fd08047b66cbaee8cc12cd05a823692e2bafebaaa599d6db53178482b5c0e3",
+      "sha256": "e80d43108ca55a16e10975743238ea10bb6e26fd584e95ed6136941e81f0dd47",
       "uncommitted": false
     },
     {
@@ -51472,7 +51503,7 @@
     {
       "path": "evals/gap-study-4/tests/test_build_draft.py",
       "git_blob_sha": "1a1bd5ff59a91ef5d0549a49d9c54be4e5d60ece",
-      "sha256": "834c117d667c62a1dbfb7a2fd36fda27b663880f1e7336bf66095c2b36b15194",
+      "sha256": "78a5546e5b6b347dd058550cba9ecf662933604ac697b0d92fef2d4826f84a11",
       "uncommitted": false
     },
     {
