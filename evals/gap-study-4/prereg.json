@@ -1528,6 +1528,17 @@
           "sha256_after": "a778e731675c2b10fa53a138a9b028a45f9f05afdb469855563082aa568f5f3e"
         }
       ]
+    },
+    "v3-t7-timeout-20261116": {
+      "by": "OD197, glitch-34's ruling after fresh review (gap4-v3-t7-review-20261116)",
+      "why": "A test pin only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z); glitch-34's ruling, written by its builder. v3-timeouts-20261114 raised the battery limit (run_checks.BATTERY_TIMEOUT_S) from 7200 s to 18000 s but left the T7 pin in tests/test_live_box_cut.py (T7Timeout.test_the_battery_step_takes_run_checks_limit) at 7200 s, so the V3 gate gap4-verify1-bfff1e1-20261115T214936Z went red on that one assertion in test_round4, gap-live-box.txt:4 and gap-live-box.txt:5. The pin now reads the limit run_checks.py already holds; the test's other assertions, its two T7 mutants and every limit are unchanged. What is checked does not change.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/tests/test_live_box_cut.py",
+          "sha256_before": "a437d7dde6a2f2d90472ec5cd9b30a5a397972e70fafa54dcd4eb1b92a39300e",
+          "sha256_after": "665a8e8078fa8bce32cb74101ce5aa2525b34a81be92a357f69fc3d47669d6ce"
+        }
+      ]
     }
   },
   "n": 10,
@@ -51922,7 +51933,7 @@
     {
       "path": "evals/gap-study-4/tests/test_live_box_cut.py",
       "git_blob_sha": "504a74b8de50c1574960079f8ef749749cec6da3",
-      "sha256": "a437d7dde6a2f2d90472ec5cd9b30a5a397972e70fafa54dcd4eb1b92a39300e",
+      "sha256": "665a8e8078fa8bce32cb74101ce5aa2525b34a81be92a357f69fc3d47669d6ce",
       "uncommitted": false
     },
     {

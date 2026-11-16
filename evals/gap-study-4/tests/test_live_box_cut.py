@@ -33,7 +33,7 @@ delegation; design LIVE-BOX-TAKE-DESIGN-20261028 section 6 B1 and section 7, rul
                     folder: exit 0 with the record and its files written (closed keys, no transcript text), exit 3 when
                     no turn is cut, exit 4 on a finding. Witnesses: prereg-admitted, budget-at-registered-admitted,
                     token-unchecked, login-unchecked, records-clone-admitted, remote-admitted, gap-outside-unread.
-  T7.timeout        the test_round4.py step's limit is run_checks.timeout_for("test_round4") (7200 s), one source
+  T7.timeout        the test_round4.py step's limit is run_checks.timeout_for("test_round4") (18000 s), one source
                     (a changed run_checks limit reaches it), every other step 3600 s; run_step hands sh that limit; a
                     step that times out names its limit in its tail. Witnesses: step-timeout-flat,
                     run-step-default-timeout.
@@ -639,7 +639,7 @@ class T7Timeout(unittest.TestCase):
     def test_the_battery_step_takes_run_checks_limit(self):
         r, rc = MODS["freeze_rehearsal"], MODS["run_checks"]
         battery = ("python", "-B", "-W", "ignore", "evals/gap-study-4/test_round4.py")
-        self.assertEqual((r.step_timeout(battery), rc.timeout_for("test_round4")), (7200, 7200), "T7.timeout")
+        self.assertEqual((r.step_timeout(battery), rc.timeout_for("test_round4")), (18000, 18000), "T7.timeout")
         for command in r.COMMANDS[1:]:
             self.assertEqual(r.step_timeout(("python", "-B", "-W", "ignore", "evals/gap-study-4/" + command[0],
                                              *command[1:])), 3600, f"T7.timeout {command}")
@@ -649,15 +649,15 @@ class T7Timeout(unittest.TestCase):
         with mock.patch.object(r, "sh", lambda argv, cwd, env=None, timeout=3600: seen.append(timeout) or (0, "")):
             r.run_step(list(battery), "/nowhere")
             r.run_step(["python", "-B", "-W", "ignore", "evals/gap-study-4/copy_manifest.py", "--check"], "/nowhere")
-        self.assertEqual(seen, [7200, 3600], "T7.timeout: run_step hands sh the step's limit")
+        self.assertEqual(seen, [18000, 3600], "T7.timeout: run_step hands sh the step's limit")
 
         def expire(argv, **kw):
             raise subprocess.TimeoutExpired(argv, kw["timeout"])
         with mock.patch.object(r.subprocess, "run", expire):
             code, tail = r.run_step(list(battery), "/nowhere")
         self.assertEqual(code, 1, "T7.timeout")
-        self.assertIn("timed out after 7200 seconds", tail, "T7.timeout")
-        self.assertIn("the step's limit is 7200 s", tail, "T7.timeout")
+        self.assertIn("timed out after 18000 seconds", tail, "T7.timeout")
+        self.assertIn("the step's limit is 18000 s", tail, "T7.timeout")
 
 
 BOUND = {"T1.not-rehearsed": "T1NotRehearsed.test_no_record_fails_the_live_box_step",
