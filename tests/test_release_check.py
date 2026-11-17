@@ -128,6 +128,10 @@ class ReleaseCheckTests(unittest.TestCase):
     QUALIFYING = ('2026-09-22T16:55:13Z; RPO 13.167400 h; RTO 0.284136 min; PASS; Node 1 from the '
                   'scheduled off-machine copy; target recovery-db; synthetic data; seal '
                   'independent_context (0054); public seal pending (external_human_seal)')
+    # The repository's latest drill (0325); the cell shows the newest result row.
+    REPO_QUALIFYING = ('2026-11-17T21:06:31Z; RPO 17.608207 h; RTO 0.330002 min; PASS; Node 1 from the '
+                       'scheduled off-machine copy; target recovery-db; synthetic data; seal '
+                       'independent_context (0325); public seal pending (external_human_seal)')
 
     def restore_root(self, temp, log, records=()):
         root = Path(temp)
@@ -151,27 +155,27 @@ class ReleaseCheckTests(unittest.TestCase):
 
     def test_repository_restore_cell(self):
         self.assertEqual(release.restore_measurement(REPO),
-                         (self.QUALIFYING, datetime.date(2026, 9, 22), True))
+                         (self.REPO_QUALIFYING, datetime.date(2026, 11, 17), True))
         with tempfile.TemporaryDirectory(prefix='rc-repo-') as temp:
             root = Path(temp)
             shutil.copytree(str(REPO / self.DECISIONS), str(root / self.DECISIONS))
             (root / release.RESTORE).parent.mkdir(parents=True)
             log = (REPO / release.RESTORE).read_text()
-            self.assertEqual(log.count('| 13.167400 |'), 1)
-            (root / release.RESTORE).write_text(log.replace('| 13.167400 |', '| 24.000001 |'))
+            self.assertEqual(log.count('| 17.608207 |'), 1)
+            (root / release.RESTORE).write_text(log.replace('| 17.608207 |', '| 24.000001 |'))
             value, when, meets = release.restore_measurement(root)
-        self.assertNotEqual(value, self.QUALIFYING.replace('13.167400', '24.000001'))
+        self.assertNotEqual(value, self.REPO_QUALIFYING.replace('17.608207', '24.000001'))
         self.assertIn('not qualifying', value)
         self.assertFalse(meets)
         print('red-on-fault: repository drill RPO 24.000001 -> not qualifying')
 
-    def test_repository_provenance_bound_to_0054(self):
+    def test_repository_provenance_bound_to_its_record(self):
         # Review round 2 (P1, P2): a hand edit that upgrades a transcribed claim beyond what
-        # 0054 witnesses must stop qualifying.
-        row = ('| 2026-09-22T16:55:13Z | node1 | scheduled-offmachine | recovery-db | synthetic '
-               '| independent_context | 0054 |')
+        # the latest drill's record (0325; 0054 before it) witnesses must stop qualifying.
+        row = ('| 2026-11-17T21:06:31Z | node1 | scheduled-offmachine | recovery-db | synthetic '
+               '| independent_context | 0325 |')
         edits = [
-            ('seal external_human_seal', '| independent_context | 0054 |', '| external_human_seal | 0054 |'),
+            ('seal external_human_seal', '| independent_context | 0325 |', '| external_human_seal | 0325 |'),
             ('target primary', '| recovery-db |', '| primary |'),
             ('data real', '| synthetic |', '| real |'),
         ]
@@ -185,7 +189,7 @@ class ReleaseCheckTests(unittest.TestCase):
                 (root / release.RESTORE).write_text(log.replace(row, row.replace(old, new)))
                 value, when, meets = release.restore_measurement(root)
                 self.assertEqual((meets, 'not qualifying' in value), (False, True), value)
-                print('red-on-fault: repository provenance %s on 0054 -> not qualifying' % label)
+                print('red-on-fault: repository provenance %s on 0325 -> not qualifying' % label)
 
     def test_restore_table_strict(self):
         head = '| Date | RPO_h | RTO_min | Result |\n|---|---|---|---|\n'
@@ -383,9 +387,9 @@ class ReleaseCheckTests(unittest.TestCase):
 
     def test_restore_qualified_tag_path(self):
         values = {'restore drill': release.restore_measurement(REPO)}
-        self.assertEqual(values['restore drill'][1], datetime.date(2026, 9, 22))
-        self.assertEqual(release.release_failures(values, datetime.date(2026, 9, 27)), [])
-        self.assertEqual(release.release_failures(values, datetime.date(2026, 10, 7)),
+        self.assertEqual(values['restore drill'][1], datetime.date(2026, 11, 17))
+        self.assertEqual(release.release_failures(values, datetime.date(2026, 11, 22)), [])
+        self.assertEqual(release.release_failures(values, datetime.date(2026, 12, 2)),
                          ['restore drill: older than 14 days'])
         print('red-on-fault: qualified drill 15 days old -> older than 14 days at tag')
 
@@ -400,7 +404,7 @@ class ReleaseCheckTests(unittest.TestCase):
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             self.assertEqual(result.returncode, 0, result.stderr)
             before = (root / release.OUTPUT).read_bytes()
-            self.assertIn(('| %s |' % self.QUALIFYING).encode('utf-8'), before)
+            self.assertIn(('| %s |' % self.REPO_QUALIFYING).encode('utf-8'), before)
             result = subprocess.run(command + ['--check'], stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE)
             self.assertEqual((result.returncode, result.stdout),
