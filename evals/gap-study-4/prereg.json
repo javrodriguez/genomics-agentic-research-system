@@ -1539,6 +1539,17 @@
           "sha256_after": "665a8e8078fa8bce32cb74101ce5aa2525b34a81be92a357f69fc3d47669d6ce"
         }
       ]
+    },
+    "v4fix-commitlint-20261117": {
+      "by": "OD197, glitch-34's ruling after fresh review (gap4-v4fix review)",
+      "why": "A lint excusal only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z); glitch-34's ruling, written by its builder. The commit-body language guard (lint_language.py --commits-since the freeze commit) matched one line in the body of amendment commit bfff1e15a104 (v3-costs-lint-20261114), which names the value of the token-count lines that amendment excuses. A commit body cannot be edited, so language-allowlist.json excuses that line once at its exact text, under file commit:bfff1e15a104, as lint_language.py matches commit bodies. Found by final verifier 1 (F2). Nothing measured, graded or run changes.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/language-allowlist.json",
+          "sha256_before": "a778e731675c2b10fa53a138a9b028a45f9f05afdb469855563082aa568f5f3e",
+          "sha256_after": "995df065a3e70cdab9ac24d3686c3feb7858b610ce10640ddcd74e239f521c7f"
+        }
+      ]
     }
   },
   "n": 10,
@@ -49545,7 +49556,7 @@
     {
       "path": "evals/gap-study-4/language-allowlist.json",
       "git_blob_sha": "79b09f2fba1187dbbb4cc7415133b34dd1789463",
-      "sha256": "a778e731675c2b10fa53a138a9b028a45f9f05afdb469855563082aa568f5f3e",
+      "sha256": "995df065a3e70cdab9ac24d3686c3feb7858b610ce10640ddcd74e239f521c7f",
       "uncommitted": false
     },
     {

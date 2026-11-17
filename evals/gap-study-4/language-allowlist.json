@@ -805,6 +805,13 @@
       "line_text": "      \"reasoning_output_tokens\": 100,",
       "ruled": "2026-11-14",
       "why": "cost-calls.json is assembled by cost_calls.py from the takes' own cost records, copied call by call: a token count of exactly 100 in a call's usage is a machine-recorded number, not a sentence this study wrote. The take ledgers it is read from are records outside this guard; this file is linted because it sits at the study's top level, so each distinct token-count line the rule matches is excused once at its exact text (the match is file, rule and text, so one entry covers every line with that text). Found on the V3' line, 14 Nov 2026."
+    },
+    {
+      "file": "commit:bfff1e15a104",
+      "pattern": "hundred",
+      "line_text": "reasoning_output_tokens equal to 100): three distinct line texts. language-allowlist.json excuses each once at its",
+      "ruled": "2026-11-17",
+      "why": "The body of amendment commit bfff1e15a104 (v3-costs-lint-20261114), committed on 15 Nov 2026, describes the token-count lines that amendment excuses and names their value as a figure: a commit body cannot be edited, and the line states what was excused, not a result of this study. The commit-body guard (lint_language.py --commits-since the freeze commit, CI's Round 4 commit bodies step) matched it once; it is excused once at its exact text. Found by final verifier 1 (verify-1.md, F2), V1-FAIL-TRIAGE-20261117."
     }
   ]
 }
