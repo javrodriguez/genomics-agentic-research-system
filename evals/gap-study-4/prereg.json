@@ -1566,6 +1566,17 @@
           "sha256_after": "fc6f2aba84420fc2340e5bd4309972b1090e44ee9eebdd73739d9d45a66b3fdb"
         }
       ]
+    },
+    "v4fix-golden-20261117": {
+      "by": "OD197, glitch-34's ruling after fresh review (gap4-v4fix golden review); follows OD222's wording change",
+      "why": "Two test pins only, under Javier's standing word for changes that move no behaviour (OD197, amend-standing yes, 2026-11-06T14:25:58Z), following his word on the wording (OD222, v4-panel-wording yes); glitch-34's ruling, written by its builder. Amendment v4fix-panel-wording-20261117 changed the wording of labelling/agreement.py and inserted one line in it, and left two pins in tests/test_labelling.py on the old text: GOLDEN_PAGE_SHA, the sha256 of the agreement page the test derives from its own synthetic fixture, and the EQUIVALENT key of one identical return-None mutant, whose key carries its line number. The golden page now differs from the old one only by that wording, and the key names the same line one below. What is checked does not change. docs/EVALS.md states the regenerated AGREEMENT.md's sha256.",
+      "files": [
+        {
+          "path": "evals/gap-study-4/tests/test_labelling.py",
+          "sha256_before": "36b064a4ac2705a55c06d1e34ebc025688670234085fd2fd8ff0915288888da7",
+          "sha256_after": "cc97685a0f5cf664526d53111b3611c5b94bb745df9a93d2df5bafb644071c67"
+        }
+      ]
     }
   },
   "n": 10,
@@ -51930,7 +51941,7 @@
     {
       "path": "evals/gap-study-4/tests/test_labelling.py",
       "git_blob_sha": "401ee72f0c120e5678a67f1986a4cc25c56f36b0",
-      "sha256": "36b064a4ac2705a55c06d1e34ebc025688670234085fd2fd8ff0915288888da7",
+      "sha256": "cc97685a0f5cf664526d53111b3611c5b94bb745df9a93d2df5bafb644071c67",
       "uncommitted": false
     },
     {

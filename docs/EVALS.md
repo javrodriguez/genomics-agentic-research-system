@@ -160,7 +160,7 @@ Between harnesses a row compares two agent systems, a model inside its own harne
 
 ### Blind labels against the grader
 
-A seeded, stratified sample of takes was labelled blind, with model names hidden and no grader label shown; `labelling/labels.json` holds 57 labels. They are the Fable 5.2 panel's (see the disclosures above), committed as written at `edf4c45e83559f89f3c318a933f7f6bf5b0bdd80`; the table is [`evals/gap-study-4/labelling/AGREEMENT.md`](../evals/gap-study-4/labelling/AGREEMENT.md) (sha256 `3890fc085b6abdf4b83ee6aa9f49e212f38168b93b1d7a711fdcccf21017972a`), committed at `d980d958c2bf6bd5f5e777c7ead841bf2ec0d99e`. Takes where the panel's label equals the grader's, of the takes drawn:
+A seeded, stratified sample of takes was labelled blind, with model names hidden and no grader label shown; `labelling/labels.json` holds 57 labels. They are the Fable 5.2 panel's (see the disclosures above), committed as written at `edf4c45e83559f89f3c318a933f7f6bf5b0bdd80`; the table is [`evals/gap-study-4/labelling/AGREEMENT.md`](../evals/gap-study-4/labelling/AGREEMENT.md) (sha256 `42e7a07f1ddfa69d930fed1561637dbe293fca52b9340dea980c3027d9b92355`), committed at `d980d958c2bf6bd5f5e777c7ead841bf2ec0d99e`. Takes where the panel's label equals the grader's, of the takes drawn:
 
 | Task | `claude-haiku-4-5-20251001` | `claude-sonnet-5-5` | `claude-opus-5-5` | `gpt-6-luna` | `gpt-6.1-sol` |
 |---|---|---|---|---|---|

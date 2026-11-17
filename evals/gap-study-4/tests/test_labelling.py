@@ -1389,7 +1389,7 @@ def g9_small_rows(sm, sh, ag):
     return out
 
 
-GOLDEN_PAGE_SHA = "562526ee007df9b4ded378cbf2679e368cf475c252450521f8381bbf92f048ad"
+GOLDEN_PAGE_SHA = "fb2ffff5e2f93ece2f4ca836323584b97d3ca5ceed868bb67c838d740e0b02dc"
 
 
 FRAME4 = frame(per=4)
@@ -2397,7 +2397,7 @@ EQUIVALENT = {
     'agreement: cmp-negate#0 L54 d24c8ca1 _p not in sys.path': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'agreement: stmt-delete L55 d47431ae sys.path.insert(0, _p)': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
     'agreement: return-none L103 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
-    'agreement: return-none L255 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
+    'agreement: return-none L256 9f730a1a return None': ('identical-mutant', 'the mutant returns the same None the line already returns', 'None'),
     'agreement: int-change L55 5feceb66 0': ('import-plumbing', "the module's sys.path plumbing or its __future__ import", '_p'),
 }
 
