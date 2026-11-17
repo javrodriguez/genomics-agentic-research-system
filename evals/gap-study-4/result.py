@@ -280,9 +280,9 @@ def render_flagged_counts(c) -> str:
     rows = c.get("verdicts")
     if rows is None:
         return "\n".join(out)
-    out += ["What the person reading the list found on each listed take, per task inside one arm, harness and model "
+    out += ["What the Fable panel reading the list found on each listed take, per task inside one arm, harness and model "
             "(labelling/flagged-verdicts.json): the grader's reading stands, is wrong, or the take does not settle it.",
-            ""]
+            "", "The list was read by a Fable panel, not a human: on Javier's word a panel of Fable readers, with a majority deciding, stood in for his own reading of it, as a Fable panel did for the blind labels of the human sample (labelling/AGREEMENT.md), and a reviewed reading aid kept outside this folder supplied each listed take's grader label, which the frozen flagged sheet does not show. These are model readings, not a human's. Fable is a Claude model and the study has a Claude arm; this is disclosed as a limit.", ""]
     if rows and rows[0]["grader-right"] is None:
         out += ["No verdict record is committed: the list's findings are not read yet.", ""]
     out += ["| Arm | Harness | Model | Task | On the list | Grader's reading stands | Grader's reading wrong | "

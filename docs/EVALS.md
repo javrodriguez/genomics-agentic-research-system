@@ -12,7 +12,7 @@ That first sentence describes Layer B, the first study, further down this page; 
 # The Gap Study, round 4
 
 <!-- gap-study-4:summary -->
-**Status.** A draft for the repository owner's sentences, not yet verified: no verifier report is committed. Each results table below is copied by script from [`evals/gap-study-4/RESULT.md`](../evals/gap-study-4/RESULT.md) (sha256 `21e0afb7c6c49344bb355087d1d9444c8b1148d336fbf04be0aae758fbae2a69`), the agreement table beside it, or the secondary analysis named below; the task table is from `tasks/`; the other facts are from the frozen file, `rulings.json`, `outcomes.json`, `routing.json`, the commit bodies and the secondary's pre-registration. This section makes no comparative sentence; those are the owner's.
+**Status.** A draft for the repository owner's sentences, not yet verified: no verifier report is committed. Each results table below is copied by script from [`evals/gap-study-4/RESULT.md`](../evals/gap-study-4/RESULT.md) (sha256 `ef3388d453f8c2be58fd97247d2832c60680a54e4e374fb654dfc4986d44dae6`), the agreement table beside it, or the secondary analysis named below; the task table is from `tasks/`; the other facts are from the frozen file, `rulings.json`, `outcomes.json`, `routing.json`, the commit bodies and the secondary's pre-registration. This section makes no comparative sentence; those are the owner's.
 
 **Question.** Where the pipeline's deterministic layer is silent, in how many of n tries does a model, inside its own agent harness, make the right move on each version of a task?
 

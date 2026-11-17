@@ -177,9 +177,10 @@ def render(rs: list, frame) -> str:
     if bad:
         raise AgreementError("; ".join(bad))
     out = ["# Blind labels against the grader", "",
-           "One row per task inside one arm, harness and model. Agreement is Javier's label equal to the grader's. "
+           "One row per task inside one arm, harness and model. Agreement is the panel's label equal to the grader's. "
            "Bounds are exact two-sided 0.95 (Clopper-Pearson); the carried-back figure weights each stratum by its "
            "frame size, with per-stratum exact bounds at the Bonferroni level.", "",
+           "The labels are a Fable panel's, not a human's: on Javier's word a panel of Fable labellers, each labelling the sampled takes alone from the same blind sheet, with a majority deciding, stood in for his own labels. This page gives the code grader's agreement with a model panel, not with a person. Fable is a Claude model and the study has a Claude arm; this is disclosed as a limit.", "",
            "| Arm | Harness | Model | Task | Agreeing | Exact bounds | Carried back to the frame | Its bounds |",
            "|---|---|---|---|---|---|---|---|"]
     for r in rs:
@@ -193,7 +194,7 @@ def render(rs: list, frame) -> str:
     out.append("")
     for r in (r for r in rs if r["n"]):
         out += [f"## Confusion, {r['arm']} {r['harness']} {r['model']} {r['task']}", "",
-                "| Grader label | Javier's label | His stop cause | Takes |", "|---|---|---|---|"]
+                "| Grader label | The panel's label | The panel's stop cause | Takes |", "|---|---|---|---|"]
         out += [f"| {g} | {h} | {s or 'blank'} | {k} |" for (g, h, s), k in sorted(r["matrix"].items())]
         out += ["", "| Verdict | Readers | In the frame | Drawn | Agreeing |", "|---|---|---|---|---|"]
         out += [f"| {s['verdict']} | {s['readers']} | {s['frame']} | {s['drawn']} | {s['agree']} |" for s in r["strata"]]
