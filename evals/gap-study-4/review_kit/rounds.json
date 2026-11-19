@@ -108,6 +108,15 @@
       "launch_commit": "01479891509b2e8e5b1041edfefb974a256e41f0",
       "added": "2026-11-18T13:06:22+00:00",
       "voids": null
+    },
+    {
+      "n": 3,
+      "kind": "verify",
+      "prompt_sha256": "7712a8faa0952790df99fd064951c6825491b83147017e6944531297c30efef7",
+      "input_sha256": "d21d5945c59754f1f2bc24f262e0f23bc35eac9b3142f57495470630063fee94",
+      "launch_commit": "79d9e45a8d8be79210ef7b52034775c2446f4d95",
+      "added": "2026-11-19T06:00:09+00:00",
+      "voids": null
     }
   ]
 }
