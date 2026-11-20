@@ -103,7 +103,35 @@ Alternatives rejected:
 
 The module prints `tool names: <n> refused, <m> passed, <k> judged`.
 Red at the test commit d5bdc3ef (7 of 9 tests, 110 failing subtests); green after the fix (`tool names: 18 refused, 10 passed, 8 judged`).
-Its mutation proof, the existing guard, protected-path, settings-reader and Codex modules, and the refusal corpus pin (1999 refused, 607 allowed, unchanged) are in the lane's notes and its review record.
+At head 5205c96c each module was run singly on the Mac on 2026-11-20 (Python 3.9.6, a temp root outside the clone), every one exit 0:
+
+| Module | Result |
+|---|---|
+| `gars/tests/test_every_tool_name.py` | `Ran 9 tests`, `OK`, `tool names: 18 refused, 10 passed, 8 judged` |
+| `gars/tests/test_guard_hook.py` | `Ran 7 tests`, `OK` |
+| `gars/tests/test_protected_paths.py` | `Ran 6 tests`, `OK` |
+| `gars/tests/test_data_class_required.py` | `Ran 4 tests`, `OK` |
+| `gars/tests/test_stage03_execution.py` | `Ran 17 tests`, `OK` |
+| `gars/tests/test_pilot_log.py` | `Ran 15 tests`, `OK` |
+| `gars/tests/test_codex_adapter.py` | `Ran 39 tests`, `OK` |
+| `gars/tests/test_session_state_closed.py` | `Ran 11 tests`, `OK` |
+| `gars/tests/build_refusal_corpus.py --check` | `decision pin: 1999 refused, 607 allowed; OK` (unchanged) |
+
+The whole suite at the same head passed on Node 1 (run guard-default-deny-5205c96-5205c96-20261120T210714Z: ran 1615, passed 1533, skipped 82, 0 failures).
+The mutation proof ran on the Mac on 2026-11-20 at head 5205c96c, in a `git clone --no-local` scratch copy, never the lane branch.
+Each mutant edited one file, ran `gars/tests/test_every_tool_name.py`, and restored the file from its byte backup; the scratch copy's `git status` was clean afterwards.
+The null control ran first and was green; all seven mutants went red (`mutation proof: null green, 7 of 7 red`):
+
+| Mutant | Exit | Result | Killed by |
+|---|---|---|---|
+| null (no change) | 0 | `OK`, `18 refused, 10 passed, 8 judged` | (control) |
+| 1 matcher back to the eight names | 1 | `FAILED (failures=28)` | `test_the_matcher_reaches_every_name` |
+| 2 final refusal removed (fall-through allow) | 1 | `FAILED (failures=72)`, `0 refused` | `test_unjudged_names_are_refused`, `test_both_arms_refuse_the_unknown_grid` |
+| 3 `Agent` added to the pass list | 1 | `FAILED (failures=6)` | `test_unjudged_names_are_refused`, `test_pass_names_are_allowed`, `test_the_sets_are_closed_and_exact`, `test_both_arms_refuse_the_unknown_grid` |
+| 4 `Task` prefix pass | 1 | `FAILED (failures=12)`, `15 refused` | `test_unjudged_names_are_refused`, `test_both_arms_refuse_the_unknown_grid` |
+| 5 `mcp__*` removed from `permissions.deny` | 1 | `FAILED (failures=1)` | `test_settings_belts` |
+| 6 unreadable-name check removed | 1 | `FAILED (failures=7)` | `test_unreadable_tool_name_is_refused` |
+| 7 `MultiEdit` dropped from the write arm | 1 | `FAILED (failures=2)`, `7 judged` | `test_judged_names_keep_their_arms`, `test_the_sets_are_closed_and_exact` |
 
 ## Status
 
