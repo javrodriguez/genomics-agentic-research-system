@@ -3,7 +3,10 @@
 # catch-up so a session boots knowing where every project stands. The writes are
 # projects/_index.md — a generated file whose authority is elsewhere — and .gars_session_model,
 # the model the harness's SessionStart input names, or unknown (decision 0303); every history
-# writer reads it, never an agent's --model. Pin failures refuse session initialization (R-099).
+# writer reads it, never an agent's --model. A pin failure exits 2 (R-099): Claude Code shows it
+# to the user and the session goes on (SessionStart cannot block there), so under Claude Code
+# the guard's default deny is what keeps an unreviewed skill or MCP server from acting
+# (decision 0330); the Codex adapter turns the same exit into a stopped first turn (0266).
 WS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # A terminal is a person running this by hand, not a harness starting a session: no record.
 [ -t 0 ] || python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import workspace

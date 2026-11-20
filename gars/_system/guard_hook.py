@@ -18,6 +18,11 @@ checked here (e.g. "do not read a colleague's directory").
 
 The owner ruled 3A: when the guard cannot judge a call it refuses. Every refusal names
 its rule, where it is written, and an allowed next step (R-098; decision 0058).
+Under Claude Code the settings matcher sends every tool call here, and each tool name has
+one of three outcomes, chosen by the exact name only (decision 0330): a JUDGED_TOOLS name
+is judged by its arm, a PASS_TOOLS name (a built-in that touches no file) is allowed, and
+every other name -- an MCP or claude.ai connector tool, a built-in that runs commands or
+reaches the network, a name from a later release, or an unreadable name -- is refused.
 The Bash transport accepts only registered typed calls or read-only filesystem commands;
 it is not a general shell. Non-agent builders require Row 15's git-level hooks.
 
@@ -34,6 +39,30 @@ from tools.policy import Refusal, simple_tokens, parse_argv, authorize
 
 # Tools that write the file named in tool_input.file_path / notebook_path.
 WRITE_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
+
+# Every name an arm of decide() judges: the read arm, the write arm, the Bash transport.
+JUDGED_TOOLS = ("Read", "Glob", "Grep") + WRITE_TOOLS + ("Bash",)
+
+# Claude Code built-ins that read and write no file the session names, run no command and reach
+# no network, allowed as they are (decision 0330). Matched by exact name, never by a prefix.
+# Each rests on its row in Claude Code's tools reference (code.claude.com/docs/en/tools-reference,
+# read 20 Nov 2026); a name whose row grows a file, command or network reach leaves this list.
+PASS_TOOLS = (
+    "TodoWrite",        # row: "Manages the session task checklist"; the harness holds it
+    "TaskCreate",       # row: "Creates a new task in the task list"; the harness keeps it, under
+                        #   the user's config folder when a list is shared (interactive-mode, Task
+                        #   list); assignable only to agents, and Agent is refused here
+    "TaskGet",          # row: "Retrieves full details for a specific task"
+    "TaskList",         # row: "Lists all tasks with their current status"
+    "TaskUpdate",       # row: "Updates task status, dependencies, details, or deletes tasks"
+    "TaskStop",         # row: "Stops a running background task by ID"; only a call this guard
+                        #   admitted can have started one
+    "AskUserQuestion",  # row: "Asks multiple-choice questions"; the human answers
+    "EnterPlanMode",    # row: "Switches to plan mode to design an approach before coding"
+    "ExitPlanMode",     # row: "Presents a plan for approval and exits plan mode"
+    "ToolSearch",       # row: "Searches for and loads deferred tools"; a loaded tool still meets
+                        #   this guard when it is called
+)
 
 # Workspace paths no session may write: the template ships them, `git pull` updates them.
 # Relative to the workspace root, fnmatch patterns.
@@ -950,6 +979,15 @@ UNREADABLE = ("Blocked: the guard could not read this tool call, so it cannot te
               "call is safe (R-098; decision 0042). Next: retry the call; if this keeps "
               "happening, stop and report it.")
 
+UNJUDGED = ("Blocked: the guard cannot judge tool %s (R-098; decisions 0042, 0330), so it refuses "
+            "it. Next: use Read, Glob, Grep, Edit or Write, or the typed call the stage contract "
+            "names through Bash.")
+
+
+def tool_label(name):
+    """A refused tool name as the refusal prints it: the Codex arm's own sanitiser."""
+    return re.sub(r"[^A-Za-z0-9_.:-]", "?", name)[:120]
+
 
 def check_bash(tool_input, root, cwd, depth=0):
     command = tool_input.get("command")
@@ -988,7 +1026,9 @@ def decide(payload, root=None):
         if not isinstance(payload, dict) \
                 or not isinstance(payload.get("tool_input") or {}, dict):
             deny(UNREADABLE)
-        tool = payload.get("tool_name") or ""
+        tool = payload.get("tool_name")
+        if not isinstance(tool, str) or not tool:
+            deny(UNREADABLE)  # missing, empty or not a string: no producer to judge (0330)
         tool_input = payload.get("tool_input") or {}
         cwd = payload.get("cwd") or ""
         root = os.path.realpath(root) if root else workspace_root()
@@ -1004,6 +1044,10 @@ def decide(payload, root=None):
             closed_edit_refusal(tool, tool_input, root, cwd)
         elif tool == "Bash":
             check_bash(tool_input, root, cwd)
+        # Default deny by the producer's exact name (decision 0330): a separate test, not an
+        # elif on the chain above, so Read, Glob and Grep never reach it.
+        if tool not in JUDGED_TOOLS and tool not in PASS_TOOLS:
+            deny(UNJUDGED % tool_label(tool))
     except Exception as exc:  # deny() raises SystemExit, which is not an Exception
         guard_failed(exc)
     return None
