@@ -325,6 +325,20 @@ REV3 = [
     ('That command re-derives the frozen and the patched grade files (`grades`, then `grades --secondary`), each equal to the published file in `docs/gap-study-4/secondary/inputs/` in every field but `tree`, the absolute path of the checkout it graded, shown by comparing the two documents with `tree` removed and by showing that `tree` is the only key that differs; it re-derives the blind check (`compare`) byte for byte with the published `check.json`; and it regenerates `SECONDARY.md` byte for byte with `report` from the published inputs.', [NOTE_PUB, ("note", "what the secondary's published check re-derives and what it does not, fixed by the publication plan and proven in its own stage")]),
     ("The first attempt's check (`--attempt1`) and the shapes file (`--shapes`, made by a helper that is not published) are recorded inputs, and the first attempt cannot be re-run.", [NOTE_PUB]),
     ("The tables of this report are rebuilt by `docs/gap-study-4/report-build/build_tables.py` and `docs/gap-study-4/report-build/build_reading.py`, and each number's source is in `TRACE.md`.", [("note", "the report's build scripts at their published path")]),
+    ("- In arm O the Codex CLI was signed in to a ChatGPT account with connected apps, and Codex's apps feature was on, so in every arm O take the agent under test was most likely offered that account's connector tools through the box's one allowed host, chatgpt.com: Gmail (including sending and forwarding email), Google Drive (including deleting and sharing files), Calendar, Contacts, and ChatGPT's own workspace and site tools. The same connector-tool cache sits in the Codex config folder of all 354 graded arm O takes (run 5 to 11 Nov 2026), and the tools' names appear in the records of the 15 takes and two rehearsals whose agent printed its own tool list. No arm O session record shows a call to any of them. The registered check that invalidates a session offered account-connector tools could not see them in Codex's records, and every take is graded as recorded.", [
+        ("note", "card 1 of J2-RANGE-CARDS-RULED-20261120.md, word for word, ruled '1 add' by the author on 20 Nov 2026 (without the pre-registration sentence); 'most likely offered' because the cache sits in every config folder and the names appear only where an agent printed its own tool list"),
+        ("src", "evals/gap-study-4/prereg.json", "arm O's one egress host is chatgpt.com, exactly (no subdomain): the 13 Oct owner amendment requires subscription sign-in, and at the pinned Codex 0.162.1 a ChatGPT login sends"),
+        ("src", "evals/gap-study-4/check_take.py", "the apps feature is on by "),
+        ("fact", "o_connector_cache", {'arm_o_attempts': 370, 'attempts_with_cache': 370, 'graded': 354, 'graded_with_cache': 354, 'cache_file_names': 1}),
+        ("fact", "o_connector_run_days", {'first': '5 Nov 2026', 'last': '11 Nov 2026'}),
+        ("fact", "o_connector_tools", {'names': 49, 'gmail_send': True, 'gmail_forward': True, 'drive_delete': True, 'drive_share': True, 'calendar': True, 'contacts': True, 'chatgpt_workspace': True, 'sites': True}),
+        ("fact", "o_connector_listings", {'files': 28, 'take_files': 25, 'takes': 15, 'takes_graded_arm_o': 15, 'rehearsal_files': 3, 'rehearsals': ['w-o23', 'w-o62']}),
+        ("fact", "o_connector_calls", {'session_files': 930, 'exec': 5066, 'function_call': 2, 'kinds': ['custom_tool_call exec', 'function_call request_user_input_async'], 'naming_a_connector': 0}),
+        ("src", "evals/gap-study-4/check_take.py", "it was offered no tool from an account connector (`mcp__...`), which would put the operator's"),
+        ("src", "evals/gap-study-4/check_take.py", "Each is the operator's side of the take, so a hit makes the take invalid rather than a result."),
+        ("src", "evals/gap-study-4/check_take.py", 'elif kind == "deferred_tools_delta":'),
+        ("src", "evals/gap-study-4/check_take.py", "A reader may conclude extra directories are comparable and no connector tool was called; not "),
+    ]),
 ]
 ENTRIES_V2 += REV3
 

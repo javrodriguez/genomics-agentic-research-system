@@ -29,10 +29,13 @@ WORKTREE = str(src.REPO)            # the clone itself: the records commit src.H
 report = (src.DOC / "REPORT.md").read_text()
 facts = json.loads((ROOT / "build" / "facts.json").read_text())
 facts_reading = json.loads((ROOT / "build" / "facts_reading.json").read_text())   # the exploratory action reading
-if set(facts) & set(facts_reading):
-    raise SystemExit("a fact key is in both facts files")
-FACT_FILE = {**{k: "build/facts.json" for k in facts}, **{k: "build/facts_reading.json" for k in facts_reading}}
-facts = {**facts, **facts_reading}
+# stage 1b: the figures of section 9's arm O connector sentence, recounted with git at the head (tools/connector_facts.py)
+facts_connectors = json.loads((ROOT / "build" / "facts_connectors.json").read_text())
+if set(facts) & set(facts_reading) or set(facts) & set(facts_connectors) or set(facts_reading) & set(facts_connectors):
+    raise SystemExit("a fact key is in two facts files")
+FACT_FILE = {**{k: "build/facts.json" for k in facts}, **{k: "build/facts_reading.json" for k in facts_reading},
+             **{k: "build/facts_connectors.json" for k in facts_connectors}}
+facts = {**facts, **facts_reading, **facts_connectors}
 cells = {}
 for tsv in ("trace_tables.tsv", "trace_reading.tsv"):
     for line in (ROOT / "build" / tsv).read_text().splitlines():
@@ -98,6 +101,8 @@ for text, sources in LIVE:
             ff = FACT_FILE[s[1]]
             rows.append((text, f"{s[1]} = {json.dumps(facts[s[1]], ensure_ascii=False)}", ff,
                          "computed from the committed records by tools/build_tables.py (the key names the rule)" if ff == "build/facts.json"
+                         else "recounted read-only with git from the records at the head by tools/connector_facts.py (the key names the rule)"
+                         if ff == "build/facts_connectors.json"
                          else "computed from the action reading's page and rulings file by tools/build_reading.py (the key names the rule)"))
         elif kind == "git":
             out = subprocess.run(["git", "-C", WORKTREE] + s[1].split(), capture_output=True, text=True)
