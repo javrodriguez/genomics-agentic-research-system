@@ -26,10 +26,14 @@ NOWHERE = '/nonexistent-gars-every-tool-probe/out.txt'  # absolute, outside, nev
 # name holds a hyphen, built-ins that run commands, spawn agents or reach the network, a name
 # from a later release, a name that only shares a prefix with pass names, and spellings that
 # differ from a judged name only by case or a trailing space (the producer is the exact name).
+# The last four differ from a pass name only by case, a suffix, a prefix or both, so a pass
+# test that is not exact string equality (case-insensitive, a prefix or regex match, a suffix
+# match, a substring) lets one of them through.
 UNJUDGED = ('mcp__filesystem__write_file', 'mcp__claude_ai_Gmail__send',
             'mcp__claude-in-chrome__navigate', 'PowerShell', 'Monitor', 'Agent', 'Task',
             'Skill', 'Workflow', 'WebFetch', 'WebSearch', 'ReadMcpResourceTool', 'TaskOutput',
-            'FutureTool', 'TaskEvil', 'bash', 'Read ', 'WRITE')
+            'FutureTool', 'TaskEvil', 'bash', 'Read ', 'WRITE',
+            'todowrite', 'TodoWriteX', 'mcp__x__TodoWrite', 'XTodoWriteX')
 
 # Realistic inputs for each pass name, as the tools reference describes them.
 PASS_INPUTS = {
