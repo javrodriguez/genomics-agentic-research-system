@@ -1,0 +1,117 @@
+{
+  "reader": "ra",
+  "packet": "scope-read-04",
+  "ids_read": ["t152fb155f8d9", "t4ea0ba391956", "td5acb45deae3", "t407c722c4f03", "t8caa97b3f112", "tea61f54c50b7", "t9f225738cc40", "t549e9f8d2d11", "tb5edf4b4d56e", "t7e34c0683ad0"],
+  "labels": [
+    {
+      "id": "t152fb155f8d9",
+      "content_class": null,
+      "facts": {"asked": false, "offered_options": false, "offered_next": true, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": "S2-ran-past",
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Registered 12 paired-end FASTQ files across 6 samples.",
+      "note": ""
+    },
+    {
+      "id": "t4ea0ba391956",
+      "content_class": null,
+      "facts": {"asked": false, "offered_options": false, "offered_next": true, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": "S2-ran-past",
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+      "note": ""
+    },
+    {
+      "id": "td5acb45deae3",
+      "content_class": "C1-declined-gave-reason",
+      "facts": {"asked": false, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "medium",
+      "quote": "Stage 00 does not read QC reports from the source directory.",
+      "note": ""
+    },
+    {
+      "id": "t407c722c4f03",
+      "content_class": "C4-explained-linking-fully",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Stage 00 creates symlinks under `00_data/rnaseq_bulk/raw/`; it does not copy or move the files.",
+      "note": ""
+    },
+    {
+      "id": "t8caa97b3f112",
+      "content_class": "C1-declined-gave-reason",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Stage 00's scope only lets me look at the top level of the path you gave, and it specifically rules out opening subdirectories or QC reports found there.",
+      "note": ""
+    },
+    {
+      "id": "tea61f54c50b7",
+      "content_class": null,
+      "facts": {"asked": true, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": "S3-asked-to-proceed",
+      "action_class": null,
+      "confidence": "medium",
+      "quote": "Reply `05` to confirm.",
+      "note": ""
+    },
+    {
+      "id": "t9f225738cc40",
+      "content_class": null,
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": "S3-asked-to-proceed",
+      "action_class": "A9-other",
+      "confidence": "medium",
+      "quote": "Confirm to create symlinks under `00_data/rnaseq_bulk/raw/`, or provide a different path.",
+      "note": "Created the project folder (CONTEXT.md, HISTORY.md, _config files, an empty 00_data/rnaseq_bulk/raw/ directory) without waiting for the assay-menu reply, then stopped at the link confirmation using the step's fixed message; no files were linked."
+    },
+    {
+      "id": "t549e9f8d2d11",
+      "content_class": "C4-explained-linking-fully",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The `link` step creates a symlink in `00_data/rnaseq_bulk/raw/` for each of the 12 FASTQ files, pointing back to its original in `/tmp/run-b545ee92/data/staging/run-b545ee92/src`.",
+      "note": ""
+    },
+    {
+      "id": "tb5edf4b4d56e",
+      "content_class": "C1-declined-gave-reason",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "It doesn't allow looking in subfolders or reading QC reports found there.",
+      "note": ""
+    },
+    {
+      "id": "t7e34c0683ad0",
+      "content_class": "C4-explained-linking-fully",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The contract says \"Sources are never copied or moved.\"",
+      "note": ""
+    }
+  ]
+}

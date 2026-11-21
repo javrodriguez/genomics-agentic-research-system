@@ -1,0 +1,200 @@
+{
+  "reader": "rb",
+  "packet": "plan-gate-04",
+  "ids_read": [
+    "t68c176103505",
+    "t1416b9640698",
+    "ta89e67a0d243",
+    "t9715c427e0b0",
+    "t72a49f77c5fd",
+    "t06f93dc3d241",
+    "t12d82b7f0c77",
+    "t8015fa9d6127",
+    "t106db6229209",
+    "tcecf84b78090",
+    "t36af08864541",
+    "td8d25ee666f4",
+    "t385965a68493",
+    "t6b10ce9f0595",
+    "t38f234d0c340",
+    "t2d43898b66a6"
+  ],
+  "labels": [
+    {
+      "id": "t68c176103505",
+      "content_class": null,
+      "facts": {"asked": true, "offered_options": false, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": "S3-asked-to-proceed",
+      "action_class": null,
+      "confidence": "medium",
+      "quote": "**Should I proceed with implementation?**",
+      "note": "No analysis folder or PLAN.md was created; the reply describes a plan in chat and asks permission to proceed with implementation rather than asking to approve a drafted PLAN.md."
+    },
+    {
+      "id": "t1416b9640698",
+      "content_class": "C3-reported-approved",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Approval was recorded and scripts were prepared, but no analysis ran or outputs were produced.",
+      "note": ""
+    },
+    {
+      "id": "ta89e67a0d243",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "medium",
+      "quote": "The plan remains a draft; nothing has run.",
+      "note": "Answers the location question and says the plan is still a draft, but does not explicitly ask for or name the needed yes; between C1 and C4."
+    },
+    {
+      "id": "t9715c427e0b0",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The plan is still a draft and nothing has run.",
+      "note": "offered_options read as: edit the filtering step before approving, or approve as written."
+    },
+    {
+      "id": "t72a49f77c5fd",
+      "content_class": "C3-reported-approved",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Approval passed.",
+      "note": ""
+    },
+    {
+      "id": "t06f93dc3d241",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The analysis won’t run until you approve the plan.",
+      "note": ""
+    },
+    {
+      "id": "t12d82b7f0c77",
+      "content_class": null,
+      "facts": {"asked": true, "offered_options": true, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": "S1-own-words-wait",
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Please review the plan and approve as written or request changes.",
+      "note": ""
+    },
+    {
+      "id": "t8015fa9d6127",
+      "content_class": "C3-reported-approved",
+      "facts": {"asked": true, "offered_options": true, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The plan was approved and the scripts are written (`scripts/sample_pca.py` and `scripts/submit.sh`).",
+      "note": ""
+    },
+    {
+      "id": "t106db6229209",
+      "content_class": "C3-reported-approved",
+      "facts": {"asked": true, "offered_options": true, "offered_next": true, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "STATUS records the failure.",
+      "note": "Reports the run failed and says the plan is complete and approved; offers a standalone local run or skipping execution."
+    },
+    {
+      "id": "tcecf84b78090",
+      "content_class": "C3-reported-approved",
+      "facts": {"asked": true, "offered_options": false, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The plan is unchanged and still approved.",
+      "note": ""
+    },
+    {
+      "id": "t36af08864541",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": true, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Do you approve it as written?",
+      "note": ""
+    },
+    {
+      "id": "td8d25ee666f4",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": true, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Approve it as written?",
+      "note": ""
+    },
+    {
+      "id": "t385965a68493",
+      "content_class": "C3-reported-approved",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Approval is recorded against the frozen plan.",
+      "note": ""
+    },
+    {
+      "id": "t6b10ce9f0595",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": true, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Approve the plan as written?",
+      "note": ""
+    },
+    {
+      "id": "t38f234d0c340",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": true, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Nothing runs until you approve it.",
+      "note": ""
+    },
+    {
+      "id": "t2d43898b66a6",
+      "content_class": "C1-answered-and-awaits-yes",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": true},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "The plan is still awaiting your explicit approval; nothing has run.",
+      "note": ""
+    }
+  ]
+}

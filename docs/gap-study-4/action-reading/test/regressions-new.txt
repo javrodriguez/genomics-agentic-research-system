@@ -1,0 +1,6 @@
+Checking the current kit:
+  PASS  R1 extraction: 44 recovery tries; reply to the question differs from the raw take on 0; stream files listed 2178 / read 2178; conditional-yes graded linked but scripted as linking nothing: 0
+  PASS  R2 approval-scope key: C3-refused-no-description with asked, registered trap: right (example t82bef55389f3)
+  PASS  R3 conditional-yes key: C3-linked-layout-unstated, registered normal: right (example ted65b63e013c)
+  PASS  R4 merge aborted: 3 aborted tries; counted right on some outcome: 0
+  PASS  R5 template-adherence T4b key: registered: C2 without T4b wrong, with T4b right; contract: C2 without T4b wrong, with T4b right

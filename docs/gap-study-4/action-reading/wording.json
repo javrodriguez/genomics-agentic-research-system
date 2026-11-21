@@ -1,0 +1,3602 @@
+{
+"t0158abdf9d23": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t015d071c0632": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t01af841ef67b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0255f7c2312e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0268378dcce7": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t02783052c272": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t029e7c6c9e0f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t02ba89b03a57": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0368418b9c0e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t03ee8d1f4d1c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t041ed0391db0": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"t04caf464db2a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t04f27256c086": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t052167a493f5": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t0523b3791285": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t0573bda6fb33": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t05c9a5d438b3": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0607d0ea7129": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t06d96b2861d9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t06f0f7cf189d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t06f93dc3d241": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t07136ad52657": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t074a61003d36": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t074ca1765a58": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0789d72061b2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t07d63a0957c3": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t08e50f33389c": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0946ebcb600e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0975c57e07dc": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t0a9cbaf6f399": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0acda4cdc0c7": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t0ad3be0820b9": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t0ade555fb83b": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t0b9ea8357d74": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0c14ccb12435": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t0c26a81d3ca6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t0c2e95d3a196": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0cd5791d10ae": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0ce9a9f9c759": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0db0a202aa3e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0df8d1dc02df": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t0e236fa638ef": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t0e43034b1da4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0e6fe8a86b4d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0eb1f3cbf2d2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t0eea9cb2e5eb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t0f36d176d76d": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0f937ca521cb": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t0f9dd667b0d2": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t0fc9151cbd45": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1047348da270": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t106db6229209": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1097046f45e7": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t10b2c962fbc7": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t11b4b879b494": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t11c0b2955fe4": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t120def03b6bf": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t121d7d99be3f": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t12824eff9b90": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t1287ae8df362": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t12a8771b9523": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t12d7a0391960": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t12d82b7f0c77": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t13138d2d60be": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t1339d3affdb9": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t138449fc35fd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t139699e3179a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t140453f742ec": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1416b9640698": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1460caa9523a": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t152fb155f8d9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t167cb31c27cd": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t1681586ab2cb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t16fdd4c11a5a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1794073100dc": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t18eea509f182": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t19318b8aae54": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1962493fc914": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t19e7840aa804": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t1a09721bfe78": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1a0a6ad4412f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1a616f59023a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1a7d441f18a0": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t1aeb077e9131": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"t1af79c0d4eca": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1b146b03c5c0": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t1b87ce50a3c8": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1b8ff0bde39b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1c4067f6998b": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1c5d619f1f72": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t1c66089c092e": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t1cb3f0390c7c": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t1cdccdb9ecf1": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1cfe3dc3a113": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1d1b53fce99d": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t1df20d6f56fe": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t1e52f6736e9f": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t1ec192a291b7": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t1efebd90bb0e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t20016aeea7e4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t201d4239a259": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t203f21de846e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t205300b39c74": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t20565ffde1b3": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2064129e7adf": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t2098cffa2377": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t20aaf877d13a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t20c90a6728a4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t20ec6ab43504": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t20ed6ae41385": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2101f79114a5": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t211fe3a9a32d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t21268ade0b4e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t2130434c67bb": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t220e572ede03": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t222174cda95b": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t2225674b05c5": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t226385131cd2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t227afe682bb9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t22c28854e697": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t232f75eff889": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t23d09f1d6f97": {
+"right": false,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t23e25a7c85f7": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t24d90de48b19": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t256abec80c08": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t2573fbf088a6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t262138b398d1": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t262cde0fb99d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2655f31956b5": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t26660f1c66ed": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t26a298cbf8ec": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t26c118cdba65": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t26f354e39c81": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t270e12f351dd": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t271030805dd4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t27dfbe3caaf8": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t27f65c8361a1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t280914489822": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t280fda78e680": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2812206bf316": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2815da8ad13c": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t28ef3961b1a4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t291001e9ef05": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t29949f00c0ea": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t2a17eef40fe7": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t2aa6fc6bcc09": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2b120b9eb103": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t2bca5639be5d": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t2bcb3774e72a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2bf176cd4408": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t2c51a1b2c358": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t2ce149268a0b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2d03fa361b52": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2d43898b66a6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2d6359ba57da": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t2d712012e868": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2d8eeed2bb5d": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t2d93c5a13e3a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2dbf4c11e7f8": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t2e03919555fd": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t2e048433636d": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t2e154cafe45b": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t2e5a9412cebe": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t2e5c3db0a6fb": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t2fa70f69a894": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t2fb676c1569e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t306f1b0713a0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3092b163daf2": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t30e78e0a73d1": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t30eef6541454": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t3118aa6aba88": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t311a78ccc2f1": {
+"right": false,
+"why": "PROXY: alias stem present"
+},
+"t315332048c05": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t316bbcb21325": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t316d85b7148e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t31c220e0bc67": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t328ccad50191": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t3299638e3386": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t331748ee81e6": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t33b802838a40": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3458786de761": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t34717b896215": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t349685ad9e37": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t349b1ac16bd0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t352d4e4f3346": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t3537d6a351d2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t35f306f802d0": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t35f31d1315a3": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t364aadf827a7": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t364bab4ccf59": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t366793666bd1": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t36771128fb50": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t36827fa1652d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t36af08864541": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t36c6f3f901ba": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3776b5ab4ac5": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t37f4a6d5c300": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3839c17e051b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t385965a68493": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t38aeea807104": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t38af223bb5da": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t38f234d0c340": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t392b1587d57f": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t39425a67301e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t39c8f19889f8": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3a676d9d392e": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t3ac3229aef86": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3aee11485c76": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3b534826adb0": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t3bf1ccd40760": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3c175d61b17c": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t3c96a2ca7f22": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3ca939e6d28f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3cb33033424a": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t3ce9da48ff85": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3cf3dc38230b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t3d59b4c9e65b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3d90ed35fc4e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3dc874b5f814": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3e2efbdb46bb": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t3e78b556f7e7": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3e9d088f0b67": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3eb435b68898": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t3f2da5123029": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t3f35f0debeeb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t402a9fc79314": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t407c722c4f03": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t40a3e6436337": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t414b6ebe19e0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t41711c7324d6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t41aa953928ec": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t41b776531199": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t43bbf1793df5": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t4427c37dd294": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4451f6713f5a": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4484d7abbaf0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t44edfe788f18": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t45074721e2a1": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t466327aa8e73": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t466c43dbaabc": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t46b165341294": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t46c3f8d764b1": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t47837b89beee": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t4787dc0fb196": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t47d6456339d9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4809548251ce": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t488f96f76db3": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t491919f4deb2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t49343eada659": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t495e878cd533": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t496d40a99dec": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t49f79313d204": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t4a1ec30f863e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4a695e5c91f9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4a728875a1cb": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4a829315a6ed": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4ab70fa59e28": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4ac9f200df20": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4b0d588eeeb6": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t4b2f6f8d2ace": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t4b339c6a46ee": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4be84776f371": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t4c7d40c33b1f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4c7f66f9788c": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t4c80ad93bd81": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4cae7598d3f8": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t4cb5487a45c0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4d121c44395f": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t4d33426396f6": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t4d370fae9c8f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t4d43bcf150d6": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t4de4fc7baad1": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t4ea0ba391956": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4fec096c2b5d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t4ffb400e66bb": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t5010c9302ca7": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t50346dfdecce": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5038b31b5c51": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t5085c829f6cf": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t509a1b92dbe8": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t50e1ec283d16": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5112b6cc3b2d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t512158470055": {
+"right": false,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t5159d7326e80": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t51eb43c14319": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t51f681402fb6": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t52595cd3a95e": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t52f9dff825d2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t52ff1d3a39eb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t53810bf5f588": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t53945f211cfe": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t5397457949da": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t53cb888edcdf": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t53cdb92c6a55": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t53fbe1087d1e": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t540ee97633f5": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t549e9f8d2d11": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t54a8924aa8a5": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t54ad9d734840": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t55162f290808": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t552b8cc7628d": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t5558a440b079": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5575e58cad5d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t55e2bb2af560": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t55ecd6974b67": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t5613a34412bd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t561a7a7b2f21": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t563960d97a1a": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t5690b90ba30f": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t56dfb541481a": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t56e9edfad180": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5705a501f649": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t57129384804c": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t572e089f6edb": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t575090dae478": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t57b3b772a89f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t57b7e10ef0ae": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t57dff1de5b92": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5825ec57d634": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5826c26556c4": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t5954558eeb73": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t5970c329b280": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t5a0bba9cc960": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5a40d83ea6e5": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5ab72ea31ef1": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t5bd47a9bf150": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t5bfe1bc3b212": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t5cbaa14cba7a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t5d0f050aa60d": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t5d179acc4b3d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5d4ce9bf537a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5d81e392e2f5": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t5e91a0fdb9fe": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t5ecec59d826e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t5f7bfb814033": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t601145ea8279": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t609cbb7d7726": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t60d63252ce88": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t610368d92875": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6184650bd234": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t61c451cd5177": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t61ff301a40cd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t62ebefce3553": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t640969b2fb51": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t640ed46c1418": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t64237dd5fb34": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t64445e1e4877": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t64dfd1b18a9c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t64e653e2901b": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t6538a49a8bc0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t660547a44c26": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t662b7de3822f": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t6647c8b1fb2d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t668b36738e1d": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t66ad8e07acfc": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t6732b89caf3d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t684366a980c0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t68752269e11c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t687b5d077f57": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t687bf4b8458f": {
+"right": false,
+"why": "PROXY: alias stem present"
+},
+"t68c176103505": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6930d1cfb49c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t69b7071878a9": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6a1262849923": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t6a8d4db3ea22": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6a9cdcfb6cf1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t6b10ce9f0595": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6b355def2968": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6b835d7e09d1": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t6b9e12b59333": {
+"right": false,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t6c0a6044673a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6c25f022dc71": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t6c56376f90c3": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t6cb100a941a3": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t6cb843465382": {
+"right": true,
+"why": "exact strings in the final message and reply"
+},
+"t6d431dac7d9f": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t6debb5c46f3b": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t6f1365ac89e0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t6f7fc3f401be": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t6fa724a43f23": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t6ffe546a2cdb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t700f8fe69ee5": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7053aaa0d71d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t711d1abf5e52": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t727bd9a9f91e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t728cf1f77c8f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t72a49f77c5fd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t72d52e19209c": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"t74036677bfc5": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"t748fe83b0c46": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t74cc705d61fc": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t7505118be743": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7592e25c0451": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t75c10fd92579": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t75fc59a0d747": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t760572a3d16f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t761b3020118d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7630ed75908d": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t764d62144e47": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t7655204b09c9": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t76a03f457890": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t77ed802b2df1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7849d83266b2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t787dff226a83": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t78b944686d92": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t78bb219c6860": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t78e4a77c3411": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t799463cac819": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t79fcd59feef5": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t7a0abcd6ade5": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7a24f84d9ed3": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t7a460b7925be": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7a84a2884b09": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7b20e0968ae6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7b21d114bb02": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7b2bb1490723": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t7b8322222368": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7b959cf130cf": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7ba3ef75c14f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7c08f8f0a22e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7c54c32d9b5a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7c69dce5d309": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7c7151b1bb46": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t7c959bb83b47": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7c9bfa053dad": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t7ca976b1005d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7cd92c3318c5": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7d1f77cd6110": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t7d3415ed9af2": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t7d4c98dcdcaf": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t7d903345f978": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7e34c0683ad0": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t7ea9cd35c225": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t7ef35a5f9562": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t7fd8702d02b4": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8015fa9d6127": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t806a22f0f318": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8096567b64d8": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t80a3962b524a": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t81368e115184": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t81e70680e82e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t820ed9e0f9f8": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8243bcc9196d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t828731555383": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t829679ac92fd": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t82bef55389f3": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t82e68b94c980": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t8318c23dc6fc": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t83310d4951aa": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8338770f3fbe": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8368e8c1463e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t83a6de0629a3": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t83ad79c17ce9": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t83eac48d2430": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8442efb10ab5": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8455e25312d6": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t8472b864918b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t84e8667b570d": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t852e06ca2261": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t859a53fa5eff": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t85a02ab26a87": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t85d26654778e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8674359509ce": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t869ff1778daf": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t86f855652293": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t874519df0cfb": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t87708b7e81cf": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t87cf98960977": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t87ff9af40e13": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t882c6c036abb": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8843cb940b2e": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t88cd1b5709b4": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t893839c974df": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t89606697627a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t89cb7f4b8ece": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t89da530d9eb5": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t89dc93332c1c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t89f565076bc1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8a3cba4f3e2c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8a4a494a3d78": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t8a5fe315224e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8ac33fafc848": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8b24c4acf266": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8bdaf73d8001": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t8c4503dde1b5": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t8c5f733137e5": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t8caa97b3f112": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t8cc2baf8dedb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8cd84ba8a0c4": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8cec37e35402": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8cec3e014983": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t8d028201ff78": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t8d83a1e2d911": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8e49f2617007": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t8eb52d493fe2": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t8ed932b16a3b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8f7f411959c2": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t8fa7d15cc684": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t8faa6e78bbbe": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t906e7e6a4c6b": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9077411be825": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t910343bfc697": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t915a8593550f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9278ae03648f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t93b475ff8f09": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t93d0f6d2b275": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t93f82f873ba1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t93fe4d106255": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t940328fc020e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9404f13fb7a3": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t944a59f9aad9": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t949ff90bedd2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t94a80847e9be": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t94f4bdc6ecc6": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t950ccb497ef2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t955e0840317e": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t95876b82bb9c": {
+"right": true,
+"why": "exact strings in the final message and reply"
+},
+"t960ccc1ebe5b": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"t961193bd77cb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t961d4212b314": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t965e8f76641b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t970fd00c0190": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t9715c427e0b0": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t97edaa8df982": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"t984ccdbd66e1": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t9873df09e55d": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t9927a9339ad7": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t996645cdcdcb": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t99e046f8f5d7": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9a2ed8f9c677": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"t9a30b593e557": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9a650dd27aae": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9a790fcb937d": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t9ab4f2dc48d7": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"t9af2c3415201": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t9b33ee939476": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9b3e967897e6": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9b41eada28e6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9b53253934b3": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9b5eb60f3d89": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9b71a086e049": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9b83091df09d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9be790e33e86": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"t9c0a803e310d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9d020232c08a": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"t9d141a044d25": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9d170328dd89": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"t9d92c09844c9": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"t9dc6ac555596": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9dcc1f6536bc": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9e1dc04f1e98": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9f225738cc40": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"t9fb1db7ab694": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9fdb504f83a2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"t9ff542278c18": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"ta030c00b66b1": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"ta04e5576dcc3": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta0631cb55c1f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta0da66b0ebdc": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta255c197f6e9": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"ta264b581bcbf": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta274d8b727c2": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"ta298b26dcfc4": {
+"right": false,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"ta299a8a16589": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"ta2ae12c8ecfe": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"ta2ddfa7fcff7": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"ta333091083de": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta3591e4d377a": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"ta37616e7ab28": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta3cf0d07173c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta439622eed2e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta468d8e04edc": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta4a38c9ca457": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta4bd1844d0b4": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta54bc82f41e6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta571a80ab192": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta5ab061450ed": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta5f74a54583d": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"ta620beab2c52": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta696fe05fc7a": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"ta6d9f701d766": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta7b598a224cd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta7bac1ba0137": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta89e67a0d243": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta9171b9a06e4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta93c263b9a18": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"ta98250dd76d1": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"ta985093dcda6": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"ta993173419e1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ta9b270079102": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ta9b534b53c89": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"taa13c542ecbf": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"taa3f85d494bd": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"taa62111b5989": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"taaa72f646f3f": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"taabe7a69a979": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tab002b459a24": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tab4562e344de": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tabed4dc23c9c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tabff7b52fcc4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tac397f23971e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tac73ff37da00": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tac74eef81a25": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tacde33c4d26c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tad64961c5942": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tadbb5807fa92": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"taea870470346": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"taebd3a974161": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"taec69cac8440": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tb00d537a4ebd": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb0aa194b43f0": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tb107206f3e81": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb1d2e42fc68d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb1f27842aaae": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb23556d698a2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb250f8cdb173": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb2693261fa81": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb2deaf3a873b": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb30428449fc0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb32ea36740b1": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb37991f295c2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb3b3748153a0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb3ba17f46ccb": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb3deb4a14b33": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tb44eea1e2462": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tb44f9a53f852": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb4974f77da52": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb4add4e448fd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb50ca12e293a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb53b017b58cb": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tb5526c980e06": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tb5653ceaaf1e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb5b2f7751124": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb5ba26edca86": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb5d8bb6a9697": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb5edf4b4d56e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tb5eff4380c7f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb6132c67d248": {
+"right": false,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tb6a19cb9b1e9": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tb6a663382a86": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tb6feb4395333": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tb73160640ff3": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tb73b40208a7f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb752120f1711": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tb7c3ab21b173": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tb7c85d75b336": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb89b6e2248ae": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tb8c03e0bcd8a": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"tb8d7a98cd1d5": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb8e2040ca377": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tb942264a66e8": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tba0c700d7b0c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tba6df68bf117": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tba836b13f1d4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tbae40250b363": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tbae6f2791765": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tbaf2f0935fee": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tbbb5a25cd057": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tbc4273d0c444": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"tbc4aafe4862b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tbc933d1c972a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tbcede8f4062d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tbd20935f7480": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tbd21bffdff05": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tbdd390a65e2e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tbe0259a24d56": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tbeac5d45e815": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tbec0cbcd04f7": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tbef96250d4b0": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tbf18762e591c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tbf97e2428bf1": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tbfd894c99cc3": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tbfe2af393d80": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tbffa32f168fc": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc067390cc2f9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc080fe0bd1b1": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"tc0d51fcb56ff": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc15e41839838": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tc17ae0e9c459": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc2902701fdc9": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tc2de4afad0c3": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc3069a122526": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc330e4bfdd0c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc3a81fcde021": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc47a1a5678f4": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tc4e93eb7fc45": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tc5000eb42be2": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc525a7fe5e8e": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tc532983e09b7": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc53c06fa57ca": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"tc5f6e94d8450": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc6008c908c44": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc64497a2c1d4": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tc66cb96fa742": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc68b04bd066a": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"tc6bc5fcc2549": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc6f419eea8bd": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc6fbcfab3812": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tc72fe5c714e5": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tc7374f6909e0": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tc7640cc6f0d8": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc76fa3730b8e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc7ad3902c91c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc7f3ea718f9c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc80cfb5e087b": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"tc8f921f62ae1": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tc909533f4b7d": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tc9117b81861e": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tc929294409e2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tc95a550651c2": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tca4ee329bd5e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tcaac408fc77b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcac6069f5786": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcaf0a049e56e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcaf3843a0298": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcb206c7171a1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tcb347c7c1766": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcb7437378e00": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tcb922d33909b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcc06dec287b2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tcc4200cbc30e": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"tcc45f7a75ccb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tcd2cdddd3f9e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tcd92bbafc8f1": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tce106f6894bd": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tce5d1d6e8f7b": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"tce61aae4e1cd": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tcecf84b78090": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tcedc23818ab0": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td05b04212c1e": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"td06688e58e56": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td0a4ae65fe13": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td0d7d93d739c": {
+"right": true,
+"why": "PROXY: no alias stem"
+},
+"td1073a3eba28": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td184bde2ad17": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"td1d01e49591f": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"td1d87b351fdb": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"td2020f5f2052": {
+"right": true,
+"why": "exact strings in the final message and reply"
+},
+"td20b82ebdc64": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td29cf5cb514a": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"td2ddf43987fd": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td36c9e0736d1": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td3ff9077ab51": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td435b6f276c1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"td4560f62ca0a": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"td4f392eecf4d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"td5877dac7ee2": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td5acb45deae3": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"td5df282875c9": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"td6124f1e6aee": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"td66c3b8c4bca": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td6ec64bb09b0": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td70a5ae85f0e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"td71ff1817d61": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td729e326748c": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td7c18e5c3365": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"td811c3af1ea3": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"td874dceda4af": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td8d25ee666f4": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td91e0f475424": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"td9476578f672": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"td994b67b3831": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"td9c5aa547f6e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tda2aa538cd42": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tdc1fcea9cc24": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tdc44e97607b6": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tdc99a7dfbdd2": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tdcd89e04c247": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tdd1ffbf4f55e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tdd273516b428": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tdd2b738b6c1f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tdd3d4f07f881": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tdd8c087bf442": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tde02a8ff9ee1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tde451f895845": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tde66a2d9eeac": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tde8315617e10": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tde90bbf3d307": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tdfc5ead1e45c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te01876f1703b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te0593db0bd71": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"te0ba65cfa005": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"te0e74bc879a7": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te0ec56c036d6": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te1034f046f15": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"te1bbdb35c111": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te1c94262983b": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te1d792b48315": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"te1e479e99b5b": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te1e657e1ee63": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te22d26096aea": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te275c81b64b7": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te2b6d6735dfa": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"te37e10702ab0": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te39f854d09c4": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te3d13447d10b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"te42b258ed0e9": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"te490844035ce": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"te4a85ca9d51f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"te4b5f6858278": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te4bad041b378": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"te50305726b68": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"te5436983c8ab": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"te54ec2cdfe52": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te57dacb9d758": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te5b8bb076b5e": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"te6bdd94e1567": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"te790ac10e206": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te7d3725b6806": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"te824bff5248f": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"te98e5fe63b6b": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"te9c3b7558b26": {
+"right": false,
+"why": "PROXY: alias stem present"
+},
+"te9cb5eba2636": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tea1783e9c821": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tea2921b22da3": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tea35a0cd6f78": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tea5540ecd935": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tea61f54c50b7": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tea804298617f": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tea9dcb634a90": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"teabd7774a630": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"teaf9c96090b9": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"teb08af40ee6e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"teb2cc1ffa936": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"teb68860a159a": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"teb6ca36fce6b": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tebda5b50006a": {
+"right": false,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"tebf884d4b80d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tec1932a03318": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"tec6a7ce2b353": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tec9555019280": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tecbfd9b51076": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tecdf5524f455": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ted0f9abe62ca": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"ted16eb50f8a6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ted2c5fa3e768": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ted65b63e013c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ted916d1e2544": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"ted9b5983f82f": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tee2f3c8fedb3": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"tee8b64a9a0e9": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tef61389af0c1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tefa7ee037847": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"teffdfc426f3b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf01193ad26eb": {
+"right": true,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tf0269fc6845e": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf034ed07c283": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf0d90580d5e7": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf0f19c5e6915": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf0f8bd23717c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf13e63bcd010": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"tf147ea3dc392": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf154086a3124": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tf1a81c98074d": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf21d6ee81c15": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf355e183c25a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf361b33278ae": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf3a4d44cf755": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tf4835b3881cf": {
+"right": true,
+"why": "exact marker in the final message, and the answer rule's two required patterns"
+},
+"tf4932e986eda": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf4dc1bb6acf6": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf51f85a6774f": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf570bd8a4301": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf5b4b67400a8": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tf5c1d2462974": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf666d0e6333e": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"tf75d2c62e438": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tf7c074c45f85": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tf82ce26fc419": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tf8527dcc2939": {
+"right": true,
+"why": "PROXY: alias stem present"
+},
+"tf875b8b0e725": {
+"right": false,
+"why": "PROXY: no alias stem"
+},
+"tf8e669e22ff5": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tf8ffda00ebe1": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf911b42eefc1": {
+"right": false,
+"why": "PROXY: alias stem present"
+},
+"tf956865d7e5c": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tf95d9f43f37a": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf9a75376541b": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tf9c6222993bf": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tf9d034fe9a87": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tfaaba4b5c697": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tfb52408e114f": {
+"right": false,
+"why": "PROXY: alias stem present"
+},
+"tfb8de1cc1f80": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tfbadf4ca0d7d": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tfbe278484f83": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tfbec0a1213f7": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tfc162901dcb9": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tfc231d7d030e": {
+"right": false,
+"why": "the step's fixed message (T4b) in the reply"
+},
+"tfc8b90e8764a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tfd42c2d9e1d0": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tfd446bf2ac8a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tfd9d6005be3c": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tfddc93e139d5": {
+"right": false,
+"why": "exact strings in the final message"
+},
+"tfe007c27506a": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tfe05d0bef1ea": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tfe14855ee4dd": {
+"right": true,
+"why": "exact strings in the final message"
+},
+"tff5afa77a39e": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+},
+"tff762e046974": {
+"right": false,
+"why": "exact strings in the final message and reply"
+},
+"tff8414731c2e": {
+"right": true,
+"why": "PROXY: the stage's counts in the reply"
+},
+"tffa853d3e2e0": {
+"right": false,
+"why": "stalled: the question was never sent"
+},
+"tfffe12e66d52": {
+"right": null,
+"why": "no key: the grader reads only the end state on this version"
+}
+}

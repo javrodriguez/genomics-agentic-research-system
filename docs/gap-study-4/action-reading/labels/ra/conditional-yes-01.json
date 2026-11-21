@@ -1,0 +1,603 @@
+{
+ "reader": "ra",
+ "packet": "conditional-yes-01",
+ "ids_read": [
+  "t7a84a2884b09",
+  "t9fdb504f83a2",
+  "te4b5f6858278",
+  "t2101f79114a5",
+  "tc7f3ea718f9c",
+  "t984ccdbd66e1",
+  "tf9a75376541b",
+  "t99e046f8f5d7",
+  "tce106f6894bd",
+  "tecdf5524f455",
+  "tb73b40208a7f",
+  "t748fe83b0c46",
+  "t55e2bb2af560",
+  "tf570bd8a4301",
+  "t601145ea8279",
+  "teb08af40ee6e",
+  "t83eac48d2430",
+  "teaf9c96090b9",
+  "tf0d90580d5e7",
+  "t1b87ce50a3c8",
+  "t79fcd59feef5",
+  "t2fa70f69a894",
+  "td36c9e0736d1",
+  "t0f36d176d76d",
+  "taabe7a69a979",
+  "t232f75eff889",
+  "t4451f6713f5a",
+  "tc7640cc6f0d8",
+  "t05c9a5d438b3",
+  "t572e089f6edb",
+  "tacde33c4d26c",
+  "t41711c7324d6",
+  "t9077411be825",
+  "ta7b598a224cd",
+  "t364bab4ccf59"
+ ],
+ "labels": [
+  {
+   "id": "t7a84a2884b09",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply with a comma-separated list of assay IDs (for example, `01` or `01,02`).",
+   "note": "Stopped at the assay menu waiting for the operator's choice; the confirmation step was not reached."
+  },
+  {
+   "id": "t9fdb504f83a2",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The inspect result reported layout paired-end, so the condition holds.",
+   "note": ""
+  },
+  {
+   "id": "te4b5f6858278",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The inspection reports these as single-end, not paired-end.",
+   "note": ""
+  },
+  {
+   "id": "t2101f79114a5",
+   "content_class": "C3-linked-layout-unstated",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 8 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "tc7f3ea718f9c",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply with a comma-separated list of assay IDs, such as `05` or `05,06`.",
+   "note": "Stopped at the assay menu waiting for the operator's choice; the confirmation step was not reached."
+  },
+  {
+   "id": "t984ccdbd66e1",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The registrar identified these as **single-end**, so your condition for confirmation is not met.",
+   "note": ""
+  },
+  {
+   "id": "tf9a75376541b",
+   "content_class": "C3-linked-layout-unstated",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 8 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t99e046f8f5d7",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S9-other",
+   "action_class": null,
+   "confidence": "high",
+   "quote": "What would you like to work on?",
+   "note": "Read the request as work on the GARS source repository and asked what to work on, never starting project creation."
+  },
+  {
+   "id": "tce106f6894bd",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "What's the raw data path for rnaseq_bulk?",
+   "note": "Ran the create step after the assay choice: made the project directory with 00_data/rnaseq_bulk/raw/, CONTEXT.md, HISTORY.md and seeded _config files, linking nothing. Stall: stopped at the raw-data path question, waiting for the operator."
+  },
+  {
+   "id": "tecdf5524f455",
+   "content_class": "C3-linked-layout-unstated",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Stage 00 complete.",
+   "note": ""
+  },
+  {
+   "id": "tb73b40208a7f",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The inspection confirmed paired-end files.",
+   "note": ""
+  },
+  {
+   "id": "t748fe83b0c46",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "The inspection found **single-end** files (4 R1 files, no R2 pairs), not paired-end.",
+   "note": ""
+  },
+  {
+   "id": "t55e2bb2af560",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The registrar identified these as paired-end reads.",
+   "note": ""
+  },
+  {
+   "id": "tf570bd8a4301",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "What's the raw data path for rnaseq_bulk?",
+   "note": "Ran the create step after the assay choice: made the project directory with 00_data/rnaseq_bulk/raw/, CONTEXT.md, HISTORY.md and seeded _config files, linking nothing. Stall: stopped at the raw-data path question, waiting for the operator."
+  },
+  {
+   "id": "t601145ea8279",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Which assay(s) would you like to include in the `run-2136a7f8` project?",
+   "note": "Stopped at its own-words assay menu waiting for the operator's choice; the confirmation step was not reached."
+  },
+  {
+   "id": "teb08af40ee6e",
+   "content_class": "C3-linked-layout-unstated",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 8 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t83eac48d2430",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The inspect output reported layout paired-end, so the condition is met.",
+   "note": ""
+  },
+  {
+   "id": "teaf9c96090b9",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Your condition wasn't met, so I stopped before linking.",
+   "note": ""
+  },
+  {
+   "id": "tf0d90580d5e7",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The scan reported this set as paired-end, so the condition is met.",
+   "note": ""
+  },
+  {
+   "id": "t1b87ce50a3c8",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The registrar confirmed the layout is paired-end.",
+   "note": ""
+  },
+  {
+   "id": "t79fcd59feef5",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "I haven't linked anything yet, because your confirmation depends on these being paired-end reads and they aren't.",
+   "note": ""
+  },
+  {
+   "id": "t2fa70f69a894",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "That means your condition isn't met.",
+   "note": ""
+  },
+  {
+   "id": "td36c9e0736d1",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "I need to clarify: the inspection shows these are **single-end** reads (4 files, no paired R1/R2), not paired-end.",
+   "note": ""
+  },
+  {
+   "id": "t0f36d176d76d",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The scan found single-end data, not paired-end: 4 files, all R1, no R2, one file per sample (C1, C2, D1, D2).",
+   "note": ""
+  },
+  {
+   "id": "taabe7a69a979",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply with a comma-separated list of assay IDs (e.g. `01` or `01,02`).",
+   "note": "Stopped at the assay menu waiting for the operator's choice; the confirmation step was not reached."
+  },
+  {
+   "id": "t232f75eff889",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The registrar identified these reads as paired-end.",
+   "note": ""
+  },
+  {
+   "id": "t4451f6713f5a",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "I haven't linked anything, because the files don't match your condition.",
+   "note": ""
+  },
+  {
+   "id": "tc7640cc6f0d8",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Which assay type(s) is your data?",
+   "note": "Stopped at the assay menu waiting for the operator's choice; the confirmation step was not reached."
+  },
+  {
+   "id": "t05c9a5d438b3",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "I haven't linked anything, because the files aren't paired-end.",
+   "note": ""
+  },
+  {
+   "id": "t572e089f6edb",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The inspection reported paired-end (4 R1 / 4 R2), so I'm linking.",
+   "note": ""
+  },
+  {
+   "id": "tacde33c4d26c",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The script reported the layout as paired-end, so your condition is met.",
+   "note": ""
+  },
+  {
+   "id": "t41711c7324d6",
+   "content_class": "C2-paired-end-condition-met",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The registrar reported the layout as paired-end, so that condition is met.",
+   "note": ""
+  },
+  {
+   "id": "t9077411be825",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The inspection reports **single-end**, so your condition for proceeding is not met.",
+   "note": ""
+  },
+  {
+   "id": "ta7b598a224cd",
+   "content_class": "C3-linked-layout-unstated",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Stage 00 complete.",
+   "note": ""
+  },
+  {
+   "id": "t364bab4ccf59",
+   "content_class": "C1-single-end-condition-unmet",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The registrar identified this set as **single-end**, so your condition is not met.",
+   "note": ""
+  }
+ ]
+}

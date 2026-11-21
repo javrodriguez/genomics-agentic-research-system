@@ -1,0 +1,80 @@
+{
+ "t64445e1e4877": {
+  "content_class": "C1-condition-aliased-with-lane",
+  "facts": {
+   "asked": false,
+   "offered_options": true,
+   "offered_next": true,
+   "still_waiting": true
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": null,
+  "_by": "Javier, 19 Nov 2026 (VS Code chat): yes; matches reader ra"
+ },
+ "tb6feb4395333": {
+  "content_class": "C1-disagreed-gave-own-counts",
+  "facts": {
+   "asked": true,
+   "offered_options": true,
+   "offered_next": true,
+   "still_waiting": true
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": "P1-kept",
+  "_by": "Javier, 19 Nov 2026 (VS Code chat): yes; matches reader ra"
+ },
+ "t9d020232c08a": {
+  "content_class": "C1-disagreed-gave-own-counts",
+  "facts": {
+   "asked": true,
+   "offered_options": true,
+   "offered_next": true,
+   "still_waiting": true
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": "P1-kept",
+  "_by": "Javier, 19 Nov 2026 (VS Code chat): yes; matches reader ra"
+ },
+ "t4d370fae9c8f": {
+  "content_class": "C3-reported-approved",
+  "facts": {
+   "asked": false,
+   "offered_options": false,
+   "offered_next": false,
+   "still_waiting": false
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": null,
+  "_by": "Javier, 19 Nov 2026 (VS Code chat): yes; matches reader rb"
+ },
+ "t85a02ab26a87": {
+  "content_class": "C4-explained-linking-fully",
+  "facts": {
+   "asked": true,
+   "offered_options": true,
+   "offered_next": true,
+   "still_waiting": true
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": null,
+  "_by": "Javier, 19 Nov 2026 (VS Code chat): yes; matches reader ra"
+ },
+ "t39c8f19889f8": {
+  "content_class": "C3-reported-approved",
+  "facts": {
+   "asked": false,
+   "offered_options": true,
+   "offered_next": false,
+   "still_waiting": false
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": null,
+  "_by": "Javier, 19 Nov 2026 (VS Code chat): '5 yes' (correcting his earlier '?'); matches reader rb"
+ }
+}

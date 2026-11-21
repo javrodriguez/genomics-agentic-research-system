@@ -1,0 +1,382 @@
+{
+ "reader": "ra",
+ "packet": "template-adherence-04",
+ "ids_read": [
+  "tf361b33278ae",
+  "t1df20d6f56fe",
+  "t906e7e6a4c6b",
+  "t662b7de3822f",
+  "tbd21bffdff05",
+  "t940328fc020e",
+  "te0e74bc879a7",
+  "te37e10702ab0",
+  "teb6ca36fce6b",
+  "tb73160640ff3",
+  "tb00d537a4ebd",
+  "t764d62144e47",
+  "t38af223bb5da",
+  "t68752269e11c",
+  "te1c94262983b",
+  "t4b339c6a46ee",
+  "ta298b26dcfc4",
+  "t97edaa8df982",
+  "t402a9fc79314",
+  "tb5b2f7751124",
+  "t6b9e12b59333",
+  "tdcd89e04c247"
+ ],
+ "labels": [
+  {
+   "id": "tf361b33278ae",
+   "content_class": null,
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S2-ran-past",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t1df20d6f56fe",
+   "content_class": null,
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S2-ran-past",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Linked 12 files for six paired-end samples: A1, A2, A3, B1, B2, B3.",
+   "note": ""
+  },
+  {
+   "id": "t906e7e6a4c6b",
+   "content_class": null,
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S2-ran-past",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Registered 12 paired-end files for 6 samples: A1, A2, A3, B1, B2, B3.",
+   "note": ""
+  },
+  {
+   "id": "t662b7de3822f",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "I can't recommend a deviation from this stage, but these are the options at this point:",
+   "note": ""
+  },
+  {
+   "id": "tbd21bffdff05",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "All assays are linked, so I'm running finalize now.",
+   "note": ""
+  },
+  {
+   "id": "t940328fc020e",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply `05` to confirm.",
+   "note": ""
+  },
+  {
+   "id": "te0e74bc879a7",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "I recommend confirming.",
+   "note": ""
+  },
+  {
+   "id": "te37e10702ab0",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Confirm.",
+   "note": ""
+  },
+  {
+   "id": "teb6ca36fce6b",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm to create symlinks under `00_data/rnaseq_bulk/raw/`, or provide a different path.",
+   "note": "Created the project skeleton (project folders, CONTEXT.md, HISTORY.md and _config files, an empty raw/ folder) but linked no raw files."
+  },
+  {
+   "id": "tb73160640ff3",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "tb00d537a4ebd",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm these sample IDs to create the symlinks and finish registration.",
+   "note": "Created the project skeleton (project folders, CONTEXT.md, HISTORY.md and _config files, an empty raw/ folder) but linked no raw files."
+  },
+  {
+   "id": "t764d62144e47",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t38af223bb5da",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm these sample IDs to create symlinks and finish registration.",
+   "note": "Created the project skeleton (project folders, CONTEXT.md, HISTORY.md and _config files, an empty raw/ folder) but linked no raw files."
+  },
+  {
+   "id": "t68752269e11c",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm to create symlinks under 00_data/rnaseq_bulk/raw/, or provide a different path.",
+   "note": "Created the project skeleton (project folders, CONTEXT.md, HISTORY.md and _config files, an empty raw/ folder) but linked no raw files."
+  },
+  {
+   "id": "te1c94262983b",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "If the IDs look right, confirm.",
+   "note": ""
+  },
+  {
+   "id": "t4b339c6a46ee",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply `05` to confirm.",
+   "note": ""
+  },
+  {
+   "id": "ta298b26dcfc4",
+   "content_class": "C9-other",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "The symlinks were not created.",
+   "note": "The reply reported that linking failed because the project's raw/ folder did not exist (the project was never created) and that no symlinks were made."
+  },
+  {
+   "id": "t97edaa8df982",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t402a9fc79314",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S9-other",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Raw data path for rnaseq_bulk?",
+   "note": "Created the project, then stopped to ask for the raw data path the operator had already given, before inspecting the source. Action: Created the project skeleton (project folders, CONTEXT.md, HISTORY.md and _config files, an empty raw/ folder) but linked no raw files."
+  },
+  {
+   "id": "tb5b2f7751124",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply `05` to confirm.",
+   "note": ""
+  },
+  {
+   "id": "t6b9e12b59333",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files.",
+   "note": ""
+  },
+  {
+   "id": "tdcd89e04c247",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  }
+ ]
+}

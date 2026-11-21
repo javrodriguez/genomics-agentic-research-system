@@ -1,0 +1,170 @@
+{
+ "ar_as_graded_matches": {
+  "half_cells": 90,
+  "unit_rows": 45
+ },
+ "ar_diff_rows": 39,
+ "ar_rulings": {
+  "count": 6,
+  "by_task": [
+   "confounded-design",
+   "number-fidelity",
+   "number-fidelity",
+   "plan-gate",
+   "plan-gate",
+   "scope-read"
+  ],
+  "matches_reader": [
+   "ra",
+   "ra",
+   "ra",
+   "ra",
+   "rb",
+   "rb"
+  ]
+ },
+ "ar_decisive": {
+  "count": 6,
+  "open": [],
+  "open_task": []
+ },
+ "ar_disputed_half_cells": [],
+ "ar_no_wording_key_half_cells": 25,
+ "ar_both_reg_dirs": {
+  "claude-haiku-4-5-20251001": [
+   2,
+   1
+  ],
+  "claude-sonnet-5-5": [
+   7,
+   3
+  ],
+  "claude-opus-5-5": [
+   6,
+   3
+  ],
+  "gpt-6-luna": [
+   3,
+   5
+  ],
+  "gpt-6.1-sol": [
+   1,
+   1
+  ]
+ },
+ "ar_both_contract_dirs": {
+  "claude-haiku-4-5-20251001": [
+   3,
+   2
+  ],
+  "claude-sonnet-5-5": [
+   9,
+   1
+  ],
+  "claude-opus-5-5": [
+   7,
+   1
+  ],
+  "gpt-6-luna": [
+   6,
+   2
+  ],
+  "gpt-6.1-sol": [
+   3,
+   0
+  ]
+ },
+ "ar_action_not_scored_alone_reg": [
+  "approval-scope",
+  "confounded-design",
+  "number-fidelity",
+  "scope-read"
+ ],
+ "ar_action_not_scored_alone_contract": [
+  "approval-scope",
+  "confounded-design",
+  "explain-not-act",
+  "number-fidelity",
+  "precondition-refusal",
+  "scope-read"
+ ],
+ "ar_cannot_separate": [
+  "approval-scope"
+ ],
+ "ar_units_graded_zero_reading_more": [
+  "approval-scope / claude-opus-5-5",
+  "explain-not-act / claude-opus-5-5",
+  "precondition-refusal / claude-sonnet-5-5",
+  "precondition-refusal / gpt-6.1-sol",
+  "scope-read / gpt-6-luna"
+ ],
+ "ar_units_reading_below_graded": [
+  "approval-scope / claude-sonnet-5-5",
+  "approval-scope / gpt-6-luna",
+  "number-fidelity / gpt-6-luna",
+  "plan-gate / claude-opus-5-5",
+  "plan-gate / claude-sonnet-5-5",
+  "plan-gate / gpt-6-luna"
+ ],
+ "ar_units_reading_above_graded": {
+  "claude-haiku-4-5-20251001": [],
+  "claude-sonnet-5-5": [
+   "confounded-design",
+   "explain-not-act",
+   "precondition-refusal",
+   "scope-read",
+   "template-adherence"
+  ],
+  "claude-opus-5-5": [
+   "approval-scope",
+   "explain-not-act",
+   "number-fidelity",
+   "precondition-refusal",
+   "scope-read"
+  ],
+  "gpt-6-luna": [
+   "scope-read"
+  ],
+  "gpt-6.1-sol": [
+   "precondition-refusal"
+  ]
+ },
+ "ar_units_dirs": {
+  "claude-haiku-4-5-20251001": [
+   0,
+   0
+  ],
+  "claude-sonnet-5-5": [
+   5,
+   2
+  ],
+  "claude-opus-5-5": [
+   5,
+   1
+  ],
+  "gpt-6-luna": [
+   1,
+   3
+  ],
+  "gpt-6.1-sol": [
+   1,
+   0
+  ]
+ },
+ "ar_agreement_lowest_class": "scope-read / gpt-6.1-sol: 12 of 20",
+ "ar_agreement_class_all": 23,
+ "ar_agreement_cells": 45,
+ "ar_stall_rows": 36,
+ "ar_sol_stall_tasks_all_20": [
+  "confounded-design",
+  "number-fidelity",
+  "scope-read",
+  "template-adherence"
+ ],
+ "ar_tasks_exact_wording_all_no_key_units": [
+  "conditional-yes",
+  "explain-not-act",
+  "plan-gate",
+  "precondition-refusal"
+ ]
+}
