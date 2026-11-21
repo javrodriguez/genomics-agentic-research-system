@@ -21,7 +21,7 @@ Two things approve it, and they are kept apart here:
   No sentence in this record is the owner's.
 - **The owner's own word, on the push.** Landing on public main waits for the owner's own typed push word; it is recorded on the line below when he gives it, and nothing else here records it.
 
-Javier's word: PENDING.
+Javier's word: "push GARS to public main now", typed in a terminal session of his own after the coordinating session's push card named this landing, recorded at 21:38 EST on 20 November 2026.
 
 ## Context
 
@@ -69,7 +69,7 @@ The lane's commits land with their lane ids, as named above; the red commit `d5b
 
 ## Status
 
-Standing. Approval of the guard fix's protected change; the owner's typed push word is recorded above when he gives it.
+Standing. Approval of the guard fix's protected change; the owner's typed push word is recorded above.
 
 ## Date
 
