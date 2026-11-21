@@ -52,7 +52,18 @@ Outside the protected prefixes, recorded for completeness: `gars/tests/test_ever
 ## Test
 
 - The lane's own checks are in 0330's Test section.
-- The landing's checks (the merge, the smoke ceremony and its delta, the trailer audit, the full suite at the merge, the outgoing range's scans and the landing review) are recorded here at landing, in the landing's evidence commit.
+- The landing's own checks, on 20 November 2026, recorded in the landing's evidence commit, the merge's child:
+
+Glitch verified the landing merge `373a0cff62b452510c053106ee3d2bbc5086f58a` (first parent `c5ba8425`, record 0325, itself one commit after public main `dfcadadc`; second parent the lane head `c8ae181c`), a true merge whose tree equals its second parent's.
+The lane's commits land with their lane ids, as named above; the red commit `d5bdc3ef` also carries the suite-total sentences of README.md and DEVELOPMENT.md (1606 to 1615 tests), which the commit list above does not say against it.
+
+- The smoke delta (row 14's ceremony): one run of three `claude-opus-5-5` sessions at the merge's tree (20 November 2026, 20:54-20:56 EST), prompt and suite hashes equal to the previous record's (`prompt_sha256` `cf32c619…`, `suite_sha256` `ea2f1cde…`); run-1 3/3; `delta` `0/1`, `no change` against `evals/runs/smoke/smoke-20261018-t74-combined.json`, floor `0/1` from `evals/runs/smoke/smoke-20260926-row-14-activation.json`; the evaluator found nothing (15 outputs hashed, 15 tasks regraded).
+  An earlier attempt under this run id, at 19:25 EST, ran no model turn and was not scored: the API refused all three sessions before any turn (HTTP 403: the sessions' sign-in was no longer accepted).
+- The outgoing range `dfcadadc..373a0cff` (9 commits): no gitleaks finding under either ruleset (gitleaks 8.30.0, its default rules and the repository's `gars/.gitleaks.toml`; 8 commits scanned, because the merge adds no content: its tree equals the lane head's).
+- A fresh-context review of the landing merge (Claude Code, Opus 5.5, its own clone, never shown the producer's transcript; it checked the merge's parents and tree, the range's commits and identities, the protected paths, the guard change by an in-process probe of `decide()`, this record's and 0330's cited hashes and figures against their evidence, the trailers and a private-name scan; it did not run the test modules or the full suite): PASS (no MAJOR or MINOR, two NIT), review_sha256 `093cf02a5736aaa9af9a4c9c66fa54b02f852a34f05c6dd71280a14bc1d2355c`.
+  Its NIT 1 (the red commit also carried the suite-total sentences) is folded above; its NIT 2 (gitleaks counts 8 commits for a 9-commit range) needs no change, because the merge adds no content.
+- `python3 gars/_system/hooks/audit_trailers.py`, from the landing clone's root at this records commit: `verified 373a0cff62b452510c053106ee3d2bbc5086f58a (Bench previous: evals/runs/smoke/smoke-20261018-t74-combined.json)` and `trailers audit: 19/19 _system first-parent commits since activation f3abe50 verified; graded 19 of 19 seen`, exit 0 (re-run after each amendment of this commit).
+- The full suite, `tests/check_counts.py`, `tests/check_contracts.py`, `test_decision_links_resolve` and `build_refusal_corpus --check` run on the separate test machine (Linux) at this records commit; their lines are written here before the push.
 
 ## Status
 
