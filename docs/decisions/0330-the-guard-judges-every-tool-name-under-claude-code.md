@@ -86,23 +86,23 @@ Alternatives rejected:
 - **R4 PowerShell-only Windows sessions** are refused, not guarded: the transport judges Bash only.
 - **R5 Operator switches that turn every arm off, judged arms included** (pre-existing, operator opt-outs, not model routes): `disableAllHooks` is honoured from any settings file (settings reference index, as read by the plan review, 20 Nov 2026), so a user-level `~/.claude/settings.json` or `--settings` turns the hook off; cloud threads in a project apply none of a repository's `.claude/settings.json` hooks (settings page, "Settings in cloud sessions"); and a `-p` run silently skips a broken project settings file or a value it rejects (settings page, "Fix a broken settings file"), so a Claude Code version that rejected `disableClaudeAiConnectors` would drop that value. `claude doctor` lists dropped entries; the outcome review runs it on the CLI version it uses.
 - **R6 Unchanged parks:** T43a (per-helper output rules, 0107 residual 1), T43b (residual 17), T44c (row 13 through doors, 0291) and T44d (residual 18, the `STATUS` exemption) stay as 0107 and 0291 name them; none is reached by the matcher or the fall-through change.
-- **R7 Not walked live yet:** that Claude Code now calls the hook for an MCP tool, and that the two belts act, is shown by the outcome review's live sessions, not by this record's unit tests.
+- **R7 Not walked live by this record's unit tests:** that Claude Code now calls the hook for an MCP tool, and that the two belts act, is shown by the outcome review's live sessions, summarised at the end of the Test section; the claude.ai connector belt was not walked live there.
 
 ## Test
 
 `gars/tests/test_every_tool_name.py` drives the shipped hook at its entry point with payloads built by `json.dumps`:
 
-- `test_the_matcher_reaches_every_name`: every PreToolUse group running `_system/guard_hook.py` is read with the documented matcher rule (`test_the_matcher_rule_reading` checks that reading on the hooks page's own examples), and every name in the grid (18 unjudged names, the 8 judged, the 10 passed) must reach the guard.
-- `test_unjudged_names_are_refused`: 18 names (MCP, connector, a hyphenated MCP server, `PowerShell`, `Monitor`, `Agent`, `Task`, `Skill`, `Workflow`, `WebFetch`, `WebSearch`, `ReadMcpResourceTool`, `TaskOutput`, `FutureTool`, `TaskEvil`, and the near-spellings `bash`, `Read ` and `WRITE`), each with three input shapes (a write over `files.csv`, a read of a non-existent outside path, a URL) → exit 2, the `cannot judge` first words, the sanitised name, exactly one `Next:`.
+- `test_the_matcher_reaches_every_name`: every PreToolUse group running `_system/guard_hook.py` is read with the documented matcher rule (`test_the_matcher_rule_reading` checks that reading on the hooks page's own examples), and every name in the grid (22 unjudged names, the 8 judged, the 10 passed) must reach the guard.
+- `test_unjudged_names_are_refused`: 22 names (MCP, connector, a hyphenated MCP server, `PowerShell`, `Monitor`, `Agent`, `Task`, `Skill`, `Workflow`, `WebFetch`, `WebSearch`, `ReadMcpResourceTool`, `TaskOutput`, `FutureTool`, `TaskEvil`, the near-spellings `bash`, `Read ` and `WRITE`, and `todowrite`, `TodoWriteX`, `mcp__x__TodoWrite` and `XTodoWriteX`, which differ from a pass name only by case, a suffix, a prefix or both), each with three input shapes (a write over `files.csv`, a read of a non-existent outside path, a URL) → exit 2, the `cannot judge` first words, the sanitised name, exactly one `Next:`.
 - `test_pass_names_are_allowed`: `PASS_TOOLS` equals the ten names, and each with a realistic input exits 0 with empty stderr.
 - `test_unreadable_tool_name_is_refused`: missing, `""`, `null`, `5`, `["Read"]`, an object and `false` → exit 2, `could not read this tool call`.
 - `test_judged_names_keep_their_arms`: the reproduction's five judged controls give their base-commit messages byte for byte, and seven honest judged calls (one per judged name) are allowed.
 - `test_the_sets_are_closed_and_exact`: both sets are tuples of distinct non-empty plain names, disjoint, `JUDGED_TOOLS` is exactly the arms' names (8), and no grid name is on either.
 - `test_settings_belts`: `"mcp__*"` in `permissions.deny`, `disableClaudeAiConnectors` is `true`.
-- `test_both_arms_refuse_the_unknown_grid`: the 18 names fed to `codex_hook.py pre-tool-use` and to the Claude Code hook → exit 2 from both.
+- `test_both_arms_refuse_the_unknown_grid`: the 22 names fed to `codex_hook.py pre-tool-use` and to the Claude Code hook → exit 2 from both.
 
 The module prints `tool names: <n> refused, <m> passed, <k> judged`.
-Red at the test commit d5bdc3ef (7 of 9 tests, 110 failing subtests); green after the fix (`tool names: 18 refused, 10 passed, 8 judged`).
+Red at the test commit d5bdc3ef (7 of 9 tests, 110 failing subtests); green after the fix (`tool names: 18 refused, 10 passed, 8 judged`, on the grid of 18 names the module held until 98fe044f).
 At head 5205c96c each module was run singly on the Mac on 2026-11-20 (Python 3.9.6, a temp root outside the clone), every one exit 0:
 
 | Module | Result |
@@ -132,6 +132,25 @@ The null control ran first and was green; all seven mutants went red (`mutation 
 | 5 `mcp__*` removed from `permissions.deny` | 1 | `FAILED (failures=1)` | `test_settings_belts` |
 | 6 unreadable-name check removed | 1 | `FAILED (failures=7)` | `test_unreadable_tool_name_is_refused` |
 | 7 `MultiEdit` dropped from the write arm | 1 | `FAILED (failures=2)`, `7 judged` | `test_judged_names_keep_their_arms`, `test_the_sets_are_closed_and_exact` |
+
+The tables above are the figures at 5205c96c, on the grid of 18 names.
+The first review of the code found four more mutants of the final default-deny test that the 18-name grid let live: each makes the pass test something other than exact string equality, and each went green on that grid (`mutation proof: NOT PROVEN`).
+Test commit 98fe044f added the four names `todowrite`, `TodoWriteX`, `mcp__x__TodoWrite` and `XTodoWriteX` to the grid, so the module now holds 22 refused names and prints `tool names: 22 refused, 10 passed, 8 judged` (`Ran 9 tests`, `OK`, run singly on the Mac on 2026-11-20).
+The four mutants were then run against the 22-name grid, the same way, in a `git clone --no-local` scratch copy (`restored byte-identical: True`); the null control was green and all four went red (`mutation proof: null green, 4 of 4 red`):
+
+| Mutant | Exit | Result |
+|---|---|---|
+| null (no change) | 0 | `OK`, `22 refused, 10 passed, 8 judged` |
+| 8 pass by suffix (`endswith`) | 1 | `FAILED (failures=4)`, `21 refused` |
+| 9 pass by prefix (`re.match`) | 1 | `FAILED (failures=4)`, `21 refused` |
+| 10 pass by substring | 1 | `FAILED (failures=12)`, `19 refused` |
+| 11 pass ignoring case | 1 | `FAILED (failures=4)`, `21 refused` |
+
+In each, a name from the four the grid gained was let through, so the module's refused count fell below 22.
+
+The live outcome review, on 2026-11-20 at lane head 7651fbba (Claude Code 2.1.280, headless sessions with the project's settings only, one stdio MCP server whose one tool echoes its text and touches no file), walked R7: at the base c5ba8425 the MCP tool was offered and its call succeeded; at the head the tool was absent from the model's tools, because the `"mcp__*"` deny removes it; with that deny line removed from a copy of the head, the call was made and the hook refused it with the `cannot judge` message; an honest session's Read and Glob calls and a `ToolSearch` call passed with no refusal.
+It also saw that Claude Code 2.1.280 offers tool names this record does not list, among them `Task`, `DesignSync`, `ReportFindings`, `ScheduleWakeup`, `ListAgents`, `ArtifactComments` and `ArtifactData`.
+None is judged or on the pass list, so the default deny refuses each one (its probe refused `Task`, `ScheduleWakeup` and `Artifact` at the head); Decision 3's list names the tools this record weighed, not every tool a Claude Code release offers.
 
 ## Status
 
