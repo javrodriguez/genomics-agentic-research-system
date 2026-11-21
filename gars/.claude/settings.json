@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|Read|Glob|Grep",
+        "matcher": ".*",
         "hooks": [
           {
             "type": "command",
@@ -89,7 +89,9 @@
       "WebFetch",
       "Edit(projects/*/03_custom_analysis/*/run/*)",
       "Edit(projects/*/03_custom_analysis/*/run/**/*)",
-      "Edit(projects/*/03_custom_analysis/*/.gars_submissions.jsonl)"
+      "Edit(projects/*/03_custom_analysis/*/.gars_submissions.jsonl)",
+      "mcp__*"
     ]
-  }
+  },
+  "disableClaudeAiConnectors": true
 }

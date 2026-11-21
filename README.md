@@ -181,7 +181,7 @@ system refuses to guess is something it will stop and ask you for.
 
 | Agent | What you get |
 |---|---|
-| **Claude Code** | The contracts, the session-start state, and the guard on Read, Glob, Grep, Edit, Write, MultiEdit, NotebookEdit and Bash (`gars/.claude/`). |
+| **Claude Code** | The contracts, the session-start state, and the guard on every tool call (`gars/.claude/`): it judges Read, Glob, Grep, Edit, Write, MultiEdit, NotebookEdit and Bash, passes a short named list of built-ins that touch no file (the to-do list, asking you a question, plan mode, loading tool definitions, stopping a background task), and refuses every other tool, MCP and claude.ai connector tools included ([decision 0330](docs/decisions/0330-the-guard-judges-every-tool-name-under-claude-code.md)). |
 | **Codex 0.154 (verified); 0.144 source-checked for the same hook, updatedInput and parser semantics; earlier untested** | The contracts, the session-start state, and the same guard decisions on shell commands and `apply_patch` edits (refused as well where Codex resolves a path through a link differently; decision 0266), once you trust the folder and approve **both** hooks under `/hooks` (`gars/.codex/`); the state render alone proves only the session-start hook, not the guard. Other Codex tools are refused unless [decision 0266](docs/decisions/0266-codex-adapter-one-guard-two-harnesses.md) lists them. (Checked in a live Codex 0.154 session; decision 0266.) Limits include: input typed into a command that is already running is not checked; the shell a command runs under is the model's choice; a command's `environment_id` is not seen by the guard; and login-profile text on the hook's output loses the folder pin (full list: decision 0266). |
 | **Another agent that reads `AGENTS.md`** | The contracts, the gitleaks and trailer git hooks, and read-only files only. **No live guard.** |
 
@@ -397,7 +397,7 @@ artifact each stage produces.
 
 ## Status
 
-- **1606 tests** in `tests/run_tests.py`, with the landings that moved the total since the Gap Study token correction in, newest first: lane gars-ms21b's T44b (0323 and 0324), on T57 and lane gars-t74's runs 10-16 (0294 and 0322), on GARS fixes 1-9 (0320), on Landings A and C (0292 and 0296), on the reproduction package (0281-0283); CI was green on main at `faeb99d` ([run 39087133107](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/39087133107)), with Landings A and C in.
+- **1615 tests** in `tests/run_tests.py`, with the landings that moved the total since the Gap Study token correction in, newest first: the guard's every-tool-name fix (0330), on lane gars-ms21b's T44b (0323 and 0324), on T57 and lane gars-t74's runs 10-16 (0294 and 0322), on GARS fixes 1-9 (0320), on Landings A and C (0292 and 0296), on the reproduction package (0281-0283); CI was green on main at `faeb99d` ([run 39087133107](https://github.com/javrodriguez/genomics-agentic-research-system/actions/runs/39087133107)), with Landings A and C in.
 - **Seven assays are wired; most are proven live** — the table below.
 - **Build log:** the row-by-row status and its dated evidence are in
   [DEVELOPMENT.md](DEVELOPMENT.md#status-moved-from-the-readme-30-sep-2026); the definition-of-done
