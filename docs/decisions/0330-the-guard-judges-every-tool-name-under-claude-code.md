@@ -8,7 +8,7 @@ touches:
   - gars/_system/session_state.sh
   - gars/tests/test_every_tool_name.py
 symptoms:
-  - under Claude Code, a tool call named outside Edit|Write|MultiEdit|NotebookEdit|Bash|Read|Glob|Grep never reaches the guard
+  - under Claude Code, a tool call named outside the eight judged names (Edit, Write, MultiEdit, NotebookEdit, Bash, Read, Glob, Grep) never reaches the guard
   - guard_hook.decide() returns allow for any tool name outside those eight, and for a missing, empty or non-string tool name
   - an MCP tool or claude.ai connector call writes over files.csv or into _system/ with no refusal from the guard
 ---
