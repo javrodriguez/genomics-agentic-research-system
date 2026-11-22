@@ -548,7 +548,7 @@ python3 evals/gap-study-4/labelling/flagged_verdicts.py --check
 ```
 
 None of these reads the secondary analysis or the action reading; neither is on this line.
-The action reading is published beside this report, at `docs/gap-study-4/action-reading/`; from that folder, `python3 merge.py labels/ra labels/rb --rulings rulings.json --out <dir>` reruns its merge.
+The action reading is published beside this report, at `docs/gap-study-4/action-reading/` (at the repository's published head, not at `1ded8e9a2ada`); from that folder, `python3 merge.py labels/ra labels/rb --rulings rulings.json --out <dir>` reruns its merge.
 The secondary analysis is published after the verified head, at `evals/gap-study-4/SECONDARY.md`, with its code at `docs/gap-study-4/secondary/`, and is not on the line the final verifiers checked; its check is the staged command in `docs/gap-study-4/secondary/README.md`, run from a scratch tree at `1e097b2f5f99`, the base `SECONDARY.md` names.
 That command re-derives the frozen and the patched grade files (`grades`, then `grades --secondary`), each equal to the published file in `docs/gap-study-4/secondary/inputs/` in every field but `tree`, the absolute path of the checkout it graded, shown by comparing the two documents with `tree` removed and by showing that `tree` is the only key that differs; it re-derives the blind check (`compare`) byte for byte with the published `check.json`; and it regenerates `SECONDARY.md` byte for byte with `report` from the published inputs.
 The first attempt's check (`--attempt1`) and the shapes file (`--shapes`, made by a helper that is not published) are recorded inputs, and the first attempt cannot be re-run.
