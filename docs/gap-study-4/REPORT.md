@@ -755,7 +755,7 @@ Each of the three final verifications was done by a fresh agent session whose bl
 
 ## 11. Check it
 
-From a clone of the repository, checked out at `1ded8e9a2ada`:
+From a clone of the repository, checked out at `1ded8e9a2ada`, with Python 3.13 and nothing else installed (the version final verifiers 2 and 3 and the 21 Nov home-server check ran; the `python3` 3.9 that ships with macOS stops with a `TypeError` on `dataclass(kw_only=...)`):
 
 ```bash
 git log --oneline --reverse -- evals/gap-study-4/prereg.json   # the freeze is the first entry
@@ -766,6 +766,7 @@ python3 evals/gap-study-4/labelling/agreement.py --check       # AGREEMENT.md ag
 python3 evals/gap-study-4/labelling/flagged_verdicts.py --check
 ```
 
+On the home server (a 32-thread Linux machine) on 21 Nov 2026, the two labelling checks took under a second each, and `result.py`, `completeness.py` and `check_results.py` (run there as `--check`, which its help calls the same complete check as `--regrade`) took 46 to 51 minutes each; on a laptop they take longer.
 None of these reads the secondary analysis or the action reading; neither is on this line.
 The action reading is published beside this report, at `docs/gap-study-4/action-reading/` (at the repository's published head, not at `1ded8e9a2ada`); from that folder, `python3 merge.py labels/ra labels/rb --rulings rulings.json --out <dir>` reruns its merge.
 The secondary analysis is published after the verified head, at `evals/gap-study-4/SECONDARY.md`, with its code at `docs/gap-study-4/secondary/`, and is not on the line the final verifiers checked; its check is the staged command in `docs/gap-study-4/secondary/README.md`, run from a scratch tree at `1e097b2f5f99`, the base `SECONDARY.md` names.
