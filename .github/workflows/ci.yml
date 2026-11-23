@@ -450,6 +450,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # CP8, the publication commit: checkout is pinned by full sha to 1ded8e9a2ada, the head that
+          # holds the three final verifier reports, committed unedited. Final verifiers 2 and 3 checked
+          # 01479891 and 79d9e45a8 and both returned PASS; 1ded8e9a2ada adds only review records to the
+          # head verifier 3 checked, and it is the commit the round's report names in its section 11.
+          # The refreshed round 4 page section and the publication tail after this commit are checked
+          # outside this job, by a recorded local lint run on the exact published head.
+          ref: 1ded8e9a2ada68ecf3ececc1c6c33dd0634f7ca3
           # Full history: the copy gate, ledger and history checks read committed history
           # and refuse in a shallow clone. CP8 adds the full sha ref here.
           fetch-depth: 0
