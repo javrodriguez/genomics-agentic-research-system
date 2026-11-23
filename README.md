@@ -139,6 +139,7 @@ To cite either, see the `references` in [CITATION.cff](CITATION.cff).
   is recorded in advance as expected to fail.
 - The Gap Study — [docs/EVALS.md](docs/EVALS.md#the-gap-study)
 - The Gap Study, round 2 — [docs/EVALS.md](docs/EVALS.md#the-gap-study-round-2)
+- The Gap Study, round 4 — [docs/gap-study-4/REPORT.md](docs/gap-study-4/REPORT.md)
 - [docs/validity/](docs/validity/README.md) — the question before any Gap Study count: does each
   task measure what it says it measures? One signed validity argument per task, and the graders
   run read-only through the Agentic Benchmark Checklist.
