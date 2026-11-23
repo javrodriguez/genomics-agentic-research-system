@@ -320,6 +320,7 @@ Conclusions 3 to 5 rest on graded units; the action reading was not tested, and 
 Run these from a clone checked out at `1ded8e9a2ada`, with Python 3.13 and `git`, and nothing else installed (the version final verifiers 2 and 3 and the 21 Nov home-server check ran; the `python3` 3.9 that ships with macOS stops with a `TypeError` on `dataclass(kw_only=...)`).
 
 ```bash
+git checkout 1ded8e9a2ada
 git log --oneline --reverse -- evals/gap-study-4/prereg.json   # the freeze is the first entry
 python3 evals/gap-study-4/result.py --check                    # RESULT.md against the committed records
 python3 evals/gap-study-4/completeness.py --check              # every planned half-cell is accounted for
@@ -330,6 +331,8 @@ python3 evals/gap-study-4/labelling/flagged_verdicts.py --check
 python3 evals/gap-study-4/lint_language.py --section-of docs/EVALS.md
 python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md
 ```
+
+The checkout comes first because both labelling checks refuse on `main`: the publication merge adds a second commit to the history of the labelling records, which are byte-identical at `1ded8e9a2ada` and on `main`.
 
 None of these reads the secondary analysis, which is not on this line. It is published after the verified head, and its check is the staged command in [`docs/gap-study-4/secondary/README.md`](gap-study-4/secondary/README.md), run from a scratch tree at `1e097b2f5f99`: the two grade files re-derive equal to the published ones in every field but `tree`, the blind check re-derives byte for byte, `SECONDARY.md` regenerates byte for byte from the five published inputs, and the first attempt's check and the shapes file are recorded inputs.
 

@@ -758,6 +758,7 @@ Each of the three final verifications was done by a fresh agent session whose bl
 From a clone of the repository, checked out at `1ded8e9a2ada`, with Python 3.13 and `git`, and nothing else installed (the version final verifiers 2 and 3 and the 21 Nov home-server check ran; the `python3` 3.9 that ships with macOS stops with a `TypeError` on `dataclass(kw_only=...)`):
 
 ```bash
+git checkout 1ded8e9a2ada
 git log --oneline --reverse -- evals/gap-study-4/prereg.json   # the freeze is the first entry
 python3 evals/gap-study-4/result.py --check                    # RESULT.md against the committed records
 python3 evals/gap-study-4/completeness.py --check              # every planned half-cell is accounted for
@@ -765,6 +766,8 @@ python3 evals/gap-study-4/check_results.py --regrade           # the frozen file
 python3 evals/gap-study-4/labelling/agreement.py --check       # AGREEMENT.md against the labels
 python3 evals/gap-study-4/labelling/flagged_verdicts.py --check
 ```
+
+The checkout comes first because both labelling checks refuse on `main`: the publication merge adds a second commit to the history of the labelling records, which are byte-identical at `1ded8e9a2ada` and on `main`.
 
 On the home server (a 32-thread Linux machine) on 21 Nov 2026, the two labelling checks took under a second each, and `result.py`, `completeness.py` and `check_results.py` (run there as `--check`, which its help calls the same complete check as `--regrade`) took 46 to 51 minutes each; on a laptop they take longer.
 None of these reads the secondary analysis or the action reading; neither is on this line.
