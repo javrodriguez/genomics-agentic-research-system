@@ -755,7 +755,7 @@ Each of the three final verifications was done by a fresh agent session whose bl
 
 ## 11. Check it
 
-From a clone of the repository, checked out at `1ded8e9a2ada`, with Python 3.13 and nothing else installed (the version final verifiers 2 and 3 and the 21 Nov home-server check ran; the `python3` 3.9 that ships with macOS stops with a `TypeError` on `dataclass(kw_only=...)`):
+From a clone of the repository, checked out at `1ded8e9a2ada`, with Python 3.13 and `git`, and nothing else installed (the version final verifiers 2 and 3 and the 21 Nov home-server check ran; the `python3` 3.9 that ships with macOS stops with a `TypeError` on `dataclass(kw_only=...)`):
 
 ```bash
 git log --oneline --reverse -- evals/gap-study-4/prereg.json   # the freeze is the first entry
