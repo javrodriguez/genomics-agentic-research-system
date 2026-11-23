@@ -36,8 +36,8 @@ Expected output:
 - `build_tables.py`: `ok: 529 traced cells, 32 fragments; every page count equals its recount from records/` (exit 0)
 - `build_reading.py`: `ok: 300 traced cells of the action reading; As graded equals the result page in 90 of 90 half-cells and 45 of 45 unit rows; 39 half-cells differ` (exit 0)
 - `connector_facts.py`: `build/facts_connectors.json written from <your clone> at 1ded8e9a2ada` (exit 0)
-- `assemble.py`: `REPORT.md written: 1308 lines, 32 tables; fragments not used: []`
-- `check_trace.py`: `ok: 619 prose sources over 302 entries, 823 table cells, both lints exit 0; TRACE.md written` (exit 0)
+- `assemble.py`: `REPORT.md written: 1309 lines, 32 tables; fragments not used: []`
+- `check_trace.py`: `ok: 624 prose sources over 304 entries, 823 table cells, both lints exit 0; TRACE.md written` (exit 0)
 - `git status`: nothing; the rebuilt `build/`, `REPORT.md` and `TRACE.md` are byte-identical to the committed files.
 
 The first three lines are optional: `assemble.py` and `check_trace.py` alone check the committed fragments and facts.
