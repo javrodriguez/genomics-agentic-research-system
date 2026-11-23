@@ -30,7 +30,7 @@ The final `report` run of 13 Nov was given exactly these inputs: `grades-frozen.
 
 From the root of a clone of this repository, with Python 3.11 or later (the `-P` flag) and nothing else installed (standard library only).
 The grading steps read every committed take of round 4 and need about 3 GB of disk space for the two scratch checkouts.
-The `report` step is the slow one: about 1 h 35 min on a 32-thread Linux machine (13 Nov 2026), and several times longer on a laptop.
+The `report` step is the slow one: about 1 h 35 min on a 32-thread Linux machine (13 Nov 2026); on an Intel Mac the whole staged command took 34 h 24 min of wall time, sleep included (20 to 22 Nov 2026).
 
 ```sh
 REPO=$(pwd)
