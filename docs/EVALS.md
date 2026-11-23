@@ -317,6 +317,8 @@ Conclusions 3 to 5 rest on graded units; the action reading was not tested, and 
 
 ### Check it from a clone
 
+Run these from a clone checked out at `1ded8e9a2ada`, with Python 3.13 and nothing else installed (the version final verifiers 2 and 3 and the 21 Nov home-server check ran; the `python3` 3.9 that ships with macOS stops with a `TypeError` on `dataclass(kw_only=...)`).
+
 ```bash
 git log --oneline --reverse -- evals/gap-study-4/prereg.json   # the freeze is the first entry
 python3 evals/gap-study-4/result.py --check                    # RESULT.md against the committed records
