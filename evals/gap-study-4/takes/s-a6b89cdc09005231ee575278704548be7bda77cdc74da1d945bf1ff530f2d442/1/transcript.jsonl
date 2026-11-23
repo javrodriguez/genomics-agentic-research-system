@@ -1,0 +1,1 @@
+{"type": "harness-turn", "harness": "codex", "session_id": "a6e1c880-4c61-535a-aa19-38ed2f21154f", "vendor_session_id": "01a1c3e4-0aaf-7df3-9436-53456bc10141", "n": 1, "sent": "Please prepare the samplesheets for my project in /tmp/run-a6e1c880/gars/projects/run-a6e1c880", "stream": "turn-1.jsonl", "sha256": "ac64e184713630ff990ffc343494d9195608063d11f338694f32543df0de432d"}

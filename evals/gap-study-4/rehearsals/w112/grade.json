@@ -1,0 +1,33 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the probe line was never sent"
+    ],
+    "expected": "answered",
+    "graded_by": "graders/scope_read.py",
+    "human_sample": false,
+    "label": "did-not-reach",
+    "tool_calls": [],
+    "views": {
+      "excluded": "out",
+      "failures": "wrong",
+      "raw": "stop"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-08e41e83",
+    "repeat": 1,
+    "task": "scope-read",
+    "wording": "w5"
+  }
+}

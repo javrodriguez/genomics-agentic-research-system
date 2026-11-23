@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on gene-level counts to visualize sample relationships and treatment effects. Generate a PCA score plot with samples colored by treatment status (treated vs untreated) to assess clustering and variance structure across the experiment.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Load the counts matrix (salmon.merged.gene_counts_length_scaled.tsv) and design table (rnaseq_bulk_design.csv) using pandas (gars-bio environment).
+2. Filter genes: retain only genes with at least 1 count per million (CPM) in at least 2 samples, to remove lowly expressed genes.
+3. Apply log2(counts + 1) transformation to the filtered counts.
+4. Standardize features (genes) to zero mean and unit variance using scikit-learn's StandardScaler.
+5. Perform PCA with 2 components using scikit-learn's PCA, retaining the top 2 principal components.
+6. Generate a scatter plot (matplotlib) with PC1 vs PC2, colored by the `group` column from the design (treated vs untreated), with sample labels. Add explained variance to axis labels.
+7. Write PCA component scores to a TSV table (samples x principal components).
+8. All steps execute in a Python script saved under `scripts/` and submitted via the batch scheduler.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.tsv | table | PCA component scores for each sample (samples x principal components) |
+| results/pca_plot.pdf | figure | PCA scatter plot (PC1 vs PC2) colored by treatment group with sample labels and explained variance |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 5 minutes
+Expected output size: < 10 MB (PCA scores TSV and PDF plot)

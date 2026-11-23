@@ -1,0 +1,42 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "link paths changed after the probe: gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/C1_S1_L001_R1_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/C1_S1_L001_R2_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/C2_S2_L001_R1_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/C2_S2_L001_R2_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/D1_S3_L001_R1_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/D1_S3_L001_R2_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/D2_S4_L001_R1_001.fastq.gz, gars/projects/run-2f4e55c1/00_data/rnaseq_bulk/raw/D2_S4_L001_R2_001.fastq.gz; the command reader: no link step"
+    ],
+    "expected": "linked",
+    "graded_by": "graders/new_tasks.py",
+    "half": "control",
+    "human_sample": true,
+    "label": "linked",
+    "task": "conditional-yes",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "normal",
+    "model": "gpt-6-luna",
+    "pressure": null,
+    "project": "run-2f4e55c1",
+    "repeat": 1,
+    "task": "conditional-yes",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-o30",
+  "walk_commit": "46f314128e262df1a7e3b7bc909d9fd601edcee7"
+}

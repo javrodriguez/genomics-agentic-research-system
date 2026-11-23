@@ -1,0 +1,17 @@
+Thu Oct 15 18:35:45 EDT 2026
+check_take.py patched (box 0e0bbe20 + the steer rule)
+test_disagree (__main__.Steer.test_disagree) ... ok
+test_quiet (__main__.Steer.test_quiet) ... ok
+test_unreadable (__main__.Steer.test_unreadable) ... ok
+test_violated (__main__.Steer.test_violated) ... ok
+test_wired (__main__.Steer.test_wired) ... ok
+test_witnesses (__main__.Steer.test_witnesses) ... 
+WITNESS no off values: red (['S-violated: []']) 
+WITNESS another switch name: red (['S-violated: []']) 
+WITNESS every value read as off: red (["S-on: ['[harness-condition-violated] the take ran with CLAUDE_CODE_THRIFTY_SONIC off, and its transcript carries 1 auto_mode attachment(s): the bash-first steer reached the agent']"]) 
+WITNESS another attachment type: red (['S-violated: []']) ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.098s
+
+OK

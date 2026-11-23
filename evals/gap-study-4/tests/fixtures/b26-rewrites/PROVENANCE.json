@@ -1,0 +1,72 @@
+{
+ "schema": 1,
+ "made_by": "cut_structure.py (lane vendor-b26)",
+ "walks": {
+  "w-g14": "walk/w-GDVAbBBf ef903feb",
+  "w-g32": "walk/w-j1pQgLS1 129ff0fe",
+  "w-g47": "walk/w-XsJlNcjC 1acd87cd"
+ },
+ "files": {
+  "w-g47-native-turn-1.jsonl": {
+   "source": "w-g47/session/native-turn-1.jsonl",
+   "sha256": "e83801e882e83a0a43b2f7407fd5fe78b9869f52050b56c31b796c601ff3bb33"
+  },
+  "w-g47-native-turn-2.jsonl": {
+   "source": "w-g47/session/native-turn-2.jsonl",
+   "sha256": "06a18486fecdd93d9c30401601bc5ea2106d9e8cbc0ec52e3a9af86f3fca6e8c"
+  },
+  "w-g14-native-turn-3.jsonl": {
+   "source": "w-g14/session/native-turn-3.jsonl",
+   "sha256": "aecfa746765e75bc0fb77f5caa44cf2604d67d74f1573e855555f7a0eb8ce883"
+  },
+  "w-g14-native-turn-4.jsonl": {
+   "source": "w-g14/session/native-turn-4.jsonl",
+   "sha256": "662db13e8264b0f97e52e824e05bfc19d8ec2d3f043afc32052925953eed0226"
+  },
+  "w-g32-native-turn-2.jsonl": {
+   "source": "w-g32/session/native-turn-2.jsonl",
+   "sha256": "a23bbac215d944fef243dc60f69f07f6577f987fa499d01fa5c05e16ff45f018"
+  },
+  "w-g32-native-turn-3.jsonl": {
+   "source": "w-g32/session/native-turn-3.jsonl",
+   "sha256": "ac11a47730c3aef3479f6f5760a7f51a20958d419400dfc5d66546099298b9c8"
+  },
+  "w-g47-turn-1.jsonl": {
+   "source": "w-g47/turn-1.jsonl",
+   "sha256": "639bf052947525486fbe35cd6a76a3c9d281f25f221853ab35717dcf415b17ac"
+  },
+  "w-g47-turn-2.jsonl": {
+   "source": "w-g47/turn-2.jsonl",
+   "sha256": "2b8e3f7128c23c65cdff03a0f37e7ba59df1dba66af360d785dff9aa31f8d9cd"
+  },
+  "w-g14-turn-1.jsonl": {
+   "source": "w-g14/turn-1.jsonl",
+   "sha256": "7758588a7653e846b02a47d61a1bf90477a9027d53ea6f6759160362765893a5"
+  },
+  "w-g14-turn-2.jsonl": {
+   "source": "w-g14/turn-2.jsonl",
+   "sha256": "78801f94253a6fede23f8783cc9ef7b03f57fdc0cd825b8157d3148e877693ea"
+  },
+  "w-g14-turn-3.jsonl": {
+   "source": "w-g14/turn-3.jsonl",
+   "sha256": "040dea846d9af9d1d2c24c43d0b9aa535b0430386b5860f597da19050d720432"
+  },
+  "w-g14-turn-4.jsonl": {
+   "source": "w-g14/turn-4.jsonl",
+   "sha256": "006e7f917aa2ee271bd3715586348cf566f5bee9b84f18d7bb8e31f53a241a18"
+  },
+  "w-g32-turn-1.jsonl": {
+   "source": "w-g32/turn-1.jsonl",
+   "sha256": "3a06613811afbb321dabe719c0818afadbf9f464c7c5fe3e8798c03324adc2ee"
+  },
+  "w-g32-turn-2.jsonl": {
+   "source": "w-g32/turn-2.jsonl",
+   "sha256": "48636dbb613d9b3f57cfcc80eb4d95be836c14a5fc54ff4aabb6b104e9abc4e8"
+  },
+  "w-g32-turn-3.jsonl": {
+   "source": "w-g32/turn-3.jsonl",
+   "sha256": "ca44cf0f947bd1843cdf48e533aaade85d4e80d91b748a5db9568c332b1cc8df"
+  }
+ },
+ "synthetic_strings": 2470
+}

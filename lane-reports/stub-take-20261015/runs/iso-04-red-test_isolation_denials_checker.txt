@@ -1,0 +1,85 @@
+Thu Oct 15 18:56:23 EDT 2026
+check_take = box 0e0bbe20 + the steer patch, no denial rule
+test_clean (__main__.Denials.test_clean) ... ERROR
+test_shape (__main__.Denials.test_shape) ... ERROR
+test_violated (__main__.Denials.test_violated) ... ERROR
+test_wired (__main__.Denials.test_wired) ... FAIL
+test_witnesses (__main__.Denials.test_witnesses) ... ERROR
+
+======================================================================
+ERROR: test_clean (__main__.Denials.test_clean)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 101, in test_clean
+    self.assertEqual(self.check_clean(), [])
+                     ~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 72, in check_clean
+    got = self.run_case(turns)
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 55, in run_case
+    return ct.denied_tool_problems(take(Path(d), turns))
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'denied_tool_problems'. Did you mean: 'design_tree_problems'?
+
+======================================================================
+ERROR: test_shape (__main__.Denials.test_shape)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 104, in test_shape
+    self.assertEqual(self.check_shape(), [])
+                     ~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 82, in check_shape
+    ct.denied_tool_problems(path)
+    ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'denied_tool_problems'. Did you mean: 'design_tree_problems'?
+
+======================================================================
+ERROR: test_violated (__main__.Denials.test_violated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 98, in test_violated
+    self.assertEqual(self.check_violated(), [])
+                     ~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 60, in check_violated
+    got = self.run_case([BASE, BASE + [tool]])
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 55, in run_case
+    return ct.denied_tool_problems(take(Path(d), turns))
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'check_take' has no attribute 'denied_tool_problems'. Did you mean: 'design_tree_problems'?
+
+======================================================================
+ERROR: test_witnesses (__main__.Denials.test_witnesses)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 116, in test_witnesses
+    with ctx():
+         ~~~^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1495, in __enter__
+    original, local = self.get_original()
+                      ~~~~~~~~~~~~~~~~~^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py", line 1465, in get_original
+    raise AttributeError(
+        "%s does not have the attribute %r" % (target, name)
+    )
+AttributeError: <module 'check_take' from '/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/check_take.py'> does not have the attribute 'ISOLATION_DENIED_TOOLS'
+
+======================================================================
+FAIL: test_wired (__main__.Denials.test_wired)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ct-wt2/evals/gap-study-4/tests/test_isolation_denials_checker.py", line 107, in test_wired
+    self.assertEqual(self.check_wired(), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["D-wired: check4 does not add the isolati[86 chars]ems"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"D-wired: check4 does not add the isolation denials' problems"
+
++ []
+- ["D-wired: check4 does not add the isolation denials' problems",
+-  "D-wired: check4_walk does not add the isolation denials' problems"]
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.036s
+
+FAILED (failures=1, errors=4)

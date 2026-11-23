@@ -1,0 +1,43 @@
+.............
+----------------------------------------------------------------------
+Ran 13 tests in 17.834s
+
+OK
+
+MUTANT binding 1: run_take.AGENT_USER moved off the locks: red 
+MUTANT binding 2: take_config.WRITERS gains a harness HOSTS lacks: red 
+MUTANT binding 3: proxy_conf.PORT moved off proxy.conf and PROXY_URL: red 
+MUTANT binding 4: sidecar.EVIDENCE_MOUNT moved off preflight's /srv/ev: red 
+MUTANT binding 4: the filled boot set gains a fifth capability: red 
+MUTANT binding 4: the filled boot set drops SETPCAP: red 
+MUTANT binding 5: scan_record's login cap back at 64 KiB: red 
+MUTANT binding 5: abspath back in scan_record's repository walk: red 
+MUTANT binding 5: abspath back in run_take's repository walk: red 
+MUTANT binding 6: sidecar.PROGRAM moved off the Dockerfile's copy target: red 
+MUTANT binding 7: preflight's C3 key respelled: red 
+MUTANT binding 8: preflight reads a lock key w4a's schema lacks: red 
+MUTANT binding 8: preflight pairs claude-code with the codex take image: red 
+MUTANT binding 8: preflight projects a key the lock does not carry: red 
+MUTANT binding 8: a lock hand-edited by one digest: red 
+MUTANT binding 8: a lock from a different record row: red 
+MUTANT binding 8: a schema-1 PENDING lock where a filled one is required: red 
+MUTANT binding 8: a record other than the reviewed one: red 
+mutants run red in this file (18):
+  binding 1: run_take.AGENT_USER moved off the locks
+  binding 2: take_config.WRITERS gains a harness HOSTS lacks
+  binding 3: proxy_conf.PORT moved off proxy.conf and PROXY_URL
+  binding 4: sidecar.EVIDENCE_MOUNT moved off preflight's /srv/ev
+  binding 4: the filled boot set gains a fifth capability
+  binding 4: the filled boot set drops SETPCAP
+  binding 5: scan_record's login cap back at 64 KiB
+  binding 5: abspath back in scan_record's repository walk
+  binding 5: abspath back in run_take's repository walk
+  binding 6: sidecar.PROGRAM moved off the Dockerfile's copy target
+  binding 7: preflight's C3 key respelled
+  binding 8: preflight reads a lock key w4a's schema lacks
+  binding 8: preflight pairs claude-code with the codex take image
+  binding 8: preflight projects a key the lock does not carry
+  binding 8: a lock hand-edited by one digest
+  binding 8: a lock from a different record row
+  binding 8: a schema-1 PENDING lock where a filled one is required
+  binding 8: a record other than the reviewed one

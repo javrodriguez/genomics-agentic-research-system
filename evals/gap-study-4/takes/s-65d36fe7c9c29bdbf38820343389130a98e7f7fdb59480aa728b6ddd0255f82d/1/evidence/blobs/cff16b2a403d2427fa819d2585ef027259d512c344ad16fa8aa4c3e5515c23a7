@@ -1,0 +1,31 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+## Goal
+Produce one sample PCA plot from gene counts, coloured by treated versus untreated.
+
+## Inputs
+Resolve both native inputs at execution time with `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design`; stop if resolution fails. Paths below are relative to the project and reflect current resolution.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. After approval, write `scripts/sample_pca.py` and `scripts/submit.sh`. Run Python in the existing `gars-bio` environment using pandas, NumPy, scikit-learn and matplotlib; source the workspace's `_system/gars-env.sh` in the job script. Install nothing. All computation runs in the batch job; inputs remain read-only.
+2. Read the resolved tab-separated counts and CSV design. Use `gene_id` as the feature identifier, excluding annotation column `gene_name`. Require unique gene identifiers and sample identifiers, numeric finite nonnegative counts, positive library totals, and an exact match between count sample columns and design sample IDs. Align columns by sample ID. Require condition labels `treated` and `untreated`, with no missing values. Current design has A1–A3 untreated and B1–B3 treated. Stop on validation errors rather than dropping samples or repairing inputs.
+3. Retain genes with counts >= 10 in at least 2 samples. Normalize each sample to counts per million using its total across all input genes, then transform retained values with log2(CPM + 1). Select up to 2,000 genes with highest sample variance (sample variance, ddof=1; ties broken by gene_id), excluding zero-variance genes. Stop if fewer than two variable genes remain.
+4. Transpose to samples by genes and fit scikit-learn `PCA(n_components=2, svd_solver="full")`, which centres each gene without scaling to unit variance. No condition labels enter PCA fitting; use condition only for plot colours. No batch correction, differential expression, or sample exclusions are planned.
+5. Make exactly one PC1-versus-PC2 scatter plot with matplotlib (Agg backend): untreated blue (#0072B2), treated orange (#D55E00), one point per sample, sample-ID text labels, condition legend, and axis labels showing explained variance percentages. Save `results/sample_pca.png` at 300 dpi. Interpretation is limited to the requested sample PCA.
+
+## Outputs
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | One labelled sample PCA plot coloured by treated versus untreated, with PC1 and PC2 explained variance on the axes. |
+
+## Execution
+Runs: batch
+
+Submit `scripts/submit.sh` through `python3 <workspace>/_system/executorlib.py submit --workspace <project> <analysis>/scripts/submit.sh`, using the project's configured executor. Request 1 CPU, 4 GB memory and 10 minutes wall time using the executor's resource settings. Expected runtime is under 5 minutes for six samples; expected figure size is under 5 MB. Keep scripts and logs inside this analysis directory. Fail and report missing environment tools or execution errors; do not install packages or silently retry a changed method. After success, run `stage03_analysis.py verify` to register the declared figure and record completion through the stage's prescribed provenance procedure.

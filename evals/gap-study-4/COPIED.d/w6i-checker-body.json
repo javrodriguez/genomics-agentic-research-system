@@ -1,0 +1,15 @@
+{
+  "lane": "w6i-checker-body",
+  "files": [
+    {
+      "path": "COPIED.d/w6i-checker-body.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfers under ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026): check_take.py, drive.py, tests/test_box_integration.py and tests/test_check_take.py from lane w6h-drive-lifecycle. Transfer (ruling S6c-gap4-1, glitch-1b under Javier's standing delegation, 11 Oct 2026): drive.py, check_take.py and tests/test_checker_body.py moved on to lane w6j-claude-adapter, which claims them in COPIED.d/w6j-claude-adapter.json. Then tests/test_box_integration.py moved on to lane w6j-claude-adapter as well (ruling S6c-gap4-1, slice S6c stage 5). Transfer (ruling W7B-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026; wave 7 piece P2, the CP6 walk wiring)): mode_binding.py, tests/test_mode_binding.py, tests/test_check_take.py moved on to lane w7b-walk-wiring, which claims them in COPIED.d/w7b-walk-wiring.json."
+    },
+    {
+      "path": "checks.d/w6i-checker-body.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2), including lane w6h's round-3 byte-binding line for check_take.py, moved here and re-indexed for S6b's in-place lines."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{"at":1792125112.377584,"path":"gars/projects/run-70bc8617/00_data/rnaseq_bulk/samples.csv","op":"open"}
+{"at":1792125112.3810122,"path":"gars/projects/run-70bc8617/00_data/rnaseq_bulk/files.csv","op":"open"}
+{"at":1792125112.3840017,"path":"gars/projects/run-70bc8617/01_samplesheets/rnaseq_bulk_samplesheet.csv","op":"modify"}
+{"at":1792125112.3849597,"path":"gars/projects/run-70bc8617/01_samplesheets/rnaseq_bulk_design.csv","op":"modify"}
+{"at":1792125112.3859265,"path":"gars/projects/run-70bc8617/01_samplesheets/rnaseq_bulk_samplesheet.csv","op":"open"}
+{"at":1792125112.3869066,"path":"gars/projects/run-70bc8617/01_samplesheets/rnaseq_bulk_design.csv","op":"open"}
+{"at":1792125114.0015447,"path":"gars/projects/run-70bc8617/01_samplesheets/rnaseq_bulk_samplesheet.csv","op":"open"}
+{"at":1792125114.3075213,"path":"gars/projects/run-70bc8617/01_samplesheets/rnaseq_bulk_design.csv","op":"open"}

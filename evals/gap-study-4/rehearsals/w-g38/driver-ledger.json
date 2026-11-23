@@ -1,0 +1,86 @@
+{
+ "agent": {
+  "harness": "gemini",
+  "version": "0.64.0"
+ },
+ "arm": "G",
+ "budget_s": 900,
+ "claude_version": "0.64.0",
+ "cost": null,
+ "cross_check": null,
+ "cross_check_status": {
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "1b172fbcd26735bf3b95b400c839d7f48588fcb16cfdce0ef729b15274241464"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gemini-3.5-flash-lite",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": null,
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "9b076201fa75c5af26498a2876826db570196dce792379f5239bac25d52c74b0"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "yolo",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-45887f96",
+ "published": null,
+ "repeat": 1,
+ "row": null,
+ "row_commit": null,
+ "session_id": "45887f96-4328-5035-8bbe-2ad67dc83b41",
+ "source": "/tmp/run-45887f96/data/staging/run-45887f96/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "number-fidelity",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "I'd like to start a new project for a bulk RNA-seq run. The project title is run-45887f96, and the raw data is in /tmp/run-45887f96/data/staging/run-45887f96/src",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

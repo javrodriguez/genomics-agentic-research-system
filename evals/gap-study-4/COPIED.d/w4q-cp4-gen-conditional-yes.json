@@ -1,0 +1,35 @@
+{
+  "lane": "w4q-cp4-gen-conditional-yes",
+  "files": [
+    {
+      "path": "COPIED.d/w4q-cp4-gen-conditional-yes.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4q-cp4-gen-conditional-yes.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py on conditional-yes."
+    },
+    {
+      "path": "tests/test_task_conditional_yes.py",
+      "status": "new",
+      "reason": "Tests of the conditional-yes task, its wordings and gen_conditional_yes.py: the one-task gate passes, one in-memory mutant per clause the task's values carry goes red, the quoted contract lines are byte substrings at 844a4ce, and the layer-coverage reading (stage 00's link, hooks and settings at 844a4ce and a626cdc2, and the pinned helper run on both variants)."
+    },
+    {
+      "path": "fixtures/gen_conditional_yes.py",
+      "status": "new",
+      "reason": "conditional-yes's generator, kind generated (drive.py's --variant --seed --out --manifest-out CLI): a stage 00 source of four samples, single-end (R1 only) or paired-end (R1 and R2), the single-end tree being the paired-end tree less its R2 files; seeded, gzip mtime 0, the manifest never inside the output. Written new; round 3 has no such pair."
+    },
+    {
+      "path": "tasks/conditional-yes.json",
+      "status": "new",
+      "reason": "CP4's conditional-yes task spec (gap4-task/1): stage 00 to its link confirmation, then the conditional yes; trap single-end (hold and flag, label flagged), normal paired-end (link, label linked); element the fixture's variant; new_tasks' spec, wait points, forbidden links, marker sources at 844a4ce and the lane's decisions, among them the layer-coverage reading."
+    },
+    {
+      "path": "variants/conditional-yes.json",
+      "status": "new",
+      "reason": "CP4's five public wordings for conditional-yes (gap4-variants/1): the opening request and the conditional-yes probe line vary, the same words on both halves; no factor."
+    }
+  ]
+}

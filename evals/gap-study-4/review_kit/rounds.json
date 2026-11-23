@@ -1,0 +1,122 @@
+{
+  "role": "One row per round of blind review or final verification, append-only. A row is committed alone and before its reviewer opens; that reviewer's session id is uuid5(namespace, the sha of the row's commit) and is deliberately not stored here.",
+  "rows": [
+    {
+      "n": 1,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "85b5b15f7a747e5aa0adb37bfc8c57ba9bcd2962285d107fa9ba01c5f1db549b",
+      "launch_commit": "2854c6445fd24ecf570ebad06d20db4fd266874b",
+      "added": "2026-10-24T19:45:35+00:00",
+      "voids": null
+    },
+    {
+      "n": 2,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "d5e95bafdb6905c9c9ea7bcdd56fb2631997e7ac17f39c529924e77e5f39889f",
+      "launch_commit": "ef31e4a9bb301643b4054ee4049f703487955ac6",
+      "added": "2026-10-29T20:01:10+00:00",
+      "voids": null
+    },
+    {
+      "n": 3,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "330340a78a443febd3368bba5946268b0189ef08994d5a2c0acecf8ff836f969",
+      "launch_commit": "e63be402146cf66aa396ec872659fdc1dc9e56b7",
+      "added": "2026-10-31T00:45:26+00:00",
+      "voids": null
+    },
+    {
+      "n": 4,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "f4c48259a34c368e44443f7f3076a0a6864fe622af9695bd9026e04e0691f8e8",
+      "launch_commit": "4163754f38ac5b8729c008904b1f6dc03d4f6015",
+      "added": "2026-10-31T11:32:18+00:00",
+      "voids": null
+    },
+    {
+      "n": 5,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "1a448f0a917932745016ee13168be98cdf5263f660737ef5ee4d7e0daa755c43",
+      "launch_commit": "c781e26107496c1ac1dbe21e4583e782223d307b",
+      "added": "2026-10-31T21:18:05+00:00",
+      "voids": null
+    },
+    {
+      "n": 6,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "950cec7d1dfee46dacac315aa95f84e960063bdd84b49e5fdca538f14bc32be5",
+      "launch_commit": "3154459688dbafdcf9dac7f1c80626af3c09247e",
+      "added": "2026-11-02T05:39:23+00:00",
+      "voids": null
+    },
+    {
+      "n": 7,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "a343e36ba0de1333a23e688d7b754609e2b0199cb6caeaef049008bbaedcf5ea",
+      "launch_commit": "3c31d76b364d1283e00dd6ab9035a164355922b4",
+      "added": "2026-11-02T22:04:27+00:00",
+      "voids": null
+    },
+    {
+      "n": 8,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "58bc8259303e4654a8680c55e3f19e59938352973d71a91ce66f0516a3de7164",
+      "launch_commit": "272d8fe298f8390ecfaa1c3cea72f4389b6b3157",
+      "added": "2026-11-03T15:39:15+00:00",
+      "voids": null
+    },
+    {
+      "n": 9,
+      "kind": "prefreeze",
+      "prompt_sha256": "4246efa5b4093e30e23bf62966cda268e45b62101488189ceeb79373e48984cc",
+      "input_sha256": "9557a0ae73e4e3db86ddff77bfcfa56f7cb423182ee261b656408d7591f6b37a",
+      "launch_commit": "d1f8717821a82d229f97337c31b23a8748d6ac2e",
+      "added": "2026-11-04T15:24:18+00:00",
+      "voids": null
+    },
+    {
+      "n": 10,
+      "kind": "prefreeze",
+      "prompt_sha256": "7712a8faa0952790df99fd064951c6825491b83147017e6944531297c30efef7",
+      "input_sha256": "a9922dc1cd0f9431ba714f339ba89b5a181d5afc5720edf10e71dc129017fb76",
+      "launch_commit": "c2a2ef6d4f675c2cdb3a36127778e31cde83bf14",
+      "added": "2026-11-05T04:41:37+00:00",
+      "voids": null
+    },
+    {
+      "n": 1,
+      "kind": "verify",
+      "prompt_sha256": "7712a8faa0952790df99fd064951c6825491b83147017e6944531297c30efef7",
+      "input_sha256": "cc31bd2ae5ddea611f8ad4fb876f2c5cf1b5d7ae8d1be8064f5a109996b68e97",
+      "launch_commit": "2596336289d1a8b6815c276c012cbe8ca5382d6a",
+      "added": "2026-11-17T05:05:11+00:00",
+      "voids": null
+    },
+    {
+      "n": 2,
+      "kind": "verify",
+      "prompt_sha256": "7712a8faa0952790df99fd064951c6825491b83147017e6944531297c30efef7",
+      "input_sha256": "b4ca66c25409f7dddf08dc49a1069bc06d336f6b0853011e996d4239fc8ac0bb",
+      "launch_commit": "01479891509b2e8e5b1041edfefb974a256e41f0",
+      "added": "2026-11-18T13:06:22+00:00",
+      "voids": null
+    },
+    {
+      "n": 3,
+      "kind": "verify",
+      "prompt_sha256": "7712a8faa0952790df99fd064951c6825491b83147017e6944531297c30efef7",
+      "input_sha256": "d21d5945c59754f1f2bc24f262e0f23bc35eac9b3142f57495470630063fee94",
+      "launch_commit": "79d9e45a8d8be79210ef7b52034775c2446f4d95",
+      "added": "2026-11-19T06:00:09+00:00",
+      "voids": null
+    }
+  ]
+}

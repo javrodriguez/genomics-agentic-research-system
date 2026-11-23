@@ -1,0 +1,42 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Compute a Principal Component Analysis (PCA) of the RNA-seq samples using gene-level counts, and visualize the results as a scatter plot of the first two principal components with samples colored by experimental condition (untreated vs. treated).
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 00_data/rnaseq_bulk | samples.csv |
+
+## Method
+1. Load the gene count matrix (TSV) and sample metadata (CSV) using Python with pandas.
+2. Filter genes with low expression (keep genes with ≥1 count in ≥2 samples) to reduce noise.
+3. Apply log2-normalization to counts: log2(counts + 1) to stabilize variance.
+4. Center and scale the log-normalized counts (z-score normalization) across genes.
+5. Compute PCA using scikit-learn's PCA with all components; retain components explaining ≥95% cumulative variance.
+6. Generate a scatter plot of PC1 vs. PC2 using matplotlib, with points colored by the `condition` column from samples.csv.
+7. Add axis labels showing variance explained by each component, and a legend identifying conditions.
+8. Save the figure as `results/pca_plot.png` (300 dpi).
+Environment: gars-bio. All steps run as a single Python script in the analysis directory.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | Scatter plot of principal components 1 and 2, with samples colored by experimental condition (untreated/treated); axis labels show variance explained. |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 1 minute. Output size: < 5 MB (PNG figure).

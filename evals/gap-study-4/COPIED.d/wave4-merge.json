@@ -1,0 +1,20 @@
+{
+  "lane": "wave4-merge",
+  "files": [
+    {
+      "path": "tests/test_wave4_bindings.py",
+      "status": "new",
+      "reason": "The wave 4 merge bindings 1-8 (the w4a, w4b and w4c briefs): one class per pair held by one lane and taken by another, each green on the merged modules and red under one in-memory mutant of the pair's value. Binding 5 runs both login readers over the union of both lanes' planted fixtures and the four cases of glitch-f3's ruling; binding 8 binds lock key paths only (load wiring is CP2's first sequential lane). Round 3 had no box. Owner since 11 Oct 2026: lane w6a-cp2-preflight-binding (glitch-1b's transfer, CP2-preflight-5); the entry stays here, one owner, history kept. w6a extends binding 8 to the loader-to-evaluator connection and binding 4 to the parsed evidence source; bindings 1-7 unchanged."
+    },
+    {
+      "path": "COPIED.d/wave4-merge.json",
+      "status": "new",
+      "reason": "The wave 4 merge's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/wave4-merge.txt",
+      "status": "new",
+      "reason": "The wave 4 merge's local checks (interface 2)."
+    }
+  ]
+}

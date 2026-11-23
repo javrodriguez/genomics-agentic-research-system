@@ -1,0 +1,392 @@
+{
+ "agent": {
+  "harness": "claude-code",
+  "version": "2.1.296"
+ },
+ "arm": "A",
+ "budget_s": 900,
+ "claude_version": "2.1.296",
+ "cost": {
+  "calls": [
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 6737,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvgfTcYMoZaeiP2HfCsc/req_011CgvgfT9kbGXpU2K9vJMRB",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 6737,
+     "cache_read_input_tokens": 10814,
+     "input_tokens": 2,
+     "output_tokens": 106
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 2135,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvgfkX2aPBqz3RTNxCiv/req_011CgvgfkHtC8Mfr9shsDCGE",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 2135,
+     "cache_read_input_tokens": 17551,
+     "input_tokens": 2,
+     "output_tokens": 145
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 11338,
+     "5m": 0
+    },
+    "call_id": "msg_011Cgvgg2Fq6WtWBM2pAzdit/req_011Cgvgg23fxYPz3rMNCnVNC",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 11338,
+     "cache_read_input_tokens": 19686,
+     "input_tokens": 2,
+     "output_tokens": 146
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1185,
+     "5m": 0
+    },
+    "call_id": "msg_011Cgvggc1LXs9Lk82G1QhHw/req_011CgvggbmxFvJf7bfZvPKc2",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1185,
+     "cache_read_input_tokens": 31024,
+     "input_tokens": 2,
+     "output_tokens": 228
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 319,
+     "5m": 0
+    },
+    "call_id": "msg_011Cgvgh4McJ1wLujkYUcTor/req_011Cgvgh48j26MfRbSvMoZnD",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 319,
+     "cache_read_input_tokens": 32209,
+     "input_tokens": 2,
+     "output_tokens": 726
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 799,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvghcozDJct61MGE1oM8/req_011CgvghcbbWwwzVr2sth5Cx",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 799,
+     "cache_read_input_tokens": 32528,
+     "input_tokens": 2,
+     "output_tokens": 122
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1368,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvghtxqerXvL4vUYXW3N/req_011CgvghtjCGxaEUFuABQGsb",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1368,
+     "cache_read_input_tokens": 33327,
+     "input_tokens": 2,
+     "output_tokens": 138
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 717,
+     "5m": 0
+    },
+    "call_id": "msg_011Cgvgi81f2rqbURJatQ4gU/req_011Cgvgi7nWjGvfcToazq8uH",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 717,
+     "cache_read_input_tokens": 34695,
+     "input_tokens": 2,
+     "output_tokens": 360
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 663,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvgiVn6fRSQjWuoYpLN1/req_011CgvgiVXxgYaa7kXehxC6o",
+    "ended_at": null,
+    "model": "claude-opus-5-5",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 663,
+     "cache_read_input_tokens": 35412,
+     "input_tokens": 2,
+     "output_tokens": 259
+    },
+    "vendor": "anthropic"
+   }
+  ],
+  "model_requested": "claude-opus-5-5",
+  "turns": [
+   {
+    "calls": [
+     "msg_011CgvgfTcYMoZaeiP2HfCsc/req_011CgvgfT9kbGXpU2K9vJMRB",
+     "msg_011CgvgfkX2aPBqz3RTNxCiv/req_011CgvgfkHtC8Mfr9shsDCGE",
+     "msg_011Cgvgg2Fq6WtWBM2pAzdit/req_011Cgvgg23fxYPz3rMNCnVNC",
+     "msg_011Cgvggc1LXs9Lk82G1QhHw/req_011CgvggbmxFvJf7bfZvPKc2",
+     "msg_011Cgvgh4McJ1wLujkYUcTor/req_011Cgvgh48j26MfRbSvMoZnD"
+    ],
+    "model_usage": {
+     "claude-opus-5-5": {
+      "cacheCreationInputTokens": 21714,
+      "cacheReadInputTokens": 111284,
+      "canonicalModel": "claude-opus-5-5",
+      "contextWindow": 1000000,
+      "costBasis": "list",
+      "costUSD": 0.22302880000000005,
+      "inputTokens": 10,
+      "maxOutputTokens": 128000,
+      "outputTokens": 1351,
+      "provider": "firstParty",
+      "thinkingTokens": 244,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 1,
+    "num_turns": 6,
+    "permission_denials": [],
+    "total_cost_usd": 0.22302880000000005,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 21714,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 21714,
+     "cache_read_input_tokens": 111284,
+     "fallback_credit": null,
+     "inference_geo": "global",
+     "input_tokens": 10,
+     "iterations": [],
+     "output_tokens": 1351,
+     "output_tokens_details": {
+      "thinking_tokens": 244
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   },
+   {
+    "calls": [
+     "msg_011CgvghcozDJct61MGE1oM8/req_011CgvghcbbWwwzVr2sth5Cx",
+     "msg_011CgvghtxqerXvL4vUYXW3N/req_011CgvghtjCGxaEUFuABQGsb",
+     "msg_011Cgvgi81f2rqbURJatQ4gU/req_011Cgvgi7nWjGvfcToazq8uH",
+     "msg_011CgvgiVn6fRSQjWuoYpLN1/req_011CgvgiVXxgYaa7kXehxC6o"
+    ],
+    "model_usage": {
+     "claude-opus-5-5": {
+      "cacheCreationInputTokens": 25261,
+      "cacheReadInputTokens": 247246,
+      "canonicalModel": "claude-opus-5-5",
+      "contextWindow": 1000000,
+      "costBasis": "list",
+      "costUSD": 0.2962092,
+      "inputTokens": 18,
+      "maxOutputTokens": 128000,
+      "outputTokens": 2230,
+      "provider": "firstParty",
+      "thinkingTokens": 459,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 2,
+    "num_turns": 4,
+    "permission_denials": [],
+    "total_cost_usd": 0.2962092,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 3547,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 3547,
+     "cache_read_input_tokens": 135962,
+     "fallback_credit": null,
+     "inference_geo": "global",
+     "input_tokens": 8,
+     "iterations": [],
+     "output_tokens": 879,
+     "output_tokens_details": {
+      "thinking_tokens": 215
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   }
+  ]
+ },
+ "cross_check": [],
+ "environment": {
+  "file": "environment.json",
+  "sha256": "86b3d31ce790f3fb5b889bda96a10a0f05d0975791019332281020f2e3e9c1ba"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "claude-opus-5-5",
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "bypassPermissions",
+ "permission_mode_passed": "bypassPermissions",
+ "permission_mode_recorded": "bypassPermissions",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-872c7582",
+ "published": {
+  "records_a_grader_reads": "identical before and after",
+  "removed": [],
+  "sha256_after": "e34d9a7be50bca2198aaf09eaa9e781d52e89a179200e430f8c97617a0bb812f",
+  "sha256_before": "e34d9a7be50bca2198aaf09eaa9e781d52e89a179200e430f8c97617a0bb812f",
+  "transcript": "transcript.jsonl",
+  "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+ },
+ "repeat": 1,
+ "row": 737,
+ "row_commit": "9ff75d129958f7e56e149bedf431e52872c5ecd5",
+ "session_id": "872c7582-421a-5a17-ba5f-af29c65beafa",
+ "source": "/tmp/run-872c7582/data/staging/run-872c7582/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl"
+ ],
+ "subagents": [],
+ "task": "number-fidelity",
+ "transcript": "transcript.jsonl",
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "Can you set up a new project? It's bulk RNA-seq. The project title is run-872c7582, and the raw data is in /tmp/run-872c7582/data/staging/run-872c7582/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": false,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  }
+ ],
+ "wording": "w2"
+}

@@ -1,0 +1,15 @@
+.....................
+WITNESS admit-duplicate-outcome: red by C7-duplicate (3 own, 0 collateral, 0 errors) .
+WITNESS admit-reserved-names: red by C8-reserved (1 own, 0 collateral, 0 errors) .
+WITNESS admit-stray-staged: red by C5-staged (2 own, 0 collateral, 0 errors) .
+WITNESS admit-tracked-paths: red by C9-tracked (1 own, 0 collateral, 0 errors) .
+WITNESS bypass-entry-point: red by C6-preflight (1 own, 0 collateral, 0 errors) .
+WITNESS commit-the-index: red by C10-bound (2 own, 0 collateral, 0 errors) .
+WITNESS concatenated-history: red by C3-history (1 own, 0 collateral, 0 errors) .
+WITNESS omit-rehash: red by C2-rehash (2 own, 0 collateral, 0 errors) .
+WITNESS omit-restage: red by C1-restage (1 own, 0 collateral, 0 errors) .
+WITNESS omit-restart-refusal: red by C4-restart (3 own, 0 collateral, 0 errors) .
+----------------------------------------------------------------------
+Ran 31 tests in 50.056s
+
+OK

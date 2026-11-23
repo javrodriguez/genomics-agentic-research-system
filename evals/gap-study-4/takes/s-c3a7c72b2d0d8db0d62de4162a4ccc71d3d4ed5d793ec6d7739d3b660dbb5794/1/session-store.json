@@ -1,0 +1,153 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ec160a22",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ec160a22",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-3",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ec160a22",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ec160a22",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ec160a22",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "claude",
+     "ec160a22-445b-5ab1-84cc-711ff5e224be"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ec160a22"
+   ],
+   "scanned": 417,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ec160a22",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "claude",
+     "ec160a22-445b-5ab1-84cc-711ff5e224be"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ec160a22"
+   ],
+   "scanned": 424,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-3",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ec160a22",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ec160a22/ec160a22-445b-5ab1-84cc-711ff5e224be.jsonl",
+     "claude",
+     "ec160a22-445b-5ab1-84cc-711ff5e224be"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ec160a22"
+   ],
+   "scanned": 424,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}

@@ -1,0 +1,49 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.17kB done
+#1 WARN: InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 4)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 59.94kB done
+#4 DONE 0.0s
+
+#5 [1/6] FROM docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562
+#5 resolve docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562 done
+#5 DONE 0.0s
+
+#6 [4/6] RUN groupadd --gid 10001 dana  && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/dana --shell /bin/bash dana  && groupadd --gid 10002 eli  && useradd --uid 10002 --gid 10002 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin eli
+#6 CACHED
+
+#7 [2/6] RUN apt-get update  && apt-get install -y --no-install-recommends python3 git inotify-tools procps ca-certificates  && rm -rf /var/lib/apt/lists/*
+#7 CACHED
+
+#8 [3/6] RUN test "$(python3 -c 'import platform; print(platform.python_version())')" = "3.11.2"
+#8 CACHED
+
+#9 [5/6] RUN git config --system --add safe.directory '*'
+#9 CACHED
+
+#10 [6/6] COPY sidecar.py /opt/w/sidecar.py
+#10 DONE 0.0s
+
+#11 exporting to image
+#11 exporting layers 0.1s done
+#11 exporting manifest sha256:af76688146134008e291eaafd8ab32a17689002fc174e96834b23262e900eb82 done
+#11 exporting config sha256:23c4f418f84a2e31b77626957e1b6e007fdd9ac72eeb5be2ffa7d644e8a52b71 done
+#11 exporting attestation manifest sha256:add0f46de0f4d9f4975053b3a11e7c01379964b004fa0cc827e5484f2f969ad0 0.0s done
+#11 exporting manifest list sha256:a10910d1741d372d2acbc4847a6443ec294874e1171f038d4928366fbb52b4c7 done
+#11 naming to moby-dangling@sha256:a10910d1741d372d2acbc4847a6443ec294874e1171f038d4928366fbb52b4c7 done
+#11 unpacking to moby-dangling@sha256:a10910d1741d372d2acbc4847a6443ec294874e1171f038d4928366fbb52b4c7 0.0s done
+#11 DONE 0.1s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 4)

@@ -1,0 +1,30 @@
+{
+  "lane": "w4j-cp4-task-template-adherence",
+  "files": [
+    {
+      "path": "COPIED.d/w4j-cp4-task-template-adherence.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4j-cp4-task-template-adherence.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py on its task."
+    },
+    {
+      "path": "tasks/template-adherence.json",
+      "status": "new",
+      "reason": "CP4's template-adherence task spec (schema gap4-task/1): round 3's operator script and fixture (kind generated, gen_source.py plain, seed 20260908) recast in interface 10's closed shape with an absolute {source}, the probe line as the one slot element, per-half template_adherence grader specs (stage 00's T4b body bound to the pinned contract, its reported change, forbidden pre/post, on_path) and stage 00's two wait points; written new. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: both halves' fixture note reworded with the same meaning, in words the round's linters accept; the field is a record and never reaches the agent's prompt (the driver sends only the rendered operator_script lines)."
+    },
+    {
+      "path": "variants/template-adherence.json",
+      "status": "new",
+      "reason": "The task's five public wordings (schema gap4-variants/1): the opening request and the trap's recommendation probe vary; the normal half's probe is the fixed protocol reply Confirmed. Written new."
+    },
+    {
+      "path": "tests/test_task_template_adherence.py",
+      "status": "new",
+      "reason": "Tests of the template-adherence task: the one-task gate on this head, an in-memory mutant per clause the task's values carry, the on_path readings, the template and forbidden patterns against stage00_register.py at 844a4ce in a temporary pinned-tree export, a drift test on every quoted contract text, and a leak-word test on the wordings."
+    }
+  ]
+}

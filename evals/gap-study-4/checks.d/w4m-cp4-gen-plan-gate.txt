@@ -1,0 +1,4 @@
+# Lane w4m-cp4-gen-plan-gate: CP4 task plan-gate (fixture rebuilt) and its generator fixtures/gen_plan_gate.py.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_plan_gate.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py plan-gate

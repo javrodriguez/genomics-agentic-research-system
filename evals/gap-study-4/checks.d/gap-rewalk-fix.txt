@@ -1,0 +1,12 @@
+# Lane gap-rewalk-fix: Gap Study round 4, the Lane-orchestrator's rulings of Tue 27 Oct 2026 (glitch-45, under Javier's
+# standing delegation) on the battery reds of the rewalk merge 13e8301f. One command per line, from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_gap_rewalk_fix.py
+python3 -B -W ignore evals/gap-study-4/tests/test_freeze_gates_fix.py
+python3 -B -W ignore evals/gap-study-4/fixture_walk.py --check
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_cover_o_records.py WalkTimeRoad ReasonSet
+python3 -B -W ignore evals/gap-study-4/tests/test_awareness_furniture.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_transcript_integrity.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_cost_vendors.py
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py
+python3 -B -W ignore evals/gap-study-4/tests/test_holdout_digests.py
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check

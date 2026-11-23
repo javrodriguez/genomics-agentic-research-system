@@ -1,0 +1,25 @@
+{
+  "lane": "w4f-cp5-coverage",
+  "files": [
+    {
+      "path": "coverage_today.md",
+      "status": "new",
+      "reason": "CP5's read-only coverage table (plan D7 A): one row per task pair answering whether GARS as of 6 Oct (commit a626cdc2, glitch-f3's ruling 1) would catch the trap's wrong move, each answer cited by file and line at that commit and excerpted, with the reach column (claude-only, claude-and-codex, every-agent, or none exactly when caught is no; glitch-f3's ruling 2). Answered by reading code, never by running a model or GARS's guard. New."
+    },
+    {
+      "path": "tests/test_coverage.py",
+      "status": "new",
+      "reason": "Tests for coverage_today.md (interface 3): parses the closed table shape, the closed pair list with the declarations candidate marked, the closed caught and reach values as named constants, the none rule, every cite read with git show and git ls-tree at the pinned full sha (path present, range inside the file, excerpt a whitespace-normalised substring, the cite tight, a mode cite's mode), the empty gars/ diff against 0f602ea0, the forward binding to tasks/*.json, loud failure in a shallow clone or outside git; each check shown red by an in-memory mutant, the commit mutant pointed at 844a4ce among them. New."
+    },
+    {
+      "path": "COPIED.d/w4f-cp5-coverage.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w4f-cp5-coverage.txt",
+      "status": "new",
+      "reason": "This lane's local checks for run_checks.py (interface 2): the coverage test alone, and lint_language.py and lint_pooling.py on the published table."
+    }
+  ]
+}

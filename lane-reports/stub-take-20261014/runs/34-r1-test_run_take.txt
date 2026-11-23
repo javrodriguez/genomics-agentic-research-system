@@ -1,0 +1,201 @@
+test_cross_arm_refused (__main__.TestArmVariables.test_cross_arm_refused) ... ok
+test_own_environ_always_checked (__main__.TestArmVariables.test_own_environ_always_checked) ... ok
+test_refused_sets (__main__.TestArmVariables.test_refused_sets) ... ok
+test_requested_refused (__main__.TestArmVariables.test_requested_refused) ... ok
+test_unknown_harness_refused (__main__.TestArmVariables.test_unknown_harness_refused) ... ok
+test_allowlists (__main__.TestAuditAllowlists.test_allowlists) ... ok
+test_an_unlisted_run_take_name_is_still_refused (__main__.TestAuditAllowlists.test_an_unlisted_run_take_name_is_still_refused)
+glitch-06 ruling, 14 Oct: listing GEMINI_MODE_ROUTE_VARIABLES admits that one name only. ... ok
+test_dynamic_builtins (__main__.TestAuditAllowlists.test_dynamic_builtins)
+W4B4-2: each of these names is loaded only as the func of a direct call. No alias form is written (the ... ok
+test_module_keys_bound_to_imports (__main__.TestAuditAllowlists.test_module_keys_bound_to_imports)
+W4B4-1: the keys are exactly the import-bound names, and an import-bound name with no entry is refused. ... ok
+test_subprocess_rule_fires_on_the_real_call (__main__.TestAuditAllowlists.test_subprocess_rule_fires_on_the_real_call)
+W4B3-2: with ("run", "call") removed from SUBPROCESS_USES, the rule itself flags the one real call. ... ok
+test_the_inline_settings (__main__.TestClaudeSettings.test_the_inline_settings) ... ok
+test_no_codex_or_gemini_take_env_can_carry_a_vendor_key (__main__.TestCodexKeyUnreachable.test_no_codex_or_gemini_take_env_can_carry_a_vendor_key) ... ok
+test_config_dir (__main__.TestConfigDir.test_config_dir) ... ok
+test_counters_and_state (__main__.TestCountersAndState.test_counters_and_state) ... ok
+test_defaults_are_pending (__main__.TestCreateArgv.test_defaults_are_pending) ... ok
+test_refusals (__main__.TestCreateArgv.test_refusals) ... ok
+test_shape (__main__.TestCreateArgv.test_shape) ... ok
+test_docker_runtime (__main__.TestDockerRuntime.test_docker_runtime) ... ok
+test_bound_to_drive (__main__.TestDriveBinding.test_bound_to_drive) ... ok
+test_isolation_env_rides_in_claude_env (__main__.TestDriveBinding.test_isolation_env_rides_in_claude_env) ... ok
+test_agent_exec_argv (__main__.TestExecArgv.test_agent_exec_argv) ... ok
+test_config_home_refusals (__main__.TestExecArgv.test_config_home_refusals) ... ok
+test_exec_argv (__main__.TestExecArgv.test_exec_argv) ... ok
+test_failures (__main__.TestLaunch.test_failures) ... ok
+test_launch (__main__.TestLaunch.test_launch) ...   mutant no-env-check: red - codex take carrying CLAUDE_CODE_OAUTH_TOKEN (caller) waited on PENDING instead of refusing
+  mutant vendor-keys-dropped: red - codex take carrying GEMINI_API_KEY (caller) waited on PENDING instead of refusing
+  mutant api-keys-dropped: red - codex take carrying ANTHROPIC_API_KEY (caller) waited on PENDING instead of refusing
+  mutant billing-dropped: red - codex take carrying CLAUDE_CODE_USE_VERTEX (caller) waited on PENDING instead of refusing
+  mutant subscription-dropped: red - codex take carrying CLAUDE_CODE_OAUTH_TOKEN (caller) waited on PENDING instead of refusing
+  mutant caller-env-replaces: red - an empty caller_env switched off the refusal of os.environ
+  mutant own-login-refused: red - codex: refused set ['CODEX_API_KEY'] off
+  mutant vendor-list-short: red - claude-code: refused set ['GOOGLE_API_KEY', 'OPENAI_API_KEY'] off
+  mutant no-env-check: red - codex exec requesting CLAUDE_CODE_OAUTH_TOKEN accepted
+  mutant os-widened: red - OS_ATTRS holds unused system
+  mutant os-emptied: red - box/run_take.py: os.environ is not in OS_ATTRS
+  mutant dunders-widened: red - DUNDERS_ALLOWED holds unused __subclasses__
+  mutant dunders-emptied: red - box/run_take.py: __file__ is not in DUNDERS_ALLOWED
+  mutant subprocess-uses-widened: red - SUBPROCESS_USES is [('TimeoutExpired', 'except'), ('run', 'call'), ('run', 'value')]
+  mutant subprocess-uses-emptied: red - box/run_take.py: subprocess.TimeoutExpired used as a except, not one of SUBPROCESS_USES
+  mutant import-from-widened: red - IMPORT_FROM_ALLOWED holds unused ('os', 'system')
+  mutant import-from-emptied: red - box/run_take.py: from __future__ import annotations is not in IMPORT_FROM_ALLOWED
+  mutant module-attrs-widened: red - MODULE_ATTRS holds unused json.JSONDecoder
+  mutant module-attrs-emptied: red - box/run_take.py: harness_bookkeeping.CLAUDE_CODE is not in MODULE_ATTRS
+  mutant getattr-widened: red - GETATTR_ALLOWED holds unused ('e', 'args')
+  mutant getattr-emptied: red - box/run_take.py: getattr(e, 'stdout') is not in GETATTR_ALLOWED
+  mutant dynamic-builtins-dropped-getattr: red - DYNAMIC_BUILTINS is ['__import__', 'compile', 'delattr', 'eval', 'exec', 'globals', 'locals', 'setat
+  mutant dynamic-builtins-emptied: red - DYNAMIC_BUILTINS is []
+  mutant module-attrs-key-dropped: red - MODULE_ATTRS keys differ from the import-bound names: ['shutil']
+  mutant run-call-removed: red
+  mutant check-skipped: red - no-settings: admitted
+  mutant switch-on: red - the study's settings are {'availableModels': ['claude-opus-5-5'], 'env': {'CLAUDE_CODE_DISABLE_REFUS
+  mutant no-allowlist: red - the study's settings are {'env': {'CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK': '1'}, 'fallbackModel': [],
+  mutant prompt-read-as-flag: red - a well-formed turn was refused: a claude-code turn carries exactly one --settings: the study's setti
+  mutant codex-refusal-dropped: red - exec_argv reached check_environment for codex
+  mutant codex-refusal-after-login: red - exec_argv reached check_environment for codex
+  mutant codex-row-gains-openai-key: red - codex's row names vendor keys ['OPENAI_API_KEY']
+  mutant gemini-key-given-a-value: red - gemini's row gives a vendor key a value
+  mutant strip-list-shortened: red - VENDOR_KEY_VARIABLES is ('GEMINI_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY')
+  mutant probe-A-second-read-login-caller: red - read_login is called from ['_peek', 'exec_argv'], not exec_argv alone
+  mutant probe-B-refusal-gated-by-a-switch: red - exec_argv's first test is not the Codex refusal ahead of the login read
+  mutant refusal-body-gains-a-statement: red - exec_argv's first test is not the Codex refusal ahead of the login read
+  mutant no-publish-gate: red - raised Refused: the recorded config folder is not a folder
+  mutant no-repo-check: red - a config folder inside a repository was made
+  mutant swapped-lines: red - raised Refused: memory.events holds no single 'oom <n>' line
+  mutant negative-delta: red - a counter that fell was accepted
+  mutant state-running-from-status: red - raised Refused: the inspect's State fields are off their types
+  mutant no-spec-check: red - pending-reservation accepted
+  mutant env-at-create: red - create argv differs: ['docker', 'create', '-e', 'X=1', '--pull=never', '--network', 'aaaaaaaaaaaaaaa
+  mutant alias-on-take: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant pull-allowed: red - create argv differs: ['docker', 'create', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant third-mount: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant agent-as-pid1: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant keepalive-user: red - raised Refused: the keep-alive user is 10001:10001, never another
+  mutant config-mount: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant keepalive-command: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant no-entrypoint: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant shell-string: red - argv is not passed as the list
+  mutant merges-os-environ: red - env is not the whole environment given
+  mutant timeout-as-exit: red - a timeout did not raise
+  mutant ISOLATION_ENV-drifts: red - run_take.ISOLATION_ENV differs from drive.ISOLATION_ENV
+  mutant RUN_TREE_TMPDIR-drifts: red - run_take.RUN_TREE_TMPDIR differs from drive.RUN_TREE_TMPDIR
+  mutant RUN_TREE_TMPDIR_VARIABLES-drifts: red - run_take.RUN_TREE_TMPDIR_VARIABLES differs from drive.RUN_TREE_TMPDIR_VARIABLES
+  mutant API_KEY_VARIABLES-drifts: red - run_take.API_KEY_VARIABLES differs from drive.API_KEY_VARIABLES
+  mutant BILLING_ROUTE_VARIABLES-drifts: red - run_take.BILLING_ROUTE_VARIABLES differs from drive.BILLING_ROUTE_VARIABLES
+  mutant SUBSCRIPTION_TOKEN_VARIABLES-drifts: red - run_take.SUBSCRIPTION_TOKEN_VARIABLES differs from drive.SUBSCRIPTION_TOKEN_VARIABLES
+  mutant isolation-dropped: red - CLAUDE_CODE_DISABLE_AUTO_MEMORY
+  mutant guard-dropped: red - login name accepted: ['CODEX_API_KEY=/opt/cfg']
+  mutant name-unchecked: red - login name accepted: ['CODEX_API_KEY=/opt/cfg']
+  mutant many-entries: red - two entries accepted: ['CLAUDE_CONFIG_DIR=/opt/cfg', 'CODEX_HOME=/opt/cfg']
+  mutant value-in-argv: red - exec argv differs: ['docker', 'exec', '--user', '10001:10001', '--workdir', '/srv/w/t1/tree', '-e', 
+  mutant environ-copied: red - the client env carries ['UNRELATED']
+  mutant no-user-check: red - exec argv differs: ['docker', 'exec', '--user', '0:0', '--workdir', '/srv/w/t1/tree', '-e', 'CLAUDE_
+  mutant fallback-ignored: red - exec argv differs: ['docker', 'exec', '--user', '10001:10001', '--workdir', '/srv/w/t1/tree', '-e', 
+  mutant fallback-env-dropped: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant fallback-env-zero: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant fallback-flag-admitted: red - the login was read before the fallback-model refusal
+  mutant tmp-variables-dropped: red - raised Refused: the claude-code row's temporary-folder names are not []
+  mutant no-teardown: red - step 1 exit: teardown off script [['docker', 'network', 'rm', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant ids-not-recorded: red - step 0 bad-id: teardown off script [['docker', 'network', 'rm', 'not-an-id']]
+  mutant no-inspect-check: red - step 5 mismatch: teardown off script [['docker', 'start', 'ccccccccccccccccccccccccccccccccccccccccc
+  mutant no-launch-record: red - no launch record
+  mutant proxy-not-readonly: red - the proxy create argv is off: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaa
+  mutant default-network: red - raised LaunchError: launch failed: AssertionError
+  mutant proxy-keeps-caps: red - the proxy create argv lacks --cap-drop ALL
+  mutant proxy-new-privileges: red - the proxy create argv lacks --security-opt no-new-privilegesok
+test_network_is_launchs (__main__.TestLaunch.test_network_is_launchs) ... ok
+test_pending_refused_before_any_call (__main__.TestLaunch.test_pending_refused_before_any_call) ... ok
+test_proxy_uid (__main__.TestLaunch.test_proxy_uid) ... ok
+test_refused_before_anything (__main__.TestLaunch.test_refused_before_anything) ... ok
+test_leaked (__main__.TestLeaked.test_leaked) ... ok
+test_neutral_names (__main__.TestPendingAndNames.test_neutral_names) ... ok
+test_no_parameter_overrides_a_pending_constant (__main__.TestPendingAndNames.test_no_parameter_overrides_a_pending_constant) ... ok
+test_pending (__main__.TestPendingAndNames.test_pending) ... ok
+test_audit (__main__.TestProcessAudit.test_audit) ... ok
+test_guard_is_armed (__main__.TestProcessGuard.test_guard_is_armed) ... ok
+test_leak_words_read (__main__.TestProcessGuard.test_leak_words_read)
+The read is checked by count and shape only: no round 3 word is ever named in a committed file. ... ok
+test_module_is_this_rounds (__main__.TestProcessGuard.test_module_is_this_rounds) ... ok
+test_the_guard_starts_no_patch_at_import (__main__.TestProcessGuard.test_the_guard_starts_no_patch_at_import)
+Recorded at the very end of this module's import: no guarded name was patched then. Inside a test every ... ok
+test_processes (__main__.TestProcesses.test_processes) ... ok
+test_reach (__main__.TestReachAudit.test_reach) ... ok
+test_no_real_login_path (__main__.TestReadLogin.test_no_real_login_path) ... ok
+test_read_login (__main__.TestReadLogin.test_read_login) ... ok
+test_run_turn (__main__.TestRunTurn.test_run_turn) ... ok
+test_claude_code_typed_nowhere_in_box (__main__.TestSharedValues.test_claude_code_typed_nowhere_in_box) ... ok
+test_harness_env_values (__main__.TestSharedValues.test_harness_env_values) ... ok
+test_values (__main__.TestSharedValues.test_values) ... ok
+test_order (__main__.TestTeardown.test_order) ... ok
+
+----------------------------------------------------------------------
+Ran 47 tests in 14.001s
+
+OK
+
+  mutant stale-spec-network: red - launch failed: launch failed: AssertionError
+  mutant no-ready-gate: red - PENDING inspect spellings raised LaunchError, not NotReady
+  mutant no-sidecar-clause: red - a PENDING sidecar expectation raised LaunchError, not NotReady
+  mutant uid-string-compare: red - proxy user '0' accepted
+  mutant no-proxy-check: red - raised LaunchError: launch failed: AssertionError
+  mutant no-sidecar-check: red - raised LaunchError: launch failed: AssertionError
+  mutant check-skipped: red - a leaked container still present did not refuse the restart
+  mutant leaked-empty: red - a leaked container still present did not refuse the restart
+  mutant study-mount: red - '/opt/sidecar-cfg' carries sidecar
+  mutant study-env: red - 'X_SIDECAR' carries sidecar
+  mutant study-network: red - 'gap4-net' carries gap4
+  mutant override-parameter: red - state_with_override(inspect_status)
+  mutant fallback-unfilled: red - pending() = ['FALLBACK_ENV', 'TakeSpec.resources', 'VENDOR_BILLING_ROUTE_VARIABLES']
+  mutant top-unfilled: red - pending() = ['TOP_FORMAT', 'TakeSpec.resources', 'VENDOR_BILLING_ROUTE_VARIABLES']
+  mutant top-host-namespace: red - TOP_FORMAT is not the measured form: {'ps_options': ['-eo', 'pid,uid,comm'], 'pid_column': 'PID', 'u
+  mutant inspect-unfilled: red - pending() = ['INSPECT_STATUS', 'TakeSpec.resources', 'VENDOR_BILLING_ROUTE_VARIABLES']
+  mutant inspect-evidence-swapped: red - INSPECT_STATUS evidence lane-reports/stub-take-20261014/stub-take-run1.json does not hash to its rec
+  mutant resources-said-measured: red - the resources' reason does not say they are capacity policy
+  mutant billing-filled: red - pending() = ['TakeSpec.resources']
+  mutant run-take-imports-socket: red - box/run_take.py: import socket is off the allowlist
+  mutant preflight-imports-subprocess: red - box/preflight.py: imports subprocess
+  mutant take-config-kills: red - box/take_config.py: os.kill is not in OS_ATTRS
+  mutant second-run-site: red - box/run_take.py: subprocess.run outside DockerRuntime.run
+  mutant planted-dropped: red - planted posix-spawn-import was not caught
+  mutant test-call-allowed: red - planted test call-outside-helper was not caught
+  mutant unmapped-uid: red - host_uid maps wrongly
+  mutant kill-as-root: red - raised AssertionError: unexpected runtime call ['docker', 'exec', '--user', '0:0', 'dddddddddddddddd
+  mutant no-wait: red - wait_gone slept []
+  mutant top-pending-ignored: red - raised AttributeError: 'str' object has no attribute 'get'
+  mutant image-lock-imports-subprocess: red - box/image_lock.py: import subprocess is outside REACH_IMPORTS
+  mutant proxy-conf-kills: red - box/egress/proxy_conf.py: os.kill
+  mutant reach-widened: red - planted reach imports-subprocess was not caught
+  mutant reach-narrowed: red - box/image_lock.py: import fnmatch is outside REACH_IMPORTS
+  mutant planted-dropped: red - planted reach imports-subprocess was not caught
+  mutant naive-reader: red - raised IndexError: list index out of range
+  mutant no-repo-check: red - inside-repo accepted
+  mutant max-bytes-0: red - raised LoginRefused: /var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w-5ts_cnf4/claude_code_oauth_t
+  mutant timeout-raises: red - raised TimeoutError: 
+  mutant overwrites-stream: red - a refused repeated turn destroyed its original stream
+  mutant stream-in-tree-allowed: red - raised Refused: the working folder must sit inside the run tree (the box root)
+  mutant claude-code-drops-DISABLE_AUTOUPDATER: red - claude-code
+  mutant claude-code-drops-CLAUDE_CONFIG_DIR: red - claude-code
+  mutant claude-code-drops-HTTPS_PROXY: red - claude-code
+  mutant codex-drops-CODEX_HOME: red - codex
+  mutant gemini-drops-GEMINI_CLI_HOME: red - gemini
+  mutant codex-drops-HTTPS_PROXY: red - codex
+  mutant gemini-drops-HTTPS_PROXY: red - gemini
+  mutant claude-code-drops-CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: red - claude-code
+  mutant AGENT_USER-changed: red - AGENT_USER = '10001:10001x'
+  mutant KEEPALIVE_USER-changed: red - KEEPALIVE_USER = '10003:10003x'
+  mutant PROXY_ALIAS-changed: red - PROXY_ALIAS = 'proxyx'
+  mutant PROXY_URL-changed: red - PROXY_URL = 'http://proxy:3128x'
+  mutant CONFIG_MOUNT-changed: red - CONFIG_MOUNT = '/opt/cfgx'
+  mutant CODEX-changed: red - CODEX = 'codexx'
+  mutant GEMINI-changed: red - GEMINI = 'geminix'
+  mutant QUIESCENCE_CAP_SURVIVORS_KEY-changed: red - QUIESCENCE_CAP_SURVIVORS_KEY = 'quiescence_cap_survivorsx'
+  mutant QUIESCENCE_CAP_ROW-changed: red - QUIESCENCE_CAP_ROW = 'quiescence-cap-reachedx'
+  mutant claude-name-retyped: red - CLAUDE_CODE is not harness_bookkeeping's
+  mutant extra-harness: red - the per-harness tables do not hold exactly the three harnesses
+  mutant logs-after-removal: red - raised AssertionError: runtime call ['docker', 'rm', '--force', 'ccccccccccccccccccccccccccccccccccc
+  mutant no-logs: red - raised AssertionError: runtime call ['docker', 'rm', '--force', 'ccccccccccccccccccccccccccccccccccc
+  mutant finish-before-take-rm: red - raised AssertionError: runtime call ['docker', 'exec', 'cccccccccccccccccccccccccccccccccccccccccccc

@@ -1,0 +1,62 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a principal component analysis (PCA) of the gene count matrix to visualize the primary sources of variation in the bulk RNA-seq data. The analysis will project samples into PCA space and colour the points by condition (untreated vs treated) to assess the dominant patterns of gene expression variation across the six samples.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. **Load and prepare data** (gars-bio conda environment):
+   - Load the gene count matrix from the resolved counts_gene artifact (TSV, genes × samples).
+   - Load the design table from the resolved design artifact (CSV with sample_id and condition columns).
+   - Verify that sample IDs in the count matrix match the design table exactly.
+
+2. **Normalize counts**:
+   - Apply log₂(count + 1) transformation to stabilise variance and reduce the influence of highly expressed genes.
+
+3. **Perform PCA**:
+   - Use scikit-learn's PCA on the log-transformed, transposed gene count matrix (samples × genes).
+   - Fit PCA with all principal components to capture variance structure.
+   - Compute the proportion of variance explained (PVE) by each PC.
+
+4. **Generate visualizations**:
+   - Create a 2D scatter plot of PC1 vs PC2, with points coloured by the condition column from the design table.
+   - Add sample labels or point size to enhance readability.
+   - Save the figure as a high-quality PNG (300 dpi) and as a vectorized PDF for publication.
+   - Create a scree plot showing cumulative variance explained by the first 10 PCs.
+
+5. **Generate summary statistics**:
+   - Export PC loadings (genes with strongest contribution to PC1 and PC2) as a CSV table.
+   - Record the fraction of variance explained by each of the first 5 PCs.
+   - Produce a summary table with sample coordinates in PC space and their assigned condition.
+
+All scripts and outputs are written under the analysis directory (scripts/ for code, results/ for outputs).
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_samples.csv | table | Sample coordinates in PCA space (PC1–PC5) with condition assignments |
+| results/pca_loadings_pc1_pc2.csv | table | Top 20 genes by loading magnitude for PC1 and PC2 |
+| results/pca_plot_pc1_pc2.png | figure | Scatter plot of PC1 vs PC2 coloured by condition (PNG, 300 dpi) |
+| results/pca_plot_pc1_pc2.pdf | figure | Scatter plot of PC1 vs PC2 coloured by condition (PDF, vectorized) |
+| results/pca_scree_plot.png | figure | Scree plot showing cumulative variance explained (PNG, 300 dpi) |
+| results/pca_variance_summary.txt | report | Summary of variance explained by each PC and sample counts per condition |
+
+## Execution
+Runs: batch
+Expected wall time: < 5 minutes; output size: ~2 MB (figures ~1.5 MB, tables ~0.5 MB). The analysis uses only built-in Python libraries (scikit-learn, pandas, matplotlib) available in the gars-bio environment.

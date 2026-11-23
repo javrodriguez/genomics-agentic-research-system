@@ -1,0 +1,146 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "f886fb80e3e05f8f6b36fdb5f3e3c579643cdc6ecfe2fb5e583d8ae0ae30fcc0"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "c4ae5002916f66d40070d779b8a36307a439d4db6ea98c17b2ae26d5bd0e660b",
+  "kind": "generated",
+  "seed": 20261009,
+  "variant": "paired-end"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6.1-sol",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 4,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "190ec9d94cd72ae933fcc8e12cd31f1f8d15dcc56b9e4f53c40f36ac75b53e03"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "8cfa42b5cc13b45bd79e6af894dd687b363265ec2d4575b54b3a942ea892dfb5"
+  },
+  {
+   "file": "native-turn-3.jsonl",
+   "sha256": "f3f1483444821acd16c9dbc077a5d06e164e4b7e8f9ffe8ca8db79dfa308e5c3"
+  },
+  {
+   "file": "native-turn-4.jsonl",
+   "sha256": "42825491c84ed103b6c60fd3950ee9b91aadb8f0af26ef907938a300bed03760"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-4c55c757",
+ "published": null,
+ "repeat": 1,
+ "row": 571,
+ "row_commit": "be9d625c40cbd69cb9f6c7874f738cdd98f80035",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "4c55c757-7e55-58fb-a166-58a6a3454764",
+ "source": "/tmp/run-4c55c757/data/staging/run-4c55c757/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl",
+  "turn-3.jsonl",
+  "turn-4.jsonl"
+ ],
+ "task": "conditional-yes",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "I want to start a new project. The project title is run-4c55c757.",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Raw data path for",
+   "held": true,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": true,
+   "n": 3,
+   "sent": "/tmp/run-4c55c757/data/staging/run-4c55c757/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 4,
+   "sent": "Yes, as long as these are the paired-end files.",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

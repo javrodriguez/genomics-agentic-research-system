@@ -1,0 +1,30 @@
+{
+  "lane": "run-launcher",
+  "files": [
+    {
+      "path": "run_builders.py",
+      "status": "new",
+      "reason": "Lane run-launcher (glitch-f1's rulings 1-9 on DESIGN-run-launcher.md, Thu 22 Oct 2026, under Javier's standing delegation): the counted run's builders. Stage S1: run_arms and run_rows (the frozen take_order filtered to the run's arms in frozen relative order, a deferred arm only after its go record, final slots dropped, --arms only narrows, --limit), order_problems (ruling 2: first registrations follow take_order within each launch part, the base part and each deferred arm), SpendLedger (exactly batch.LEDGER_KEYS; ROUND_START, ruling 5; every spend read of the append-only run-ledger.json kept; walks only for the run's money-billing pairs, O at 0 from the Codex2 subscription, G at ruling 7's registered figures; refuses while a capped vendor has no read, ruling 6) and UsageWindow (each paused take's own vendor reset signal: Claude Code's resetsAt, Codex's resets_at; Gemini raises; bounded; returns at once when reset). Stage S2, the take road: run_login_path (ruling 4: RUN_LOGIN_FILES['claude-run'], a path only; ruling 8: the rehearsal on the claude1 walk login), take_identity (the open registration's row, commit and session), build_take_run_tree and prepare_take (the take's own checkout and fixture), TakeRoad, LeasePool (one Codex lease per take), RunDriver (one drive.walk_driver(records='takes') per harness, routed by the row's harness and the container id; the records check before anything is built; a committed take's tree removed, one needing a ruling kept), harness_driver and build_run (one TakeRepo whose secrets are every run harness's). Stage S3: go_reader (ruling 1A: R5's prereg.deferred_arm_go over prereg.committed_go_records), run_main (batch.py --run's body: one JSON summary, a spend-cap stop read as a spend event, ruling 6's computed reads named), and the writers spend-read, trimmed (--figure vendor=amount) and night-ruling (takes.commit_night_ruling), one commit each. Stage S4, the rehearsal take (B19-16; ruling 8 as amended; Part T contract line 2 and its closure): rehearse --out keeps its throwaway clone (git clone --no-local, remote removed), freeze_rehearsal's synthetic digests and summary.json under --out and never writes the source; the clone is frozen with freeze_rehearsal's own command and rehearse-takes runs in it: the first arm A row (claude1 walk login) and the first arm O row (one LeasePool lease) in frozen order, timed; a Codex lease not live runs the A take alone and writes the O take refused with the one reason 'codex lease not live' (exit 3); summary.json holds exactly takes (each arm, state, route, commit, launched_at, drive_started_at, drive_ended_at), overlap, pass and counts, closed values only."
+    },
+    {
+      "path": "tests/test_run_builders.py",
+      "status": "new",
+      "reason": "Lane run-launcher: run_builders.py's tests (S1.plan, S1.order, S1.ledger, S1.history, S1.git, S1.window, G1), its hand witnesses (rule B) and the generated mutant sweep over every top-level function of run_builders.py (tests/walk_mutation.py's generator)."
+    },
+    {
+      "path": "tests/test_run_driver_box.py",
+      "status": "new",
+      "reason": "Lane run-launcher stage S2: RunDriver over a real drive.TakeDriver and TakeRepo on test_box_integration's fake box through batch.Batch's rolling window: the second take launched during the first's drive, both committed in row order, each take's state discarded at its commit; one witness."
+    },
+    {
+      "path": "checks.d/run-launcher.txt",
+      "status": "new",
+      "reason": "Lane run-launcher: one command per line for run_builders.py's tests, witnesses and generated sweep."
+    },
+    {
+      "path": "COPIED.d/run-launcher.json",
+      "status": "new",
+      "reason": "Lane run-launcher's ownership record."
+    }
+  ]
+}

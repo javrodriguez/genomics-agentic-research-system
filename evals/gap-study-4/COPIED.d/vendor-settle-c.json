@@ -1,0 +1,15 @@
+{
+ "lane": "vendor-settle-c",
+ "files": [
+  {
+   "path": "COPIED.d/vendor-settle-c.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage C (glitch-f1's settle-design rulings, the adopted NOT COMPARABLE rulings and the stage C brief, 21-22 Oct 2026, under Javier's standing delegation): the Codex rows' settlement. This fragment: the files stage C adds."
+  },
+  {
+   "path": "checks.d/vendor-settle-c.txt",
+   "status": "new",
+   "reason": "Lane vendor-settle stage C (glitch-f1's settle-design rulings, the adopted NOT COMPARABLE rulings and the stage C brief, 21-22 Oct 2026, under Javier's standing delegation): the Codex rows' settlement. Its battery lines: tests/vendor_settle_codex.py run directly (the cases the merged tables cannot express) and the source-list check."
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:6bba97e7c55af01c1831ab214fb8eb343772859ee152c7702e00f108ecd7c1f6",
+ "dockerfile": "gemini/Dockerfile",
+ "harness": {
+  "package": "@google/gemini-cli",
+  "version": "0.64.0"
+ },
+ "image": "take-g",
+ "image_id": "sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013",
+ "manifest_digest": "sha256:7eb4c799f29fe5330d9cf76deae8988ea04f8183ee451a5dad4f12bcb00eee9f",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
+  },
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
+  }
+ }
+}

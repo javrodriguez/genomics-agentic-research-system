@@ -1,0 +1,5 @@
+{"agent": {"harness": "codex", "version": "0.162.1"}, "home": null, "kind": "take", "model": "gpt-6.1-sol", "run_tree": ""}
+{"ended_at": 1794409641.6200984, "kind": "turn", "n": 1, "started_at": 1794409621.431271}
+{"ended_at": 1794409670.4254007, "kind": "turn", "n": 2, "started_at": 1794409658.0220313}
+{"ended_at": 1794409695.932689, "kind": "turn", "n": 3, "started_at": 1794409686.8669345}
+{"ended_at": 1794409731.436073, "kind": "turn", "n": 4, "started_at": 1794409712.4839766}

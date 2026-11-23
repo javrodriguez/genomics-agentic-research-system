@@ -1,0 +1,23 @@
+{
+ "what": "machine_gate.problems (383e5c2f) over the Mac's real `athena_suite.py list`, read 15 Oct 2026 ~00:58 EDT; booking False",
+ "list_lines": 1202,
+ "list_sha256": "d055850a3ce2c800eafc20aa2f7dddb7d6a6aab754d72bce9d437167a9b33c02",
+ "unparsed_lines": 0,
+ "problems": 853,
+ "problems_by_launched_state": {
+  "busy": 844,
+  "started": 9
+ },
+ "started_without_verdict": [
+  "gap4-box-29085a5-20261014T041816Z",
+  "gap4-merge-40acb6d-20261014T194627Z",
+  "gap4-merge-final-383e5c2-383e5c2-20261015T043059Z",
+  "gap4-w4a-f4-676b7e5-20261009T004901Z",
+  "gap4-w4b-f4-d09411d-20261009T043402Z",
+  "gap4-w4e-c724881-20261008T223126Z",
+  "gap4-wave11-merge-f442044-20261013T074423Z",
+  "site-face-be37e21-20261005T181448Z",
+  "site-face-cc280cd-20261005T192552Z"
+ ],
+ "problems_over_empty_list": []
+}

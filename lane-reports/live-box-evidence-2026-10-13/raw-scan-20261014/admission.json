@@ -1,0 +1,29 @@
+{
+  "admitted_tree": "/Users/javrodher/aegis-builds/gap4-export-20261014/admitted-20261014",
+  "approved_findings": 1,
+  "excluded_git_rows": 235,
+  "file_sha256": "574bed96b184c4e9ca50acd11fc48a892f6f1748d70ca9c2d603cbe5ba89d079",
+  "inputs": {
+    "manifest": "1e2de9235276ab6c18835517e405600a957e6e014c894c647c45e6bb0b1e5a21",
+    "report": "83dd5a2dc2b98def91cbdf93550d81da4eb2e485a7f84d4dac24477605672af2",
+    "scan": "8acdfcc6c8e94d8ec3df213b3794d2f466093913e606153ee0a7d14955b47d71"
+  },
+  "limitation": "local unsigned records: admission binds consistency of scan record, report bytes, tree, scanner binary and managed rulings; it cannot prove the recorded run happened",
+  "managed_reader_sha256": "3ed0942722b96b1454dd1d447b3a35294fa6145ea9ce3a9d5d4b2a60cd4952b3",
+  "managed_ruling_count": 11,
+  "managed_rulings_sha256": "cd0bf32ea7bcbe3110205140fe55cf29079521beeac8bfcd0011f598d6e3a19e",
+  "manifest_tree": "/Users/javrodher/aegis-builds/gap4-export-20261014/run-3b5fef73",
+  "matching_managed_ruling_count": 2,
+  "path": "gars/_references/environment.md",
+  "raw_scan_exit": 1,
+  "report_sha256": "83dd5a2dc2b98def91cbdf93550d81da4eb2e485a7f84d4dac24477605672af2",
+  "rule": "generic-api-key",
+  "scanned_bytes": 1304859,
+  "schema": 2,
+  "scope": "admitted tree = pinned export manifest rows without any .git path component; .git is never scanned by the default configuration and is neither admitted nor transferred",
+  "source_pin": "844a4ce0d89437ca043363981a86096f6383a141",
+  "span_sha256": "0b85623f36eef7c6e7ca19c7900e865fd7ddbfe5853197b5c1d2e246d81df313",
+  "status": "owner-approved-byte-bound-finding",
+  "tree_inventory_sha256": "c0d09755cc5d25d6d63d89dc60c9d1cb7c8ca16891d644f35674ca788b797577",
+  "unresolved_findings": 0
+}

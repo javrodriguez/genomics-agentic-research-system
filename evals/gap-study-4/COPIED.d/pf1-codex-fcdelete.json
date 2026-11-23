@@ -1,0 +1,25 @@
+{
+  "lane": "pf1-codex-fcdelete",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-codex-fcdelete.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane pf1-codex-fcdelete (glitch-45's brief of Tue 27 Oct 2026, under Javier's standing delegation; arm O walk w-o76, gpt-6-luna, plan-gate trap, held on \"StreamError: the stream holds a record off the pre-registered tables: item file_change: change kind with no entry: 'delete'\"): the pinned Codex (openai/codex 092d3acd, rust-v0.162.1) has three patch change kinds, add, delete and update (exec/src/exec_events.rs:192-198), onto which exec maps every patch change (exec/src/event_processor_with_jsonl_output.rs:187-196), and its rollout FileChange keeps a delete as {type delete, content} (protocol/src/protocol.rs:4225-4239; core/src/apply_patch.rs:64-79). Q-w11a-3 and glitch-26's ruling Q4 (20 Oct) kept delete refused until a recorded stream showed one, naming a follow-up lane to rule what a deleted file is in the view; w-o76's turn 1 is that recording, and glitch-45's ruling of 27 Oct 05:34 says the tables must cover delete before the freeze. transcript_codex.CHANGE_KINDS maps delete to write {path} (Q-w11a-3's proposed mapping), so every grader that reads a write or an edit of a path reads a delete of it; codex_native reads a FileChange delete on its pinned shape (content a string); join compares kinds as before. Any other kind still refuses in both readers. codex_native.py is a Codex reader source (native_reader_registration.CODEX_SOURCES): the committed Codex acceptance no longer re-derives until a new one is committed."
+    },
+    {
+      "path": "checks.d/pf1-codex-fcdelete.txt",
+      "status": "new",
+      "reason": "Lane pf1-codex-fcdelete (glitch-45's brief of Tue 27 Oct 2026): this lane's listed checks."
+    },
+    {
+      "path": "tests/test_codex_fcdelete.py",
+      "status": "new",
+      "reason": "Lane pf1-codex-fcdelete: w-o76's delete read (red at 8bad0baa with the recorded reason) in the stream, the view, the rollout reader, the join, reach and the T-8 reader; five other change kinds and three off-shape deletes still refused; a delete of a guarded path caught by scope_read.planted_calls, precondition_refusal._names_path and new_tasks' write-or-edit filter in the same number as an update and an add; six mutants (transcript_codex and codex_native compiled in memory) each failing its bound witness. The four stream lines are w-o76's turn-1 lines 17 to 20 byte for byte (ids, kinds, statuses and the run tree's PLAN.md path; no model reply, prompt or tool output in them); every other record is synthetic."
+    },
+    {
+      "path": "lanes/REVIEW-codex-reader-pf1-fcdelete-508c329.md",
+      "status": "new",
+      "reason": "The fresh round-1 and Codex reader review of lanes pf1-codex-turnitem and pf1-codex-fcdelete at 5f5aa9fb..508c3295 (VERDICT PASS, Tue 27 Oct 2026), committed at 6c66d741 as written, unedited; the review Javier's new Codex acceptance binds by sha256 (8aed3a847ba6540cec8078ae4abee01ce52a77f2dabb250b73b6a69c1e871609): his acceptance commit copies these exact bytes to native-readers/codex-review.md. Claimed here on the acceptance-kit branch on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation)."
+    }
+  ]
+}

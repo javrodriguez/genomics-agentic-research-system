@@ -1,0 +1,20 @@
+# The wave 10 merge: w11b-gemini-adapter's generated mutation sweep, owed at the merge (glitch-2f, w11b ATHENA PASS 20:08 EDT
+# Mon 12 Oct 2026: the sweep was not in w11b's checks.d, so athena had never run it whole). 1159 mutants in 16 shards, as the
+# lane ran it (w11b-gemini-adapter.md, final fold); each shard fails on an unlisted survivor or a stale EQUIVALENT entry.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 1/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 2/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 3/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 4/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 5/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 6/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 7/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 8/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 9/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 10/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 11/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 12/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 13/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 14/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 15/16
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --generated-mutants --shard 16/16

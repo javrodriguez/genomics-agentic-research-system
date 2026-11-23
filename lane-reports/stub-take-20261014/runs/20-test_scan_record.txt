@@ -1,0 +1,126 @@
+test_a_login_file_owned_by_another_is_refused (__main__.TestFold2.test_a_login_file_owned_by_another_is_refused) ... ok
+test_a_malformed_rules_finding_is_refused (__main__.TestFold2.test_a_malformed_rules_finding_is_refused) ... ok
+test_a_non_callable_rules_scanner (__main__.TestFold2.test_a_non_callable_rules_scanner) ... ok
+test_a_value_surviving_its_mask_raises (__main__.TestFold2.test_a_value_surviving_its_mask_raises) ... ok
+test_an_empty_file_list_is_refused (__main__.TestFold2.test_an_empty_file_list_is_refused) ... ok
+test_mutant_email_minimum_one_goes_red (__main__.TestFold2.test_mutant_email_minimum_one_goes_red) ... ok
+test_mutant_empty_files_pass_goes_red (__main__.TestFold2.test_mutant_empty_files_pass_goes_red) ... ok
+test_mutant_finding_shape_unchecked_goes_red (__main__.TestFold2.test_mutant_finding_shape_unchecked_goes_red) ... ok
+test_mutant_no_secret_searched_passes_goes_red (__main__.TestFold2.test_mutant_no_secret_searched_passes_goes_red) ... ok
+test_mutant_only_none_refused_goes_red (__main__.TestFold2.test_mutant_only_none_refused_goes_red) ... ok
+test_mutant_owner_unchecked_goes_red (__main__.TestFold2.test_mutant_owner_unchecked_goes_red) ... ok
+test_mutant_survival_unchecked_goes_red (__main__.TestFold2.test_mutant_survival_unchecked_goes_red) ... ok
+test_secrets_without_a_token_or_key_are_refused (__main__.TestFold2.test_secrets_without_a_token_or_key_are_refused) ... ok
+test_the_email_minimum_length (__main__.TestFold2.test_the_email_minimum_length) ... ok
+test_the_module_is_this_rounds_file (__main__.TestGuard.test_the_module_is_this_rounds_file) ... ok
+test_the_process_guard_is_armed (__main__.TestGuard.test_the_process_guard_is_armed) ... ok
+test_a_matcher_out_of_bounds_is_refused (__main__.TestHoldout.test_a_matcher_out_of_bounds_is_refused) ... ok
+test_a_matcher_refuses_every_hit_by_path_line_and_kind_only (__main__.TestHoldout.test_a_matcher_refuses_every_hit_by_path_line_and_kind_only) ... ok
+test_mutant_dropping_not_checked_goes_red (__main__.TestHoldout.test_mutant_dropping_not_checked_goes_red) ... ok
+test_mutant_matched_text_in_the_result_goes_red (__main__.TestHoldout.test_mutant_matched_text_in_the_result_goes_red) ... ok
+test_no_matcher_records_not_checked (__main__.TestHoldout.test_no_matcher_records_not_checked) ... ok
+test_the_holdout_record_check (__main__.TestHoldout.test_the_holdout_record_check) ... ok
+test_a_file_over_4096_bytes_is_refused (__main__.TestLoginBinding5.test_a_file_over_4096_bytes_is_refused) ... ok
+test_a_name_outside_the_allowed_names_is_refused (__main__.TestLoginBinding5.test_a_name_outside_the_allowed_names_is_refused) ... ok
+test_a_non_ascii_value_is_refused (__main__.TestLoginBinding5.test_a_non_ascii_value_is_refused) ... ok
+test_a_relative_path_is_refused (__main__.TestLoginBinding5.test_a_relative_path_is_refused) ... ok
+test_mutant_64k_cap_goes_red (__main__.TestLoginBinding5.test_mutant_64k_cap_goes_red) ... ok
+test_mutant_any_name_goes_red (__main__.TestLoginBinding5.test_mutant_any_name_goes_red) ... ok
+test_mutant_relative_path_goes_red (__main__.TestLoginBinding5.test_mutant_relative_path_goes_red) ... ok
+test_mutant_utf8_value_goes_red (__main__.TestLoginBinding5.test_mutant_utf8_value_goes_red) ... ok
+test_the_allowed_names_are_required (__main__.TestLoginBinding5.test_the_allowed_names_are_required) ... ok
+test_a_plain_file_reached_through_a_link_inside_a_repo_is_read (__main__.TestLoginBinding5Round1.test_a_plain_file_reached_through_a_link_inside_a_repo_is_read) ... ok
+test_a_repo_file_reached_through_a_symlinked_folder_is_refused (__main__.TestLoginBinding5Round1.test_a_repo_file_reached_through_a_symlinked_folder_is_refused) ... ok
+test_mutant_effective_uid_goes_red (__main__.TestLoginBinding5Round1.test_mutant_effective_uid_goes_red) ... ok
+test_mutant_lexical_repository_walk_goes_red (__main__.TestLoginBinding5Round1.test_mutant_lexical_repository_walk_goes_red) ... ok
+test_mutant_without_0x1c_to_0x1f_goes_red (__main__.TestLoginBinding5Round1.test_mutant_without_0x1c_to_0x1f_goes_red) ... ok
+test_the_0x1c_to_0x1f_bytes_are_refused (__main__.TestLoginBinding5Round1.test_the_0x1c_to_0x1f_bytes_are_refused) ... ok
+test_the_owner_is_the_real_uid (__main__.TestLoginBinding5Round1.test_the_owner_is_the_real_uid) ... ok
+test_mutant_deleting_instead_of_masking_goes_red (__main__.TestMutants.test_mutant_deleting_instead_of_masking_goes_red) ... ok
+test_mutant_dropping_rules_findings_goes_red (__main__.TestMutants.test_mutant_dropping_rules_findings_goes_red) ... ok
+test_mutant_letting_refused_pass_goes_red (__main__.TestMutants.test_mutant_letting_refused_pass_goes_red) ... ok
+test_mutant_masking_a_non_maskable_kind_goes_red (__main__.TestMutants.test_mutant_masking_a_non_maskable_kind_goes_red) ... ok
+test_mutant_skipping_a_kind_goes_red (__main__.TestMutants.test_mutant_skipping_a_kind_goes_red) ... ok
+test_the_line_guard_refuses_a_dropped_line (__main__.TestMutants.test_the_line_guard_refuses_a_dropped_line) ... ok
+test_no_output_carries_a_value (__main__.TestNoValueInAnyOutput.test_no_output_carries_a_value) ... ok
+test_the_leak_check_can_fail (__main__.TestNoValueInAnyOutput.test_the_leak_check_can_fail) ... ok
+test_each_refuses_a_real_use (__main__.TestPending.test_each_refuses_a_real_use) ... ok
+test_mutants_dropping_a_refusal_go_red (__main__.TestPending.test_mutants_dropping_a_refusal_go_red) ... ok
+test_no_parameter_overrides_a_pending_value (__main__.TestPending.test_no_parameter_overrides_a_pending_value) ... ok
+test_scan_never_reads_the_pending_constant (__main__.TestPending.test_scan_never_reads_the_pending_constant) ... ok
+test_the_pending_set (__main__.TestPending.test_the_pending_set) ... ok
+test_a_link_and_a_repository_are_refused (__main__.TestReadLogin.test_a_link_and_a_repository_are_refused) ... ok
+test_a_long_file_is_refused (__main__.TestReadLogin.test_a_long_file_is_refused) ... ok
+test_mutant_loose_line_rule_goes_red (__main__.TestReadLogin.test_mutant_loose_line_rule_goes_red) ... ok
+test_mutant_without_the_mode_check_goes_red (__main__.TestReadLogin.test_mutant_without_the_mode_check_goes_red) ... ok
+test_the_fixtures (__main__.TestReadLogin.test_the_fixtures) ... ok
+test_a_clean_commit_passes (__main__.TestScan.test_a_clean_commit_passes) ... ok
+test_a_planted_value_in_each_maskable_kind_is_found_and_masked (__main__.TestScan.test_a_planted_value_in_each_maskable_kind_is_found_and_masked) ... ok
+test_a_scan_without_a_rules_scanner_refuses (__main__.TestScan.test_a_scan_without_a_rules_scanner_refuses) ... ok
+test_bad_inputs_are_refused (__main__.TestScan.test_bad_inputs_are_refused) ... ok
+test_for_each_non_maskable_kind_the_value_is_refused (__main__.TestScan.test_for_each_non_maskable_kind_the_value_is_refused) ... ok
+test_named_residuals (__main__.TestScan.test_named_residuals) ... ok
+test_rules_scanner_findings_are_refused (__main__.TestScan.test_rules_scanner_findings_are_refused) ... ok
+test_several_hits_on_one_line_and_overlaps (__main__.TestScan.test_several_hits_on_one_line_and_overlaps) ... ok
+test_the_email_marker_is_scrubs (__main__.TestScan.test_the_email_marker_is_scrubs) ... ok
+
+----------------------------------------------------------------------
+Ran 65 tests in 0.353s
+
+OK
+
+MUTANT MIN_LENGTH email 1: red 
+MUTANT an empty file list passed: red 
+MUTANT a malformed rules finding read: red 
+MUTANT a scan with no token or key searched passed: red 
+MUTANT a non-callable rules scanner reaching the scan: red 
+MUTANT a login file owned by another accepted: red 
+MUTANT a value surviving its mask written: red 
+MUTANT the not-checked record dropped with no matcher: red 
+MUTANT the matched holdout text put into a result: red 
+MUTANT a login file over 4096 bytes accepted: red 
+MUTANT a login name outside the caller's allowed names accepted: red 
+MUTANT a relative login path accepted: red 
+MUTANT a non-ASCII login value accepted: red 
+MUTANT a login file accepted on the effective uid while the real uid differs: red 
+MUTANT a repo login file reached through a symlinked folder accepted (lexical walk): red 
+MUTANT a login value with 0x1f accepted: red 
+MUTANT delete instead of mask (the line emptied): red 
+MUTANT an empty marker (the value deleted from its line): red 
+MUTANT the rules scanner's findings dropped: red 
+MUTANT a refused scan passed: red 
+MUTANT a non-maskable kind masked (the ledger): red 
+MUTANT a kind skipped (the proxy log): red 
+MUTANT an untouched line dropped (refused by the line guard): red 
+MUTANT a message carrying a value (seen by the check): red 
+MUTANT the PENDING refusals dropped: red 
+MUTANT a login line with trailing whitespace accepted: red 
+MUTANT a login file of mode 644 accepted: red 
+mutants run red in this file (27):
+  MIN_LENGTH email 1
+  an empty file list passed
+  a malformed rules finding read
+  a scan with no token or key searched passed
+  a non-callable rules scanner reaching the scan
+  a login file owned by another accepted
+  a value surviving its mask written
+  the not-checked record dropped with no matcher
+  the matched holdout text put into a result
+  a login file over 4096 bytes accepted
+  a login name outside the caller's allowed names accepted
+  a relative login path accepted
+  a non-ASCII login value accepted
+  a login file accepted on the effective uid while the real uid differs
+  a repo login file reached through a symlinked folder accepted (lexical walk)
+  a login value with 0x1f accepted
+  delete instead of mask (the line emptied)
+  an empty marker (the value deleted from its line)
+  the rules scanner's findings dropped
+  a refused scan passed
+  a non-maskable kind masked (the ledger)
+  a kind skipped (the proxy log)
+  an untouched line dropped (refused by the line guard)
+  a message carrying a value (seen by the check)
+  the PENDING refusals dropped
+  a login line with trailing whitespace accepted
+  a login file of mode 644 accepted

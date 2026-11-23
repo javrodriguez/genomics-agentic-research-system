@@ -1,0 +1,15 @@
+{
+ "base": "docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91",
+ "config_digest": "sha256:388fbbc4d0cc6ea5ad8a942a779643d7842e2da4eeb96f5fd2930a888ec8161f",
+ "dockerfile": "egress/Dockerfile",
+ "harness": null,
+ "image": "egress",
+ "image_id": "sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674",
+ "manifest_digest": "sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d",
+ "pending": {},
+ "python": null,
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "squid": "5.7-2+deb12u6",
+ "users": null
+}

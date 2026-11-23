@@ -1,0 +1,21 @@
+test_a_walk_folder_holds_only_records (__main__.L10Content.test_a_walk_folder_holds_only_records) ... ok
+test_the_rehearsal_runs_the_walk_checks (__main__.L11Gates.test_the_rehearsal_runs_the_walk_checks) ... ok
+test_record_roots_are_named_once (__main__.L1OneName.test_record_roots_are_named_once) ... ok
+test_round_3_road_is_unreachable (__main__.L1OneName.test_round_3_road_is_unreachable) ... ok
+test_walk_driver_takes_records (__main__.L2WalkFolder.test_walk_driver_takes_records) ... ok
+test_walk_folder_by_records (__main__.L2WalkFolder.test_walk_folder_by_records) ... ok
+test_walks_before_the_freeze_takes_after (__main__.L3TimeFence.test_walks_before_the_freeze_takes_after) ... ok
+test_one_walk_one_commit (__main__.L4OneCommit.test_one_walk_one_commit) ... ok
+test_a_walk_folder_is_never_graded_into_results (__main__.L5NeverResults.test_a_walk_folder_is_never_graded_into_results) ... ok
+test_grade_json_is_the_regrade (__main__.L6GradeBound.test_grade_json_is_the_regrade) ... ok
+test_record_claims (__main__.L7CopyRecord.test_record_claims) ... ok
+test_the_manifest_reads_the_register (__main__.L7CopyRecord.test_the_manifest_reads_the_register) ... ok
+test_records_are_not_prose_and_the_register_is (__main__.L8Lint.test_records_are_not_prose_and_the_register_is) ... ok
+test_each_reader_reads_the_one_walk (__main__.L9ReadersAgree.test_each_reader_reads_the_one_walk) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 41.526s
+
+OK
+test_walk_layout: 14 run, 0 failures, 0 errors, 0 skipped
+test_walk_layout outcomes: {"failures": [], "errors": [], "skipped": []}

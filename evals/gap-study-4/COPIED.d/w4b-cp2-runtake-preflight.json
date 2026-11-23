@@ -1,0 +1,45 @@
+{
+  "lane": "w4b-cp2-runtake-preflight",
+  "files": [
+    {
+      "path": "box/run_take.py",
+      "status": "new",
+      "reason": "CP2's host side of one take's containers: the runtime protocol (Completed, DockerRuntime, the box's one subprocess call), the take container's create argv from a TakeSpec, the environment per harness with D8 B2's per-arm key refusal, the login read, launch and teardown by recorded id, leaked containers before a restart, the agent's leftover processes, the cgroup counters, the exit record and one turn's exec. New in round 4; round 3 ran no container. Departure w12a-1 (lane w12a-env-allowlist, ruling docs-1, glitch-2f's assignment, Tue 13 Oct 2026; no transfer): the take environment is an ALLOWLIST. TAKE_ENV is the one table (per arm: PATH, HOME at the config mount, LANG, the run tree's TMPDIR, TMP and TEMP, the proxy, the harness's own switches and config home, and the one credential by NAME); LOGIN_VARIABLE and HARNESS_ENV are views derived from it. take_environment builds the agent's whole starting environment from the row alone; exec_values is it less the credential; exec_argv runs every turn under LAUNCHER (the image's python3, -I -S, which execs the harness with exactly the row's pairs and the credential read by name), its client environment the runtime's needs and the credential alone (the values no longer ride as -e NAME=VALUE). refuse_env_files (with env_file_dirs) refuses, by path, a .env or .gemini/.env in the working folder, any parent up to the run tree, and HOME's host side (the config folder): at launch before any runtime call, and at every run_turn before its exec. check_model refuses a short Gemini CLI alias by name (MODEL_PINS: arm G's full ids, the v0.63.0 alias table). The closed refusal lists, PENDING values and every other function are unchanged. Bound by tests/test_env_allowlist.py E1-E4 and G1. Recovery addendum (13 Oct 2026): the launcher also refuses .env and .gemini/.env by name in the actual container cwd, every ancestor through slash, and current HOME immediately before each harness exec; host-side scans are early checks only. W12A-R1-1 fold: Gemini turns admit only the bare client or an absolute path with that basename, model-check each admitted call, and reject unsupported argument forms; preflight reads retain agent_exec_argv. The adapter flags and their long forms are parsed by consuming values; compact clusters and positional tails refuse."
+    },
+    {
+      "path": "box/take_config.py",
+      "status": "new",
+      "reason": "CP2's per-take config folder's files per harness (Claude Code settings, Codex config.toml, Gemini CLI settings), each hashed for the freeze; split from run_take (this lane's decision) so each file stays one owner and small. New in round 4. Lane vendor-admission T4 P2, R-6 (glitch-b5's ruling of Sat 17 Oct 2026, about 12:35 EDT, under Javier's delegation: byte-identical instructions under each vendor CLI's native name, no configured fallback name used or accepted), an edit without transfer: CODEX_TOP drops project_doc_fallback_filenames and GEMINI_SETTINGS drops context.fileName (D8's CLAUDE.md fallback name), and INSTRUCTION_FILES names each CLI's native file (AGENTS.md, GEMINI.md), which walk_builders.build_run_tree places as a copy of the pinned CLAUDE.md. Bound by tests/test_vendor_roads.py R6-config. Lane vendor-admission round 10 ruling 3 (glitch-b5, Sat 17 Oct 2026: R-6 covers every CLAUDE.md in the pinned tree, gars/CLAUDE.md included), an edit without transfer: the two R-6 comments say each native file is placed beside every CLAUDE.md of the checkout; no value changed. Lane vendor-b22 (glitch-26's ruling B22-10, Tue 20 Oct 2026), R-B14-2's sibling: CODEX_AGENTS writes [agents] enabled = false into arm O's config.toml, between [features] and [otel], so the pinned Codex's six collaboration (delegation) tools are not offered; its VALUE_SOURCES record cites the pinned reads (092d3acd); Gemini's and Claude Code's files are byte-identical (tests/test_codex_agents_off.py)."
+    },
+    {
+      "path": "box/preflight.py",
+      "status": "new",
+      "reason": "CP2's non-model checks before every take, as a closed ordered tuple of checks over probes the runtime collects, evaluated by a pure function, plus the after-take credential-file check. New in round 4. Owner since 11 Oct 2026: lane w6a-cp2-preflight-binding (glitch-1b's transfer, CP2-preflight-5); the entry stays here, one owner, history kept. w6a adds load_take_lock (the take lock read only through image_lock.load and require_ready, for the harness's own take image, then LOCK_KEYS projected), a required evidence_dir that the sidecar's evidence mount source must equal, and collect_and_evaluate on Launched.spec (CP2-preflight-1 to -4)."
+    },
+    {
+      "path": "tests/test_run_take.py",
+      "status": "new",
+      "reason": "Tests for box/run_take.py (interface 3) with fakes only: the process guard, every clause with its mutants, and interface 10's ast audit. Its two audit allowlist entries for box.image_lock (IMPORT_FROM_ALLOWED and MODULE_ATTRS) are lane w6a's since 11 Oct 2026 under glitch-1b's ruling w6a-1. Under the same ruling (W6A-R1-2) lane w6a also owns the reach audit of what preflight now imports (REACH_MODULES, REACH_IMPORTS, reach_audit, TestReachAudit). Departure w12a-2 (lane w12a-env-allowlist; no transfer): TestArmVariables.check_requested patches TAKE_ENV (the one table) in place of the derived HARNESS_ENV, and TestExecArgv's expected argv follows the launcher (the -e login, the container id, LAUNCHER, the login's name, the count and the row's pairs, then the harness argv). No other assertion or mutant changed. Recovery addendum (13 Oct 2026): OS_ATTRS adds sep, the exact non-call constant required by env_file_dirs; default-deny audit and its planted-positive checks remain intact. W12A-R1-1 fold: Gemini turn fixtures now use the admitted client plus a pinned model, preserving their cross-arm and PENDING checks."
+    },
+    {
+      "path": "tests/test_preflight.py",
+      "status": "new",
+      "reason": "Tests for box/preflight.py (interface 3) with fakes only: every check green on a passing world and red on its own breaks, missing or failed probes, the PENDING refusals, the programs' 3.11 floor and neutrality, the record's place and the after-take credential check, with their mutants. Owner since 11 Oct 2026: lane w6a-cp2-preflight-binding (glitch-1b's transfer, CP2-preflight-5); the entry stays here, one owner, history kept. w6a adds the eight fake-only criteria of the CP2 readiness note (synthetic locks in a temporary box folder, the World with its evidence folder), two breaks, and six whole-file witnesses compiled in memory."
+    },
+    {
+      "path": "tests/test_take_config.py",
+      "status": "new",
+      "reason": "Tests for box/take_config.py (interface 3): D8's values read back with tomllib and json, the PENDING refusals, no key and no study word in any file, and the freeze hash, with their mutants. Lane vendor-admission T4 P2, R-6 (glitch-b5's ruling of Sat 17 Oct 2026, about 12:35 EDT, under Javier's delegation: byte-identical instructions under each vendor CLI's native name, no configured fallback name used or accepted), an edit without transfer: TestContents' expected codex config.toml and gemini settings.json lose the fallback instruction-file name (the one assertion change, named by R-6). Lane vendor-b22 (glitch-26's ruling B22-10): TestContents' expected codex config.toml gains agents enabled false, TestR3Values' VALUE_SOURCES record gains B22_SOURCES (imported from tests/test_codex_agents_off.py), and TestB18CodexSwitches sets the [agents] table aside as it does otel."
+    },
+    {
+      "path": "COPIED.d/w4b-cp2-runtake-preflight.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w4b-cp2-runtake-preflight.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

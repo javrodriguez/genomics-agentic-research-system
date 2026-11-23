@@ -1,0 +1,30 @@
+{
+  "agent_calls": 1,
+  "checked": true,
+  "checker_constants_sha256": "98e950ac5a9ec02e4bac3a63cd9d44e8abb7c18a56c42bd56227beceb54097b4",
+  "checker_reasons": [],
+  "events": {
+    "outside_reach": 0
+  },
+  "nested_cli_calls": 0,
+  "no_output_nudges": 0,
+  "route": "graded",
+  "route_refused": null,
+  "subagents": {
+    "calls": [
+      {
+        "agent_id": "aed991169cdfd81f2",
+        "completion": "completed",
+        "is_async": null,
+        "resolved_model": "claude-haiku-4-5-20251001",
+        "status": "completed",
+        "tool_use_id": "toolu_01JBKvcoX2i3AJK365nuZU3B"
+      }
+    ],
+    "models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "stream_file_differences": 1
+  },
+  "walk": "w260"
+}

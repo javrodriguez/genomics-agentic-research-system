@@ -1,0 +1,110 @@
+{
+  "lane": "w11b-gemini-adapter",
+  "files": [
+    {
+      "path": "tests/test_gemini_adapter.py",
+      "status": "new",
+      "reason": "Lane w11b-gemini-adapter (arm G, next-slices-plan-2026-10-12 section 2; ruling Q-3): the Gemini CLI adapter and its stream parser on synthetic streams over a fake runtime: S1-S6 the closed event, key, word, stats and tool tables and the harness's error words, P1 the view vocabulary through transcript_view.events with the parser in a copy of PARSERS for the test only, A1-A9 the stream read, the harness's errors kept apart from the agent's text and output, agent output clause by clause, the stats as recorded, the model checked every turn (init.model and every stats.models key), the argv (-m and the mode's flags every call, -r after turn 1 only, no sandbox flag), the resumed session, the end reasons and exit codes (53 never end_turn), SHAPES_SOURCE documented; whole-file witnesses of gemini_adapter.py and transcript_gemini.py compiled in memory, one per guard, clause and load-bearing assignment. Live-harness foundation: P1 now requires a bound published parser instead of asserting the future seam has not registered; native parser mapping assertions remain unchanged. Live harness 3a: EQUIVALENT keys renumbered for gemini_adapter.py's shifted lines only (same kinds, hashes and statements; the stale-list check re-derives them). Live harness 3b: EQUIVALENT keys renumbered again for gemini_adapter.py's shifted lines only. 3b review fold: EQUIVALENT keys renumbered for shifted lines only. Review nit 3: EQUIVALENT keys renumbered for shifted lines only. Live harness (integration red A4, glitch-06, 14 Oct 2026): A10-mode binds submitted_mode branch by branch in this module's own checks (no journal, a link, non-JSON, non-UTF-8, a list, a non-list argv, the registered launch, no flags, doubled or extra approval flags, another approval mode, a launch off the registered invocation at the window's last position, an unpinned mode, and a pinned window with no approval flag); 106 generated mutants inside submitted_mode, 0 survivors, two new EQUIVALENT categories (platform-default, slice-past-end) each with its line token. Athena sweep survivors (gap4-harness-ab-86ca78e, 14 Oct 2026): A11-identity (turn_identity's sources, spelled here), A12-executed (the kept exec record, clean and refused, the reader refusal and the defect road), A13-native (the native session located by turn 1's id) and A14-journal (each turn's mode read from its own journal against the registered invocation); one more EQUIVALENT category, unreachable-fallback (the 'first-turn' fallback, never taken since turn 1 sets session_id first). Mac sweeps restricted to turn_identity, _turn, native_session_path and submitted_mode: 0 survivors. Batch-8 review finding 5: the unreachable-fallback category and its two entries are dropped; A14 adds a no-init first turn with its journal, so turn 1's expectation is read. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): READ_SHAPES_SHA256 pins the shapes with grep_search."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/README.md",
+      "status": "new",
+      "reason": "Lane w11b: labels every Gemini fixture in its folder SYNTHETIC (none recorded; ruling Q-3), read by test_gemini_adapter A9."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/agent-says-429.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/blank-assistant.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/error-result.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/init-other-model.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/no-init.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/stats-missing.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/stats-other-model.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/tool-only.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn-limit.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn1-tools.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn2-other-session.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/turn2-resume.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/unknown-event.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/unknown-key.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/gemini-streams/unknown-tool.jsonl",
+      "status": "new",
+      "reason": "Lane w11b: a SYNTHETIC Gemini CLI stream-json fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_gemini.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "COPIED.d/w11b-gemini-adapter.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (lane w11b-gemini-adapter)."
+    },
+    {
+      "path": "checks.d/w11b-gemini-adapter.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the test module and its --witnesses."
+    },
+    {
+      "path": "gemini_adapter.py",
+      "status": "new",
+      "reason": "Lane w11b-gemini-adapter (arm G; D8 sections 1 and 3, D8:461-472; ruling Q-3): GeminiAdapter, agent_adapter's interface for gemini: one `gemini -p <line> -o stream-json` per turn through box/run_take.run_turn, `-m <model>` and the pinned mode's `--approval-mode yolo` on every call, no sandbox flag, `-r <session id>` after the first turn only (the id read from turn 1's init; a later init naming another session refused), the version from `gemini --version`; read_stream maps the documented events into the seam's records (api_errors from error events and failed results only, never the agent's text; agent output from assistant messages with words and tool_use only; stats as recorded, a missing count refused, never 0), checks init.model and every key of result.stats.models against the row's model on every turn, maps exit codes 0, 1, 42, 53 (53 never end_turn) and refuses any other; the TurnResult's init is None because the stream records no permission mode (Q-w11b-2). SHAPES_SOURCE = documented, reported in the harness record and every turn record. Not registered in any seam table (a later seam slice). Live harness 3a (edit without transfer, under glitch-06's step-3 order, 14 Oct 2026): the exec is kept in executed_turns before the stream is read; the read and resumed-session check moved verbatim into _read_turn; a refusal after the exec is ExecutedStreamRefused (a StreamError and an agent_adapter.ExecutedTurnRefused); bound by tests/test_executed_turn_refusal.py. Live harness 3b: turn_identity states each pin field's source (stream-init or stream-stats model, version-exec version, submitted-argv mode); init stays None. Live harness 3c: native_session_path locates the resumed session file by turn 1's session id (appended after _end; no line above moved). 3b review fold: submitted_mode reads the mode only from the turn's actual-submission journal argv (unobserved without one), never the pin. Review nit 3: any other exception after the exec becomes a plain ExecutedTurnRefused (a defect, never a StreamError). Batch-8 review finding 5 (live harness): the journal expectation names 'first-turn' on turn 1 and the session afterwards (same line), matching vendor_provenance.launch_facts' turn-1 rule. Lane vendor-admission round-2 ruling 2 (glitch-b5, 16 Oct 2026), an edit without transfer: the SHAPES_SOURCE paragraph of the docstring (lines 13-14) now says freeze.py refuses a design row of this harness (arm G) while SHAPES_SOURCE is not \"recorded\" (T3), in place of \"owed to a later slice\"; no code changed. Bound by tests/test_freeze_shapes.py FS-docs. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): READ_SHAPES is box/od57_shapes.GEMINI (the shapes moved there, with grep_search added)."
+    },
+    {
+      "path": "transcript_gemini.py",
+      "status": "new",
+      "reason": "Lane w11b-gemini-adapter: the pre-registered Gemini CLI stream-json tables (D8 section 1's event types, init and result keys and stats counts, and the keys, words and tool table it names as not in D8), check_record and check_stats (anything off the tables refused, never guessed) and GeminiParser into transcript_view.RawItem's closed vocabulary (user message -> operator, assistant message -> agent-text, tool_use -> tool-call of its GEMINI_TOOLS kind, tool_result -> tool-result, init/error/result -> harness). NOT registered in transcript_view.PARSERS."
+    }
+  ]
+}

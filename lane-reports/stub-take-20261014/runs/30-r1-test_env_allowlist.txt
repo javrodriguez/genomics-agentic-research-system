@@ -1,0 +1,123 @@
+test_each_row_is_the_ruling_s_set (__main__.E1Table.test_each_row_is_the_ruling_s_set) ... ok
+test_the_views_are_derived (__main__.E1Table.test_the_views_are_derived) ... ok
+test_an_old_list_name_is_still_refused (__main__.E2Allowlist.test_an_old_list_name_is_still_refused) ... FAIL
+test_launcher_refuses_container_ancestors_and_current_home (__main__.E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home) ... ERROR
+test_take_environment_is_the_row_alone (__main__.E2Allowlist.test_take_environment_is_the_row_alone) ... ok
+test_the_launcher_needs_the_credential (__main__.E2Allowlist.test_the_launcher_needs_the_credential) ... ERROR
+test_the_turn_hands_the_harness_the_row_alone (__main__.E2Allowlist.test_the_turn_hands_the_harness_the_row_alone) ... FAIL
+test_a_dangling_link_and_the_shape (__main__.E3EnvFiles.test_a_dangling_link_and_the_shape) ... ok
+test_a_parent_below_the_box_root (__main__.E3EnvFiles.test_a_parent_below_the_box_root) ... ok
+test_home (__main__.E3EnvFiles.test_home) ... ok
+test_launch_refuses_before_any_runtime_call (__main__.E3EnvFiles.test_launch_refuses_before_any_runtime_call) ... ok
+test_no_take_image_writes_an_env_file (__main__.E3EnvFiles.test_no_take_image_writes_an_env_file) ... ok
+test_run_turn_refuses_before_its_exec (__main__.E3EnvFiles.test_run_turn_refuses_before_its_exec) ... ok
+test_the_box_root (__main__.E3EnvFiles.test_the_box_root) ... ok
+test_the_working_folder (__main__.E3EnvFiles.test_the_working_folder) ... ok
+test_a_short_alias_is_refused_by_name (__main__.E4Model.test_a_short_alias_is_refused_by_name) ... ok
+test_all_gemini_exec_spellings_are_checked (__main__.E4Model.test_all_gemini_exec_spellings_are_checked) ... ok
+test_exec_refuses_an_alias (__main__.E4Model.test_exec_refuses_an_alias) ... ok
+test_non_model_options_need_non_flag_values (__main__.E4Model.test_non_model_options_need_non_flag_values) ... ok
+test_the_full_ids_pass_and_others_refuse (__main__.E4Model.test_the_full_ids_pass_and_others_refuse) ... ok
+test_the_table_is_the_pre_registered_one (__main__.E4Model.test_the_table_is_the_pre_registered_one) ... ok
+test_check_model_edges (__main__.E5Units.test_check_model_edges) ... ok
+test_home_must_be_the_config_mount (__main__.E5Units.test_home_must_be_the_config_mount) ... ok
+test_launcher_argv_refusals (__main__.E5Units.test_launcher_argv_refusals) ... ok
+test_take_environment_refusals (__main__.E5Units.test_take_environment_refusals) ... ok
+test_the_fallback_values_are_arm_a_s_alone (__main__.E5Units.test_the_fallback_values_are_arm_a_s_alone) ... ok
+test_the_equivalent_list_matches_the_generated_mutants (__main__.G1Generated.test_the_equivalent_list_matches_the_generated_mutants) ... ok
+
+======================================================================
+ERROR: test_launcher_refuses_container_ancestors_and_current_home (__main__.E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 378, in test_launcher_refuses_container_ancestors_and_current_home
+    argv, _ = self.turn(h)
+              ~~~~~~~~~^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 336, in turn
+    return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       run_tree="/srv/w/t1/tree", login_file=self.login(h),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       caller_env=dict(CALLER, **(caller or {})))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/run_take.py (witness)", line 620, in exec_argv
+run_take_w12a_under_test.NotReady: Codex subscription binding not ready; API-key login is not permitted
+
+======================================================================
+ERROR: test_the_launcher_needs_the_credential (__main__.E2Allowlist.test_the_launcher_needs_the_credential)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 391, in test_the_launcher_needs_the_credential
+    argv, _ = self.turn("codex")
+              ~~~~~~~~~^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 336, in turn
+    return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       run_tree="/srv/w/t1/tree", login_file=self.login(h),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       caller_env=dict(CALLER, **(caller or {})))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/run_take.py (witness)", line 620, in exec_argv
+run_take_w12a_under_test.NotReady: Codex subscription binding not ready; API-key login is not permitted
+
+======================================================================
+FAIL: test_an_old_list_name_is_still_refused (__main__.E2Allowlist.test_an_old_list_name_is_still_refused)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 199, in refuses
+    fn(*args, **kwargs)
+    ~~^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 336, in turn
+    return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       run_tree="/srv/w/t1/tree", login_file=self.login(h),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       caller_env=dict(CALLER, **(caller or {})))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/run_take.py (witness)", line 620, in exec_argv
+run_take_w12a_under_test.NotReady: Codex subscription binding not ready; API-key login is not permitted
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 373, in test_an_old_list_name_is_still_refused
+    self.refuses("E2.refused", name, self.turn, h, caller={name: FAKE_VALUE})
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 206, in refuses
+    self.fail(f"{clause}: raised {type(e).__name__}, not Refused: {str(e)[:300]}")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: E2.refused: raised NotReady, not Refused: Codex subscription binding not ready; API-key login is not permitted
+
+======================================================================
+FAIL: test_the_turn_hands_the_harness_the_row_alone (__main__.E2Allowlist.test_the_turn_hands_the_harness_the_row_alone)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 191, in must
+    return fn(*args, **kwargs)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 336, in turn
+    return m.exec_argv(ID, inner, user=m.AGENT_USER, workdir="/srv/w/t1/tree", harness=h,
+           ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       run_tree="/srv/w/t1/tree", login_file=self.login(h),
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       caller_env=dict(CALLER, **(caller or {})))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/run_take.py (witness)", line 620, in exec_argv
+run_take_w12a_under_test.NotReady: Codex subscription binding not ready; API-key login is not permitted
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 347, in test_the_turn_hands_the_harness_the_row_alone
+    argv, env = self.must("E2.turn", self.turn, h, caller=passable, environ=passable)
+                ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 195, in must
+    self.fail(f"{clause}: {type(e).__name__}: {str(e)[:400]}")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: E2.turn: NotReady: Codex subscription binding not ready; API-key login is not permitted
+
+----------------------------------------------------------------------
+Ran 27 tests in 3.092s
+
+FAILED (failures=2, errors=2)
+test_env_allowlist: 27 run, 2 failures, 2 errors, 0 skipped
+test_env_allowlist outcomes: {"failures": ["E2Allowlist.test_an_old_list_name_is_still_refused", "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone"], "errors": ["E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home", "E2Allowlist.test_the_launcher_needs_the_credential"], "skipped": []}

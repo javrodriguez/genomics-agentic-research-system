@@ -1,0 +1,20 @@
+{
+  "lane": "fold14-prompt-pin",
+  "files": [
+    {
+      "path": "COPIED.d/fold14-prompt-pin.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. On Javier's recorded word OD186 (last-review yes), passed on by the orchestrator on Wed 4 Nov 2026, round 10 is the last review, under a stop rule. Edits without transfer, in files other fragments claim. review_kit/BRIEF.md gains one paragraph, the stop rule, as the last paragraph of its threat-model section; every other word stands. review_kit/rounds.py pins the prompt in two named eras: prefreeze rounds 1-9 on PROMPT_ROUNDS_1_TO_9, every later row, a verify row included, on PROMPT_FROM_ROUND_10; any other prompt or row refuses in check. Neither file is a CHECKER_CODE_FILES member or in a native reader's source set; every digest was read after the edit and did not move. The orchestrator's rulings under OD186 add to that one paragraph, and to nothing else in BRIEF.md: the rule governs where another sentence is wider; and, on fold 14's gate review M1, the draft's byte-identical sentence holds within each era and a stale draft sentence is a MINOR corrected in the write-up. PROMPT_FROM_ROUND_10 follows; no row was registered on an earlier sha of the second era."
+    },
+    {
+      "path": "tests/test_fold14_prompt_pin.py",
+      "status": "new",
+      "reason": "This lane's tests: the real register and brief, the real rounds.check on test_fold8's scratch rig with the real BRIEF.md, and a mutant per clause."
+    },
+    {
+      "path": "checks.d/fold14-prompt-pin.txt",
+      "status": "new",
+      "reason": "This lane's battery lines: the module and its witnesses."
+    }
+  ]
+}

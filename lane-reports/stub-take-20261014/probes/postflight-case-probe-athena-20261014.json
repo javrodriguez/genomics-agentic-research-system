@@ -1,0 +1,64 @@
+{
+ "all_as_expected": true,
+ "cases": [
+  {
+   "admitted": [
+    "auth.json"
+   ],
+   "as_expected": true,
+   "case": "auth.json alone",
+   "contents_leaked": false,
+   "detail": "only the registered credential auth.json",
+   "expected_ok": true,
+   "ok": true
+  },
+  {
+   "admitted": [
+    "auth.json"
+   ],
+   "as_expected": true,
+   "case": "auth.json and Auth.json (a second file on this filesystem)",
+   "contents_leaked": false,
+   "detail": "Auth.json: a credential-shaped file outside the registered path auth.json",
+   "expected_ok": false,
+   "ok": false
+  },
+  {
+   "admitted": [],
+   "as_expected": true,
+   "case": "AUTH.JSON alone (no registered file)",
+   "contents_leaked": false,
+   "detail": "auth.json: absent; the lease home must hold exactly one registered credential file; AUTH.JSON: a credential-shaped file outside the registered path auth.json",
+   "expected_ok": false,
+   "ok": false
+  },
+  {
+   "admitted": [
+    "auth.json"
+   ],
+   "as_expected": true,
+   "case": "auth.json and sessions/AUTH.JSON",
+   "contents_leaked": false,
+   "detail": "sessions/AUTH.JSON: a credential-shaped file outside the registered path auth.json",
+   "expected_ok": false,
+   "ok": false
+  },
+  {
+   "admitted": [
+    "auth.json"
+   ],
+   "as_expected": true,
+   "case": "auth.json and a same-bytes Auth.JSON copy",
+   "contents_leaked": false,
+   "detail": "Auth.JSON: a credential-shaped file outside the registered path auth.json",
+   "expected_ok": false,
+   "ok": false
+  }
+ ],
+ "code_commit": "41fccf4c (git archive of evals/gap-study-4/box, harness_bookkeeping.py, agent_adapter.py, graders/labels4.py)",
+ "filesystem_case_sensitive": true,
+ "host_uname": "Linux",
+ "probe": "postflight-case-sensitivity",
+ "python": "3.13.5",
+ "ran": "athena, 2026-10-14 ~23:04Z, /home/javier/gap4-tools/tmp-gap4box (removed after), no docker, beside the non-solo run gap4-harness-alone-1f03258"
+}

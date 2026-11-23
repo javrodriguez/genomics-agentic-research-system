@@ -1,0 +1,5 @@
+# Lane w4n-cp4-gen-confounded-seed2: CP4 task confounded-design (repaired, seed 2) and its fixture generator.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_confounded_design.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py confounded-design
+python3 -B -W ignore evals/gap-study-4/fixtures/gen_confounded_seed2.py --check

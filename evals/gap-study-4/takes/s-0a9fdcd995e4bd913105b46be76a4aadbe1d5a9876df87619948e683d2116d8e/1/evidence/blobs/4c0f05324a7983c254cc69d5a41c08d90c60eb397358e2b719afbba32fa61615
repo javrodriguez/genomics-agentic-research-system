@@ -1,0 +1,42 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-07
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six project samples cluster by gene expression using PCA of the gene-level counts, with points coloured by condition (untreated or treated).
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | `01_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+1. In the `gars-bio` environment, read the resolved gene-count TSV and the design CSV. Match samples by `sample_id`; require exactly the six design samples and their `condition` values.
+2. Transform each gene count as `log2(count + 1)`, then center each gene across the six samples without scaling genes by variance. Run PCA on the sample-by-gene matrix with scikit-learn `PCA(n_components=2)`.
+3. Write a PC1/PC2 scatter plot as a PNG in `results/`, with each sample labelled by `sample_id`, point colour mapped to `condition`, and axis labels showing explained variance. Save the sample coordinates and condition as a CSV. Inputs remain read-only.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/sample_pca.png` | `figure` | PCA scatter plot of the six samples, coloured by condition |
+| `results/sample_pca_coordinates.csv` | `table` | PC1 and PC2 coordinates, sample ID, condition, and explained variance metadata |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes. Expected output size: under 5 MB. `batch` -- this workspace's configured scheduler,
+whatever it is (decision 0039) -- is the default for every analysis, whatever its size
+(decision 0027). `sbatch` is accepted as its Slurm-era spelling and means the same thing.
+Change the line above to `Runs: login-node (user-requested)` ONLY if the user explicitly asked
+for login-node execution -- never because the job looks small. The login node's cgroup kills
+whatever is running when memory runs short, not whatever is at fault, and a wrong size
+estimate is exactly the mistake a default cannot make.>

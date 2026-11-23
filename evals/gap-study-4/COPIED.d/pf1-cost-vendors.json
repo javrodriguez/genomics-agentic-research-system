@@ -1,0 +1,25 @@
+{
+  "lane": "pf1-cost-vendors",
+  "files": [
+    {
+      "path": "cost_calls.py",
+      "status": "new",
+      "reason": "Lane pf1-cost-vendors (Gap Study round 4, the lane orchestrator glitch-f1's assignment of Mon 26 Oct 2026: the gap lane pf1-l4-close named, no step assembles cost-calls.json and arm O and arm G takes record no cost): the step that assembles cost-calls.json from every committed outcome's take folder, arm A from its driver ledger's cost, arm O from its last retained rollout's token_usage_record lines and arm G from its replayed session file's gemini messages, each mapped to costs.py's disjoint classes, and a take that cannot be read or checked complete assembled as one unmeasured call."
+    },
+    {
+      "path": "tests/test_pf1_cost_vendors.py",
+      "status": "new",
+      "reason": "Lane pf1-cost-vendors: cost_calls.py's cases, run on read-only copies of committed walk records (w-o46, w-o47 and every arm O walk; w-g30, w-g21, w-g24, w-g13; w001), the mapping and pricing derived here with plain json and the approved table's own rows, the incompleteness roads on broken temporary copies, the assembly, the statement and the CLI, and one in-memory mutant per rule that must turn its case red."
+    },
+    {
+      "path": "checks.d/pf1-cost-vendors.txt",
+      "status": "new",
+      "reason": "Lane pf1-cost-vendors: this lane's local checks for run_checks.py: its test module and cost_calls.py --check on the empty ledger."
+    },
+    {
+      "path": "COPIED.d/pf1-cost-vendors.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane pf1-cost-vendors (26 Oct 2026). Its edits to files other lanes claim, without a change of status: costs.py (ASSEMBLY_BUILT, the not-built items, the docstring's pointer to cost_calls.py), build_draft.py and tests/test_build_draft.py (the price table's pending reason cites costs.py's lines, which moved) and prereg-draft.json (its cost_statement, regenerated once by build_draft.py). drive.py is not edited: it is a reader source both committed acceptance records bind (native_reader_registration READER_SOURCES and CODEX_SOURCES)."
+    }
+  ]
+}

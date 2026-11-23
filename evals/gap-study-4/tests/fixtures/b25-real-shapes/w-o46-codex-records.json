@@ -1,0 +1,114 @@
+{
+ "world_state": [
+  {
+   "full": true,
+   "state": {
+    "agents_md": {
+     "directory": "/work/synthetic-text-724",
+     "text": "synthetic text 725"
+    },
+    "apps_instructions": false,
+    "collaboration_mode": {
+     "mode": "default",
+     "model": "gpt-6.1-sol",
+     "instructions": "synthetic text 726"
+    },
+    "context_window_guidance": "",
+    "environments": {
+     "environments": {
+      "local": {
+       "cwd": "/work/synthetic-text-724",
+       "status": "available",
+       "shell": "synthetic text 727"
+      }
+     },
+     "current_date": "synthetic text 728",
+     "timezone": "synthetic text 729",
+     "filesystem": "synthetic text 730"
+    },
+    "environments_instructions": false,
+    "git_attribution": false,
+    "host_skills": {
+     "body": "synthetic text 731",
+     "includeInstructions": true
+    },
+    "managed_developer_instructions": {},
+    "model": "gpt-6.1-sol",
+    "model_catalog": "synthetic text 732",
+    "multi_agent_mode": {
+     "mode": "explicitRequestOnly",
+     "usage_hint_hash": "synthetic text 733"
+    },
+    "multi_agent_usage_hint": "synthetic text 733",
+    "permissions": {
+     "instructions": "synthetic text 734",
+     "approved_command_prefixes": []
+    },
+    "persistent_mode": {},
+    "plugins_instructions": false,
+    "realtime": {
+     "active": false
+    },
+    "skills": {
+     "includeInstructions": true
+    }
+   }
+  }
+ ],
+ "thread_settings_applied": [
+  {
+   "type": "thread_settings_applied",
+   "thread_id": "01a15a88-1ded-7760-b734-ee1706b7ecca",
+   "thread_settings": {
+    "model": "gpt-6.1-sol",
+    "model_provider_id": "openai",
+    "approval_policy": "never",
+    "approvals_reviewer": "user",
+    "permission_profile": {
+     "type": "disabled"
+    },
+    "cwd": "/work/synthetic-text-724",
+    "runtime_workspace_roots": [
+     "/work/synthetic-text-724"
+    ],
+    "reasoning_effort": "low",
+    "collaboration_mode": {
+     "mode": "default",
+     "settings": {
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "low",
+      "developer_instructions": null
+     }
+    },
+    "disabled_plugin_ids": []
+   }
+  },
+  {
+   "type": "thread_settings_applied",
+   "thread_id": "01a15a88-1ded-7760-b734-ee1706b7ecca",
+   "thread_settings": {
+    "model": "gpt-6.1-sol",
+    "model_provider_id": "openai",
+    "approval_policy": "never",
+    "approvals_reviewer": "user",
+    "permission_profile": {
+     "type": "disabled"
+    },
+    "cwd": "/work/synthetic-text-724",
+    "runtime_workspace_roots": [
+     "/work/synthetic-text-724"
+    ],
+    "reasoning_effort": "low",
+    "collaboration_mode": {
+     "mode": "default",
+     "settings": {
+      "model": "gpt-6.1-sol",
+      "reasoning_effort": "low",
+      "developer_instructions": null
+     }
+    },
+    "disabled_plugin_ids": []
+   }
+  }
+ ]
+}

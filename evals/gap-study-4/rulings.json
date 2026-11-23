@@ -1,0 +1,82 @@
+[
+  {
+    "kind": "ruling",
+    "slot": "s-91a01e1ea2bedf2ce608225e6e21793e782df6908e39ec6e026f95852a8488af",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "graded",
+    "by": "Javier",
+    "why": "Javier's words run-amend yes (OD195) and run-amend2 yes (OD196): its drive finished and its commit was refused by a harness defect, the commit scan reading a Codex lease file the host could not read (RUN-STOP-DIAGNOSIS-20261105); committed failed out of the loop, now routed graded.",
+    "cite": "RUN-STOP-DIAGNOSIS-20261105.md; RUN-AMEND-TRIAL-20261105.md; RUN-AMEND-OPERATOR-LOG.md stage 2 (commit 80c1b9cb); athena /home/javier/gap4-run-held-20261105/op/out/commit-s-91a01e.out: Committed out of the loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09) (0 OOM-kill or pids-refusal lines, 156 kernel lines in the window; read 2026-11-05T15:53:58-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same)."
+  },
+  {
+    "kind": "ruling",
+    "slot": "s-de4da25ab2c7cbe2504358abe2f3dc0695207e3f5226270bf38a0eb63c25a5c0",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "graded",
+    "by": "Javier",
+    "why": "Javier's words run-amend yes (OD195) and run-amend2 yes (OD196): its drive finished and its commit was refused by a harness defect, the commit scan reading a Codex lease file the host could not read (RUN-STOP-DIAGNOSIS-20261105); committed failed out of the loop, now routed graded.",
+    "cite": "RUN-STOP-DIAGNOSIS-20261105.md; RUN-AMEND-TRIAL-20261105.md; RUN-AMEND-OPERATOR-LOG.md stage 2 (commit 8f9efbb8); athena /home/javier/gap4-run-held-20261105/op/out/commit-s-de4da2.out: Committed out of the loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-05 12:40 to 12:50 EST (the run's second process, 12:42:52 to 12:45:09) (0 OOM-kill or pids-refusal lines, 156 kernel lines in the window; read 2026-11-05T15:53:58-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same); its stop words are reconstructed, the loop recorded only the first stop."
+  },
+  {
+    "kind": "ruling",
+    "slot": "s-3c4f8d74cec72d1f40e039d8d51ee781e6d1bd9456280735184142cdf9a56f22",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "aborted",
+    "by": "Javier",
+    "why": "Javier's option a on ask reader-fix-cost (OD201, 2026-11-08T19:35:15Z), after OD199 (od57-gap b): the take is counted by its own records. Its drive stopped only because the drive scan refused OD57's ruled line, which amendment od57-gap-20261107 now admits. The take's own grader cannot read its committed end state (a ViewError in the transcript view's parser), so THE RULING RULE routes it aborted; the reader gap is disclosed.",
+    "cite": "end state unreadable: ViewError; Committed outside the take loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-07 12:35 to 12:45 EST (the stopped process, walk.pid 12:38:00 to walk.exit 12:40:25) (0 OOM-kill or pids-refusal lines, 252 kernel lines in the window; read 2026-11-07T15:40:56-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same); the drive stopped at its own scan, so the helper ran the drive's scan as this repo reads it (it passed), the checker and the operator check, by the drive's own code, before the rebuild. STOP2-OD57-GAP-20261107; OD57-GAP-BUILD-20261107 section 7; RUN-AMEND-OPERATOR-LOG stage of this reconcile."
+  },
+  {
+    "kind": "ruling",
+    "slot": "s-0e780d9ae54b2e6ede008f4b2964a6f56d1343364740bf9fbda8fc0f5cd14656",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "aborted",
+    "by": "Javier",
+    "why": "Javier's option a on ask reader-fix-cost (OD201, 2026-11-08T19:35:15Z), after OD199 (od57-gap b): the take is counted by its own records. Its drive stopped only because the drive scan refused OD57's ruled line, which amendment od57-gap-20261107 now admits. The take's own grader cannot read its committed end state (a ViewError in the transcript view's parser), so THE RULING RULE routes it aborted; the reader gap is disclosed.",
+    "cite": "end state unreadable: ViewError; Committed outside the take loop by reconcile_take.py: cgroup.oom_kill_delta and cgroup.pids_max_delta not measured directly, written 0 on the kernel-journal read made by Javier with sudo on athena for 2026-11-07 12:35 to 12:45 EST (the stopped process, walk.pid 12:38:00 to walk.exit 12:40:25) (0 OOM-kill or pids-refusal lines, 252 kernel lines in the window; read 2026-11-07T15:40:56-0500); its commit scan read the Claude run login only (a claude-code take's drive scan read the same); the drive stopped at its own scan, so the helper ran the drive's scan as this repo reads it (it passed), the checker and the operator check, by the drive's own code, before the rebuild; its stop words are reconstructed, the loop recorded only the first stop. STOP2-OD57-GAP-20261107; OD57-GAP-BUILD-20261107 section 7; RUN-AMEND-OPERATOR-LOG stage of this reconcile."
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-00294d39c85eb1f584d9eeea9c10a53967a6c5c32311e3f00e6de1d2d7d98089",
+    "attempt": 1,
+    "by": "glitch-45"
+  },
+  {
+    "kind": "ruling",
+    "slot": "s-91dbb18a094fc6ddc7b6c5f2571a24d80700bc646ef838560a21383a980a585a",
+    "attempt": 1,
+    "ruling": "route",
+    "route": "graded",
+    "by": "glitch-45",
+    "why": "glitch-45's ruling under Javier's standing delegation, route chosen blind (without reading any outcome, grade or agent text): the take ran to its end; the drive then stopped at its own commit scan, which refused the pinned public OD57 line in the take's records. Javier's OD202 (od57-line yes) widened the rule to admit that exact line; at line commit 617adde9 the drive's scan, as this repo reads it, passes, and reconcile_take committed the take with the checker and operator check by the drive's own code. The stop was the scanner, not the agent or the harness, so the take is graded like any finished take.",
+    "cite": "OD202 (Javier, od57-line yes); line commit 617adde9; J6 drive scan (box/scan_record.scan, this repo's own code at 617adde9) on takes/s-91dbb18a/1: passed, 0 refused, 4 admitted under OD57; J7 reconcile_take commit 1a2684c8 (its cite sentence in athena /home/javier/gap4-run-held-20261105/stop4-20261108/j7-617adde9/commit.out); route chosen blind by glitch-45 under the standing delegation."
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-50302961cd4df92e9bd52c8d0cb1b014a4129e1d71470e9809e658496a526865",
+    "attempt": 1,
+    "by": "glitch-45"
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-0245e28daf989ba4dc5e26e098a16697e6aea9b276ff2ca2a44859f7589f5e6f",
+    "attempt": 1,
+    "by": "glitch-45"
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-db9a7a1ad0080388f72bc06ea9ed7d490068c601d364baa530c052f09b33b1d1",
+    "attempt": 2,
+    "by": "glitch-45"
+  },
+  {
+    "kind": "nightly-stop-ruling",
+    "slot": "s-1f53a1309ade8969215c1d3bf9ceb1537c20643a48f9fe627dff18effb73d118",
+    "attempt": 1,
+    "by": "glitch-45"
+  }
+]

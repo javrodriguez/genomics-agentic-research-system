@@ -1,0 +1,23 @@
+control 0 of 16
+RED   2/16 grant to keepalive
+RED   1/16 evidence to agent
+RED   1/16 grant goes on after a failure
+RED   1/16 restore ignores present containers
+RED   1/16 restore not verified
+RED   1/16 restore to the agent
+RED   2/16 links followed
+RED   2/16 specials admitted
+RED   2/16 link check skipped
+RED   2/16 overlap admitted
+RED   2/16 cfg repo check off
+RED   1/16 extra capability
+RED   1/16 network on
+RED   2/16 write follows the final link
+RED   1/16 write nlink unchecked
+RED   2/16 write follows a folder link
+RED   3/16 write reply unchecked
+RED   1/16 read follows a link
+RED   1/16 read size unchecked
+RED   1/16 operator runs as root
+RED   2/16 operator path escapes
+ALIVE: none

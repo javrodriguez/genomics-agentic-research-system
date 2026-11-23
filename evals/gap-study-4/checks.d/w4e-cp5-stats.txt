@@ -1,0 +1,4 @@
+# Lane w4e-cp5-stats: CP5's stats.py (bounds, holds, paired and per-wording tables, the pre-registered comparisons, power).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_stats.py
+python3 -B -W ignore evals/gap-study-4/stats.py --check

@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_settings_guard.py", line 18, in <module>
+    from box import settings_guard as sg  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: cannot import name 'settings_guard' from 'box' (unknown location)

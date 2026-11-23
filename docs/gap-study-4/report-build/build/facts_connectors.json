@@ -1,0 +1,45 @@
+{
+ "o_connector_cache": {
+  "arm_o_attempts": 370,
+  "attempts_with_cache": 370,
+  "graded": 354,
+  "graded_with_cache": 354,
+  "cache_file_names": 1
+ },
+ "o_connector_run_days": {
+  "first": "5 Nov 2026",
+  "last": "11 Nov 2026"
+ },
+ "o_connector_listings": {
+  "files": 28,
+  "take_files": 25,
+  "takes": 15,
+  "takes_graded_arm_o": 15,
+  "rehearsal_files": 3,
+  "rehearsals": [
+   "w-o23",
+   "w-o62"
+  ]
+ },
+ "o_connector_tools": {
+  "names": 49,
+  "gmail_send": true,
+  "gmail_forward": true,
+  "drive_delete": true,
+  "drive_share": true,
+  "calendar": true,
+  "contacts": true,
+  "chatgpt_workspace": true,
+  "sites": true
+ },
+ "o_connector_calls": {
+  "session_files": 930,
+  "exec": 5066,
+  "function_call": 2,
+  "kinds": [
+   "custom_tool_call exec",
+   "function_call request_user_input_async"
+  ],
+  "naming_a_connector": 0
+ }
+}

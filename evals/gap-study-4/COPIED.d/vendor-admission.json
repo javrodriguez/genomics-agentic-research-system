@@ -1,0 +1,545 @@
+{
+  "lane": "vendor-admission",
+  "files": [
+    {
+      "path": "tests/test_vendor_admission.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T1 (glitch-b5, 16 Oct 2026, under Javier's standing delegation). The grading callers' vendor admission on synthetic walk and take folders (test_walk_grade_seam's), with TEST-DATA vendor TABLE entries patched in: every unadmitted case (no registered reader, another vendor's reader only, a cross-check refused, missing, None, carrying an extra key, a why that is not None, another spelling, a list) refuses on the walk road (run.grade_walk) and the take road (run.grade_committed) naming its reason, before endstate.Evidence.load; the production registry on this tree ({}) and a refusing one refuse; a pending walk keeps its pending document; controls reach the reader for a registered, agreed vendor and for claude-code with neither; evidence naming another vendor never reaches a grader. Three in-memory witnesses (the guard's body, each road's call) go red. Round-2 ruling 1 (review bea6e50 finding 1): the take road with its driver-ledger.json deleted or unparseable refuses naming the cross-check before Evidence.load, and a fourth witness (ledger_cross_check's unreadable-ledger fallback flipped to the agreed shape) goes red."
+    },
+    {
+      "path": "tests/test_vendor_admission_regrade.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T1 (glitch-b5, 16 Oct 2026). The regrade road on test_pending_walk's accepted Gemini walk in a scratch repository: walk_regrade.regrade_doc refuses an agreed cross-check carrying an extra key and a registry without the walk's harness, naming each, and regrades with its own reader and agreed cross-check; walk_regrade.py compiled in memory without its guard call goes red on both cases."
+    },
+    {
+      "path": "tests/test_freeze_shapes.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T3 (glitch-b5, 16 Oct 2026), ruling Q-3: freeze.main against a temporary folder with faked git, review, pins, prepare and writer refuses a fixture draft with an O row, a G row or both while that adapter's SHAPES_SOURCE is \"documented\", naming each arm and writing nothing, and passes once it is patched to \"recorded\"; a claude-code-only draft passes; on the committed draft unrecorded_shapes_problem names arms O and G; freeze.py --check is unchanged. Round-2 ruling 2: each adapter's SHAPES_SOURCE docstring paragraph names freeze.py's refusal of its arm, never a later slice. Two in-memory witnesses (the call deleted, the comparison disabled) go red. Lane vendor-admission T4 PF (glitch-b5's ruling of the v4 plan, Sat 17 Oct 2026): FS-check, the freeze gate's three legs per vendor harness (i the adapter's SHAPES_SOURCE, ii check_take.VENDOR_CHECK_SHAPES_SOURCE recorded with every VENDOR_PENDING_ROWS row settled, iii production_readers holding the harness): each leg refuses alone, naming the arm, the leg and for ii the row, a refusing registry by name; all three pass; three more witnesses (leg ii's comparison, its settled condition, leg iii) go red. FS-main's passing cases settle all three legs, and a case with legs ii and iii settled keeps leg i's witnesses meaningful. Round 8 ruling 1 (review e7496cf NIT 1): a registry that cannot run (FileNotFoundError for a missing git, any OSError) refuses naming the arm and leg iii, and a witness deleting that refusal goes red."
+    },
+    {
+      "path": "tests/test_vendor_script.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T0 (glitch-b5, Fri 16 Oct 2026, applied on Javier's typed word \"T0: yes\", 22:25 EDT, after the cloud executor's and a local builder's tool use were refused without it). V0-script: check_take.design_view, the body of walk_builders' production design_for and of the walk driver's script_for, builds a codex row's (arm O) and a gemini row's (arm G) view with the wording's own steps (variants.operator_steps), and drive.script_from_design renders them; before T0 both rows raised CheckRefused before turn 1. V0-checker: check4 and check4_walk refuse that real vendor view's take naming \"no record readers\" (R4C-9). V0-unknown: design_view still refuses a harness with no script. Three in-memory witnesses (design_view's harness check, check4's harness_guard, check4_walk's harness_guard) go red. Runs inside tests/test_checker_body.py's process guard; fakes only. T4 R-1 (plan v4 section 5; built with P3, glitch-b5 round 12), by named ruling: test_v0_every_checker_entry_still_refuses_a_vendor_take is renamed test_v0_check4_still_refuses_a_vendor_take and V0-checker expects harness_guard's reworded 'check4 reads claude-code only'; V0-dispatch (drive.take_checker on the vendor and claude-code views, both roads: checker_for asked first, a vendor take never handed to check4 or check4_walk and refused by its side naming the harness, a claude-code take reaching check4 or check4_walk) and its witness vendor-on-claude-entry (checker_for handing a vendor harness claude-code's entry and side) go red."
+    },
+    {
+      "path": "tests/test_vendor_check.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 (lane-reports/vendor-T4-PLAN.md v4, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"). PF: VP-rows (check_take.VENDOR_PENDING_ROWS holds exactly the comparability table's PENDING keys with their reason ids, all PENDING; no event id), VP-helper (vendor_pending refuses a PENDING key under its reason id, raises KeyError for an unknown key, and calls a settled key's reader only when the call site hands in the very function the row names, else CheckRefused: review 36ce125 MINOR 2), VP-keys (vendor_pending's call sites read from the AST: literal keys of the map, the settled reader named, the refusal text only inside the helper; three synthetic-source mutants go red; the live key equality lands with P2's call sites), VP-fixtures (a SAME row names a fixture labelled RECORDED on its CLI; recorded shapes need every row settled) and the source-list checker's cases. Fakes and synthetic sources only. P1 (plan sections 4 and 9; review 36ce125 MINOR 1, ruling 1 of 12:35): P1-fixtures (F1 and F2 are what tests/vendor_check_fixtures.py writes, every file labelled SYNTHETIC), P1-view (vendor_take_view reads the bound view; a stream off its envelope's digest, or a view holding no event, is transcript-unreadable; a claude-code take refuses), P1-raw (vendor_raw_records reads every tool record of every source from the CLI-written bytes; the codex response_item partition equals codex_native.RESPONSE_ITEMS), P1-reach (F3 cases each firing study-materials-reached, read-outside-the-checkout's checkout leg or transcript-unreadable on one source, a study path only as an object key among them) and P1-witness (twelve in-memory check_take mutants go red). Round 8 ruling 2: a row's reader is a function defined in check_take. T4 P2: VP-keys' live check is equality with P2's call sites, as P1's head said P2 makes it."
+    },
+    {
+      "path": "tests/vendor_check_fixtures.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1 (plan v4 section 8): writes and checks F1 (tests/fixtures/vendor-check-codex/) and F2 (tests/fixtures/vendor-check-gemini/), the synthetic two-turn codex and gemini take folders P1's readers read (turn envelopes, driver ledger, digest-bound turn streams, retained native snapshots), from test_pending_codex_walk's and test_pending_walk's generators; tests/test_vendor_check.py builds its F3 variants from the same parts. Standard library only. T4 P2: codex_parts and gemini_parts take a row's own lines and replies, files() takes the driver's session id, ledger fields, run tree and mode, and every take folder gains each turn's launch journal (its argv the adapter's own), F1's and F2's included. T4 P4 (glitch-b5 round 12): every take folder a test builds gains session-store.json, the drive's vendor store record (the store listed after every turn and at publish holding only the take's own session at NATIVE_REL, one sweep per turn finding only it, the nested CLI and unread stream line counts 0); F1 and F2 are written without it (files' store), since the codex store's date folders read as lint_language's ratio-slash shape and an excusal is a ruling."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/README.md",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/driver-ledger.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/session/native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/session/native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/transcript.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/README.md",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/driver-ledger.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/session/native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/session/native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/transcript.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P1: fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-1.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-codex/turn-2.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F1, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-1.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/fixtures/vendor-check-gemini/turn-2.jsonl.launch.json",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (the launch journals P2's inherited-context and run-tree legs read): fixture F2, SYNTHETIC, written by tests/vendor_check_fixtures.py (--check binds it), labelled in its folder's README; no recorded take."
+    },
+    {
+      "path": "tests/test_vendor_body.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2 (lane-reports/vendor-T4-PLAN.md v4 sections 1 and 9, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"; round 9's rulings). check_take.vendor_check and vendor_round4_problems on synthetic codex and gemini takes of test_checker_body's draft row, written by tests/vendor_check_fixtures.py: P2-clean (a clean take or walk carries exactly its harness's PENDING refusals), P2-cases (one F3 case per reason, each adding exactly its reasons), P2-keys (VP-keys as equality) and P2-witness (each guard dropped, each PENDING call site deleted, a PENDING refusal under an event id: each red on its own case). Fakes only, inside test_checker_body's process guard; run by checks.d/vendor-admission.txt. Round 12 (review c-6302fd3 NIT 2): a session file the ledger does not name, with the email marker and without, refuses by name (transcript-unreadable) for both vendors, and a witness admitting it goes red. Round 13 (review d-7c774ad finding 1): a ledger-named snapshot missing refuses by name (transcript-unreadable) for both vendors, and a witness restoring the skip goes red. T4 P5: design_for is design_view's Design in its vendor view (plain_design_for is design_view's). T4 P5 (glitch-b5 round 13): every take carries the drive's environment.json (round 3's schema under the design's block) bound in its ledger; F3 cases for model-binding (a rollout turn on another model and a reroute for codex, a stream's init and a stats.models key on another model for gemini, no requested model) and the environment record (none, one edited after the take), and four witnesses (a model mismatch admitted, the reroute unread, the model reading dropped, the record unread). Lane vendor-b23 (glitch-26's ruling Q3, Tue 20 Oct 2026): the file_change witness follows the T-8:file-change site, which now hands vendor_pending its reader vendor_file_change_reads and the take's path (the PENDING refusal unchanged)."
+    },
+    {
+      "path": "tests/test_vendor_entries.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P3 (lane-reports/vendor-T4-PLAN.md v4 sections 1b, 6 and 9, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"; glitch-b5 round 12, with review c-6302fd3 NIT 6). check_take.check4_vendor and check4_walk_vendor on synthetic codex and gemini takes and walks written by tests/vendor_check_fixtures.py through test_vendor_body's Take: P3-clean (exactly the PENDING refusals routed, every event 0), P3-pre (check4's CheckRefused preamble, each refusing before any vendor reader), P3-events (the event lines lifted and counted from vendor_reach and vendor_email_problems), P3-arm (the ledger's arm bound), P3-unread (NIT 6: an unread reach or email count refuses with CheckRefused, never counts 0; a reach vendor_check skipped is still read), P3-bound (NIT 6 and plan section 9's third account-email case: the codex entry's real record with the email marker refused at the drive's bound when the scan masked nothing, through test_box_integration's Rig), P3-for (checker_for admits codex and gemini; the vendor side refuses until P5) and nine in-memory check_take witnesses. Fakes only, inside test_box_integration's process guard with test_drive_loop's checker world; run by checks.d/vendor-admission.txt. T4 P5 (glitch-b5 round 13): P3-for's side reads a vendor view's merged digest and refuses a plain design_view Design naming the harness (its witness re-anchored to that refusal), and P3-pre requires the vendor guard's own refusal for a claude-code or unknown harness. Round 13 (review d-7c774ad finding 1): P3-unread adds a ledger-named snapshot missing."
+    },
+    {
+      "path": "tests/test_vendor_session.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P4 (lane-reports/vendor-T4-PLAN.md v4 sections 1b, 2, 6 and 9, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"; R-2, session binding option (a); glitch-b5 round 12). check_take.vendor_session_store_problems and vendor_session_binding_problems on synthetic codex and gemini takes written by tests/vendor_check_fixtures.py through test_vendor_body's Take: P4-store (session-store.json of the vendor's closed shape, the take's own native session derived from the publish listing by the drive's own locator for the CLI's session id, every listing and sweep re-derived, the drive's counts the checker's own; sixteen F3 cases, each adding exactly its nested-agent line), P4-binding (plan section 2's legs 1 to 3 on the CLI's own bytes; five F3 cases, each adding exactly its session-binding line), P4-entry (the store and binding reasons and leg 5's project name from another commit routed through check4_vendor and check4_walk_vendor), P4-fixture (the writer's mounts, config mount and store roots are check_take's) and eleven in-memory check_take witnesses. Fakes only, inside test_box_integration's process guard with test_drive_loop's checker world; run by checks.d/vendor-admission.txt. Round 13 (review d-7c774ad finding 2): three store cases (the own path swept with another vendor's shape, as a claude session, and with another session id) and a witness restoring the path-only filter."
+    },
+    {
+      "path": "tests/test_vendor_roads.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P2, R-6 (glitch-b5's ruling of Sat 17 Oct 2026, about 12:35 EDT, under Javier's delegation: byte-identical instructions under each vendor CLI's native name, AGENTS.md and GEMINI.md, equal to the pinned tree's CLAUDE.md and bound by sha256 to it; no configured fallback name used or accepted). R6-config (box/take_config names the native files and configures no instruction-file name; the draft's instruction_files are the native names), R6-road (walk_builders.build_run_tree places the harness's native copy in the checkout's one commit, refuses an origin with no root CLAUDE.md or one already carrying the name, and prepare hands it the row's harness) and R6-witness (the copy skipped, its bytes altered, the other CLI's name, the commit not amended, a fallback name configured: each red). Round 10 ruling 1 (glitch-b5, Sat 17 Oct 2026): AE-record (walk_builders.account_emails_path names account-emails.json in the private folder of run_take.WALK_LOGIN_FILES' account folders; account_emails reads the operator's and the harness's account address from a TEST DATA record, and a missing file, a missing key for the take's harness, an extra key, a value that is not an address, a non-object, a mode other than 600, a link, a file inside a repository and a non-vendor harness each refuse by name, never carrying an address) and AE-witness (the extra-key, address, missing-key and mode checks each deleted: red). Round 10 ruling 2 (fail closed): AE-closed (with no record lease_secrets refuses at take start before any token is read, CodexLeaseRoad and walk_driver_for refuse a codex and a gemini row before drive.walk_driver, login_secrets refuses a Gemini take when its secrets() is made; a Claude Code take is untouched; a TEST DATA record admits each road) and three witnesses (each road's record read deleted). Round 10 ruling 3: R6-road also requires gars/ to carry the harness's native file with gars/CLAUDE.md's bytes in the checkout's one commit (every CLAUDE.md of the checkout gets its copy), and an origin already carrying gars/AGENTS.md refuses; one more R6-witness (the nested copies skipped). Round 10 ruling 4: AE-pairs (a codex and a Gemini take's secrets() end with exactly the two email pairs, read again at each scan; a Claude Code take's carry none), AE-scan (a vendor take folder from tests/vendor_check_fixtures.py with the account's address in one stream, then two addresses in two turns, scanned by box/scan_record.scan with the take's real secrets(): every hit masked with the email marker, no address left in any byte, check_take.vendor_email_problems counts 1, never above the scan's masked hits) and two witnesses (the operator's or the account's pair dropped). AE-witness's mode anchor follows account_emails' own names (rec, where). Scratch repositories only, under test_walk_builders' module setup; run by checks.d/vendor-admission.txt."
+    },
+    {
+      "path": "tests/check_vendor_sources.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 (plan v4 section 9, NIT 7): checks.d's per-piece line; exits 1 when a piece names a file in native_reader_registration's READER_SOURCES or CODEX_SOURCES (drive.py excepted for P0, edit A), or a file that does not exist."
+    },
+    {
+      "path": "tests/test_take_checker_dispatch.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P0 (plan v4 section 6, R-3, ruled by glitch-b5 on Sat 17 Oct 2026): drive.take_checker on test_drive_loop's D8 world. P0-vendor: a codex and a gemini take on the real vendor design view refuse with CheckRefused, naming the harness, before check_take's design_constants_sha256, no_output_nudges, agent_summary, check4 or check4_walk is called, on the take road and the walk road. P0-claude: a claude-code take's reasons, events and three side readings equal the direct calls take_checker made before edit A, on both roads (the walk road with a take carrying no identity), a failed cross-check still adding readers-disagree. Two in-memory witnesses (drive.py's side readings moved before the dispatch; check_take.py's claude-code entry roads swapped) go red. T4 P3 (glitch-b5 round 12): the assertion that checker_for admits claude-code only moves by plan section 9's P3 line (\"checker_for admits them\"): CHECKER_ENTRIES holds claude-code, codex and gemini, the vendor harnesses mapping to the vendor entry and its side, and claude-code's entry and side are unchanged; P0-vendor still refuses every vendor take before any reading (the vendor side refuses until P5)."
+    },
+    {
+      "path": "tests/test_pin_for_vendor.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P0b (plan v4 section 9, R-4, ruled by glitch-b5 on Sat 17 Oct 2026): walk_builders.production_builders pin_for on the committed draft's first codex and gemini rows, and batch.expected_pin on a table with no block for the harness and on one without the model, raise batch.PinProfileMissing naming the harness, the model and that CP5 registers it, still a KeyError; the first claude-code row's pin is unchanged; batch.py compiled in memory with the bare lookup restored goes red."
+    },
+    {
+      "path": "tests/test_vendor_pins.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 17 B7 (R4 of the Codex2 sign-in road rulings; glitch-b5's B7 rulings of 18 Oct 2026, claimed by ruling B7-F2): the O and G pin profiles in routing.json, each mode a key of its adapter's MODE_FLAGS and each version its take lock's, the codex and gemini rate-limit entries with their static-read sources, codex's empty spend-cap list in EMPTY_SPEND_LIST_HARNESSES and never NO_MONEY_HARNESSES, gemini's 402 and payment required with its documentation source, the two RULED 18 Oct statuses quoting the ones they supersede, and pin_for and agent_versions on the committed draft; seven mutants, each red."
+    },
+    {
+      "path": "tests/test_codex_spend_texts.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 17, glitch-b5's ruling B7-F4 (18 Oct 2026): the error texts the pinned Codex CLI (rust-v0.162.1, commit 092d3acd) prints, each quoted with its file and line; every usage-limit and rate-limit text matches a codex rate-limit marker and no spend-cap marker, every credits-depleted, spend-cap and quota-exceeded text matches a codex spend-cap marker, codex's spend list is text only and codex is not in EMPTY_SPEND_LIST_HARNESSES; its two named mutants go red."
+    },
+    {
+      "path": "checks.d/vendor-admission.txt",
+      "status": "new",
+      "reason": "Lane vendor-admission: this lane's local checks (interface 2), one line per new test module."
+    },
+    {
+      "path": "COPIED.d/vendor-admission.json",
+      "status": "new",
+      "reason": "Lane vendor-admission (glitch-b5, 16 Oct 2026): this lane's copy record. Its edits to files other lanes own are recorded as departures in their owning fragments: run.py (w8a-walk-layout), walk_regrade.py and tests/test_walk_grade_seam.py (live-harness-foundation), batch.py (w7c-spend-wiring), harness_bookkeeping.py and tests/test_harness_bookkeeping.py (w2a-cp3-endstate), freeze.py (w8b-holdout-digests), check_take.py's T4 VENDOR READERS section and drive.py's edits A, B and C (w10-walk-runner), codex_adapter.py (w11a-codex-adapter), gemini_adapter.py (w11b-gemini-adapter) and, for the vendor-t3b follow-up, tests/test_walk_runner.py (w10-walk-runner)."
+    },
+    {
+      "path": "tests/test_vendor_constants.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P5 (lane-reports/vendor-T4-PLAN.md v4 sections 6 and 9, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"; glitch-b5 round 13, Sun 18 Oct 2026). check_take.VENDOR_CHECKER_CONSTANTS, vendor_view, the merged digest and the vendor side on synthetic codex and gemini takes written by tests/vendor_check_fixtures.py through test_vendor_body's Take: P5-block (one block per vendor, each value its code's), P5-view (the block merged into pre and its PENDING paths into pending; a non-Design, a claude-code design, an empty block, other keys, a key CHECKER_CONSTANTS holds and a design already viewed refuse; a PENDING vendor value refuses check4_vendor and has no digest), P5-digest (the merged digest, not the Claude-only one, recovered from a vendor view only), P5-side (the merged digest, 0 nudges, no Agent call and the CLI's nested CLI count; a plain view refuses naming the harness), P5-pre (the entries read only a vendor view), P5-road (checker_view, walk_builders' production design_for and walk_regrade.production_design build the vendor view; claude-code's design is handed back as it is), P5-drive (drive.take_checker records the vendor side and routes the take's PENDING refusals) and six in-memory check_take witnesses. Fakes only, inside test_box_integration's process guard with test_drive_loop's checker world; run by checks.d/vendor-admission.txt. P5-env: a vendor walk whose environment record names a ledger row routes environment-record, and a witness admitting it goes red."
+    },
+    {
+      "path": "tests/test_vendor_walk_road.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 P5 (lane-reports/vendor-T4-PLAN.md v4 sections 6 and 9, ruled READY by glitch-b5 on Sat 17 Oct 2026, on Javier's typed word \"vendor-t4: yes\"; glitch-b5 round 13, Sun 18 Oct 2026), the walk road of a vendor walk: P5-now (pending_walk.checker_standing judges a walk against the digest in force for its ledger's harness: a vendor walk under its merged digest counts, under the Claude-only digest reads stale; claude-code walks, bare folders, unreadable ledgers and other harnesses read checker_constants_sha256() as before), P5-counts (walk_regrade's nudge and Agent summary re-derivations read a vendor walk with the vendor side's readings, never Claude Code's), P5-check (regrade_problems hands each committed check.json's re-derivation its walk's harness, on a scratch repository) and three in-memory witnesses of pending_walk.py and walk_regrade.py. Fakes only, inside test_box_integration's process guard with test_drive_loop's checker world; run by checks.d/vendor-admission.txt. R-9 (review 10ac86f MAJOR 1; plan v4 section 6 (a)-(d)): on a committed pending codex walk (walk-g2, driven and committed by test_pending_codex_walk's road beside its acceptance walk walk-g1, with the host's turn envelopes the drive writes since T4 edit B, never a hand copy; glitch-b5 round 15 ruling 3), its reader registered and its regrade verified, coverage reads it pending with no checker reading, a vendor recheck through checker_for under the merged constants with a constant-bound reason does not count it and one with none does, walk_regrade's --check re-derives it and names one the checker no longer reads, and a recheck under the Claude-only digest reads stale; its three mutants and two pending-road rules each go red."
+    },
+    {
+      "path": "tests/test_vendor_envelopes.py",
+      "status": "new",
+      "reason": "Lane vendor-admission T4 edit B (glitch-b5 rounds 14 and 15, Sun 18 Oct 2026; review e-71a2b94 finding 1): drive.py's TakeDriver._take_records writes a vendor take's host turn envelopes (transcript.jsonl, vendor_record_binding's schema 1, one harness-turn per ledger turn row) and leaves the ledger's transcript None. EB-road (a codex and a gemini take through the walk driver on the fake boxes, with drive.take_checker: the file exists, the commit scan covers it as a transcript, bound_items reads it, each envelope carries its row's n and sent, its stream's basename and sha256 and the CLI's own session id, and take_checker reaches checker_for and the vendor entry with C3 adding nothing), EB-claude (a claude-code take through test_drive_loop's road, with a session file, without one and with an address masked by the drive's scan: driver-ledger.json, transcript.jsonl, the folder listing and the records TakeDriver.drive returns byte-identical under drive.py and under drive.py with edits B and C taken out), EC-mask (T4 edit C, glitch-b5 round 15 ruling 2, review e-71a2b94 finding 2 option (a): the synthetic account address in a codex and a gemini take's turn streams and native session, masked by the real drive scan and checked through take_checker with the vendor readers' own event counts: account-email 1, the take not held, every envelope's and ledger-named snapshot's sha256 that of the masked bytes) and in-memory drive.py witnesses, the review's masked-address mutant among them. Fakes only, inside test_box_integration's process guard; run by checks.d/vendor-admission.txt."
+    },
+    {
+      "path": "tests/test_config_folder.py",
+      "status": "new",
+      "reason": "Lane vendor-b11 round 3 (glitch-26's rulings R-C, R-CF, R-H2, R-H3, R-H4, R4 to R6 and R-OA, Mon 19 Oct 2026, on lane-reports/B11-DESIGN-NOTE.md): run_take.check_config_folder before every arm O and G turn, on a fake runtime that runs the real census and read programs in-process. Clean folders before turn 1 pass and anything more refuses; the honest Codex and Gemini turn-1 folders pass; killed-turn leftovers pass and other links refuse; placed files are byte-identical and the lease is checked by its facts only; every refused path refuses, R4 to R6 named; shape rules, the census cap, the wiring before exec_argv for O and G alone (arm A never calls it), the pinned sources and the embedded skills manifest, and the agent HOME's folder, mode and owner. Round 5 (ruling R5-1): C13 gives every guard of the check a test that fails without it (the device check, the codex lease-record binding, the harness and run-tree binding, the placed kind and link count, absent at its read). Its own --witnesses registry of in-memory run_take mutants, each red alone."
+    },
+    {
+      "path": "tests/test_vendor_workspace_guard.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 18 B10 (glitch-26's ruling B10, Sun 18 Oct 2026, from review REVIEW-vendor-r18-b9-9497bf9 MINOR 1, under Javier's standing delegation). box/settings_guard.py's vendor workspace paths, for every take as the .claude/ guard is: with folder trust off (ruling B9) the pinned Gemini CLI 0.64.0 reads .gemini/settings.json, .gemini/agents/, .gemini/skills/, .gemini/commands/ and .agents/skills/ from the take's working folder, the run tree's root, on every turn, and the pinned Codex rust-v0.162.1 reads .agents/skills/ and .codex/skills/ there whatever the project's trust; each, gained between turns in a real folder snapshotted by the sidecar's own snapshot_tree, is caught by snapshot_problems, and a run tree shipping it is refused by baseline; .gemini, .agents and .codex must be folders; R-6's GEMINI.md beside CLAUDE.md and gars/CLAUDE.md is not caught, nor are the paths no pinned CLI reads from there (Gemini's workspace policies, switched off; its extensions, read from the config home; system.md, behind a variable the box refuses; Codex's untrusted project config.toml, hooks and rules; a nested .gemini/, .agents/ or .codex/); athena's stub take 5 pre-1 snapshot passes and fails once it gains each path; settings_guard.WORKSPACE_SOURCES is the record of the static reads (file, line and sha256 or blob, in the Gemini files the bundle's entry imports and the Codex files at the pinned commit). Eleven in-memory mutants (each guarded path class dropped, each folder rule dropped, the baseline's and the snapshot's workspace check skipped) each go red alone. Real temporary folders only; no process, model, container or network. B10-F1 (glitch-26's ruling on review r18-b10 finding 1): run_take's in-container launcher, run in-process with os.execvpe faked from a working folder laid out as <tmp>/run-x, refuses .env and .gemini/.env planted in the run tree, its parent (the container's /tmp), its grandparent and HOME, and launches on a clean tree; HOME, GEMINI_CLI_HOME and CODEX_HOME are one folder; five mutants (the ancestor walk stopped, either name dropped, HOME dropped, GEMINI_CLI_HOME moved apart) each go red. WORKSPACE_SOURCES records the .env walk of both pinned CLIs and three more unguarded reads (.geminiignore, Codex plugin marketplaces, .codex/agents)."
+    },
+    {
+      "path": "tests/test_gemini_tool_registry.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 18 B12 (glitch-26, 18 Oct 2026, under Javier's standing delegation; practice walk w-g3 on 779097fc held on \"tool name with no entry in the parser's table: 'update_topic'\"). Arm G's tool table read from the pinned Gemini CLI 0.64.0's own registry: a synthetic update_topic call built from its schema passes check_record, GeminiParser and read_stream (R1); the table is exactly the registry's names, kinds, key maps and allowed keys (R2); every entry carries its source lines and the pinned files' sha256 (R3); D8's excluded web tools, the tools a headless run never offers, names absent from the package and keys off the schema still refuse (R4); --sources re-reads each cited line in the unpacked package on demand (R5); --witnesses turns R1, R2 or R4 red for every entry removed, re-kinded or missing a key, and every refused name added."
+    },
+    {
+      "path": "gemini_tool_sources.py",
+      "status": "new",
+      "reason": "Lane vendor-admission round 18 B12 (glitch-26, 18 Oct 2026, under Javier's standing delegation). Where each entry of transcript_gemini.GEMINI_TOOLS was read in the pinned Gemini CLI 0.64.0 (tarball sha256 891a794e...): for every tool, the bundle file and its sha256, the lines read with the text each holds, the package's own Kind and the view kind, and a sentence on what the tool does in the pinned code; the tools the package defines but never offers a headless arm G run are named with their lines. Read statically, never run or imported; kept apart from transcript_gemini.py so the reader's generated sweep mutates the table, not its documentation. Bound by tests/test_gemini_tool_registry.py (R3; --sources re-reads every cited line)."
+    },
+    {
+      "path": "tests/test_codex_usage_source.py",
+      "status": "new",
+      "reason": "Lane vendor-b14 round 1 B15 (glitch-26's ruling, Mon 19 Oct 2026; practice walk w-o3 held on \"turn.completed.usage carries key(s) with no entry: ['cache_write_input_tokens']\"). Arm O's turn.completed usage table read from the pinned Codex CLI's exec event struct (openai/codex rust-v0.162.1, commit 092d3acd, codex-rs/exec/src/exec_events.rs struct Usage, printed by serde_json::to_string in event_processor_with_jsonl_output.rs): five i64 fields, none skipped when unset, cache_write_input_tokens's serde(default) read only on deserializing. U1 a synthetic turn.completed built from the struct passes check_record, decode, CodexParser and read_stream; U2 transcript_codex.USAGE_KEYS is exactly the struct's fields in order and codex_usage_sources records each one's file, line and text, the files' sha256, the empty present-when-set set and the serializer lines; U3 a line missing any field, carrying an invented key (named in the refusal) or carrying a non-count value still refuses; U4 --sources re-reads every cited line on demand; --witnesses builds nine in-memory mutants of transcript_codex, codex_adapter and codex_usage_sources, each red alone. Synthetic strings only."
+    },
+    {
+      "path": "codex_usage_sources.py",
+      "status": "new",
+      "reason": "Lane vendor-b14 round 1 B15 (glitch-26's ruling, Mon 19 Oct 2026; practice walk w-o3). Where each key of transcript_codex.USAGE_KEYS was read in the pinned Codex CLI (openai/codex rust-v0.162.1, commit 092d3acd): for each of struct Usage's five fields, codex-rs/exec/src/exec_events.rs's line and its text; both files' sha256; WHEN_SET, the fields serialized only when set, empty (no skip_serializing_if in the struct; cache_write_input_tokens's serde(default) is read only when deserializing); and the struct heads and the serializer road in event_processor_with_jsonl_output.rs. Read statically, never imported by a reader; kept apart from transcript_codex.py so its generated sweep mutates the table, not its documentation. Bound by tests/test_codex_usage_source.py (U2; --sources re-reads every cited line)."
+    },
+    {
+      "path": "tests/test_gemini_undeclared_args.py",
+      "status": "new",
+      "reason": "Lane vendor-b16 round 2 (glitch-26's ruling R-B16-2, Mon 19 Oct 2026; practice walk w-g7 held with StreamError \"tool_use: tool 'grep_search': argument keys with no entry: ['file_path']\"). A model-invented argument key on a known Gemini tool is read as named, ignored input only where the pinned Gemini CLI 0.64.0 schema leaves its properties open and the invocation reads only declared keys (transcript_gemini.OPEN_INPUT, each entry cited in gemini_tool_sources.OPEN_INPUT). U1 the held walk's synthetic shape on grep_search and its alias search_file_content passes check_record, GeminiParser and gemini_adapter.read_stream, with the undeclared keys named on the item (undeclared_args) and kept by a re-bound copy; U2 an unknown tool, a declared key off its type, a known tool with no OPEN_INPUT entry, a key the run reads (wait_for_previous) and a closed schema still refuse; U3 every OPEN_INPUT entry is cited from the pinned package. --witnesses runs three in-memory mutants (citation removed, closed schema assumed, name dropped from the item), each red alone; --sources re-reads every cited line on demand. Synthetic strings only. Claimed by glitch-26 on Javier's word b16-claim (OrgOS OD66, Mon 19 Oct 2026)."
+    },
+    {
+      "path": "tests/test_batch_rolling.py",
+      "status": "new",
+      "reason": "Lane vendor-b19 (glitch-26's rulings B19-1 to B19-10, Mon 19 Oct 2026; design note lane-reports/B19-DESIGN-NOTE.md). batch.py's rolling window on stub drives built on agent_adapter.ScriptedAdapter and test_batch's scenarios (no model, no container, no drive.py): at most three drives at once, the next row started as soon as a drive ends, registration and commits serial and in row order, re-runs requeued first; with equal drive durations the rolling run reproduces the block run's registrations, launches, commits, window waits and check_results' window events and pause counts per half-cell (B19-6), with a check that the comparison can fail. Round 2: check_results' window span and the ruled pause counted as its own event; takes.py's live set, MAX_OPEN and clean-tree registration on test_pipeline's scratch repositories; the open takes never past MAX_OPEN while three drives run; and a run stopped with twelve takes open restarting owing exactly those takes, in row order (B19-9), with the old BLOCK span of restart_waits as a mutant. Claimed under ruling B19-10."
+    },
+    {
+      "path": "tests/test_vendor_bookkeeping.py",
+      "status": "new",
+      "reason": "Lane vendor-b21 (glitch-26's rulings B21-2 to B21-7, Tue 20 Oct 2026; design note lane-reports/vendor-b21-DESIGN.md). codex and gemini in harness_bookkeeping.TABLE: w-o45's operator step (TakeDriver._operator_step, the box road stubbed) on a codex and a gemini row reaches the box write (it raised UnknownHarness on 28b46165); Evidence.load of measured-shape vendor evidence on the production table; the excluded-path guard still refuses a write into .home; the claude-code entry pinned to 28b46165's repr; 13 mutants, each red alone (--witnesses). Synthetic fixtures only; no walk's record is read."
+    },
+    {
+      "path": "tests/test_codex_started_file_change.py",
+      "status": "new",
+      "reason": "Lane vendor-b22 (glitch-26's rulings B22-6 to B22-8, Tue 20 Oct 2026; design note lane-reports/vendor-b22-DESIGN.md; GPT walk w-o38 held on \"item.started carrying 'file_change': only ('command_execution', 'mcp_tool_call') are pre-registered there\"). A file_change in item.started, as the pinned Codex exec prints it (openai/codex 092d3acd, rust-v0.162.1): F1 a synthetic stream of w-o38's shape passes check_record, decode and read_stream; F2 a started file_change is admitted only with the table's keys and status exactly in_progress (completed, failed, a non-string, no status, an extra key, a delete change or no change refused; the completed record's status unpinned); F3 through a copy of PARSERS the started record maps to no view item, so the call numbers are those of the completed-only stream; F4 item.started carrying agent_message, reasoning, collab_tool_call, web_search, todo_list or error, item.updated and a completed collab_tool_call stay refused; three in-memory mutants of transcript_codex.py (the type removed, the status check removed, the started record mapped to a call), each red on its own check (--witnesses); --walks reads every committed GPT walk's turn streams under 19c7a88f's module and this tree's and compares them (counts only printed). Synthetic records only. Lane vendor-b23 (glitch-26's ruling Q1, option C, Tue 20 Oct 2026): F3 now binds the started record to its one edit call (its completion carries the result), the view of w-o38's shape still equal to the completed-only stream's, and the third mutant maps the started record to nothing again. Lane vendor-b23 round 4 (glitch-26's ruling B23-7): module_from restores the path list and the prior module object around each mutant's exec."
+    },
+    {
+      "path": "tests/test_codex_agents_off.py",
+      "status": "new",
+      "reason": "Lane vendor-b22 (glitch-26's ruling B22-10, Tue 20 Oct 2026; design note lane-reports/vendor-b22-DESIGN.md section 10): the GPT arm's delegation tools switched off, as Gemini's invoke_agent is (R-B14-2). K1 each arm O model's config.toml (take_config.files_for) holds [agents] with exactly enabled = false, between [features] and [otel], and without that table is byte-identical to 34f7340f's (sha256 pinned per model); K2 Gemini's files (each draft model) and Claude Code's are byte-identical to 34f7340f's (build_draft's sha256 over each model's file list, pinned); K3 take_config.VALUE_SOURCES['CODEX_AGENTS'] is the record of the pinned Codex reads (092d3acd: core/src/config/mod.rs 1607, 1629, 3897; config_toml.rs 481, 756; models.json 194, 541; features/src/lib.rs 1424; session/mod.rs 772; spec_plan.rs 721, 1376; session/multi_agents.rs 16, 80); three mutants (the key dropped, the key set true, the table written into Gemini's settings), each red on its own check (--witnesses). Synthetic inputs only."
+    },
+    {
+      "path": "tests/test_codex_patch_reads.py",
+      "status": "new",
+      "reason": "Lane vendor-b23 (glitch-26's rulings Q1 to Q6 and B23-2, Tue 20 Oct 2026; design note lane-reports/vendor-b23-DESIGN.md). A Codex patch edit read as a shell edit is: V1 a patch the take's cut left unfinished is an edit call with no result in the view; V2 w-o38's shape and a completed-only stream read as on a76b4dd2; V3 one parser over two streams starts its exec ids again at thread.started; V4 a completed file_change whose changes differ from its started record, and a second start, refuse; N1 codex_native.read_rollout projects a FileChange on its pinned shape (openai/codex 092d3acd); N2 a delete change, an auto_approved key, an off status, missing stdout, empty changes or an off change refuse; N3 read_exec and join match file changes by order, declined to failed; K1 check_take's rollout records read each FileChange with its path keys as values; K2 the T-8:file-change site hands in vendor_file_change_reads, the PENDING refusal byte for byte; K3 the reader, the row settled in a test, reads a joined take clean, holds a rename and refuses an unjoined patch; 14 in-memory mutants each red alone (--witnesses); --walks re-reads the committed GPT walks under a76b4dd2 and this tree; --unchanged compares the vendor fixtures' readings under both trees. Synthetic records only. Review b0c917ff m1 (glitch-26, Tue 20 Oct 2026): the join refusals are now join's own (the test no longer calls join_file_changes for them), and a 15th mutant, join-wiring-dropped, deletes join's call and is red on join-refusal. Lane vendor-b23 round 4 (glitch-26's ruling B23-7, athena battery gap4-t5-b23-a67b2b7): setUpModule records sys.path and tearDownModule puts it back, module_from restores the path list and the prior module object around each mutant's exec, and dump restores sys.path and sys.modules exactly, so check_take's evals/ entry no longer outlives the module in test_round4's one process."
+    },
+    {
+      "path": "box/od57_rule.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): OD57's one rule set, shared by the harness twin and (as a byte copy pinned by sha256, in a later aegis lane) the door: the ruling, Claude Code's reads (Read and Grep bound to the doc, the shell read), the read-shape schema and engine (grep_search's lines and display, with the tool's own context window), the shell read's provenance by grep's labels (T2 as revised), and the doc-write guard (T1). Standard library only, no process, no file. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): every path binding goes through the one run-tree check (_resolves_to_doc); a labelled grep refuses -r/-R and glob operands; T1 normalises the written path; the residuals are named in the docstring."
+    },
+    {
+      "path": "box/od57_shapes.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the Gemini and Codex read shapes, data only, moved from the adapters (which re-export them as READ_SHAPES), with Gemini's grep_search output and display shapes added and Codex's stream flag narrowed to -lc."
+    },
+    {
+      "path": "tests/test_od57_agreement.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus through the twin: every case's verdict line by line, the twin bound to the shared rule, each refusal witness red alone under one named guard's mutant, the -c flag as data, and the probe's second key. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): the round-3 witnesses' guards, a per-line verdict, the corpus under a real gitleaks (named failure without one), and the planted second key proved a real generic-api-key finding. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): the real gitleaks is found as test_walk_launch finds one (PATH, ~/.local/bin, the pinned path). R3-9 (glitch-26): where the account has no gitleaks the real-gitleaks test skips with test_round4.SKIP_ALLOWED's one reason, as test_walk_launch's real return scan does."
+    },
+    {
+      "path": "tests/fixtures/od57-agreement/corpus.py",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the corpus builder (synthetic records in the committed walks' shapes, the ruled line as a placeholder); --write and --check. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): eleven witnesses added, and the second key is a placeholder the runner fills. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): the synthetic line number lint_language bans moves up by one, each case's meaning and verdict kept."
+    },
+    {
+      "path": "tests/fixtures/od57-agreement/cases.json",
+      "status": "new",
+      "reason": "Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the agreement corpus (58 cases), built by corpus.py; the aegis door runs a pinned byte copy. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): 69 cases. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): rebuilt with that line number."
+    },
+    {
+      "path": "tests/test_b25_real_shapes.py",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Codex: world_state and thread_settings_applied admitted on their pinned shapes, carrying no fact, each off-shape or off-place variant refused; the join binding sent and requested model, a replaced prompt or model DISAGREE. Gemini: the resume $patch {orderIds, updates} and byte-identical <id>_response copies, every other patch shape and non-identical copy refused; the session context turn only on its pinned shape; init session_id bound; an empty final answer agreeing only when both sides are empty."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: the generator, run by hand, that cut the fixtures below from committed walks as structure only (every string not an id, tool name, status, model name or pinned enum replaced by synthetic text); no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/PROVENANCE.json",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: each fixture's source walk file and its sha256; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's first native snapshot, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's second native snapshot (the resume $patch {orderIds, updates} and its copies), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g21-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g21's turn-2 stream, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-g31-native-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-g31's third native snapshot (a second resume: orderIds listing each _response id twice), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b25-real-shapes/w-o46-codex-records.json",
+      "status": "new",
+      "reason": "Lane vendor-b25 (glitch-26's rulings 1 to 7, 21 Oct 2026, under Javier's standing delegation): the native readers on the real walk shapes the two reader reviews found. Fixture: w-o46's world_state and thread_settings_applied payloads, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b26_rewrites.py",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. The witnesses: each road admitted on the real shapes, each off-shape variant and mutant refused or DISAGREE by name, the scanner reading masked originals, the snapshot byte-prefix invariant, the tightening."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: the generator, run by hand, extending lane vendor-b25's cutter (the context block, the masking wrapper, a leading / or ?, the loop template kept around synthetic text); no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/PROVENANCE.json",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: each fixture's source walk file and its sha256; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-native-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's first native snapshot, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's second native snapshot (a masking re-record at turn 2's start), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-native-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's third native snapshot, structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-native-turn-4.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's fourth native snapshot (a second resume's repeats, the ignored-prompt resume, a masking re-record), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-native-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's second native snapshot (the loop-recovery feedback), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-native-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's third native snapshot (a mid-turn masking re-record), structure only; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g47-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g47's turn-2 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-2 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-3 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g14-turn-4.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g14's turn-4 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-turn-1.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-1 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-turn-2.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-2 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/fixtures/b26-rewrites/w-g32-turn-3.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b26 (glitch-26's rulings 1 to 8 on the B26 design, 21 Oct 2026, under Javier's standing delegation): the Gemini history-rewrite roads (the tool-output masking re-record, the ignored-prompt resume, the loop-recovery feedback) read with every fact from the original messages, and the $patch tightening. Fixture: w-g32's turn-3 stream, structure only, each response one synthetic delta; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b26_scanner.py",
+      "status": "new",
+      "reason": "Lane vendor-b26 fold (glitch-f1's ruling 1 on REVIEW-vendor-b26-04c4e77 MAJOR 1, 21 Oct 2026, under Javier's standing delegation): the reviewer's scanner witness folded in. check_take's copy of a re-recorded Gemini session reads every frozen original's toolCalls, every dead re-record update's results and every copy's tool-response turn, each pinned by the record's own location, so each one-line breakage of glitch-26's ruling 4 (the loader's live state read instead of the originals; the dead results skipped; the copies skipped) turns it red."
+    },
+    {
+      "path": "box/stub_model_server.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. The scripted stub model: standard library only, 127.0.0.1 inside the take container, the SDK's SSE framing, every unscripted or out-of-order request refused with HTTP 400 and the scenario held, the request log, the bodies and a state file; and the same script as the CLI's --fake-responses file for ruling 4's cross-check. Never a model, never a study take."
+    },
+    {
+      "path": "box/stub_model_scenarios/make_scenarios.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. The generator of the seven scenario scripts (A1, A2, A3, B1, B2, C1, C2) of the design's section 3, run by hand; a test binds every JSON file to its output."
+    },
+    {
+      "path": "box/stub_model_scenarios/A1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A1 as data (make_scenarios.py's output): a masking re-record, then a resume after it; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/A2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A2 as data (make_scenarios.py's output): F-B26-7's '/'-leading prompt inside a masking re-record, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/A3.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario A3 as data (make_scenarios.py's output): masking at a resume's first request, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/B1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario B1 as data (make_scenarios.py's output): true chat compression in a resumed process, then a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/B2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario B2 as data (make_scenarios.py's output): masking, a resume, compression, a resume (ruling 2's variant for road b); synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/C1.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario C1 as data (make_scenarios.py's output): a failed compression, a content-truncation re-record, a resume; synthetic text only."
+    },
+    {
+      "path": "box/stub_model_scenarios/C2.json",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. Scenario C2 as data (make_scenarios.py's output): a truncation re-record that truncates nothing; synthetic text only."
+    },
+    {
+      "path": "tests/test_stub_model_server.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The stub on fakes: the SSE framing under an independent responseLineRE check, the 400 and the held scenario, out-of-order refusals, the inflated count only where named, call_<n> ids, finish reasons, the fake-responses records, the scenario files bound to their generator and each reachable in order; a loopback server test."
+    },
+    {
+      "path": "box/stub_model_probe.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe for the three refused Gemini history-rewrite roads. A measurement road on athena's walk box, never a study take: the locked take-g image by id with --pull=never on a fresh --internal network with no proxy and no sidecar, the study's settings through take_config.write, the study argv through gemini_adapter.argv, exactly three environment changes from the arm G row (the stub's base URL on 127.0.0.1, a fixed dummy key, no HTTPS_PROXY), each native snapshot retained before the next process, teardown by recorded id, records labelled stub-model-probe in a stub-probe-* folder; a dry-run mode; run_take keeps refusing the base URL."
+    },
+    {
+      "path": "tests/test_stub_model_probe.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe on fakes: the three environment changes and every other difference refused, exec_argv's form, run_take still refusing the base URL, the internal network, --pull=never and the lock's image id, the order of snapshot and exec, a held stub stopping the scenario, the A1-fake cross-check, the ast bindings (no exec_argv, run_turn or read_login; no production import), the dry run; walk_launch's probe and fetch-probe entries and run_command byte-unchanged."
+    },
+    {
+      "path": "box/stub_model_reading.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe. The reader harness, Mac only: lane vendor-b26's readers, unchanged and loaded from a named study folder (a git archive of the reviewed B26 head), over each scenario of a fetched probe folder; one line per scenario with each snapshot's PASS or refusal reason, the history join, the design's prediction marked as predicted or DIFFERS, and the stub log's masked, truncated, snapshot and helper requests placed in their processes. It changes no reader and admits nothing."
+    },
+    {
+      "path": "tests/fixtures/b27-stub/cut_structure.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's ruling 3 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the b27 structure-only cutter for the probe's records, run by hand, extending lane vendor-b26's cutter (not edited): the content-truncation wrapper with its numbers and the <state_snapshot> wrapper kept around synthetic text, the CLI's acknowledgement kept verbatim; no model text, prompt, tool output or OD57 byte."
+    },
+    {
+      "path": "tests/test_b27_reading.py",
+      "status": "new",
+      "reason": "Lane vendor-b27 (glitch-f1's rulings 2 and 3 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the reader harness and the b27 cutter on synthetic probe folders (lane vendor-b26's committed w-g47 structure fixtures, and a snapshot recording a retired id again): verdicts beside predictions, a prediction not met marked, the stub log placed in its processes, the history join and its byte-prefix refusal; the cutter's two wrappers, the acknowledgement, no source text surviving, the prefix kept, the provenance."
+    },
+    {
+      "path": "tests/test_b28_resume_after_rerecord.py",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): road (a), the resume after a masking re-record, admitted on its exact observed shapes (A1, A2, A3 and B2's masking span, history joined, facts from the frozen originals, the re-entered context turns in the copies the scanner reads); the design's mutants and REVIEW-vendor-b28-DESIGN's additions each refused by its own name; B1, B2 and C1 still refused by their names, C2 unchanged; F-B26-9's window close on three real walks; the Codex sources as accepted; the fixtures' bytes and leak check."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/make_fixtures.py",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): the maker of the road (a) fixtures (ruling O5: raw probe records), run by hand: each scenario's last snapshot copied once, every earlier snapshot checked as a byte prefix and recorded by length and sha256, each against the probe folder's manifest."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/PROVENANCE.json",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): the fixtures' provenance: synthetic CLI output of the pinned gemini-cli 0.64.0 against lane vendor-b27's stub, the probe folder, both B27 heads (82da1830 produced it, 49c350a9 merged and produced the test-5 rerun), the fetch tar and manifest sha256, each snapshot's length and sha256, and the leak checks."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/A1-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario A1's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/A2-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario A2's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/A3-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario A3's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/B1-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario B1's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/B2-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario B2's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/C1-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario C1's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    },
+    {
+      "path": "tests/fixtures/b28-road-a/C2-native-last.jsonl",
+      "status": "new",
+      "reason": "Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5 and B27 DECISION O1-O8, 21 Oct 2026, under Javier's standing delegation): probe scenario C2's last native snapshot, raw (ruling O5): synthetic CLI output against lane vendor-b27's stub model, never a study take; earlier snapshots are its byte prefixes (PROVENANCE.json)."
+    }
+  ]
+}

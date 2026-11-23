@@ -1,0 +1,16 @@
+{
+  "head": "baa86b13fa98424abe0e904445c9436602f6d1d8",
+  "status": " M evals/gap-study-4/COPIED.d/w4b-cp2-runtake-preflight.json\n M evals/gap-study-4/COPIED.d/w6j-claude-adapter.json\n M evals/gap-study-4/COPIED.d/w7b-walk-wiring.json\n M evals/gap-study-4/box/run_take.py\n M evals/gap-study-4/tests/test_drive_loop.py\n M evals/gap-study-4/tests/test_env_allowlist.py\n M evals/gap-study-4/tests/test_run_take.py\n M evals/gap-study-4/tests/test_walk_wiring.py\n?? evals/gap-study-4/COPIED.d/w12a-env-allowlist.json\n?? evals/gap-study-4/checks.d/w12a-env-allowlist.txt\n",
+  "files": {
+    "evals/gap-study-4/COPIED.d/w4b-cp2-runtake-preflight.json": "653950a71836e1392dcda987f6f05f215c3a99c82dfeb84b4c58290d5937282d",
+    "evals/gap-study-4/COPIED.d/w6j-claude-adapter.json": "2916534feb8b0b129ed0b6fdecc2b374829e4e7c46f1bc787aa6cb4d5b558855",
+    "evals/gap-study-4/COPIED.d/w7b-walk-wiring.json": "8847dcd6049295d90d1d25192bce0b6d76e94e058c906f4c8d3a23b08e97bba3",
+    "evals/gap-study-4/box/run_take.py": "4e702225a83d9913dc2b04b99164c6159b3f923279f72da3b1a2a64100e57fb8",
+    "evals/gap-study-4/tests/test_drive_loop.py": "75392e87455e4e1b4b68f7bb83e27f6abd48c47659011d3cf708106b0a2b8357",
+    "evals/gap-study-4/tests/test_env_allowlist.py": "941c1edd0ccaec272e47416b50db6a6cfb84d41743c1890cdb5c0d10a99ba06e",
+    "evals/gap-study-4/tests/test_run_take.py": "ba8f701c5bb68c3301b5daf57b8a8a1d3a1aa3265d7de4c8b9a665d992f4e5af",
+    "evals/gap-study-4/tests/test_walk_wiring.py": "ca108170c9c4266a9ca7ca8d5d18047b6f778a1b95e12638df38de15b13350ed",
+    "evals/gap-study-4/COPIED.d/w12a-env-allowlist.json": "673747db8c26789987ff499d974544b047f5829aa548e39e3cabaafc305fdfe1",
+    "evals/gap-study-4/checks.d/w12a-env-allowlist.txt": "f92d6a36c7ecce9b111f96e5d5253d7d01195fa9f922548172f925984a2075a3"
+  }
+}

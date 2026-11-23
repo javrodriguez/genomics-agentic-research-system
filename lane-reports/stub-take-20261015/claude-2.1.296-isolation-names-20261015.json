@@ -1,0 +1,342 @@
+{
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "1663526a2c52258dbcc6306243d346c5eeeef635dc8a89b43312631d94705da0"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "-L",
+    "1663526a2c52258dbcc6306243d346c5eeeef635dc8a89b43312631d94705da0:/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "/tmp/tmp.CKpG9dyL6Y/claude.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "1663526a2c52258dbcc6306243d346c5eeeef635dc8a89b43312631d94705da0"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "1663526a2c52258dbcc6306243d346c5eeeef635dc8a89b43312631d94705da0"
+  }
+ ],
+ "half_window": 160,
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "needles": {
+  "\"--disallowedTools": {
+   "count": 7,
+   "sites": [
+    {
+     "offset": 208955752,
+     "sha256": "f01c9709c3b340ed8a49b5671b77bbfd9a34ed1d0cd95a3d66f2753b294779b7",
+     "text": "-pinned managed npm strictKnownMarketplaces entry names (host and path patterns and enabledPlugins ids do not vouch); managed and bundled skills keep theirs. \"+\"--disallowedTools, skill disallowed-tools, and other deny and ask rules from the command line or the current session still apply.\"),allowManagedMcpServersOnly:()=>M().optional()"
+    },
+    {
+     "offset": 209333547,
+     "sha256": "aebcc1c7dfe043a785acd0a9865c1d7a4229a224aae4c90a9a0c2cc2c9370660",
+     "text": "s\",\"--permission-prompt-tool\",\"--permission-prompts\",\"--json-schema\",\"--fallback-model\",\"--advisor\",\"--agents\",\"--name\",\"-n\",\"--allowedTools\",\"--allowed-tools\",\"--disallowedTools\",\"--disallowed-tools\",\"--tools\",\"--add-dir\",\"--mcp-config\",\"--betas\",\"--file\",\"--channels\",\"--dangerously-load-development-channels\",\"--plugin-dir\",\"--plugin-d"
+    },
+    {
+     "offset": 209334296,
+     "sha256": "dac6e03e20c0f463c01aa0a67ab2f7a304d4ecab1086aeb92e7510b199b5ade9",
+     "text": "ef\",\"--on-branch\",\"--correlation-id\",\"--forward-home-settings\",\"--project-config-root\",\"--attach-serve\",...[]]),ARr=new Set([\"--allowedTools\",\"--allowed-tools\",\"--disallowedTools\",\"--disallowed-tools\",\"--tools\",\"--add-dir\",\"--mcp-config\",\"--betas\",\"--file\",\"--channels\",\"--dangerously-load-development-channels\"]),a=new Set([\"-d\",\"--debug"
+    },
+    {
+     "offset": 215485166,
+     "sha256": "de4ac578062e3ad241e9576b2aa83551b231a1c9493ef0b1cd22ed243249ace0",
+     "text": "s\",\"--watch-artifact\",\"--watch-artifact-no-autoreact\",\"--permission-prompt-tool\",\"--permission-prompts\",\"--allowed-tools\",\"--allowedTools\",\"--disallowed-tools\",\"--disallowedTools\",\"--tools\",\"--session-id\",\"--debug-file\",\"-n\",\"--name\",\"--autocompact\",\"--betas\",\"--file\",\"--max-budget-usd\",\"--max-thinking-tokens\",\"--max-turns\",\"--task-budg"
+    },
+    {
+     "offset": 215485694,
+     "sha256": "bb0aef8b8c2b10ccc5c612ea62873321651c5748e580300a164b0abe01da52e8",
+     "text": ",HTt=new Set([...A0e,\"--resume-session-at\",\"--resume-drops-turn\",\"--project-config-root\"]),DTt=new Set([\"--allowed-tools\",\"--allowedTools\",\"--disallowed-tools\",\"--disallowedTools\",\"--tools\",\"--mcp-config\",\"--betas\",\"--add-dir\",\"--file\",\"--channels\"]),D=new Set([\"--plugin-dir\",\"--plugin-dir-no-mcp\",\"--plugin-url\"]),s3t=new Set([\"--danger"
+    },
+    {
+     "offset": 225726398,
+     "sha256": "82e9dd99fa0adc7a79238b4e029e9049dd034e08bc0848abf501cd5a13904334",
+     "text": ", refuses bypassPermissions, and lets only a person or the configured permission handler approve writes to settings, git and tool-configuration files.\").option(\"--disallowedTools, --disallowed-tools <tools...>\",'Comma or space-separated list of tool names to deny (e.g. \"Bash(git *) Edit\")').option(\"--mcp-config <configs...>\",\"Load MCP s"
+    },
+    {
+     "offset": 232340478,
+     "sha256": "94067172ae0ec8e0309f5d4454d7df8aede7c79ec2e6d30a259945fefde594e2",
+     "text": "mission-prompts\",G));if(Le)b.push(\"--continue\");if(ee)b.push(ok(\"--resume\",ee));if(J.length>0)b.push(ok(\"--allowedTools\",J.join(\",\")));if(_e.length>0)b.push(ok(\"--disallowedTools\",_e.join(\",\")));if(de!==void 0)if(Array.isArray(de))b.push(ok(\"--tools\",de.join(\",\")));else b.push(\"--tools=default\");if(ce&&Object.keys(ce).length>0)b.push(.."
+    }
+   ]
+  },
+  "\"ListAgents\"": {
+   "count": 3,
+   "sites": [
+    {
+     "offset": 207360375,
+     "sha256": "1c5882d4d1dda41d8cccbfb5d54f54d230e6422f9e0140348145210da421e31a",
+     "text": "egal-and-compliance...// Version: 2.1.296.import{je}from\"/$bunfs/root/chunk-r3z1chqx.js\";var c={Task:\"Agent\",KillShell:\"TaskStop\",KillBash:\"TaskStop\",ListPeers:\"ListAgents\",Brief:\"SendUserMessage\",ListMcpResources:\"ListMcpResourcesTool\",ReadMcpResource:\"ReadMcpResourceTool\",ReadMcpResourceDir:\"ReadMcpResourceDirTool\"};function Ul("
+    },
+    {
+     "offset": 215144386,
+     "sha256": "640033f0123e2edc28401f056c690dea6b181500ee08dfdd12065d19fe08ae11",
+     "text": "egal Agreements outlined here: https://code.claude.com/docs/en/legal-and-compliance...// Version: 2.1.296.import{Gn}from\"/$bunfs/root/chunk-jcpp67yk.js\";var xc=\"ListAgents\",Pcs=\"ListPeers\";function e(){return\"\"}var o=`Lists agents you can ${Gn} to \\u2014 in-process subagents you spawned, the teammates on your team, other local Cla"
+    },
+    {
+     "offset": 241605946,
+     "sha256": "f2e991b6c9f6439c552c0f2bdf94a80b5895c3252d7aba38fedcf4dfd96ccfb3",
+     "text": "r\",maxResultSizeChars:g,toAutoClassifierInput(){return\"list agents\"},async description(e,{tools:t}){return Moo({canSendMessages:fv(t)})},userFacingName(){return\"ListAgents\"},isEnabled(){return xi()},get inputSchema(){return d()},get outputSchema(){return S()},isConcurrencySafe(){return!0},isReadOnly(){return!0},async prompt({tools"
+    }
+   ]
+  },
+  "\"RemoteTrigger\"": {
+   "count": 1,
+   "sites": [
+    {
+     "offset": 215378254,
+     "sha256": "756fe41f6b687eea0dee44ac05d8d843c9f702a9beef08c030d894b620a38d34",
+     "text": "C. All rights reserved. Use is subject to the Legal Agreements outlined here: https://code.claude.com/docs/en/legal-and-compliance...// Version: 2.1.296.var N$=\"RemoteTrigger\",Mcs=\"Manage scheduled remote Claude Code agents (routines) via the claude.ai CCR API, and inspect their recent runs and run logs. Auth is handled in-process \\u"
+    }
+   ]
+  },
+  "\"SendMessage\"": {
+   "count": 3,
+   "sites": [
+    {
+     "offset": 209532547,
+     "sha256": "7321f3b038de9fc74aa7f5834ac6f13749f2ad8a003f6084895b9404c58b5b32",
+     "text": "Legal Agreements outlined here: https://code.claude.com/docs/en/legal-and-compliance...// Version: 2.1.296.import{L}from\"/$bunfs/root/chunk-6q0v3ahc.js\";var Gn=\"SendMessage\",ftn=\"ccd_session_mgmt\",bdt=200,sTr=[\"type\",\"recipient\",\"recipient_kind\",\"content\",\"request_id\",\"approve\"];function iwo(e){return\"to\"in e&&((\"message\"in e)||(\"n"
+    },
+    {
+     "offset": 221432513,
+     "sha256": "f5d0c5b8dba5a0a73b3ba018afa0058373a94d3d3c2c477431ed88ce8629f310",
+     "text": "\"SectionGetFlags\",\"SectionGetInstTypes\",\"SectionGetSize\",\"SectionGetText\",\"SectionIn\",\"SectionSetFlags\",\"SectionSetInstTypes\",\"SectionSetSize\",\"SectionSetText\",\"SendMessage\",\"SetAutoClose\",\"SetBrandingImage\",\"SetCompress\",\"SetCompressor\",\"SetCompressorDictSize\",\"SetCtlColors\",\"SetCurInstType\",\"SetDatablockOptimize\",\"SetDateSave\",\"S"
+    },
+    {
+     "offset": 241821072,
+     "sha256": "f757e38e0afb1dad5f2a6ab1014364d464bc1539e36dddea929a764b390e1f0b",
+     "text": "return\"agent\";return\"name\"}var $s=Kt({name:Gn,searchHint:\"send messages to agent teammates\",backgrounding:\"never\",maxResultSizeChars:1e5,userFacingName(){return\"SendMessage\"},get inputSchema(){return ke()},coerceInput:(s)=>ZMn(s,{applySplit:Ge()}),shouldDefer:!0,isReadOnly(s){return typeof s.message===\"string\"},backfillObservableIn"
+    }
+   ]
+  },
+  "crossSessionInbound": {
+   "count": 56,
+   "sites": [
+    {
+     "offset": 93735582,
+     "sha256": "8ea241c02e116fd14ac43de8c298ae8ef9d6b43f17d7bfbe94be461b5b922719",
+     "text": "sion's, so it wasn't delivered automatically..\\....;..The sender did not attest its permission mode, and this session bypasses permission prompts.-....gd.Your \"crossSessionInbound\" setting is \"hold\"....I.....>.Your organization's managed settings set \"crossSessionInbound\" to \"hold\"....u....[..This repository's settings set \"crossSessionI"
+    },
+    {
+     "offset": 93735674,
+     "sha256": "22d9ba2394288d005e75e936fd7b3f6ae71e50cd44140c7ea891d8a7f06c6046",
+     "text": "on mode, and this session bypasses permission prompts.-....gd.Your \"crossSessionInbound\" setting is \"hold\"....I.....>.Your organization's managed settings set \"crossSessionInbound\" to \"hold\"....u....[..This repository's settings set \"crossSessionInbound\" to \"hold\" (your own \"accept\" cannot override a repo tightening).........k..A setting"
+    },
+    {
+     "offset": 93735748,
+     "sha256": "faa2cf4273c07a7e8422f0055ec224569566638b49080434bf56a6f95527e1bb",
+     "text": "essionInbound\" setting is \"hold\"....I.....>.Your organization's managed settings set \"crossSessionInbound\" to \"hold\"....u....[..This repository's settings set \"crossSessionInbound\" to \"hold\" (your own \"accept\" cannot override a repo tightening).........k..A settings file has an unrecognized \"crossSessionInbound\" value (see the settings w"
+    },
+    {
+     "offset": 93735881,
+     "sha256": "758944e0ec16af1aead02b5b48ca73c1400636ea8d799334071b67e8553ce3c1",
+     "text": "repository's settings set \"crossSessionInbound\" to \"hold\" (your own \"accept\" cannot override a repo tightening).........k..A settings file has an unrecognized \"crossSessionInbound\" value (see the settings warning), so messages are held while it is present........\"M..This session is not prompting for permissions...7.......This session's p"
+    },
+    {
+     "offset": 93823024,
+     "sha256": "0466ec09835fe504db5781c879a27f1e021ceea24a4b4f348f0f165314e088c3",
+     "text": "s will now appear as split panes....C....2..Cannot destructure property 'selected' from null or undefined value.......g.permissions are prompting again.....t9H.crossSessionInbound now accepts.....V...you approved it.....n...mode-changed........policy-accepts..........userMessageBackgroundHover..........param.......R...fullOutput........."
+    },
+    {
+     "offset": 93842362,
+     "sha256": "0002f0e933e6d046f87a09a8bb0c809c84bd6f26f417004919fe25e6929e27b9",
+     "text": "ipAttachments.........inputTokens......P'.promptCacheWriteTokens......X.P.promptCacheWrite1hTokens%....R..It is being reviewed before delivery....Z...%...Your \"crossSessionInbound\" setting is \"hold\"; set it to \"accept\" to deliver held messages.......Bhy.Your organization's managed settings set \"crossSessionInbound\" to \"hold\" (your own \"a"
+    },
+    {
+     "offset": 93842498,
+     "sha256": "6d8ca7bce8ea44aaa8000390d822a5f380dfeb499dc898134565c296d6b92641",
+     "text": "livery....Z...%...Your \"crossSessionInbound\" setting is \"hold\"; set it to \"accept\" to deliver held messages.......Bhy.Your organization's managed settings set \"crossSessionInbound\" to \"hold\" (your own \"accept\" cannot override managed policy); ask your admin to change it.........H .This repository's settings set \"crossSessionInbound\" to \""
+    },
+    {
+     "offset": 93842652,
+     "sha256": "dc10f6645436b7a96ed3672383cf5538de700ad951ce90165586590f6e146c1d",
+     "text": " set \"crossSessionInbound\" to \"hold\" (your own \"accept\" cannot override managed policy); ask your admin to change it.........H .This repository's settings set \"crossSessionInbound\" to \"hold\" (a repo may only tighten, so your own \"accept\" cannot override it); remove the repo setting or exclude it with --setting-sources.........A. .s.e.t.t"
+    },
+    {
+     "offset": 93843363,
+     "sha256": "a763073707c3f7f4f8cbe1f8393c6343ab8cad46550c1f23a3c3d7e0077691bd",
+     "text": " be delivered once the session finishes starting up..........The sending session's permission mode class doesn't match this session's. Review it below, or set \"crossSessionInbound\" to \"accept\".......\\.The sender did not attest its permission mode and this session bypasses prompts. Review it below, or set \"crossSessionInbound\" to \"accept\""
+    },
+    {
+     "offset": 93843510,
+     "sha256": "ec1e09f48d7840407ca1db5a23e92d43c96399d44beb0af49d2ef494ded82f11",
+     "text": "low, or set \"crossSessionInbound\" to \"accept\".......\\.The sender did not attest its permission mode and this session bypasses prompts. Review it below, or set \"crossSessionInbound\" to \"accept\"..?... ...Cannot destructure property 'step' from null or undefined value.@.......Cannot destructure property 'usage' from null or undefined value."
+    },
+    {
+     "offset": 94649076,
+     "sha256": "9efef8e31441cef89b850e48848480a41c0bab8e902d7043b04e231d2fa904d7",
+     "text": "abled........g..autoConnectIde........r.autoInstallIdeExtension.....V...diffTool.....U..remoteControl.........`.remoteHomeSettings........u.dialogExpiry....x...crossSessionInbound.......Z.showExternalIncludesDialog..........apiKey........T.precomputeCompactionEnabled......h..timestamps..........teammateMode......k.snipEnabled.....4...sni"
+    },
+    {
+     "offset": 96193704,
+     "sha256": "722c1b3e93bf241535652432c4cce4f7508a34f5b350e403b739ed52e064c018",
+     "text": "cb..subkind...... 7.peer-send-message...B...AK^.Cannot destructure property 'inbound' from null or undefined value......4.-.tengu_harbor_kite_mode_emit.....k...crossSessionInbound=refuse: D.....|.Cannot destructure property 'holdCause' from null or undefined valueX....z..[.c.r.o.s.s.-.s.e.s.s.i.o.n.-.i.n.b.o.u.n.d.]. .s.h.u.t.d.o.w.n.:. "
+    },
+    {
+     "offset": 102021652,
+     "sha256": "e8d4e011a3ff29ce2fab39cf9574d1ba908b4be3075d30e3a9483be8c9e035da",
+     "text": "e parity holds (the sender runs in a different permission class, or asserted none while this session bypasses permissions); the *-setting causes are a standing crossSessionInbound:'hold'......Bv,.s.t.a.t.e. .'.d.r.o.p.p.e.d.'. .o.n.l.y.:. .'.e.x.p.i.r.e.d.'. ..  .n.o. .o.n.e. .a.p.p.r.o.v.e.d. .i.t. .b.e.f.o.r.e. .t.h.e. .a.p.p.r.o.v.a.l"
+    },
+    {
+     "offset": 102511493,
+     "sha256": "13124901f4f174d2bb348d1054403a5a99840bf20f7c37063082e2c525a3e5ca",
+     "text": "e was ignored; while it is present, cross-session messages are held for your approval instead of being delivered. Set it to one of the values above.........i..\"crossSessionInbound\" ..8.......\" in availableModels allows only a model named exactly \"....?... To allow a version, write it with a hyphen: \"..=....K=. To allow a version, write i"
+    },
+    {
+     "offset": 103376654,
+     "sha256": "b47851569001f11c64146c7735597100e48d455fc262684c96c377a2daf1ec6e",
+     "text": "olicy......@..Cross-Origin-Opener-Policy......8.e.circuitBreakers.....D.Z.googleAuths.........[\\p{Cc}\\p{Cf}]+.....{...cap_cents........bu.spent_cents.....!.~.  crossSessionInbound: ......... ..  .f.i.x. .t.h.e. .v.a.l.u.e.!.....6.  strictPluginOnlyCustomization: ...........  allowedProviders: y...e... . .m.c.p.S.e.r.v.e.r.s.:. .n.o.t. .a"
+    },
+    {
+     "offset": 104596813,
+     "sha256": "72512d9760144c68f9a9d4c02cebee21100d771f45fba5aff096d047340d5c79",
+     "text": "; carry on.........S.u.b.s.c.r.i.b.e.d. ..  .\".....d@>.\" will send one notice when it is next idle (or exits), but this session holds ALL inbound peer traffic (crossSessionInbound: hold), so it will only be logged here, not delivered to you. Carry on; do not poll............\" will send one notice when it is next idle (or exits); this ses"
+    },
+    {
+     "offset": 104597029,
+     "sha256": "10fed8ffb30ea18615ecaed0f4a8078a222aedc0fc48ff1d2558e7ead42899bd",
+     "text": "re, not delivered to you. Carry on; do not poll............\" will send one notice when it is next idle (or exits); this session holds ALL inbound peer traffic (crossSessionInbound: hold), so it will be shown to your user in the transcript, not delivered to you. Carry on; do not poll....[.......that session runs in the same permission cla"
+    },
+    {
+     "offset": 208199282,
+     "sha256": "c12b38276b581843727bf590ec6de1def77500a158886527ffce4b4d375b9db0",
+     "text": "e user's sessions, verified by the server-stamped receiver co-membership \\u2014 task-notification for prompt authority, but distinguishable so the receive-side crossSessionInbound setting can apply to it). The harness frames a scheduled-trigger delivery as the session's assigned task instead of the generic background-notification frame. "
+    },
+    {
+     "offset": 208329372,
+     "sha256": "157c9a60bc1736a240bb33a0bacd2d7f8b787c261a313e2334768da57929b047",
+     "text": "e parity holds (the sender runs in a different permission class, or asserted none while this session bypasses permissions); the *-setting causes are a standing crossSessionInbound:'hold'.\"),outcome:U([\"expired\",\"refused\",\"dropped\",\"discarded\"]).optional().describe(\"state 'dropped' only: 'expired' \\u2014 no one approved it before the appr"
+    },
+    {
+     "offset": 208751925,
+     "sha256": "1e0b2d054071b6b15fa9065450aa3f62c524b3d2cc376cc3c833859c65380666",
+     "text": "ontinueAtUsageLimit\"],restrictive:!1},{path:[\"disablePluginDirectory\"],restrictive:!0,normalize:Gdt},{path:[\"attribution\",\"sessionUrl\"],restrictive:!1},{path:[\"crossSessionInbound\"],restrictive:[\"refuse\",\"hold\"]},{path:[\"remoteControl\",\"shareHostProfile\"],restrictive:[\"off\",\"basic\"]},{path:[\"modelProposedGoals\"],restrictive:[\"disabled\",\""
+    },
+    {
+     "offset": 208995326,
+     "sha256": "08ac5d3e151acde62fd0d66be31cd5ea7bd2e0c104365cf60b17921b4f6ef060",
+     "text": "t\",\"ask\"]).optional().describe(\"When no background service is running: 'transient' spawns one for this login session; 'ask' offers to install it persistently\"),crossSessionInbound:()=>U(sHt).optional().catch(void 0).describe(\"Inbound cross-session peer messages (SendMessage from your other sessions): 'accept' delivers them, 'hold' parks "
+    },
+    {
+     "offset": 209089965,
+     "sha256": "88b66d090e139a672edcdac8c08ec0191eaa67fac983aec67044ad99e27a1603",
+     "text": "0){let k={...n};for(let x of b)delete k[x];i=k}}let d=$y().safeParse(i),c=d.success?[]:vt(d.error,\"settings\"),g=oko(n);if(g!==void 0)c.push({path:LAr,message:`\"crossSessionInbound\" ${g}.`});let m=NAr(n);if(m!==void 0)c.push({path:\"strictPluginOnlyCustomization\",message:`\"strictPluginOnlyCustomization\" ${m}.`});let f=$Ar(n);if(f!==void 0)"
+    },
+    {
+     "offset": 209103172,
+     "sha256": "91cfadea8e0238a458aeb69af92f5b07cb5d69185aa97ae25aaf32f097370b21",
+     "text": "ker row ${e.path.length>0?`\"${e.path.join(\".\")}\" `:\"\"}${e.message}`.trim()}function d_(e,n,s){if(!e||typeof e!==\"object\"||Array.isArray(e))return[];let r=e,i=r.crossSessionInbound;if(i===void 0||Id(i))return[];if(s?.policySource)r.crossSessionInbound=\"refuse\";else delete r.crossSessionInbound;return[u_(i,n,s?.policySource===!0)]}function"
+    },
+    {
+     "offset": 209103243,
+     "sha256": "7575f2182ee41e106865329594bbbf9a52387a5c800afff09f4ee2e7b39313c4",
+     "text": "m()}function d_(e,n,s){if(!e||typeof e!==\"object\"||Array.isArray(e))return[];let r=e,i=r.crossSessionInbound;if(i===void 0||Id(i))return[];if(s?.policySource)r.crossSessionInbound=\"refuse\";else delete r.crossSessionInbound;return[u_(i,n,s?.policySource===!0)]}function Id(e){return typeof e===\"string\"&&sHt.includes(e)}var LAr=\"crossSessio"
+    },
+    {
+     "offset": 209103286,
+     "sha256": "888c2afa67fdb47a0ba11bd4479c95a5a8dc4376b15629d7bce415ced524bcf3",
+     "text": "bject\"||Array.isArray(e))return[];let r=e,i=r.crossSessionInbound;if(i===void 0||Id(i))return[];if(s?.policySource)r.crossSessionInbound=\"refuse\";else delete r.crossSessionInbound;return[u_(i,n,s?.policySource===!0)]}function Id(e){return typeof e===\"string\"&&sHt.includes(e)}var LAr=\"crossSessionInbound\";function oko(e){if(!L(e))return;l"
+    },
+    {
+     "offset": 209103411,
+     "sha256": "f54a63e3090c40d8f1661c366f17a272e62070010b529c8de02c66879d32723c",
+     "text": "sionInbound=\"refuse\";else delete r.crossSessionInbound;return[u_(i,n,s?.policySource===!0)]}function Id(e){return typeof e===\"string\"&&sHt.includes(e)}var LAr=\"crossSessionInbound\";function oko(e){if(!L(e))return;let n=e.crossSessionInbound;if(n===void 0||Id(n))return;return Ld(n)}function NAr(e){if(!L(e))return;let n=e.strictPluginOnlyC"
+    },
+    {
+     "offset": 209103472,
+     "sha256": "0c99767fc5ea4c98840e0b1d75b3dcb3f7a93b826dd28e0738b9aee292901cf7",
+     "text": "[u_(i,n,s?.policySource===!0)]}function Id(e){return typeof e===\"string\"&&sHt.includes(e)}var LAr=\"crossSessionInbound\";function oko(e){if(!L(e))return;let n=e.crossSessionInbound;if(n===void 0||Id(n))return;return Ld(n)}function NAr(e){if(!L(e))return;let n=e.strictPluginOnlyCustomization;if(n===void 0||n===null||typeof n===\"boolean\"||A"
+    },
+    {
+     "offset": 209104946,
+     "sha256": "99467bcb0e112172e9ace15951856f5019b40bbc767c45c255ef438402edd610",
+     "text": " is present, cross-session messages are held for your approval instead of being delivered. Set it to one of the values above.\";return{file:n,path:LAr,message:`\"crossSessionInbound\" ${Ld(e)}. ${i}`,severity:\"warning\",expected:r,...s&&{statusOnly:!0}}}var FAr=\"remoteControl.shareHostProfile\";function p_(e,n,s){if(!L(e)||e.remoteControl===v"
+    },
+    {
+     "offset": 229151990,
+     "sha256": "c226fc8ed8ad8194aabb1b5432b43518326db2d52919ca2238cd2224932d57d7",
+     "text": "er\",\"60s\",\"5m\",\"10m\"],He=[\"default\",\"60s\",\"5m\",\"10m\",\"never\"],Ge=[\"default\",...sHt];function pQn(){return{...!1,askUserQuestionTimeout:Udt(),dialogExpiry:Btn(),crossSessionInbound:$e(\"crossSessionInbound\")?.value,modelProposedGoals:Bdt(),enableArtifact:mxt().enabled}}function $e(n){return Bue(n).find((s)=>cn(s.source))}function we(n){let"
+    },
+    {
+     "offset": 229152014,
+     "sha256": "7cc1c4f7e60158b4295bfaff9f80462d3f1280152e0c3f0de47fc1af4f2f1244",
+     "text": "=[\"default\",\"60s\",\"5m\",\"10m\",\"never\"],Ge=[\"default\",...sHt];function pQn(){return{...!1,askUserQuestionTimeout:Udt(),dialogExpiry:Btn(),crossSessionInbound:$e(\"crossSessionInbound\")?.value,modelProposedGoals:Bdt(),enableArtifact:mxt().enabled}}function $e(n){return Bue(n).find((s)=>cn(s.source))}function we(n){let s=$e(n)?.source;return "
+    },
+    {
+     "offset": 229177826,
+     "sha256": "6f04b3e840eb444c0872e6ba65dc5e4eb98d6bf1d47b3cd160c188da6295467a",
+     "text": "ry:u});if(E?.error)return T((R)=>({...R,dialogExpiry:h})),{error:E.error};i(\"tengu_dialog_expiry_changed\",{value:d(o),source:b(\"config_panel\")})}}],...oe&&!we(\"crossSessionInbound\")?[{id:\"crossSessionInbound\",label:\"Messages from your other sessions\",consentGated:!0,pickToCommit:!0,value:r.crossSessionInbound??\"default\",options:[...Ge],t"
+    },
+    {
+     "offset": 229177854,
+     "sha256": "8f5c3eddd22065f729d9328981eaf04c52e55091f44d5663782dff40e1c0c062",
+     "text": "(R)=>({...R,dialogExpiry:h})),{error:E.error};i(\"tengu_dialog_expiry_changed\",{value:d(o),source:b(\"config_panel\")})}}],...oe&&!we(\"crossSessionInbound\")?[{id:\"crossSessionInbound\",label:\"Messages from your other sessions\",consentGated:!0,pickToCommit:!0,value:r.crossSessionInbound??\"default\",options:[...Ge],type:\"enum\",async onChange(e)"
+    },
+    {
+     "offset": 229177957,
+     "sha256": "72326ccbacd4384cd7d91cafeff03877a5f54dc3526e5eba4596a81fc9181cae",
+     "text": "fig_panel\")})}}],...oe&&!we(\"crossSessionInbound\")?[{id:\"crossSessionInbound\",label:\"Messages from your other sessions\",consentGated:!0,pickToCommit:!0,value:r.crossSessionInbound??\"default\",options:[...Ge],type:\"enum\",async onChange(e){let o=Ge.find((R)=>R===e);if(!o)return;let u=o===\"default\"?void 0:o,h=r.crossSessionInbound;T((R)=>({."
+    },
+    {
+     "offset": 229178106,
+     "sha256": "c95843da022104decc3703b643ea373a66b569a0ce8262a31753ff2ad3e60048",
+     "text": "!0,value:r.crossSessionInbound??\"default\",options:[...Ge],type:\"enum\",async onChange(e){let o=Ge.find((R)=>R===e);if(!o)return;let u=o===\"default\"?void 0:o,h=r.crossSessionInbound;T((R)=>({...R,crossSessionInbound:u}));let E=await P({crossSessionInbound:u});if(E?.error)return T((R)=>({...R,crossSessionInbound:h})),{error:E.error};i(\"teng"
+    },
+    {
+     "offset": 229178140,
+     "sha256": "3656bb5d4247d452eb1021e9b30e06b129b50baf080d89a1f8d89e69efb12154",
+     "text": "efault\",options:[...Ge],type:\"enum\",async onChange(e){let o=Ge.find((R)=>R===e);if(!o)return;let u=o===\"default\"?void 0:o,h=r.crossSessionInbound;T((R)=>({...R,crossSessionInbound:u}));let E=await P({crossSessionInbound:u});if(E?.error)return T((R)=>({...R,crossSessionInbound:h})),{error:E.error};i(\"tengu_cross_session_inbound_changed\",{"
+    },
+    {
+     "offset": 229178180,
+     "sha256": "81aa0d84967d57cbf89d8f2a9247a04e92d694fefa816915bfd94d9a55ab2492",
+     "text": "c onChange(e){let o=Ge.find((R)=>R===e);if(!o)return;let u=o===\"default\"?void 0:o,h=r.crossSessionInbound;T((R)=>({...R,crossSessionInbound:u}));let E=await P({crossSessionInbound:u});if(E?.error)return T((R)=>({...R,crossSessionInbound:h})),{error:E.error};i(\"tengu_cross_session_inbound_changed\",{value:d(o),source:b(\"config_panel\")})}}]"
+    },
+    {
+     "offset": 229178237,
+     "sha256": "fe5a822f5eaf9ee14f79c00f2abfc60c4bc441855cbb4f573fadb2c7e5515901",
+     "text": "u=o===\"default\"?void 0:o,h=r.crossSessionInbound;T((R)=>({...R,crossSessionInbound:u}));let E=await P({crossSessionInbound:u});if(E?.error)return T((R)=>({...R,crossSessionInbound:h})),{error:E.error};i(\"tengu_cross_session_inbound_changed\",{value:d(o),source:b(\"config_panel\")})}}]:[],...[],...(rR(),[]),...[],...eo?[{id:\"showExternalIncl"
+    },
+    {
+     "offset": 232957997,
+     "sha256": "07640d8b73403dcff6512e123ae8f71579906f58f6ab9e1fe25fa2101e7942e3",
+     "text": "ldReleased=e}function KJe(){return I().value}function I(){let e,n;for(let o of[\"policySettings\",\"flagSettings\",\"userSettings\"]){if(!cn(o))continue;let s=fe(o)?.crossSessionInbound;if(s!==void 0){e=s,n=o;break}}for(let o of[\"localSettings\",\"projectSettings\"]){if(!cn(o))continue;let s=fe(o)?.crossSessionInbound;if(s===void 0)continue;if(p["
+    },
+    {
+     "offset": 232958128,
+     "sha256": "5e87e8438c0385a6ce79ee259cdee38c54abb2109ab0d167e6f1641e951260cc",
+     "text": "!cn(o))continue;let s=fe(o)?.crossSessionInbound;if(s!==void 0){e=s,n=o;break}}for(let o of[\"localSettings\",\"projectSettings\"]){if(!cn(o))continue;let s=fe(o)?.crossSessionInbound;if(s===void 0)continue;if(p[s]>p[e??\"accept\"])e=s,n=\"repoSettings\";else if(s!==\"accept\"&&e!==void 0&&p[s]===p[e]&&n!==\"policySettings\")n=\"repoSettings\"}if(p[e?"
+    },
+    {
+     "offset": 232960897,
+     "sha256": "fb54833590f1ec6ba128352c3a4ca44ea26488b82c4e7dcb85f8bc1228b7b075",
+     "text": "ound;switch(lht(),n.policy){case\"accept\":return A(\"policy-accepts\"),g(\"peer_inbound_gate\"),\"accept\";case\"refuse\":return nOe(n.refuseCause===\"kill-switch\"?m(e):`crossSessionInbound=refuse: ${m(e)}`,n.refuseCause),o.sendPeerReceipt?.(e,\"refused\"),\"refused\";case\"hold\":{let{holdCause:s}=n;if(o.shuttingDown)return t(`[cross-session-inbound] s"
+    }
+   ]
+  }
+ },
+ "probe": "claude-string-context"
+}

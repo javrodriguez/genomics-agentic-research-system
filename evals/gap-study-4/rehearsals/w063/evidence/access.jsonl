@@ -1,0 +1,6 @@
+{"at":1792124793.014033,"path":"gars/projects/run-498936bc/00_data/rnaseq_bulk/samples.csv","op":"open"}
+{"at":1792124793.0187716,"path":"gars/projects/run-498936bc/00_data/rnaseq_bulk/files.csv","op":"open"}
+{"at":1792124793.0221322,"path":"gars/projects/run-498936bc/01_samplesheets/rnaseq_bulk_samplesheet.csv","op":"modify"}
+{"at":1792124793.023127,"path":"gars/projects/run-498936bc/01_samplesheets/rnaseq_bulk_design.csv","op":"modify"}
+{"at":1792124793.024082,"path":"gars/projects/run-498936bc/01_samplesheets/rnaseq_bulk_samplesheet.csv","op":"open"}
+{"at":1792124793.02509,"path":"gars/projects/run-498936bc/01_samplesheets/rnaseq_bulk_design.csv","op":"open"}

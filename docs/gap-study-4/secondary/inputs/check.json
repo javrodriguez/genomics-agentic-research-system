@@ -1,0 +1,12 @@
+{
+ "compared": 907,
+ "differ": [],
+ "frozen_parser": "ClaudeCodeSessionParser",
+ "identical": 907,
+ "pass": true,
+ "reader_sha256": "fbf7ac6d2356722dc5cec7f9c59a70ace965711db907727be149751203cceb6d",
+ "secondary_module_sha256": "091368e2cc776b39053e7720700100e2cfbb1e7e15235bde1e09122380c575ed",
+ "secondary_parser": "SecondaryClaudeCodeParser",
+ "takes_graded": 910,
+ "takes_not_in_both": []
+}

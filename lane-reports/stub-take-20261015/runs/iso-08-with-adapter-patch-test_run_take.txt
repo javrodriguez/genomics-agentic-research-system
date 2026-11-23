@@ -1,0 +1,764 @@
+test_cross_arm_refused (__main__.TestArmVariables.test_cross_arm_refused) ... ok
+test_own_environ_always_checked (__main__.TestArmVariables.test_own_environ_always_checked) ... ok
+test_refused_sets (__main__.TestArmVariables.test_refused_sets) ... ok
+test_requested_refused (__main__.TestArmVariables.test_requested_refused) ... ok
+test_unknown_harness_refused (__main__.TestArmVariables.test_unknown_harness_refused) ... ok
+test_allowlists (__main__.TestAuditAllowlists.test_allowlists) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3220: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  src = read(rel) if read else open(path, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3220: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/take_config.py' mode='r' encoding='utf-8'>
+  src = read(rel) if read else open(path, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3220: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  src = read(rel) if read else open(path, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3251: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3251: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/take_config.py' mode='r' encoding='utf-8'>
+  tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3251: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3239: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3239: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/take_config.py' mode='r' encoding='utf-8'>
+  tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3239: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  tree = ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_an_unlisted_run_take_name_is_still_refused (__main__.TestAuditAllowlists.test_an_unlisted_run_take_name_is_still_refused)
+glitch-06 ruling, 14 Oct: listing GEMINI_MODE_ROUTE_VARIABLES admits that one name only. ... ok
+test_dynamic_builtins (__main__.TestAuditAllowlists.test_dynamic_builtins)
+W4B4-2: each of these names is loaded only as the func of a direct call. No alias form is written (the ... ok
+test_module_keys_bound_to_imports (__main__.TestAuditAllowlists.test_module_keys_bound_to_imports)
+W4B4-1: the keys are exactly the import-bound names, and an import-bound name with no entry is refused. ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3308: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  for n in ast.walk(ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3308: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/take_config.py' mode='r' encoding='utf-8'>
+  for n in ast.walk(ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3308: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  for n in ast.walk(ast.parse(open(os.path.join(HERE, rel), encoding="utf-8").read())):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_subprocess_rule_fires_on_the_real_call (__main__.TestAuditAllowlists.test_subprocess_rule_fires_on_the_real_call)
+W4B3-2: with ("run", "call") removed from SUBPROCESS_USES, the rule itself flags the one real call. ... ok
+test_mutants (__main__.TestBashFirstSteerOff.test_mutants) ... ok
+test_the_steer_is_off (__main__.TestBashFirstSteerOff.test_the_steer_is_off) ... ok
+test_mutants (__main__.TestClaudeBinarySweep.test_mutants) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:2398: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/lane-reports/stub-take-20261015/claude-2.1.296-env-refusal-20261015b.json' mode='r' encoding='utf-8'>
+  refuse = tuple(json.loads(open(_claude_files()[2], encoding="utf-8").read())["refuse_if_present"])
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_the_claude_binary_sweep_is_refused (__main__.TestClaudeBinarySweep.test_the_claude_binary_sweep_is_refused) ... ok
+test_the_inline_settings (__main__.TestClaudeSettings.test_the_inline_settings) ... ok
+test_the_binary_sweep_is_refused (__main__.TestCodexBinarySweep.test_the_binary_sweep_is_refused) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/lane-reports/stub-take-20261014/probes/classify_codex_env_names.py:12: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/lane-reports/stub-take-20261014/probes/codex-env-name-sweep-athena-20261014.json'>
+  raw = open(SWEEP, "rb").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_codex_exec (__main__.TestCodexExec.test_codex_exec) ... ok
+test_no_codex_or_gemini_take_env_can_carry_a_vendor_key (__main__.TestCodexKeyUnreachable.test_no_codex_or_gemini_take_env_can_carry_a_vendor_key) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3563: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  src = open(rt.__file__, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_codex_row (__main__.TestCodexRow.test_codex_row) ... ok
+test_config_dir (__main__.TestConfigDir.test_config_dir) ... ok
+test_counters_and_state (__main__.TestCountersAndState.test_counters_and_state) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-12u7r3pd/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-12u7r3pd/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-5x6r8bq5/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-5x6r8bq5/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ass_1uos/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-vhqr_ula/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-vhqr_ula/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-oe90v_vt/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-5k_975qz/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-5k_975qz/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-m396hw_t/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-m396hw_t/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-hzswlni4/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-hzswlni4/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-lvuf8feq/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-lvuf8feq/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-mu1wetw8/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-mu1wetw8/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-_r5l2wco/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-awqpht2a/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-awqpht2a/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-nu5eixjj/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-uoxhyvjq/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-uoxhyvjq/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-w8deuhpx/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-w8deuhpx/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-e8rtqony/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-e8rtqony/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-k1xmtuoq/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-g8p_7vdd/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-g8p_7vdd/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-hrz2hii7/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1703: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-k3nxb1iw/memory.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "memory.events"), "w").write(mem)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1705: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-k3nxb1iw/pids.events' mode='w' encoding='UTF-8'>
+  open(os.path.join(d, "pids.events"), "w").write(pids)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_defaults_are_pending (__main__.TestCreateArgv.test_defaults_are_pending) ... ok
+test_refusals (__main__.TestCreateArgv.test_refusals) ... ok
+test_shape (__main__.TestCreateArgv.test_shape) ... ok
+test_docker_runtime (__main__.TestDockerRuntime.test_docker_runtime) ... ok
+test_bound_to_drive (__main__.TestDriveBinding.test_bound_to_drive) ...   mutant no-env-check: red - codex take carrying CLAUDE_CODE_OAUTH_TOKEN (caller) waited on PENDING instead of refusing
+  mutant vendor-keys-dropped: red - codex take carrying GEMINI_API_KEY (caller) waited on PENDING instead of refusing
+  mutant api-keys-dropped: red - codex take carrying ANTHROPIC_API_KEY (caller) waited on PENDING instead of refusing
+  mutant billing-dropped: red - codex take carrying CLAUDE_CODE_USE_VERTEX (caller) waited on PENDING instead of refusing
+  mutant subscription-dropped: red - codex take carrying CLAUDE_CODE_OAUTH_TOKEN (caller) waited on PENDING instead of refusing
+  mutant caller-env-replaces: red - an empty caller_env switched off the refusal of os.environ
+  mutant own-login-refused: red - claude-code: refused set ['CLAUDE_CODE_OAUTH_TOKEN'] off
+  mutant codex-key-admitted: red - codex: refused set ['CODEX_API_KEY'] off
+  mutant vendor-list-short: red - claude-code: refused set ['GOOGLE_API_KEY', 'OPENAI_API_KEY'] off
+  mutant no-env-check: red - codex exec requesting CLAUDE_CODE_OAUTH_TOKEN accepted
+  mutant os-widened: red - OS_ATTRS holds unused system
+  mutant os-emptied: red - box/run_take.py: os.environ is not in OS_ATTRS
+  mutant dunders-widened: red - DUNDERS_ALLOWED holds unused __subclasses__
+  mutant dunders-emptied: red - box/run_take.py: __file__ is not in DUNDERS_ALLOWED
+  mutant subprocess-uses-widened: red - SUBPROCESS_USES is [('TimeoutExpired', 'except'), ('run', 'call'), ('run', 'value')]
+  mutant subprocess-uses-emptied: red - box/run_take.py: subprocess.TimeoutExpired used as a except, not one of SUBPROCESS_USES
+  mutant import-from-widened: red - IMPORT_FROM_ALLOWED holds unused ('os', 'system')
+  mutant import-from-emptied: red - box/run_take.py: from __future__ import annotations is not in IMPORT_FROM_ALLOWED
+  mutant module-attrs-widened: red - MODULE_ATTRS holds unused json.JSONDecoder
+  mutant module-attrs-emptied: red - box/run_take.py: harness_bookkeeping.CLAUDE_CODE is not in MODULE_ATTRS
+  mutant getattr-widened: red - GETATTR_ALLOWED holds unused ('e', 'args')
+  mutant getattr-emptied: red - box/run_take.py: getattr(e, 'stdout') is not in GETATTR_ALLOWED
+  mutant dynamic-builtins-dropped-getattr: red - DYNAMIC_BUILTINS is ['__import__', 'compile', 'delattr', 'eval', 'exec', 'globals', 'locals', 'setat
+  mutant dynamic-builtins-emptied: red - DYNAMIC_BUILTINS is []
+  mutant module-attrs-key-dropped: red - MODULE_ATTRS keys differ from the import-bound names: ['shutil']
+  mutant run-call-removed: red
+  mutant the switch on: red - CLAUDE_CODE_THRIFTY_SONIC='1' is not read as false by the pinned parser (['0', 'false', 'no', 'off']
+  mutant a value the parser reads as unset: red - CLAUDE_CODE_THRIFTY_SONIC='disabled' is not read as false by the pinned parser (['0', 'false', 'no',
+  mutant the switch dropped from the row: red - the claude-code row does not carry CLAUDE_CODE_THRIFTY_SONIC as BASH_FIRST_STEER_ENV gives it
+  mutant the switch dropped from the settings: red - the inline settings' env does not carry the switch off
+  mutant another binary: red - claude-thrifty-sonic: not a read of the pinned binary in the pinned image
+  mutant the evidence swapped: red - claude-2.1.296-tribool-helpers-20261015.json is not the committed probe record
+  mutant a switch dropped: red - run_take's Claude sweep tuple drifted from the committed classification
+  mutant the sweep not in the refused set: red - CLAUDE_CODE_USE_ANTHROPIC_AWS, a ruled name, is not refused for a Claude take
+  mutant another binary: red - the sweep is not of the pinned binary sha256 (run_take.CLAUDE_BINARY)
+  mutant another image: red - the Claude binary record is not of box/image.lock's image id
+  mutant the gateway token reclassified: red - run_take's Claude sweep tuple drifted from the committed classification
+  mutant the session token exempted: red - the exemption set is ['CLAUDE_CODE_MESSAGING_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'], not exactly the Cla
+  mutant a pattern-matched name dropped: red - 1 swept name(s) neither refused, in a take row nor exempt with a reason: ['ANTHROPIC_SMALL_FAST_MODE
+  mutant check-skipped: red - no-settings: admitted
+  mutant switch-on: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant no-allowlist: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant bypass-key-re-added: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant bypass-key-as-value: red - raised Refused: the study sends no bypass acceptance key: RULED not required in -p runs (CLAUDE_BYPA
+  mutant bypass-still-pending: red - raised NotReady: CLAUDE_BYPASS_KEY is PENDING: the bypass acceptance: RULED not required in -p runs 
+  mutant print-check-dropped: red - no-print: admitted
+  mutant background-admitted: red - background: admitted
+  mutant background-long-admitted: red - background-long: admitted
+  mutant bash-program-admitted: red - bash-program: admitted
+  mutant prompt-read-as-flag: red - a well-formed turn was refused: a claude-code turn carries exactly one --settings: the study's setti
+  mutant codex-refusal-dropped: red - exec_argv reached check_environment for codex
+  mutant codex-refusal-after-login: red - exec_argv reached check_environment for codex
+  mutant codex-row-gains-openai-key: red - codex's row names vendor keys ['OPENAI_API_KEY']
+  mutant gemini-key-given-a-value: red - gemini's row gives a vendor key a value
+  mutant strip-list-shortened: red - VENDOR_KEY_VARIABLES is ('GEMINI_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY')
+  mutant probe-A-second-read-login-caller: red - read_login is called from ['_peek', 'exec_argv'], not exec_argv alone
+  mutant probe-B-refusal-gated-by-a-switch: red - exec_argv's first test is not the Codex hand-over ahead of the login read
+  mutant refusal-body-gains-a-statement: red - exec_argv's first test is not the Codex hand-over ahead of the login read
+  mutant gate-not-first-in-the-codex-branch: red - raised Refused: a Codex turn passes --json exactly once
+  mutant gate-gains-a-switch: red - codex_lease_gate is not exactly the test-and-raise on CODEX_SUBSCRIPTION_READY
+  mutant no-publish-gate: red - raised Refused: the recorded config folder is not a folder
+  mutant no-repo-check: red - a config folder inside a repository was made
+  mutant swapped-lines: red - raised Refused: memory.events holds no single 'oom <n>' line
+  mutant negative-delta: red - a counter that fell was accepted
+  mutant state-running-from-status: red - raised Refused: the inspect's State fields are off their types
+  mutant no-spec-check: red - pending-reservation accepted
+  mutant env-at-create: red - create argv differs: ['docker', 'create', '-e', 'X=1', '--pull=never', '--network', 'aaaaaaaaaaaaaaa
+  mutant alias-on-take: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant pull-allowed: red - create argv differs: ['docker', 'create', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant third-mount: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant agent-as-pid1: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant keepalive-user: red - raised Refused: the keep-alive user is 10001:10001, never another
+  mutant config-mount: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant keepalive-command: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant no-entrypoint: red - create argv differs: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant shell-string: red - argv is not passed as the list
+  mutant merges-os-environ: red - env is not the whole environment given
+  mutant timeout-as-exit: red - a timeout did not raise
+  mutant ISOLATION_ENV-drifts: red - run_take.ISOLATION_ENV differs from drive.ISOLATION_ENV
+  mutant RUN_TREE_TMPDIR-drifts: red - run_take.RUN_TREE_TMPDIR differs from drive.RUN_TREE_TMPDIRok
+test_isolation_env_rides_in_claude_env (__main__.TestDriveBinding.test_isolation_env_rides_in_claude_env) ... ok
+test_agent_exec_argv (__main__.TestExecArgv.test_agent_exec_argv) ... ok
+test_config_home_refusals (__main__.TestExecArgv.test_config_home_refusals) ... ok
+test_exec_argv (__main__.TestExecArgv.test_exec_argv) ... ok
+test_the_gemini_sweep_is_refused (__main__.TestGeminiPackageSweep.test_the_gemini_sweep_is_refused) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/lane-reports/stub-take-20261014/probes/classify_gemini_env_names.py:11: ResourceWarning: unclosed file <_io.BufferedReader name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/lane-reports/stub-take-20261014/probes/gemini-env-name-sweep-athena-20261014.json'>
+  raw = open(SWEEP, "rb").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_mutants (__main__.TestIsolationDenials.test_mutants) ... ok
+test_the_three_are_denied (__main__.TestIsolationDenials.test_the_three_are_denied) ... ok
+test_failures (__main__.TestLaunch.test_failures) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-6t0nqux7/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-itji75i6/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-98jtz_tz/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-xe8d87rj/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-13bbbl62/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-djggj1c9/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ohbzb6_o/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-4ix33ymd/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-2ref433l/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-apd8nqgh/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-47bft6cz/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ify4ft82/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-4cicbyme/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-8stkpe05/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-b7ifrxz9/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-inpb37i3/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-f16g1_t3/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-lo993ks0/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-5yxdr21r/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-v719b0dx/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-symx5o39/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-55hgvca8/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-108qvtv4/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-jv17rb2v/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-sdns79ei/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-b34qpd_t/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-s_n4t055/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-e6jact4v/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-8ldhqh0s/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-4e83z6to/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-pnz_sk6w/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ftedqpsc/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-oj9jyua1/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-3wqcb7o4/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-elay5_5v/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-2wvjoaz5/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-wqn5b2ds/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-w3yk10kk/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-m2271lrm/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-wr26pifo/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-by2pyndi/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-6zefrl98/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-f_mk0e01/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-_nuiddu2/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-8g1jvoir/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-hfa4xmgp/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-tawg4lpk/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-fomla2xx/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-niapdko1/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-jcl2kkkb/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-psdsz5yv/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-w9dcvw6j/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-swhlf8i7/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-yq3vxaae/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ugl1sdfv/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-2r4piyq2/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-c0mtg4g8/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-cic41v9u/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-wgoe2olt/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-uebocz3y/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-e0m1i2ai/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-la9ehxmp/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-xxx2bhnd/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-goqm7223/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-7d81g8di/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-2f2rfk8s/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-gg4hm4zh/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-5ek6i5b1/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-vc63r6pk/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-w_d1n_oi/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-kcx4awr1/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-9d69jx9h/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-tcndr2rs/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-1k3p8rf8/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-bj3lyoh0/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-dx1upt0x/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-_k16a1x5/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-0yvjohj0/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-_qr2adxu/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-88t4nl4p/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-t26dtu_m/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-eapldi6x/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-7h9xbs54/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-f8kma1u5/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-7uwmbz_9/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-f9xk2tai/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-przr4o4u/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-dud_km4f/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-4xqtiqg8/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-xh9nv43o/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ee0izw0b/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-ehdgva8o/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-l3g4lyl8/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-gpur3h3_/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-xt78ls5d/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-1lci1e1_/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-xtdtv1m8/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-i5o3ppd1/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-u2mb685a/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1184: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-l98uc9xg/rec/launch.json' mode='r' encoding='UTF-8'>
+  if not os.path.exists(rec) or json.load(open(rec)).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_launch (__main__.TestLaunch.test_launch) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1094: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-lcpbmx39/rec/launch.json' mode='r' encoding='UTF-8'>
+  rec = json.load(open(path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1094: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-jnjj4ac3/rec/launch.json' mode='r' encoding='UTF-8'>
+  rec = json.load(open(path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1094: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-7kzhs6rq/rec/launch.json' mode='r' encoding='UTF-8'>
+  rec = json.load(open(path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1094: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-_wr0zrtc/rec/launch.json' mode='r' encoding='UTF-8'>
+  rec = json.load(open(path))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_network_is_launchs (__main__.TestLaunch.test_network_is_launchs) ... ok
+test_pending_refused_before_any_call (__main__.TestLaunch.test_pending_refused_before_any_call) ... ok
+test_proxy_uid (__main__.TestLaunch.test_proxy_uid) ... ok
+test_refused_before_anything (__main__.TestLaunch.test_refused_before_anything) ... ok
+test_leaked (__main__.TestLeaked.test_leaked) ... ok
+test_placement (__main__.TestLeasePlacement.test_placement) ... ok
+test_the_gate_stays_closed (__main__.TestLeasePlacement.test_the_gate_stays_closed) ... ok
+test_no_login_launcher (__main__.TestNoLoginLauncher.test_no_login_launcher) ... ok
+test_neutral_names (__main__.TestPendingAndNames.test_neutral_names) ... ok
+test_no_parameter_overrides_a_pending_constant (__main__.TestPendingAndNames.test_no_parameter_overrides_a_pending_constant) ... ok
+test_pending (__main__.TestPendingAndNames.test_pending) ... ok
+test_xdg_runtime_dir_retired_on_evidence (__main__.TestPendingAndNames.test_xdg_runtime_dir_retired_on_evidence) ... ok
+test_audit (__main__.TestProcessAudit.test_audit) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3366: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  real = {rel: open(os.path.join(HERE, rel), encoding="utf-8").read() for rel in BOX_MODULES}
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3366: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/take_config.py' mode='r' encoding='utf-8'>
+  real = {rel: open(os.path.join(HERE, rel), encoding="utf-8").read() for rel in BOX_MODULES}
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3366: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  real = {rel: open(os.path.join(HERE, rel), encoding="utf-8").read() for rel in BOX_MODULES}
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_guard_is_armed (__main__.TestProcessGuard.test_guard_is_armed) ... ok
+test_leak_words_read (__main__.TestProcessGuard.test_leak_words_read)
+The read is checked by count and shape only: no round 3 word is ever named in a committed file. ... ok
+test_module_is_this_rounds (__main__.TestProcessGuard.test_module_is_this_rounds) ... ok
+test_the_guard_starts_no_patch_at_import (__main__.TestProcessGuard.test_the_guard_starts_no_patch_at_import)
+Recorded at the very end of this module's import: no guarded name was patched then. Inside a test every ... ok
+test_processes (__main__.TestProcesses.test_processes) ... ok
+test_reach (__main__.TestReachAudit.test_reach) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3443: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/image_lock.py' mode='r' encoding='utf-8'>
+  real = {rel: open(os.path.join(HERE, rel), encoding="utf-8").read() for rel in REACH_MODULES}
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3443: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/egress/proxy_conf.py' mode='r' encoding='utf-8'>
+  real = {rel: open(os.path.join(HERE, rel), encoding="utf-8").read() for rel in REACH_MODULES}
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3429: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/image_lock.py' mode='r' encoding='utf-8'>
+  src = read(rel) if read else open(os.path.join(HERE, rel), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:3429: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/egress/proxy_conf.py' mode='r' encoding='utf-8'>
+  src = read(rel) if read else open(os.path.join(HERE, rel), encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_no_real_login_path (__main__.TestReadLogin.test_no_real_login_path) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:964: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  src = open(rt.__file__, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_read_login (__main__.TestReadLogin.test_read_login) ... ok
+test_refused_prefixes (__main__.TestRefusedPrefixes.test_refused_prefixes) ... ok
+test_review_folds (__main__.TestReviewFolds41428177.test_review_folds) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:2785: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  src = open(rt.__file__, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_run_turn (__main__.TestRunTurn.test_run_turn) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1782: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-9cpj0p9w/turn-1.jsonl' mode='r' encoding='UTF-8'>
+  if open(stream).read() != '{"type":"x"}\n':
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1795: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-9cpj0p9w/turn-2.jsonl' mode='r' encoding='UTF-8'>
+  if not r["timed_out"] or r["exit_code"] is not None or open(stream2).read() != "partial\n":
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1805: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-9cpj0p9w/turn-1.jsonl' mode='r' encoding='UTF-8'>
+  if bad == stream and (not os.path.exists(stream) or open(stream).read() != '{"type":"x"}\n'):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1782: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-gqjfhroq/turn-1.jsonl' mode='r' encoding='UTF-8'>
+  if open(stream).read() != '{"type":"x"}\n':
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1795: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-gqjfhroq/turn-2.jsonl' mode='r' encoding='UTF-8'>
+  if not r["timed_out"] or r["exit_code"] is not None or open(stream2).read() != "partial\n":
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_claude_code_typed_nowhere_in_box (__main__.TestSharedValues.test_claude_code_typed_nowhere_in_box) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:353: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/box/run_take.py' mode='r' encoding='utf-8'>
+  src = open(rt.__file__, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_harness_env_values (__main__.TestSharedValues.test_harness_env_values) ... ok
+test_values (__main__.TestSharedValues.test_values) ... ok
+test_order (__main__.TestTeardown.test_order) ... /private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ad-wt/evals/gap-study-4/tests/test_run_take.py:1515: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/w-qqnczii2/rec/proxy.log' mode='r' encoding='UTF-8'>
+  if not os.path.exists(log) or open(log).read() != "proxy line 1\nsquid started\n":
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+  mutant RUN_TREE_TMPDIR_VARIABLES-drifts: red - run_take.RUN_TREE_TMPDIR_VARIABLES differs from drive.RUN_TREE_TMPDIR_VARIABLES
+  mutant API_KEY_VARIABLES-drifts: red - run_take.API_KEY_VARIABLES differs from drive.API_KEY_VARIABLES
+  mutant BILLING_ROUTE_VARIABLES-drifts: red - run_take.BILLING_ROUTE_VARIABLES differs from drive.BILLING_ROUTE_VARIABLES
+  mutant SUBSCRIPTION_TOKEN_VARIABLES-drifts: red - run_take.SUBSCRIPTION_TOKEN_VARIABLES differs from drive.SUBSCRIPTION_TOKEN_VARIABLES
+  mutant isolation-dropped: red - CLAUDE_CODE_DISABLE_AUTO_MEMORY
+  mutant guard-dropped: red - login name accepted: ['CODEX_API_KEY=/opt/cfg']
+  mutant name-unchecked: red - login name accepted: ['CODEX_API_KEY=/opt/cfg']
+  mutant many-entries: red - two entries accepted: ['CLAUDE_CONFIG_DIR=/opt/cfg', 'CODEX_HOME=/opt/cfg']
+  mutant value-in-argv: red - exec argv differs: ['docker', 'exec', '--user', '10001:10001', '--workdir', '/srv/w/t1/tree', '-e', 
+  mutant environ-copied: red - the client env carries ['UNRELATED']
+  mutant no-user-check: red - exec argv differs: ['docker', 'exec', '--user', '0:0', '--workdir', '/srv/w/t1/tree', '-e', 'CLAUDE_
+  mutant fallback-ignored: red - exec argv differs: ['docker', 'exec', '--user', '10001:10001', '--workdir', '/srv/w/t1/tree', '-e', 
+  mutant fallback-env-dropped: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant fallback-env-zero: red - raised Refused: a claude-code turn carries exactly one --settings: the study's settings for its mode
+  mutant fallback-flag-admitted: red - the login was read before the fallback-model refusal
+  mutant tmp-variables-dropped: red - raised Refused: the claude-code row's temporary-folder names are not []
+  mutant one tool dropped: red - ISOLATION_DISALLOWED_TOOLS is ('RemoteTrigger', 'SendMessage'), not the ruled three
+  mutant a misspelt tool: red - ISOLATION_DISALLOWED_TOOLS is ('RemoteTriggers', 'SendMessage', 'ListAgents'), not the ruled three
+  mutant the argv check dropped: red - no deny flag: admitted
+  mutant inbound accepted: red - the inline settings do not refuse cross-session inbound messages
+  mutant another binary: red - claude-string-context: not a read of the pinned binary in the pinned image
+  mutant the evidence swapped: red - claude-2.1.296-cross-session-values-20261015.json is not the committed probe record
+  mutant no-teardown: red - step 1 exit: teardown off script [['docker', 'network', 'rm', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  mutant ids-not-recorded: red - step 0 bad-id: teardown off script [['docker', 'network', 'rm', 'not-an-id']]
+  mutant no-inspect-check: red - step 5 mismatch: teardown off script [['docker', 'start', 'ccccccccccccccccccccccccccccccccccccccccc
+  mutant no-launch-record: red - no launch record
+  mutant proxy-not-readonly: red - the proxy create argv is off: ['docker', 'create', '--pull=never', '--network', 'aaaaaaaaaaaaaaaaaaa
+  mutant default-network: red - raised LaunchError: launch failed: AssertionError
+  mutant proxy-keeps-caps: red - the proxy create argv lacks --cap-drop ALL
+  mutant proxy-new-privileges: red - the proxy create argv lacks --security-opt no-new-privileges
+  mutant stale-spec-network: red - launch failed: launch failed: AssertionError
+  mutant no-ready-gate: red - PENDING inspect spellings raised LaunchError, not NotReady
+  mutant no-sidecar-clause: red - a PENDING sidecar expectation raised LaunchError, not NotReady
+  mutant uid-string-compare: red - proxy user '0' accepted
+  mutant no-proxy-check: red - raised LaunchError: launch failed: AssertionError
+  mutant no-sidecar-check: red - raised LaunchError: launch failed: AssertionError
+  mutant check-skipped: red - a leaked container still present did not refuse the restart
+  mutant leaked-empty: red - a leaked container still present did not refuse the restart
+  mutant study-mount: red - '/opt/sidecar-cfg' carries sidecar
+  mutant study-env: red - 'X_SIDECAR' carries sidecar
+  mutant study-network: red - 'gap4-net' carries gap4
+  mutant override-parameter: red - state_with_override(inspect_status)
+  mutant fallback-unfilled: red - pending() = ['FALLBACK_ENV', 'TakeSpec.resources']
+  mutant top-unfilled: red - pending() = ['TOP_FORMAT', 'TakeSpec.resources']
+  mutant top-host-namespace: red - TOP_FORMAT is not the measured form: {'ps_options': ['-eo', 'pid,uid,comm'], 'pid_column': 'PID', 'u
+  mutant inspect-unfilled: red - pending() = ['INSPECT_STATUS', 'TakeSpec.resources']
+  mutant inspect-evidence-swapped: red - INSPECT_STATUS evidence lane-reports/stub-take-20261014/stub-take-run1.json does not hash to its rec
+  mutant resources-said-measured: red - the resources' reason does not say they are capacity policy
+  mutant billing-back-to-pending: red - pending() = ['TakeSpec.resources', 'VENDOR_BILLING_ROUTE_VARIABLES']
+  mutant row-kept: red - CALLER_PENDING still lists XDG_RUNTIME_DIR in the take
+  mutant take-env-sets-it: red - a take's environment row sets XDG_RUNTIME_DIR
+  mutant evidence-swapped: red - stub-take-run1.json does not hash to its recorded sha256
+  mutant run-take-imports-socket: red - box/run_take.py: import socket is off the allowlist
+  mutant preflight-imports-subprocess: red - box/preflight.py: imports subprocess
+  mutant take-config-kills: red - box/take_config.py: os.kill is not in OS_ATTRS
+  mutant second-run-site: red - box/run_take.py: subprocess.run outside DockerRuntime.run
+  mutant planted-dropped: red - planted posix-spawn-import was not caught
+  mutant test-call-allowed: red - planted test call-outside-helper was not caught
+  mutant unmapped-uid: red - host_uid maps wrongly
+  mutant kill-as-root: red - raised AssertionError: unexpected runtime call ['docker', 'exec', '--user', '0:0', 'dddddddddddddddd
+  mutant no-wait: red - wait_gone slept []
+  mutant top-pending-ignored: red - raised AttributeError: 'str' object has no attribute 'get'
+  mutant image-lock-imports-subprocess: red - box/image_lock.py: import subprocess is outside REACH_IMPORTS
+  mutant proxy-conf-kills: red - box/egress/proxy_conf.py: os.kill
+  mutant reach-widened: red - planted reach imports-subprocess was not caught
+  mutant reach-narrowed: red - box/image_lock.py: import fnmatch is outside REACH_IMPORTS
+  mutant planted-dropped: red - planted reach imports-subprocess was not caught
+  mutant naive-reader: red - raised IndexError: list index out of range
+  mutant no-repo-check: red - inside-repo accepted
+  mutant max-bytes-0: red - raised LoginRefused: /tmp/w-zdza9wyg/claude_code_oauth_token.line: the login file holds more than on
+  mutant timeout-raises: red - raised TimeoutError: 
+  mutant overwrites-stream: red - a refused repeated turn destroyed its original stream
+  mutant stream-in-tree-allowed: red - raised Refused: the working folder must sit inside the run tree (the box root)
+  mutant claude-code-drops-DISABLE_AUTOUPDATER: red - claude-code
+  mutant claude-code-drops-CLAUDE_CONFIG_DIR: red - claude-code
+  mutant claude-code-drops-HTTPS_PROXY: red - claude-code
+  mutant codex-drops-CODEX_HOME: red - codex
+  mutant gemini-drops-GEMINI_CLI_HOME: red - gemini
+  mutant codex-drops-HTTPS_PROXY: red - codex
+  mutant gemini-drops-HTTPS_PROXY: red - gemini
+  mutant claude-code-drops-CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: red - claude-code
+  mutant AGENT_USER-changed: red - AGENT_USER = '10001:10001x'
+  mutant KEEPALIVE_USER-changed: red - KEEPALIVE_USER = '10003:10003x'
+  mutant PROXY_ALIAS-changed: red - PROXY_ALIAS = 'proxyx'
+  mutant PROXY_URL-changed: red - PROXY_URL = 'http://proxy:3128x'
+  mutant CONFIG_MOUNT-changed: red - CONFIG_MOUNT = '/opt/cfgx'
+  mutant CODEX-changed: red - CODEX = 'codexx'
+  mutant GEMINI-changed: red - GEMINI = 'geminix'
+  mutant QUIESCENCE_CAP_SURVIVORS_KEY-changed: red - QUIESCENCE_CAP_SURVIVORS_KEY = 'quiescence_cap_survivorsx'
+  mutant QUIESCENCE_CAP_ROW-changed: red - QUIESCENCE_CAP_ROW = 'quiescence-cap-reachedx'
+  mutant claude-name-retyped: red - CLAUDE_CODE is not harness_bookkeeping's
+  mutant extra-harness: red - the per-harness tables do not hold exactly the three harnesses
+  mutant logs-after-removal: red - raised AssertionError: runtime call ['docker', 'rm', '--force', 'cccccccccccccccccccccccccccccccccccok
+test_the_walk_login_place (__main__.TestWalkLoginPlace.test_the_walk_login_place) ... ok
+
+----------------------------------------------------------------------
+Ran 64 tests in 19.869s
+
+OK
+
+  mutant no-logs: red - raised AssertionError: runtime call ['docker', 'rm', '--force', 'ccccccccccccccccccccccccccccccccccc
+  mutant finish-before-take-rm: red - raised AssertionError: runtime call ['docker', 'exec', 'cccccccccccccccccccccccccccccccccccccccccccc
+  mutant place-unchecked: red - a 755 folder: the login was read before the refusal
+  mutant folder-mode-unchecked: red - a 755 folder: the login was read before the refusal
+  mutant bare-admitted: red - --bare: the login was read before the refusal
+  mutant walk-file-moved: red - WALK_LOGIN_FILES = {'claude1': '/tmp/claude-walk-token'}

@@ -1,0 +1,9 @@
+# Lane bootstrap-constants: Gap Study round 4, the first-walk bootstrap (glitch-6b's ruling of 15 Oct 2026,
+# plans/gap-study-round-4/first-walk-bootstrap-ruling-2026-10-15.md, and its addition of the same morning): the checker
+# constants filled from their sources and bound to them (B1, B2), the ledger's quiescence cap and poll interval (B4),
+# a walk the constants decide never counted (B5), the draft naming the ruling (B6), and drive.py's environment-record
+# vocabulary extended with the 2.1.296 names (box ba6d7f14). One command per line, run from the repository root; the
+# module prints one WITNESS line per binding witness. Read-only git and one temporary export of the pinned tree; no
+# model, container, network, credential, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_checker_constants.py
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check

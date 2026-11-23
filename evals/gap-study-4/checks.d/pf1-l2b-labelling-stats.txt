@@ -1,0 +1,12 @@
+# Lane pf1-l2b-labelling-stats: Gap Study round 4, lane L2b of pre-freeze review 1's fold (MAJOR 6, MAJOR 10, m13,
+# m14, m16). One command per line, run from the repository root. The labelling sweep's shards, test_pipeline and the
+# battery are the owners' (checks.d/w11d-labelling-tools.txt, the athena suite).
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_l2b.py
+python3 -B -W ignore evals/gap-study-4/tests/test_stats.py
+python3 -B -W ignore evals/gap-study-4/tests/test_labelling.py
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py
+python3 -B -W ignore evals/gap-study-4/tests/test_probes4.py
+python3 -B -W ignore evals/gap-study-4/labelling/frame.py --check
+python3 -B -W ignore evals/gap-study-4/probes4.py --check
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check
+python3 -B -W ignore evals/gap-study-4/lint_language.py evals/gap-study-4/

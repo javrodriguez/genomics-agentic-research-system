@@ -1,0 +1,203 @@
+{
+ "harness": "gemini",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     ".gemini/tmp/run-cfcdb600",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/logs",
+     "dir"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     ".gemini/tmp/run-cfcdb600",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/logs",
+     "dir"
+    ]
+   ]
+  },
+  {
+   "at": "post-3",
+   "entries": [
+    [
+     ".gemini/tmp/run-cfcdb600",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/logs",
+     "dir"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     ".gemini/tmp/run-cfcdb600",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-cfcdb600/logs",
+     "dir"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": ".gemini/tmp",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-cfcdb600",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "gemini",
+     "d2b09610-a587-4870-9234-27ef174825c4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-cfcdb600",
+    "/var/tmp"
+   ],
+   "scanned": 409,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-cfcdb600",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "gemini",
+     "d2b09610-a587-4870-9234-27ef174825c4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-cfcdb600",
+    "/var/tmp"
+   ],
+   "scanned": 417,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-3",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-cfcdb600",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-cfcdb600/chats/session-2026-10-21T05-55-d2b09610.jsonl",
+     "gemini",
+     "d2b09610-a587-4870-9234-27ef174825c4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-cfcdb600",
+    "/var/tmp"
+   ],
+   "scanned": 419,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}

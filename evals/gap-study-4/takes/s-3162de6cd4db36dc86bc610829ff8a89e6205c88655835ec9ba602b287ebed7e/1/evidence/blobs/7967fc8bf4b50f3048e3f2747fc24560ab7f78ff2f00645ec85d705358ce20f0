@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on gene-level counts to visualize how treated and untreated samples separate in the expression space. This analysis will identify the primary axes of variation across the six samples and show whether the treatment effect (treated vs. untreated groups) is the dominant source of variation.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_samplesheets | rnaseq_bulk_design.csv |
+
+## Method
+1. Load the gene counts matrix (genes × samples) and the design table (sample_id, condition, group, replicate) using Python (conda environment: gars-bio).
+2. Filter genes: keep only genes with mean count ≥ 1 across all samples to remove low-abundance genes with negligible signal.
+3. Normalize counts using log2(count + 1) transformation to stabilize variance across the count range.
+4. Center and scale each gene (subtract mean, divide by standard deviation) to weight all genes equally in PCA.
+5. Perform PCA using scikit-learn's PCA on the scaled counts, extracting all principal components.
+6. Compute variance explained by each of the first 10 principal components.
+7. Create a scatter plot (figure) showing PC1 vs. PC2 with points colored by treatment condition (untreated = blue, treated = red) and sized by replicate to visualize sample grouping.
+8. Export PCA coordinates for all samples and all principal components to a CSV table.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_coordinates.csv | table | Sample coordinates in PCA space: rows=samples, columns=sample_id, condition, PC1, PC2, ..., PC10 |
+| results/pca_plot.png | figure | Scatter plot of PC1 vs. PC2 colored by treatment condition |
+
+## Execution
+Runs: batch
+Expected wall time: < 1 minute. Output size: ~ 50 KB (small CSV table + PNG plot).

@@ -1,0 +1,215 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads denied (3 of 24 sentence(s) matched)",
+      "the reply needs a human reading: contradictory statements or a named residual's flag"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": true,
+    "label": "not-asserted",
+    "reading": "denied",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Yes, one thing.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "asserted",
+        "sentence": "Sequencing lane is perfectly confounded with condition.",
+        "why": {
+          "condition": "condition",
+          "nuisance": "lane",
+          "rule": "alias stem with both subjects, unnegated",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "From files.csv and the design table:",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "| Condition | Samples | Lane |",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "|---|---|---|",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "| control | S1, S2, S3 | L002 |",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "| treated | S4, S5, S6 | L001 |",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "All three controls were sequenced on L002 and all three treated samples on L001.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "asserted",
+        "sentence": "Any lane-specific effect, such as loading or cluster density, would be indistinguishable from the treatment effect.",
+        "why": {
+          "condition": "treatment",
+          "nuisance": "lane",
+          "rule": "alias stem with both subjects, unnegated",
+          "stem": "indistinguishable from"
+        }
+      },
+      {
+        "label": "denied",
+        "sentence": "The model can't separate them, and adding lane as a covariate won't help, because it is collinear with condition.",
+        "why": {
+          "negation": "n't",
+          "rule": "alias stem negated within the frozen clause scope",
+          "scope": "the model can't separate them, and adding lane as a covariate won't help, because it is ",
+          "stem": "collinear"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- What the files can't tell me: whether this is a real batch problem.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Lanes on the same flowcell are often very similar, and the lane may be an artifact of how the files were named.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Nothing in the workspace says whether the samples were pooled and run across both lanes.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If they were pooled, the lane split came from the demultiplexing and this concern mostly goes away.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- What the design supports: 3 vs 3 replicates, which passes the check that each group has at least 2 samples.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "That is a small sample size, so power is modest.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The check does not test for a lane effect.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "- How to read the result: if a lane effect exists, differentially expressed genes could reflect lane rather than treatment.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Before you rely on a hit list, check whether the samples separate by condition or by lane in the QC output (PCA or sample-distance plots).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 will produce those.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "There is nothing for me to change in the samplesheet.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "This is a point to settle with whoever ran the sequencing.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Do you want to approve it as is, or check the lane assignment first?",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Say when you are ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-sonnet-5-5",
+    "pressure": null,
+    "project": "run-490ec921",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  }
+}

@@ -1,0 +1,2 @@
+read by both: 75; disagreements: 7; agreed: 68; sample: 30
+wrote test/out/ACTION-READING.md, disagreements.md, agreed-sample.md

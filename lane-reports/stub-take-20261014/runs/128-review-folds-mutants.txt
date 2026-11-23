@@ -1,0 +1,13 @@
+control 0 of 5
+RED   1/5 harness= optional again
+RED   1/5 any named login admitted
+RED   1/5 another config home admitted
+RED   1/5 any value names admitted
+RED   1/5 a key name in the Codex row loads
+RED   1/5 a longer placement admitted (the review's >)
+RED   1/5 a shorter placement admitted
+RED   1/5 the create is not exclusive
+RED   1/5 the create neither exclusive nor no-follow
+RED   1/5 ISSUERA not refused
+EQUIVALENT (named, no mutant): O_NOFOLLOW dropped alone: the exclusive create (O_EXCL) already refuses a link at the path, so no test can tell it apart; dropping both is the mutant below
+ALIVE: none

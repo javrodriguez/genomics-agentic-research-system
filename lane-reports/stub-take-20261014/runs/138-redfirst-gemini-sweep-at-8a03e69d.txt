@@ -1,0 +1,5 @@
+== test_run_take -k TestGeminiPackageSweep against 8a03e69d's run_take.py
+FAIL: test_the_gemini_sweep_is_refused (test_run_take.TestGeminiPackageSweep.test_the_gemini_sweep_is_refused)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_t[49 chars]ED'"] != []
+Ran 1 test in 0.006s
+FAILED (failures=1)

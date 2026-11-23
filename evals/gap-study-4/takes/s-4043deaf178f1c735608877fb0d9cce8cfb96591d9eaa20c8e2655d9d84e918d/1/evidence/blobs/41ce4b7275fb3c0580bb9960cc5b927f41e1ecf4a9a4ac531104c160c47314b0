@@ -1,0 +1,57 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Do the treated samples (B1-B3) and the untreated samples (A1-A3) separate on a principal
+component analysis of the gene-level counts? The analysis produces a PCA of the six samples,
+coloured by condition, with the variance explained by each component.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` (columns `gene_id`, `gene_name`, A1-A3, B1-B3) |
+| `design` | `01_samplesheets` | `rnaseq_bulk_design.csv` (`sample_id,condition,group,replicate`; untreated = A1-A3, treated = B1-B3) |
+
+## Method
+Environment: `gars-bio`. Python with numpy, pandas and matplotlib; if the environment lacks
+any of them the analysis is blocked on that fact (nothing is installed). Single script,
+`scripts/sample_pca.py`, submitted through the executor door.
+
+1. Read the counts matrix and the design table. Resolve both paths from `resolve_artifact.py`
+   at execution time; check that the matrix's sample columns and the design's `sample_id`
+   values are the same six samples, and stop if they are not.
+2. Drop `gene_id` and `gene_name` from the numeric matrix (kept as row labels). Drop genes
+   with zero counts in every sample.
+3. Transform: log2(count + 1). The input is nf-core's length-scaled gene counts (non-integer,
+   so no integer-count method such as DESeq2's VST is used).
+4. Select the 500 genes with the highest variance across samples on the log2 scale (all
+   genes if fewer than 500 remain).
+5. PCA: centre each gene across samples, no per-gene scaling; singular value decomposition
+   (`numpy.linalg.svd`). Record the proportion of variance explained by each component.
+6. Write the sample scores table (PC1-PC6, with `condition`), the variance-explained table,
+   and a PC1 vs PC2 scatter, one point per sample, labelled with its sample id and coloured by
+   condition.
+7. No inputs are modified. No statistical test is performed and no result is interpreted;
+   the plot and tables are the output.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_scores.csv` | `table` | Per-sample PC1-PC6 scores plus `condition` |
+| `results/pca_variance_explained.csv` | `table` | Proportion of variance per principal component |
+| `results/pca_pc1_pc2.png` | `figure` | PC1 vs PC2 scatter, samples labelled and coloured by condition |
+
+## Execution
+Runs: batch
+Expected wall time under a minute, memory well under 1 GB (six samples), outputs a few tens of KB.
+Batch is used per the workspace default, regardless of size.

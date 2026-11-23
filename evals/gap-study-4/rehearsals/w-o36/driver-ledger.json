@@ -1,0 +1,92 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": null,
+ "cross_check_status": {
+  "status": "pending",
+  "why": "no reviewed native-session reader for codex"
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "771562819c71380cccf4d45287e8583974c4cefc2e07b4ca55114cd1f198ec99"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": null,
+  "status": "pending",
+  "why": "no reviewed native-session reader for codex"
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "027d2bc4e43e78b453cc7e8e4eab6e6a1164217076f53e229cc6c449f48b6db6"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-a7a09ca5",
+ "published": null,
+ "repeat": 1,
+ "row": null,
+ "row_commit": null,
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "a7a09ca5-80b0-581a-8e6f-ed26a5b978f0",
+ "source": "/tmp/run-a7a09ca5/data/staging/run-a7a09ca5/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "number-fidelity",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "I'd like to start a new project for a bulk RNA-seq run. The project title is run-a7a09ca5, and the raw data is in /tmp/run-a7a09ca5/data/staging/run-a7a09ca5/src",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

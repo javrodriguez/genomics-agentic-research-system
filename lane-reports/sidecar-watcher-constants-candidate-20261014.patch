@@ -1,0 +1,25 @@
+--- /Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/sidecar.py	2026-10-14 01:25:45
++++ /private/tmp/claude-501/-Users-javrodher-glitch/42a8f8a8-73ca-42d8-b7c7-d388eb1ddee1/scratchpad/cand/sidecar.py	2026-10-14 01:29:56
+@@ -165,12 +165,16 @@
+ 
+ # ------------------------------------------------------------------------------------------------- PENDING values
+ PENDING = "PENDING"
+-INOTIFYWAIT_ARGV = PENDING
+-INOTIFYWAIT_FORMAT = PENDING
+-INOTIFYWAIT_SUBSECOND = PENDING
+-INOTIFYWAIT_EVENTS = PENDING
+-INOTIFY_WATCH_COUNT = PENDING
+-WATCH_ESTABLISH_S = PENDING
++# Production CANDIDATE values (box lane, 14 Oct 2026; under independent review, not yet admitted). Measured by the
++# no-model stub on Athena's provisional watcher image, inotifywait 3.22.6.0 (live-box-evidence-2026-10-13/
++# stub-20261014, gap-20261014) and derived by lane-reports/watch-constants-derivation-20261014-v2.json.
++INOTIFYWAIT_ARGV = ("inotifywait", "--monitor", "--format", "%w%f|%e")      # the factory adds -e, -r and --
++INOTIFYWAIT_FORMAT = {"fields": ["path", "events"], "separator": "|", "established": "Watches established.",
++                      "setup_lines": ["Setting up watches.  Beware: since -r was given, this may take a while!"]}
++INOTIFYWAIT_SUBSECOND = False        # --timefmt %s.%N prints %N literally at 3.22.6.0: events stamped on arrival
++INOTIFYWAIT_EVENTS = ("OPEN", "MODIFY", "CLOSE_WRITE", "MOVED_TO", "CREATE", "DELETE", "MOVED_FROM", "DELETE_SELF")
++INOTIFY_WATCH_COUNT = 696            # (62 + 10 + 258 + 18) x 2, against max_user_watches 65536
++WATCH_ESTABLISH_S = 1.9              # measured 0.00163 s for 62 watches, scaled to 696, x 100, rounded up
+ _PENDING_WHY = {
+     "inotifywait_argv": "the inotifywait command line (monitor mode, recursion flag, format and time options) at the "
+                         "pinned inotify-tools in the sidecar image; measured on the stub take",

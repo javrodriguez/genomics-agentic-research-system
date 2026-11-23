@@ -1,0 +1,2 @@
+# Lane w1a-cp1-scaffold: the copy manifest over every fragment. test_round4.py is run by run_checks.py itself.
+python3 evals/gap-study-4/copy_manifest.py --check

@@ -1,0 +1,15 @@
+{
+  "lane": "fold2-merge",
+  "files": [
+    {
+      "path": "COPIED.d/fold2-merge.json",
+      "status": "new",
+      "reason": "Lane fold2/merge's copy-record fragment. The merge lane merges fold2/la1, fold2/la2 and fold2/ld (pre-freeze review 2's fold, the fold plan FOLD-PLAN-prefreeze-2.md, glitch-45's assignment of Thu 29 Oct 2026 under Javier's standing delegation) and builds the no-match residual of m6 on top. Edits without transfer, in files other fragments claim: routing.json (the after-first-turn no_match_defaults entry's unreadable alternative and its source sentence), routing.py (END_STATE_UNREAD_CITE, NO_MATCH_UNREADABLE_KEY, _no_match_unreadable_problems, _no_match_entry, no_match_unreadable, the --check line), batch.py (END_STATE_UNREAD_CITE bound to routing's, unread_cite_form, ruling_rule_problems accepts the alternative, THE RULING RULE's text and source), and run.py (the stopped_counts docstring, the merge of fold2/la1 and fold2/la2). prereg-draft.json is not regenerated: the routing sha256 and the ruling_rule text changed, so tests/test_pf1_routing_rulings.py P8 stays red until the plan's single regeneration."
+    },
+    {
+      "path": "tests/test_fold2_merge.py",
+      "status": "new",
+      "reason": "Lane fold2/merge: the red-first tests of the no-match unreadable end state: routing.json carries the alternative after the first turn only, --check refuses it elsewhere and in any other shape, batch accepts it only with the cited reading's form, and the door (validate_ruling, then ruling_door_problems) lets it stand only on an end state its grader cannot read, cited with that exception type. Synthetic records only."
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Examine sample clustering and separation by experimental condition using principal component analysis (PCA) on gene-level counts. The six samples (three untreated, three treated) will be projected onto the first two principal components and visualized with condition-based coloring to assess how well treatments separate and the magnitude of replication variance.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Load the gene count matrix from `counts_gene` artifact using pandas (Python, gars-bio environment).
+2. Load sample metadata from `design` artifact.
+3. Normalize counts using log2(count + 1) transformation to stabilize variance.
+4. Perform PCA on the normalized counts using scikit-learn's PCA with 2 components.
+5. Create a scatter plot of PC1 vs PC2, coloring points by condition (untreated vs treated), with sample IDs annotated. Use matplotlib for visualization.
+6. Output the PCA coordinates and variance explained for all samples to a results table.
+7. Script runs on login node to generate static outputs (small memory footprint, ~30 seconds expected runtime).
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_coordinates.csv | table | PCA coordinates for all samples with PC1, PC2, variance explained, and condition metadata |
+| results/pca_plot.png | figure | Scatter plot of PC1 vs PC2 colored by condition with sample labels
+
+## Execution
+Runs: batch
+
+Expected runtime: ~30 seconds. Memory: <500MB. Output size: <1MB. The analysis loads one count matrix, performs PCA, and generates one plot and one coordinate table.

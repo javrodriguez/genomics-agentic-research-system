@@ -1,0 +1,10 @@
+== test_run_take -k TestCodexBinarySweep against 0ee767a3's classifiers, records and run_take.py
+FAIL: test_the_binary_sweep_is_refused (test_run_take.TestCodexBinarySweep.test_the_binary_sweep_is_refused)
+AssertionError: Lists differ: ["SSL_CERT_FILE, glued in the binary's str[625 chars]sed"] != []
+Ran 1 test in 0.022s
+FAILED (failures=1)
+== test_run_take -k TestGeminiPackageSweep against 0ee767a3's classifiers, records and run_take.py
+FAIL: test_the_gemini_sweep_is_refused (test_run_take.TestGeminiPackageSweep.test_the_gemini_sweep_is_refused)
+AssertionError: Lists differ: ['WEB_HOST is not refused', 'EDITOR_URL is not refused'] != []
+Ran 1 test in 0.019s
+FAILED (failures=1)

@@ -1,0 +1,13 @@
+== test_preflight (lease tests, absent auth.json must refuse) against faa3ff44's preflight.py
+FAIL: test_the_lease_admits_exactly_its_one_credential (test_preflight.TestLeasePostflight.test_the_lease_admits_exactly_its_one_credential)
+AssertionError: Lists differ: ['a lease home with no credential: admitted'] != []
+'a lease home with no credential: admitted'
+- ['a lease home with no credential: admitted']
+Ran 56 tests in 7.120s
+FAILED (failures=1)
+  mutant egress-allowed-host-always-passes: red - egress-allowed-host/refused was not caught
+  mutant egress-other-host-refused-always-passes: red - egress-other-host-refused/allowed was not caught
+  mutant egress-direct-refused-always-passes: red - egress-direct-refused/direct was not caught
+  mutant study-folders-absent-always-passes: red - study-folders-absent/present was not caught
+  mutant cap-add-allowed: red - an absent fact is expected present
+  mutant study-empty: red - the filled values fail ['study-folders-absent']

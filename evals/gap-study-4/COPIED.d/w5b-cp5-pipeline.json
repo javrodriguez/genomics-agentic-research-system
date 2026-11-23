@@ -1,0 +1,45 @@
+{
+  "lane": "w5b-cp5-pipeline",
+  "files": [
+    {
+      "path": "COPIED.d/w5b-cp5-pipeline.json",
+      "status": "new",
+      "reason": "R1, R18: pipeline ownership. Transfer (ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1)): run.py, freeze_rehearsal.py, tests/test_pipeline.py moved to lane w8a-walk-layout, which edits them for the walk layout and claims them in COPIED.d/w8a-walk-layout.json. Transfer (ruling W8B-gap4-1 (Javier's own decision, typed in glitch-1b's window Mon 12 Oct 2026 08:51 EDT, \"holdout digests A\"; slice w8b, assigned by glitch-1b)): freeze.py moved to lane w8b-holdout-digests, which edits them so the holdout's salted digests and count enter at the freeze commit only, and claims them in COPIED.d/w8b-holdout-digests.json."
+    },
+    {
+      "path": "checks.d/w5b-cp5-pipeline.txt",
+      "status": "new",
+      "reason": "R10: pipeline checks"
+    },
+    {
+      "path": "takes.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/takes.py",
+      "reason": "R2, R5, R21-R25, R28, R33: committed registration guard and human ruling door Night-ruling fold (live harness, under glitch-06's ruling, 14 Oct 2026): commit_night_ruling, the one door for THE NIGHTLY STOP's run-level ruling, with commit_ruling's discipline; the done map and registration_outcomes read outcomes through batch.is_outcome and skip night rulings. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/vendor-admission.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 3835f3328f21, 70f22b6227e6, 9dbb8c1a02ba, b6c2a2f9a852, 4147173bf13c, 95714f4a3f06, b0f471afedf7, 7d40a1bce772, 5d627d1dad4b, f477832f04f3, a6325f3601ca."
+    },
+    {
+      "path": "check_results.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/check_results.py",
+      "reason": "R3, R14, R24, R26-R28, R31: re-verify recorded routes, rulings, windows and records Edit without transfer by lane w9-cp6 (glitch-2f's wave 9 ruling (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w9, CP6 wiring); departure w9-1, because tests/test_pipeline.py's PipelineOwnership binds check_results.py to this lane): W8B-R2-2, synthetic_digest_problems, called by check_frozen_content, re-applies freeze.synthetic_tasks to the committed prereg.json as its freeze commit wrote it and as it stands; the rehearsal's synthetic holdout digests are refused naming W8B-gap4-1, and under --rehearsal-plan printed NOT CHECKED. Bound by tests/test_cp6_wiring.py S1. Night-ruling fold: outcome readers use batch.is_outcome; the publication walk skips night rulings. Lane run-launcher (ruling 2, 22 Oct 2026), an edit without transfer: check_publication starts its problems from run_builders.order_problems (first registrations follow take_order within each launch part). Bound by tests/test_run_builders.py S3Hook. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w9-cp6.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: b7bee26033ca, 9dbb8c1a02ba, 8c5c5b52e98b, b9eb14362a0b, 072e901d0b95, 95714f4a3f06, b2c1de94199b, 792bc189d232, d2924aabae80, 80728a17c8af, 31adb0633cd9, f0614c058921, 9d383a254df3, 89ad57f1a42b, 09fd22d0e91d, 5d627d1dad4b, f477832f04f3, ec4cd9f8ea09, 3aac3fc350a6, a816f95e8e3c."
+    },
+    {
+      "path": "result.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/result.py",
+      "reason": "R8, R12, R15-R16, R23-R24, R28, R30-R32: tables solely from stats and committed completeness Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 718c7ad75ee4, a6b444dc253d, 9d383a254df3."
+    },
+    {
+      "path": "completeness.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/completeness.py",
+      "reason": "R2, R23, R28, R30: every planned half-cell and task-list denominator Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 718c7ad75ee4, a6b444dc253d, f0614c058921, 9d383a254df3, 91573d39f05e, 2b540d6aa5f8, 2bf9754898ca."
+    },
+    {
+      "path": "costs.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/costs.py",
+      "reason": "R6 R11 R29: per-call costs, dated prices and round spending predicates. Edit W8D-gap4-1 (lane w8d, under ruling W8D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8d, CP8 prep); no ownership transfer, departure w8d-1, because tests/test_pipeline.py's PipelineOwnership binds costs.py to this lane): the module docstring's last two lines, which said the driver invokes walk_gate and month_turn_allowed, now name batch.Batch (lane w7c's wiring: before a block is registered, and month_turn_allowed again before each paid launch). Docs only; the line count is unchanged. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w6j-claude-adapter.json, COPIED.d/w8d-cp8-prep.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 04af06f5a765, 9a2e2defbf47, cd0236119e01, 53eede902cf4, ad42d907f7a0, 47df80db3945, 9a47cad6e92e, a6325f3601ca, 987c803052f1."
+    }
+  ]
+}

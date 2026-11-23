@@ -1,0 +1,11 @@
+control 0 of 8
+RED   1/8 sha unchecked
+RED   4/8 version unchecked
+RED   1/8 version prefix
+RED   1/8 exit ignored
+RED   1/8 missing report is clean
+RED   1/8 unredacted
+RED   3/8 finding shape unchecked
+RED   6/8 pin version drift
+RED   1/8 used report folder
+ALIVE: none

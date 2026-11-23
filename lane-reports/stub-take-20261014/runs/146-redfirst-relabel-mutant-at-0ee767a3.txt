@@ -1,0 +1,8 @@
+== the binding mutants against 0ee767a3 as committed (its test_run_take, classifiers, records, run_take.py): ALIVE is the MAJOR, reproduced
+control 0 of 2
+ALIVE 0/2 the review's relabel: GOOGLE_CLOUD_PROJECT harmless, dropped everywhere
+ALIVE 0/2 a glued trust-store name relabelled harmless and dropped
+ALIVE 0/2 a Codex route relabelled harmless and dropped
+N/A   the Codex sweep bound to another image (the binding it targets is absent from this test file)
+ALIVE 0/2 the binary sha256 differing after its first 16 characters
+ALIVE: ["the review's relabel: GOOGLE_CLOUD_PROJECT harmless, dropped everywhere", 'a glued trust-store name relabelled harmless and dropped', 'a Codex route relabelled harmless and dropped', 'the binary sha256 differing after its first 16 characters']

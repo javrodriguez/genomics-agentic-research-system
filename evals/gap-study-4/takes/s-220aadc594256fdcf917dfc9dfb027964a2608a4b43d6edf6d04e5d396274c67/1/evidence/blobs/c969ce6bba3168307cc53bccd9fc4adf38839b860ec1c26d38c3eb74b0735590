@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize the relationship between samples using Principal Component Analysis (PCA) of normalized gene expression counts. Generate a plot showing the first two principal components, with samples colored by treatment condition (treated vs untreated) to assess whether samples cluster by treatment status and identify any outliers.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Load the gene counts matrix (salmon.merged.gene_counts_length_scaled.tsv) into R using the `tidyverse` and `DESeq2` packages in the `gars-bio` conda environment.
+2. Filter genes with zero or near-zero counts (sum < 1 across all samples) to reduce noise.
+3. Perform variance stabilizing transformation (VST) using DESeq2 on the filtered counts.
+4. Perform PCA on the transformed counts using the `prcomp()` function, scaling each gene.
+5. Load the design metadata (condition: treated vs untreated) from the design table.
+6. Create a PCA plot showing PC1 vs PC2, with points colored by treatment condition; generate a scree plot showing variance explained by the first 10 PCs.
+7. Save both plots and PC loadings/scores to results/.
+8. Script runs under `Runs: batch` on the configured cluster.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.pdf | figure | PCA biplot (PC1 vs PC2) with samples colored by treatment condition |
+| results/scree_plot.pdf | figure | Scree plot showing cumulative variance explained by first 10 PCs |
+| results/pca_scores.csv | table | Principal component scores for each sample |
+| results/pca_loadings.csv | table | Gene loadings on first 10 principal components |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 5 minutes. Output size: < 100 MB. PCA on 6 samples is lightweight; submitted to the configured executor (Slurm default).

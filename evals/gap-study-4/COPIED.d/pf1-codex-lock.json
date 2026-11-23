@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-codex-lock",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-codex-lock.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane pf1-codex-lock (glitch-45's ruling of Tue 27 Oct 2026, under Javier's standing delegation; arm O walk w-o58, gpt-6.1-sol, held at pre-2 on \".sqlite-maintenance.lock: neither placed nor on codex's allow-list\") admits Codex's state-database reclamation lock in the per-take config folder: the pinned Codex (openai/codex 092d3acd, rust-v0.162.1, codex-rs/state/src/runtime/reclamation.rs 17, 28-30, 37-67, 115-129; state/src/runtime.rs 258) opens <sqlite home>/.sqlite-maintenance.lock with create and truncate false, never writes it, and try_locks it after the reclamation worker's first 60 s sleep. Edits without transfer, recorded here only so the owners' fragments stay untouched: box/run_take.py (w4b-cp2-runtake-preflight): one CODEX_ALLOWED row, the exact name, kind file, read rule None, beside the state databases' row, the shape the table already gives Codex's other lock files (the arg0 .lock, the thread writer locks); check_take.py (w10-walk-runner): the three citations of run_take.py lines after the new row (VENDOR_PENDING_ROWS prose, 2413, 2381-2437 and 2429-2430) moved by the row's two lines to 2415, 2383-2439 and 2431-2432, the same lines; tests/test_config_folder.py (vendor-admission): C15MaintenanceLock, red first against 3d278db9 (w-o58's recorded postflight listing rebuilt and refused with exactly w-o58's one problem; another unknown name refuses; the lock's shapes; codex only; the table is the base plus one row; three turns through run_turn), twelve registered witnesses, and B20-4's codex base taking the new row out beside the marker row."
+    },
+    {
+      "path": "checks.d/pf1-codex-lock.txt",
+      "status": "new",
+      "reason": "Lane pf1-codex-lock (glitch-45's ruling of Tue 27 Oct 2026): this lane's listed checks."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-codex-lock-9349cf6-r2.md",
+      "status": "new",
+      "reason": "The fresh round-1 review of this lane at 3d278db9..9349cf60, re-run (VERDICT PASS, Tue 27 Oct 2026), committed at 5b781995 as written, unedited; claimed here at the L6e merge on glitch-45's word (the Lane-orchestrator, under Javier's standing delegation, Tue 27 Oct 2026). The earlier file, lanes/REVIEW-pf1-codex-lock-9349cf6.md (committed at 50cd4f15), was discarded whole under the language protocol (lint_language.py:171-173: lint_pooling found two banned comparison words in its line 21, and that guard has no excusal path) and the review re-run; it stays in history."
+    }
+  ]
+}

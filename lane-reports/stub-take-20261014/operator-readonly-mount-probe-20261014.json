@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "what": "review-operator-read O-4: a write under the operator container's read-only mount, on athena",
+  "when_utc": "2026-10-14T16:44:50Z",
+  "host": "athena (rootless docker, DOCKER_HOST unix:///run/user/1000/docker.sock)",
+  "gate": {
+    "athena_suite_list": "no run in progress (every 14 Oct entry has a verdict)",
+    "athena_suite_processes": 0,
+    "loadavg": "0.02 0.01 0.06"
+  },
+  "image_id": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+  "argv_source": "box/ownership.operator_argv at the working tree of this commit (readonly=True; control readonly=False)",
+  "script": "probe_operator_readonly_mount.sh",
+  "script_sha256": "0fce34cbe2a6a8dce758a1edc2c74b11075d3fab8d17a538a82f14f8dd77c191",
+  "scratch": "/home/javier/gap4-roprobe-20261014 (0777 folder, 0666 file, so only the mount can stop a write); removed",
+  "steps": [
+    {
+      "step": "readonly",
+      "rc": 0,
+      "stdout": "{\"append_existing\": \"EROFS\", \"chmod\": \"EROFS\", \"create\": \"EROFS\", \"mkdir\": \"EROFS\", \"uid\": 10001, \"unlink\": \"EROFS\"}",
+      "stderr": ""
+    },
+    {
+      "step": "read",
+      "rc": 0,
+      "stdout": "{\"exists\": true, \"b64\": \"eyJwcm9iZSI6MX0K\", \"sha256\": \"4bf48a3727db0ecd342ba1fbfe17331e958a4a0cbee43b9b749a5edef916c1be\", \"bytes\": 12}",
+      "stderr": ""
+    },
+    {
+      "step": "list",
+      "rc": 0,
+      "stdout": "{\"exists\": true, \"entries\": [[\"cy5qc29ubA==\", \"file\"]], \"sha256\": \"675ca793c737a5a613521c4ef2af41fea01da35d64f749d76b34304e3f27db22\"}",
+      "stderr": ""
+    },
+    {
+      "step": "control",
+      "rc": 0,
+      "stdout": "{\"append_existing\": \"WROTE\", \"chmod\": \"ENOENT\", \"create\": \"WROTE\", \"mkdir\": \"WROTE\", \"uid\": 10001, \"unlink\": \"WROTE\"}",
+      "stderr": ""
+    }
+  ],
+  "tail": [
+    "containers_left=0",
+    "ls: total 12",
+    "ls: drwxrwxrwx 3 javier javier 4096 Oct 14 12:44 .",
+    "ls: drwxrwxrwx 3 javier javier 4096 Oct 14 12:44 ..",
+    "ls: drwxr-xr-x 2 110000 110000 4096 Oct 14 12:44 d",
+    "ls: -rw-r--r-- 1 110000 110000    0 Oct 14 12:44 new.txt",
+    "scratch_removed=true"
+  ],
+  "reading": "Under the read-only mount every write form (create, append to an existing file, mkdir, unlink, chmod) fails EROFS as uid 10001; the read and list programs return their replies; the same program on a writable mount (control) writes. No container left; the scratch folder removed."
+}

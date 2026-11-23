@@ -1,0 +1,302 @@
+test_a1_the_recorded_streams_read_as_recorded (__main__.TestTheReaders.test_a1_the_recorded_streams_read_as_recorded) ... ok
+test_a2_the_harness_api_error_is_never_the_agents (__main__.TestTheReaders.test_a2_the_harness_api_error_is_never_the_agents) ... ok
+test_a3_the_turn_argv (__main__.TestTheReaders.test_a3_the_turn_argv) ... FAIL
+test_a4_a_turn_on_the_fake_runtime (__main__.TestTheReaders.test_a4_a_turn_on_the_fake_runtime) ... FAIL
+test_a5_the_cost_is_read_per_call (__main__.TestTheReaders.test_a5_the_cost_is_read_per_call) ... ok
+test_a6_a_null_session_id_is_a_problem (__main__.TestTheReaders.test_a6_a_null_session_id_is_a_problem) ... ok
+test_a7_the_served_model_backstop (__main__.TestTheReaders.test_a7_the_served_model_backstop) ... FAIL
+test_a_version_that_does_not_parse_refuses (__main__.TestTheReaders.test_a_version_that_does_not_parse_refuses) ... ok
+test_the_isolation_flags_are_round_3s (__main__.TestTheReaders.test_the_isolation_flags_are_round_3s) ... ok
+test_the_session_file_calls_count_once_each (__main__.TestTheReaders.test_the_session_file_calls_count_once_each) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_allowed_tools_back (__main__.TestWitnesses.test_witness_allowed_tools_back) ... FAIL
+test_witness_api_error_as_agent (__main__.TestWitnesses.test_witness_api_error_as_agent) ... 
+WITNESS api-error-as-agent: red by A2-api-error (2 own, 0 collateral, 0 errors) ok
+test_witness_count_records (__main__.TestWitnesses.test_witness_count_records) ... 
+WITNESS count-records: red by A5-cost (3 own, 0 collateral, 0 errors) ok
+test_witness_exit_ignored (__main__.TestWitnesses.test_witness_exit_ignored) ... FAIL
+test_witness_init_any_record (__main__.TestWitnesses.test_witness_init_any_record) ... 
+WITNESS init-any-record: red by A1-recorded (10 own, 0 collateral, 0 errors) ok
+test_witness_missing_class_as_zero (__main__.TestWitnesses.test_witness_missing_class_as_zero) ... 
+WITNESS missing-class-as-zero: red by A5-cost (2 own, 0 collateral, 0 errors) ok
+test_witness_mode_constant (__main__.TestWitnesses.test_witness_mode_constant) ... FAIL
+test_witness_model_usage_unread (__main__.TestWitnesses.test_witness_model_usage_unread) ... FAIL
+test_witness_modelless_accepted (__main__.TestWitnesses.test_witness_modelless_accepted) ... FAIL
+test_witness_null_id_unreported (__main__.TestWitnesses.test_witness_null_id_unreported) ... 
+WITNESS null-id-unreported: red by A6-null-id (1 own, 0 collateral, 0 errors) ok
+test_witness_read_unwrapped (__main__.TestWitnesses.test_witness_read_unwrapped) ... FAIL
+test_witness_routed_init_unchanged (__main__.TestWitnesses.test_witness_routed_init_unchanged) ... FAIL
+test_witness_served_unread (__main__.TestWitnesses.test_witness_served_unread) ... FAIL
+test_witness_side_list_open (__main__.TestWitnesses.test_witness_side_list_open) ... FAIL
+test_witness_side_model_not_stopped (__main__.TestWitnesses.test_witness_side_model_not_stopped) ... FAIL
+test_witness_zero_dollars_per_call (__main__.TestWitnesses.test_witness_zero_dollars_per_call) ... 
+WITNESS zero-dollars-per-call: red by A5-cost (2 own, 0 collateral, 0 errors) ok
+
+======================================================================
+FAIL: test_a3_the_turn_argv (__main__.TestTheReaders.test_a3_the_turn_argv)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 627, in test_a3_the_turn_argv
+    self.assertEqual(a3_argv(cca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A3-argv: Refused: a claude-code tu[162 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A3-argv: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A3-argv: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"]
+
+======================================================================
+FAIL: test_a4_a_turn_on_the_fake_runtime (__main__.TestTheReaders.test_a4_a_turn_on_the_fake_runtime)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 630, in test_a4_a_turn_on_the_fake_runtime
+    self.assertEqual(a4_turn(cca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A4-turn: Refused: a claude-code tu[162 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A4-turn: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A4-turn: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"]
+
+======================================================================
+FAIL: test_a7_the_served_model_backstop (__main__.TestTheReaders.test_a7_the_served_model_backstop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 636, in test_a7_the_served_model_backstop
+    self.assertEqual(a7_served(cca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"]
+
+======================================================================
+FAIL: test_witness_allowed_tools_back (__main__.TestWitnesses.test_witness_allowed_tools_back)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 752, in test_witness_allowed_tools_back
+    self.kill("allowed-tools-back")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A3-argv: Refused: a claude-code tu[162 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A3-argv: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A3-argv: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : allowed-tools-back: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_exit_ignored (__main__.TestWitnesses.test_witness_exit_ignored)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 758, in test_witness_exit_ignored
+    self.kill("exit-ignored")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A4-turn: Refused: a claude-code tu[162 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A4-turn: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A4-turn: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : exit-ignored: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_mode_constant (__main__.TestWitnesses.test_witness_mode_constant)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 755, in test_witness_mode_constant
+    self.kill("mode-constant")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A3-argv: Refused: a claude-code tu[162 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A3-argv: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A3-argv: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : mode-constant: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_model_usage_unread (__main__.TestWitnesses.test_witness_model_usage_unread)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 764, in test_witness_model_usage_unread
+    self.kill("model-usage-unread")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : model-usage-unread: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_modelless_accepted (__main__.TestWitnesses.test_witness_modelless_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 767, in test_witness_modelless_accepted
+    self.kill("modelless-accepted")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : modelless-accepted: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_read_unwrapped (__main__.TestWitnesses.test_witness_read_unwrapped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 773, in test_witness_read_unwrapped
+    self.kill("read-unwrapped")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : read-unwrapped: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_routed_init_unchanged (__main__.TestWitnesses.test_witness_routed_init_unchanged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 770, in test_witness_routed_init_unchanged
+    self.kill("routed-init-unchanged")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : routed-init-unchanged: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_served_unread (__main__.TestWitnesses.test_witness_served_unread)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 761, in test_witness_served_unread
+    self.kill("served-unread")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : served-unread: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_side_list_open (__main__.TestWitnesses.test_witness_side_list_open)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 776, in test_witness_side_list_open
+    self.kill("side-list-open")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : side-list-open: the bound check is not green on claude_code_adapter.py
+
+======================================================================
+FAIL: test_witness_side_model_not_stopped (__main__.TestWitnesses.test_witness_side_model_not_stopped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 779, in test_witness_side_model_not_stopped
+    self.kill("side-model-not-stopped")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_claude_code_adapter.py", line 733, in kill
+    self.assertEqual(check(cca), [], f"{name}: the bound check is not green on claude_code_adapter.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR A7-served: Refused: a claude-code [164 chars]s']"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', 'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"
+
++ []
+- ["ERROR A7-served: Refused: a claude-code turn denies ['RemoteTrigger', "
+-  "'SendMessage', 'ListAgents'] by --disallowedTools (the isolation ruling); it "
+-  "does not deny ['RemoteTrigger', 'SendMessage', 'ListAgents']"] : side-model-not-stopped: the bound check is not green on claude_code_adapter.py
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.186s
+
+FAILED (failures=13)

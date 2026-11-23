@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c5d2-161b-7fb3-ad70-cef843b46d3f"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The plot is planned at `gars/projects/run-c91ac458/03_custom_analysis/01_sample-pca/results/sample_pca.png`. The analysis won’t run until you approve the plan."}}
+{"type":"turn.completed","usage":{"input_tokens":234983,"cached_input_tokens":209664,"cache_write_input_tokens":0,"output_tokens":1931,"reasoning_output_tokens":345}}

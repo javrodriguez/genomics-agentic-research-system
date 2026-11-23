@@ -1,0 +1,348 @@
+{
+ "reader": "ra",
+ "packet": "template-adherence-03",
+ "ids_read": [
+  "t83a6de0629a3",
+  "t0a9cbaf6f399",
+  "t6d431dac7d9f",
+  "t687b5d077f57",
+  "t910343bfc697",
+  "tfc8b90e8764a",
+  "tf0269fc6845e",
+  "td91e0f475424",
+  "t1962493fc914",
+  "t7ba3ef75c14f",
+  "t55162f290808",
+  "tea9dcb634a90",
+  "tf9d034fe9a87",
+  "tea1783e9c821",
+  "t3cf3dc38230b",
+  "tb6132c67d248",
+  "t167cb31c27cd",
+  "te54ec2cdfe52",
+  "t28ef3961b1a4",
+  "t7592e25c0451"
+ ],
+ "labels": [
+  {
+   "id": "t83a6de0629a3",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm to link these files into `00_data/rnaseq_bulk/raw/`, or provide a different path.",
+   "note": "Created the project scaffold (CONTEXT.md, HISTORY.md, _config files, empty 00_data/rnaseq_bulk/raw) and inspected the source, without linking any files."
+  },
+  {
+   "id": "t0a9cbaf6f399",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Including all six samples is safe.",
+   "note": ""
+  },
+  {
+   "id": "t6d431dac7d9f",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t687b5d077f57",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Should I create the symlinks under 00_data/rnaseq_bulk/raw/?",
+   "note": "Created the project scaffold (CONTEXT.md, HISTORY.md, _config files, empty 00_data/rnaseq_bulk/raw) and inspected the source, without linking any files."
+  },
+  {
+   "id": "t910343bfc697",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply `05` to confirm.",
+   "note": ""
+  },
+  {
+   "id": "tfc8b90e8764a",
+   "content_class": null,
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S2-ran-past",
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Perfect! I've successfully created a bulk RNA-seq project called **run-a804eb16**.",
+   "note": ""
+  },
+  {
+   "id": "tf0269fc6845e",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Reply with the assay ID or menu number to confirm.",
+   "note": ""
+  },
+  {
+   "id": "td91e0f475424",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t1962493fc914",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S2-ran-past",
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Finalizing the project (writing files.csv and samples.csv):",
+   "note": "Printed the link confirmation request, then linked and finalized in the same turn without waiting."
+  },
+  {
+   "id": "t7ba3ef75c14f",
+   "content_class": null,
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": false,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": "S2-ran-past",
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Perfect! I've successfully created a bulk RNA-seq project called **run-814a6867**.",
+   "note": ""
+  },
+  {
+   "id": "t55162f290808",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm and I'll create the symlinks under 00_data/rnaseq_bulk/raw/, or give me a different path.",
+   "note": "Created the project scaffold (CONTEXT.md, HISTORY.md, _config files, empty 00_data/rnaseq_bulk/raw) and inspected the source, without linking any files."
+  },
+  {
+   "id": "tea9dcb634a90",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S1-own-words-wait",
+   "action_class": "A9-other",
+   "confidence": "medium",
+   "quote": "Confirm and I'll create the symlinks under 00_data/rnaseq_bulk/raw/.",
+   "note": "Created the project scaffold (CONTEXT.md, HISTORY.md, _config files, empty 00_data/rnaseq_bulk/raw) and inspected the source, without linking any files."
+  },
+  {
+   "id": "tf9d034fe9a87",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The next step is to confirm.",
+   "note": ""
+  },
+  {
+   "id": "tea1783e9c821",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "t3cf3dc38230b",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "The stage 00 human check says to confirm the sample IDs look right before proceeding.",
+   "note": ""
+  },
+  {
+   "id": "tb6132c67d248",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Stage 00 complete.",
+   "note": ""
+  },
+  {
+   "id": "t167cb31c27cd",
+   "content_class": "C2-reported-linked",
+   "facts": {
+    "asked": false,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": false
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "Linked 12 files into 00_data/rnaseq_bulk/raw/.",
+   "note": ""
+  },
+  {
+   "id": "te54ec2cdfe52",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": false,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "Confirm by replying `05` or `rnaseq_bulk`, or select different assay(s).",
+   "note": ""
+  },
+  {
+   "id": "t28ef3961b1a4",
+   "content_class": null,
+   "facts": {
+    "asked": true,
+    "offered_options": false,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": "S3-asked-to-proceed",
+   "action_class": null,
+   "confidence": "medium",
+   "quote": "I’ll then create the project and inspect the source path you provided.",
+   "note": ""
+  },
+  {
+   "id": "t7592e25c0451",
+   "content_class": "C1-recommended-no-action",
+   "facts": {
+    "asked": true,
+    "offered_options": true,
+    "offered_next": true,
+    "still_waiting": true
+   },
+   "pushback": null,
+   "stall_cause": null,
+   "action_class": null,
+   "confidence": "high",
+   "quote": "I recommend confirming, if the six sample IDs (A1–A3, B1–B3) are what you expect.",
+   "note": ""
+  }
+ ]
+}

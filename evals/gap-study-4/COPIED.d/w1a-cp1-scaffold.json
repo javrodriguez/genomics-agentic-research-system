@@ -1,0 +1,121 @@
+{
+  "lane": "w1a-cp1-scaffold",
+  "files": [
+    {
+      "path": "COPIED.d/w1a-cp1-scaffold.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/. Transfer (ruling S5-gap4-1, glitch-1b under Javier's standing delegation, 11 Oct 2026): drive.py, copied identical here from evals/gap-study-3/drive.py, moved to lane w6e-drive-commit, which edits it for CP2 and claims it in COPIED.d/w6e-drive-commit.json. Transfer (ruling S6-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026)): check_take.py, copied identical here from evals/gap-study-3/check_take.py, moved to lane w6h-drive-lifecycle, which edits it for CP2 (the plan's UPDATE check_take.py) and claims it in COPIED.d/w6h-drive-lifecycle.json. Transfer (ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026)): mode_binding.py, copied identical here from evals/gap-study-3/mode_binding.py, moved to lane w6i-checker-body (slice S6b, Q2), which edits it and claims it in COPIED.d/w6i-checker-body.json. Transfer (ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026)): prereg.py, copied here from evals/gap-study-3/prereg.py and edited by slice S3 (lane w6d-prereg-order), moved to lane w7a-draft-text, which edits --status for W6D-R1-1 and claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W7D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026)): review_kit/rounds.py, copied identical here from evals/gap-study-3/review_kit/rounds.py, moved to lane w7d-rehearsals (wave 7 piece P3), which corrects its usage lines to round 4's paths and claims it in COPIED.d/w7d-rehearsals.json. Transfer (ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1)): copy_manifest.py, lint_language.py, fixture_walk.py, build_cases.py, leak_grep.py moved to lane w8a-walk-layout, which edits them for the walk layout and claims them in COPIED.d/w8a-walk-layout.json. Transfer (lane review-kit-port, under glitch-f1's freeze-path rulings, Wed 21 Oct 2026; freeze-path plan section 4, \"Before round 1\"): review_kit/BRIEF.md, review_kit/why.md, review_kit/blindness.py and review_kit/launch.py, copied identical here from evals/gap-study-3/review_kit/, moved to lane review-kit-port, which ports them to round 4 and claims them in COPIED.d/review-kit-port.json. Transfer (lane review-kit-port, glitch-f1's folds 1 and 2 on its first hand-back, Wed 21 Oct 2026): review_kit/build_kit.py and review_kit/commit_review.py, copied identical here from evals/gap-study-3/review_kit/, moved to lane review-kit-port, which edits them and claims them in COPIED.d/review-kit-port.json."
+    },
+    {
+      "path": "check_checklist_names.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/check_checklist_names.py"
+    },
+    {
+      "path": "checks.d/w1a-cp1-scaffold.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py."
+    },
+    {
+      "path": "ci_conclusion.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/ci_conclusion.py"
+    },
+    {
+      "path": "commit_msg.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/commit_msg.py"
+    },
+    {
+      "path": "contract_quotes.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/contract_quotes.json"
+    },
+    {
+      "path": "contracts.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/contracts.py"
+    },
+    {
+      "path": "denials.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/denials.py"
+    },
+    {
+      "path": "fixtures/check_fixture.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/check_fixture.py"
+    },
+    {
+      "path": "fixtures/copy_project.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/copy_project.py"
+    },
+    {
+      "path": "fixtures/gen_project.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/gen_project.py"
+    },
+    {
+      "path": "fixtures/gen_source.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/gen_source.py"
+    },
+    {
+      "path": "fixtures/symbol_rulings.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/fixtures/symbol_rulings.json"
+    },
+    {
+      "path": "language-allowlist.json",
+      "status": "edited",
+      "source": "evals/gap-study-3/language-allowlist.json",
+      "reason": "Round 4 home fix (6 Oct 2026): round 3's excusal for a line of evals/gap-study-3/COSTS.md is dropped: it names a round 3 file round 4's lint never scans, and it quotes a per-take cost row whose figures decision 0271 corrected (the costs-by-call sweep requires a citation). The other excusal is kept as copied. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: a correction to the home fix 0800f3b9, which kept the remaining excusal as copied; as copied it named evals/gap-study-3/contract_quotes.json, so it never matched round 4's own identical copy of that file, and it is re-pointed to evals/gap-study-4 with the same line text. The lane adds 22 exact-line excusals, each with its reason: line 8 of COPIED.d/w3c-cp3-graders-confound-newtasks.json and 21 lines of tests/fixtures_confounded_design.json (grader test replies and the lane's notes naming their shape). Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/freeze-gates-fix.json, COPIED.d/pf1-l1-freeze-gates.json, COPIED.d/ship-evidence-blobs.json, COPIED.d/w8e-lint-reds.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 0800f3b9c0bc, 0e6938290f17, 164b272c7d66, b043a7502909, 77febf0d98e2, 9997aa12a1aa, c64ca874ca44, 7ad1d7786694, 77de66c4b396, 773f8409de0a, 50a65fc9ebe7, 9bc91a3541c2, 490d7c70f06b, 5867fa427f36, d5c21c9b1072, b115b44099a2, 74c3a543cc9a, b888af750468, 5a62abcfdc53, cc277f5194c1, c8bdfdb23acc, e3a97dbfac6a, 623fb230f6aa, 8170c79a6c05, 429f3bede401, a80c9dc80bfb, 4d4594580545, f97134b8baeb, a980c3b3425b, b782b93ebaf0, 8a516f3d8359, ff24e298bd7a, d254c5f94b50, 424da3541f75, 8b77109fe948, e32903730a45, 7dee9dec47fc, 7e55506b61c9, b4f483fa3e88, e1e531a73933, 04612caef000, ec038482af47, ca0f777eba72, b80d79ba0fdd, 339ff0634699, e655781eb39d, d60f518eda42, 202e973db419, 5c42a7bbe18d, 6c3965e50921, 5d5605e2e0b1, a2498dadc323, 03aea796b2fb, d53b31652dd6, 8c7baab95e19, 16418128715c, d25270eb6cc1, 799d04bc4d33, 4e85f47b9e9c, 6d9c0a66c642, 06ea7192b87c, a1a831f7fad8, 868d0d36c9fa, d592104ae0a0, f4176e84773c, 74f034a8554a, 3e45bd85f6ff, 9333e5f030ff, 527a4cdef88b, 75f557835038, 41640ddd9318, 5b99b3120499, ac552936bf56, 994c7c4fcdfa, f1a3530decd3, e7353bd2eb2d, 50c29a90fb97, 72fb0191828a, ab8db6ffc975, bbddacc3d4ff, 888f24ad1720, 994041b94504, 047c8a1e9a9f, 5e28be971c9f, 3a552fee5ec2, 325b639a8ff2, 20ccad93b15e, b65d9772aa02, 15f1f6a225db, 77be1d2aa5b9, daa4558ad2fd, f0c1f70a1f2d, f0dfd506ed2f, 93904ec85272, e5087079430f, b5f6a65f08fe, 3a663e9c5988, 5bc4443f2c98, c6b662a62d60, 5e9686f55c13, e6a0c3d3280b, 5324ce4e7d2e, f7bb5bd141a8, da47d49ac964, 3d537500853d, 946dff6f8d99, e2d19685ea49, 2af137df1e5a, faa3b35fc8ad, 191771dc2eca, 3e73672e8e0e, 46361eb072f4, be9704084844, 5345d71c3411, 020f08a61916, 6adebdbb477d, 79467bc42a02, be4a9eb36a75, 005f06d8f73a, 09afd90e3b20, 73b1ee3473fd, af1b0784e0fb, 380551d37c37, b7258f1e3731, 4fa6414e3da4, a344ff9de235, 376bf597dce6, ecbe3bdc3036, f7d0013e9107, 9e0e02a63985, 4df98d5ef731, 96dfbae8ebb0, 3c8b74a33633, cc276098f830, dde41833d293, c0d44b0fd982, 7689c34fdd9c, 6f7ebeb1e4b2, 2572581c8300, 1c3d50cf96eb, 5349da7b9ea9, bb8302fb8db5, e3ef0f8171c5, 376abf15ac55, 0fe549f92412, e17ee106b407, 3799d2ea8416, ba9dbbbd3060, 14af157b57fa, dbf649c6f6fa, 962d1e974396, c08388780cb7, 07e811902120, b9e72cfbb234, ab3bf35b35f0, 6154301e01e2, 57a6ed9408c0, d5c0f7989083, 1dbcfd425980, c5a0839c8a5e, 6e35b122772e, 87a7eddfbe0c, 6d7624e8d0d3, 1f6672de5c4c, 83a7ed325030, a75d21aebb67, 04da2dfb5305."
+    },
+    {
+      "path": "lexicons/permission-stop.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/lexicons/permission-stop.json"
+    },
+    {
+      "path": "lexicons/plan-gate-approve.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/lexicons/plan-gate-approve.json"
+    },
+    {
+      "path": "lexicons/scope-read-answer.json",
+      "status": "identical",
+      "source": "evals/gap-study-3/lexicons/scope-read-answer.json"
+    },
+    {
+      "path": "round2.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/round2.py"
+    },
+    {
+      "path": "scratch_git.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/scratch_git.py"
+    },
+    {
+      "path": "scrub.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/scrub.py"
+    },
+    {
+      "path": "smoke_run_tree.py",
+      "status": "identical",
+      "source": "evals/gap-study-3/smoke_run_tree.py"
+    },
+    {
+      "path": "test_round4.py",
+      "status": "new",
+      "reason": "Round 4's battery: discovers tests/test_*.py with unittest and refuses to pass on zero tests. Departure w10-7 (lane w10-walk-runner, athena fold of run gap4-w10-5ff8b2e-20261013T003648Z, no ownership transfer): HELPERS names tests/walk_mutation.py, the generator test_walk_runner imports and runs, so the battery's rule (a .py in tests/ that is neither test_*.py nor a named helper) holds with it present. Lane vendor-admission T4 P2 (glitch-b5's round 9), an edit without transfer: HELPERS names the lane's two helper modules, tests/check_vendor_sources.py (PF) and tests/vendor_check_fixtures.py (P1), each with the test module that runs it; test_scaffold's module rule found them unnamed."
+    },
+    {
+      "path": "tests/test_scaffold.py",
+      "status": "new",
+      "reason": "Proves the copy manifest, the copied modules' import paths, study.py's round-4 binding and run_checks.py, each by mutating what it guards. Departure w6e-1 (lane w6e, under ruling S5-gap4-1, for glitch-1b to ratify): two edits that follow drive.py's move to w6e as an edited copy: the identical-copy refusal case uses denials.py in drive.py's place, and copied_modules also reads w6e's fragment so drive.py is still import-probed. Departure w6h-1 (lane w6h, under ruling S6-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026), for glitch-1b to ratify; the shape of the ratified w6e-1): two edits that follow drive.py's and check_take.py's move to w6h as edited copies: the identical-copy refusal case uses allowlist.py in check_take.py's place, and copied_modules reads w6h's fragment in place of w6e's, so drive.py and check_take.py are still import-probed. Departure w6i-1 (lane w6i, under ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026), the shape of the ratified w6e-1 and w6h-1): copied_modules also reads w6i's fragment, which now claims drive.py and check_take.py, so both stay import-probed. Departure w6j-1 (lane w6j, under ruling S6c-gap4-1, for glitch-1b to ratify): copied_modules also reads COPIED.d/w6j-claude-adapter.json, since drive.py and check_take.py moved there. Edit W7A-gap4-1 (lane w7a, no ownership transfer): copied_modules() reads every fragment through copy_manifest.load_fragments and keeps the .py copies of the prior round (W6-claims-1). Departure w7b-1 (lane w7b, under ruling W7B-gap4-1) added COPIED.d/w7b-walk-wiring.json to the hand list; ruled at the wave 7 merge (glitch-1b): w7a's derived version is taken, which reads w7b's fragment through load_fragments. Departure w7d-1 (lane w7d, under ruling W7D-gap4-1, for glitch-1b to ratify; the shape of the ratified w6e-1 and w6h-1): TheManifest.test_a_copy_that_differs_without_an_edited_entry_is_refused named review_kit/rounds.py as one of this lane's identical copies; rounds.py moved to w7d as an edited copy, so review_kit/launch.py, an identical copy this lane still claims, stands in for it and the four cases stay four. Departure review-kit-port-1 (lane review-kit-port, for glitch-f1 to ratify; the shape of the ratified w6e-1, w6h-1 and w7d-1): review_kit/launch.py moved to review-kit-port as an edited copy, so review_kit/build_kit.py, an identical copy this lane still claims, stands in for it in TheManifest.test_a_copy_that_differs_without_an_edited_entry_is_refused and the four cases stay four. Departure review-kit-port-2 (lane review-kit-port, ratified shape of review-kit-port-1): review_kit/build_kit.py moved to review-kit-port as an edited copy, so smoke_run_tree.py, an identical copy this lane still claims, stands in for it and the four cases stay four."
+    }
+  ]
+}

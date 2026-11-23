@@ -1,0 +1,42 @@
+{
+ "agent_text": {
+  "label:answered": 1,
+  "label:asked": 11,
+  "label:bounded": 1,
+  "label:confirmed": 82,
+  "label:corrected": 27,
+  "label:explained": 28,
+  "label:fixed": 4,
+  "label:flagged": 2,
+  "label:held": 1,
+  "label:linked": 527,
+  "label:neither": 2,
+  "label:template": 39,
+  "word:claude": 14,
+  "word:claude-haiku-4-5-20251001": 5,
+  "word:haiku": 5,
+  "word:normal": 2
+ },
+ "operator_lines": {
+  "label:confirmed": 96,
+  "label:corrected": 25,
+  "label:fixed": 13,
+  "label:linked": 13
+ },
+ "tool_and_scripted": {
+  "label:asked": 1,
+  "label:explained": 127,
+  "label:fixed": 8,
+  "label:linked": 110,
+  "label:template": 95,
+  "word:normal": 2
+ },
+ "tries_with_word": {
+  "agent_text:word:claude": 12,
+  "agent_text:word:claude-haiku-4-5-20251001": 5,
+  "agent_text:word:haiku": 5,
+  "agent_text:word:normal": 2,
+  "tool_and_scripted:word:normal": 1
+ },
+ "note": "Leak words in agent_text are the agent's own words and are left unchanged. Label words are ordinary English in most hits (for example 'linked', 'confirmed'); they are counted, not edited. Model and harness names in tool calls and results were replaced by <redacted> before this sweep."
+}

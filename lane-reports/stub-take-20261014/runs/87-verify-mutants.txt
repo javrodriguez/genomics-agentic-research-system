@@ -1,0 +1,6 @@
+control 0 of 3
+RED   2/3 '=' unchecked
+RED   1/3 double paste unchecked
+RED   1/3 name prefix unchecked
+RED   4/3 paste checks ignored in the result
+ALIVE: none

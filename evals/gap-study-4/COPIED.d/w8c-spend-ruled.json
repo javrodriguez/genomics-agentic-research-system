@@ -1,0 +1,25 @@
+{
+  "lane": "w8c-spend-ruled",
+  "files": [
+    {
+      "path": "routing.json",
+      "status": "new",
+      "reason": "CP1's routing table as pre-registered data, with its annotations (an outside reach, a quiescence kill, an event id arriving as a checker reason: decided on every take, never routing), round 3's operator-side and driver-decided reasons and caps copied under Javier's ruling \"gap4 routing: A\" with their sources, glitch-f3's rulings on the rate-limit markers, the silent first-turn timeout (with no init event it rehearses, a differing init is refused: fold 3) and the cap units (rehearsals and pauses counted per half-cell, round 3's unit: fold 3), and the pin profiles CP5 pre-registers (PENDING); new in round 4 (round 3 routed inside drive.py). Fold 4 (review round 3): one table-level pin refusal (before the first turn a present init that differs from the pin is refused whatever else matches; only the rate-limit pause outranks it: W1B3-2, glitch-f3 accepted the stricter reading), the silent-timeout row without its none_of, the pause cap counted by usage-window event (W1B3-5, glitch-f3's ruling), and the stale key sentence gone (W1B3-4). Transferred from lane w1b-cp1-routing-batch to lane w8c-spend-ruled under ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md; lane w8c-spend-ruled, assigned by glitch-1b). Lane w8c: spend_cap_markers_status is the proposal's section-5 RULED line, dated 2026-10-12 and naming Javier's words; claude-code's spend-cap list stays empty (1A); no OpenAI or Google entry is added (they come with their adapters, and the status is ruled again then); pin_profiles_status and every other PENDING value are unchanged. Fold before review (glitch-1b): spend_cap_markers.claude-code.source cites the RULED status and Javier's \"spend markers: 1A 2A 3A\" instead of the open, unruled wording."
+    },
+    {
+      "path": "tests/test_routing.py",
+      "status": "new",
+      "reason": "Tests for routing.py and routing.json (interface 3). Transferred from lane w1b-cp1-routing-batch to lane w8c-spend-ruled under ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md; lane w8c-spend-ruled, assigned by glitch-1b). Lane w8c: test_claude_code_spend_list_is_empty_and_pending became test_claude_code_spend_list_is_empty_and_ruled, which holds the status equal to Javier's RULED line (SPEND_STATUS_RULED), starting 'RULED 2026-10-12 by Javier', naming \"spend markers: 1A 2A 3A\", with no PENDING, claude-code's list empty and no other harness's spend-cap entry."
+    },
+    {
+      "path": "COPIED.d/w8c-spend-ruled.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfers under ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md; lane w8c-spend-ruled, assigned by glitch-1b): routing.json and tests/test_routing.py from lane w1b-cp1-routing-batch. Edits without transfer, recorded in their owners' entries: tests/test_batch.py (w1b-cp1-routing-batch), tests/test_spend_wiring.py (w7c-spend-wiring) and prereg-draft.json (w7a-draft-text, regenerated through build_draft.py's writer)."
+    },
+    {
+      "path": "checks.d/w8c-spend-ruled.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): routing.py --check exits 0, and batch.py --check exits 1 on exactly the two pin-profile lines (the spend status ruled). The transferred tests/test_routing.py keeps running from checks.d/w1b-cp1-routing-batch.txt, and tests/test_spend_wiring.py from checks.d/w7c-spend-wiring.txt."
+    }
+  ]
+}

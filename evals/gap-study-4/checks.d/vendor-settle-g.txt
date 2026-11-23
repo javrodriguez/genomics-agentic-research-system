@@ -1,0 +1,8 @@
+# Lane vendor-settle stage G (glitch-f1's settle-design rulings and the adopted NOT COMPARABLE rulings, Wed 21 Oct 2026,
+# under Javier's standing delegation): the Gemini rows settled in check_take.py (five SAME readers on the RECORDED w-g21
+# take, six NOT COMPARABLE partial checks with the adopted ruling texts), every <session_context> version read from the
+# raw records (review MAJOR 1), decoded text (MAJOR 3), the reach on Gemini's recorded workspace directory (MINOR 5),
+# the 15 Gemini READER items on the RECORDED copy, and leg i prepared for stage V. One command per line, run from the
+# repository root; the RECORDED folders are read and copied, never edited; no take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/vendor_settle_gemini.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py tests/vendor_settle_gemini.py

@@ -1,0 +1,35 @@
+{
+  "lane": "w4c-cp2-sidecar-scan",
+  "files": [
+    {
+      "path": "box/sidecar.py",
+      "status": "new",
+      "reason": "CP2's sidecar: the host-side argv builders for its container (create, start, the ctl exec by recorded id, rm) and the in-container serve/ctl program, its whole-tree snapshotter (never following a link, never opening a special file), its inotify watcher over the consequential paths behind an injected factory, and its health records, writing exactly graders/endstate.py's evidence layout; round 3 had no sidecar. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns only `_kind` with the special STATE it feeds (S7-D1) and `begin` writing watched.json (S7-D3); see COPIED.d/w6g-endstate-carries.json. Departure live-box-1 (glitch-06's rulings, 14 Oct 2026): the new-folder rescan (found.jsonl) and the six watcher values filled as the production candidate from the Athena stub measurement and derivation v2 (under review)."
+    },
+    {
+      "path": "tests/test_sidecar.py",
+      "status": "new",
+      "reason": "Tests for box/sidecar.py (interface 3), on fakes only: a fake runtime, fake watcher streams and an injected clock, with the endstate round trip and a mutant asserted red for every guard. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's flips and tests (the special-file and watched-list assertions, the final-stop dwell, the four stat predicates in the process-check allowlist); see COPIED.d/w6g-endstate-carries.json. Departure live-box-1: the vocabulary lists _found and _present_beneath (an unlisted method still refuses); the PENDING tests run against all_pending() and the candidate values are pinned. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the default-deny audit's entry for box/scan_record.py follows its smaller vocabulary, and box/od57_rule.py and box/od57_shapes.py get their own closed entries. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): box/od57_rule.py's vocabulary gains finditer and strip."
+    },
+    {
+      "path": "box/scan_record.py",
+      "status": "new",
+      "reason": "CP2's commit scan: before a take's commit, every file of it is scanned for each secret's exact value (login values read at run time by its own read_login, the account email handed in), for holdout wordings only through an injected matcher (ruling C4; without one the result records not-checked), and through an injected rules scanner; agent-text hits are masked in place (never deleted) and counted as events, any other hit refuses the commit. Round 3 had none (its scrub.py removes one field). Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): OD57's rule set (the ruling, what counts as a read of the doc, the read-shape schema and the shell allow-list) moved to box/od57_rule.py, which this module imports and calls (ruled_text, check_shapes); it keeps the probe rescan, the listing and the refusal."
+    },
+    {
+      "path": "tests/test_scan_record.py",
+      "status": "new",
+      "reason": "Tests for box/scan_record.py (interface 3) on planted fake values, a fake rules scanner and a fake holdout matcher over synthetic strings, with a mutant asserted red for every guard. Lane vendor-admission round 10 ruling 2 (glitch-b5, Sat 17 Oct 2026; the T4 plan's section 9: every codex and gemini take refuses before launch until the account record exists), an edit without transfer: TestLeaseTokens.account_record gives the two lease_secrets tests a TEST DATA account record (clearly fake .invalid addresses). No assertion moved by this ruling. Lane vendor-admission round 10 ruling 4 (glitch-b5, Sat 17 Oct 2026; plan sections 1a and 9: a vendor take's secrets() carry the operator's and its account's address as email pairs), assertions moved by that ruling, named: the lease test's every-pair-is-a-token assertion now reads the token pairs and then exactly the record's two email pairs. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the OD57 tests follow the rule into box/od57_rule (_mutant patches the module that defines a function; each witness names the guard where it now lives), the Claude fixtures' shell paths sit in a run tree, Read is bound to the doc's path, bash -c is refused on the stream, and W167's shape stays admitted by its grep labels. Round 3 (glitch-26's R3-1 to R3-5 on review 7fcba34): the Gemini read_file fixtures sit in a run tree, and the recursive-folder grep row is back among the refusals."
+    },
+    {
+      "path": "COPIED.d/w4c-cp2-sidecar-scan.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w4c-cp2-sidecar-scan.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

@@ -1,0 +1,2382 @@
+{
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "exempt": {
+  "CLAUDE_CODE_OAUTH_TOKEN": "the Claude row's own login (run_take.LOGIN_VARIABLE[claude-code]); refused for every other arm by SUBSCRIPTION_TOKEN_VARIABLES"
+ },
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "provider_tables_sha256": "112bf738901f1187b7a7396d665da65cb5d753f060a09eb0d0b354f2b5438b67",
+ "refuse_if_present": [
+  "ACCESS_TOKEN",
+  "ACCESS_TOKEN_WITH_AUTH_SCHEME",
+  "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+  "ACTIONS_RUNTIME_TOKEN",
+  "AGENT_PROXY_AUTH_TOKEN",
+  "AMPERSAND_TOKEN",
+  "ANACONDA_API_TOKEN",
+  "ANSIBLE_VAULT_PASSWORD_FILE",
+  "ANTHROPIC_API_HOST",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_ASSETS_HOST",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_AWS_API_KEY",
+  "ANTHROPIC_AWS_BASE_URL",
+  "ANTHROPIC_AWS_WORKSPACE_ID",
+  "ANTHROPIC_BASE_URL",
+  "ANTHROPIC_BEDROCK_BASE_URL",
+  "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+  "ANTHROPIC_BEDROCK_REGION_PREFIX",
+  "ANTHROPIC_BEDROCK_SERVICE_TIER",
+  "ANTHROPIC_BETAS",
+  "ANTHROPIC_CONFIG_DIR",
+  "ANTHROPIC_CUSTOM_HEADERS",
+  "ANTHROPIC_CUSTOM_MODEL_OPTION",
+  "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION",
+  "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME",
+  "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES",
+  "ANTHROPIC_DEFAULT_FABLE_MODEL",
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_DESCRIPTION",
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME",
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES",
+  "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES3",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES",
+  "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES4",
+  "ANTHROPIC_DEFAULT_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME",
+  "ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+  "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES",
+  "ANTHROPIC_ENVIRONMENT_ID",
+  "ANTHROPIC_ENVIRONMENT_KEY",
+  "ANTHROPIC_FEDERATION_RULE_ID",
+  "ANTHROPIC_FOUNDRY_API_KEY",
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+  "ANTHROPIC_FOUNDRY_BASE_URL",
+  "ANTHROPIC_FOUNDRY_RESOURCE",
+  "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+  "ANTHROPIC_GOOGLE_CLOUD_LOCATION",
+  "ANTHROPIC_GOOGLE_CLOUD_PROJECT",
+  "ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID",
+  "ANTHROPIC_IDENTITY_TOKEN",
+  "ANTHROPIC_IDENTITY_TOKEN_FILE",
+  "ANTHROPIC_LOG",
+  "ANTHROPIC_MODEL",
+  "ANTHROPIC_ORGANIZATION_ID",
+  "ANTHROPIC_PROFILE",
+  "ANTHROPIC_SCOPE",
+  "ANTHROPIC_SERVICE_ACCOUNT_ID",
+  "ANTHROPIC_SESSION_ID",
+  "ANTHROPIC_SMALL_FAST_MODEL",
+  "ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION",
+  "ANTHROPIC_TELEMETRY_GROUP",
+  "ANTHROPIC_TIER_NAMES",
+  "ANTHROPIC_UNIX_SOCKET",
+  "ANTHROPIC_VERTEX_BASE_URL",
+  "ANTHROPIC_VERTEX_PROJECT_ID",
+  "ANTHROPIC_WEBHOOK_SIGNING_KEY",
+  "ANTHROPIC_WORKSPACE_ID",
+  "ANTHROPIC_WORK_ID",
+  "ANTHROPIC_WORK_SECRET",
+  "API_KEY",
+  "API_KEY_URL",
+  "API_KEY_WITH_CREDENTIALS",
+  "APP_SERVICE_SECRET_HEADER_NAME",
+  "ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN",
+  "ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS",
+  "ATTR_CLOUD_PROVIDER",
+  "AUTO_REPLIES_ARMED_TOKEN",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_ACCOUNT_ID",
+  "AWS_AUTH_SCHEME_PREFERENCE",
+  "AWS_BEARER_TOKEN_BEDROCK",
+  "AWS_CA_BUNDLE",
+  "AWS_CHAIN_RESOLVE_REQUEST_TIMEOUT_MS",
+  "AWS_CONFIG_FILE",
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN",
+  "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
+  "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+  "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+  "AWS_CREDENTIAL_EXPIRATION",
+  "AWS_CREDENTIAL_SCOPE",
+  "AWS_DEFAULTS_MODE",
+  "AWS_DEFAULT_REGION",
+  "AWS_EC2_METADATA_DISABLED",
+  "AWS_EC2_METADATA_IPV4_ADDRESS",
+  "AWS_EC2_METADATA_IPV6_ADDRESS",
+  "AWS_EC2_METADATA_SERVICE_ENDPOINT",
+  "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE",
+  "AWS_EC2_METADATA_V1_DISABLED",
+  "AWS_ECS_EC2",
+  "AWS_ECS_FARGATE",
+  "AWS_ENDPOINT_URL",
+  "AWS_ENDPOINT_URL_BEDROCK",
+  "AWS_ENDPOINT_URL_BEDROCK_RUNTIME",
+  "AWS_ENDPOINT_URL_SSO",
+  "AWS_ENDPOINT_URL_SSO_OIDC",
+  "AWS_ENDPOINT_URL_STS",
+  "AWS_EXECUTION_ENV",
+  "AWS_IAM_ROLE_ARN_RE",
+  "AWS_LAMBDA_BENCHMARK_MODE",
+  "AWS_LAMBDA_FUNCTION_NAME",
+  "AWS_LAMBDA_MAX_CONCURRENCY",
+  "AWS_LAMBDA_NODEJS_NO_GLOBAL_AWSLAMBDA",
+  "AWS_LOGIN_CACHE_DIRECTORY",
+  "AWS_MAX_ATTEMPTS",
+  "AWS_PAGER",
+  "AWS_PROFILE",
+  "AWS_REGION",
+  "AWS_REGION_RE",
+  "AWS_RETRY_MODE",
+  "AWS_ROLE_ARN",
+  "AWS_ROLE_SESSION_NAME",
+  "AWS_SDK_UA_APP_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_SESSION_TOKEN",
+  "AWS_SHARED_CREDENTIALS_FILE",
+  "AWS_SIGV4A_SIGNING_REGION_SET",
+  "AWS_USE_DUALSTACK_ENDPOINT",
+  "AWS_USE_FIPS_ENDPOINT",
+  "AWS_WEB_IDENTITY_TOKEN_FILE",
+  "AZURE_ADDITIONALLY_ALLOWED_TENANTS",
+  "AZURE_ARC",
+  "AZURE_AUTHORITY_HOST",
+  "AZURE_AUTH_LOCATION",
+  "AZURE_CLIENT_CERTIFICATE_PASSWORD",
+  "AZURE_CLIENT_CERTIFICATE_PATH",
+  "AZURE_CLIENT_ID",
+  "AZURE_CLIENT_SECRET",
+  "AZURE_CLIENT_SEND_CERTIFICATE_CHAIN",
+  "AZURE_CLOUDS",
+  "AZURE_CLOUD_HOSTS",
+  "AZURE_CONFIG_DIR",
+  "AZURE_FEDERATED_TOKEN_FILE",
+  "AZURE_FUNCTIONS_ENVIRONMENT",
+  "AZURE_IDENTITY_DISABLE_MULTITENANTAUTH",
+  "AZURE_LOG_LEVEL",
+  "AZURE_PASSWORD",
+  "AZURE_POD_IDENTITY_AUTHORITY_HOST",
+  "AZURE_REGIONAL_AUTHORITY_NAME",
+  "AZURE_REGION_AUTO_DISCOVER_FLAG",
+  "AZURE_TENANT_ID",
+  "AZURE_TOKEN_CREDENTIALS",
+  "AZURE_USERNAME",
+  "BAD_PASSWORD_READ",
+  "BINSTAR_API_TOKEN",
+  "CACHED_ACCESS_TOKEN_EXPIRED",
+  "CARGO_REGISTRY_TOKEN",
+  "CCR_OAUTH_TOKEN_FILE",
+  "CHOICE_TOKEN",
+  "CLAUDE_API_KEY",
+  "CLAUDE_BRIDGE_BASE_URL",
+  "CLAUDE_BRIDGE_OAUTH_TOKEN",
+  "CLAUDE_CODE_API_BASE_URL",
+  "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_API_KEY_HELPER_TTL_MS",
+  "CLAUDE_CODE_ARTIFACTS_API_BASE_URL",
+  "CLAUDE_CODE_ARTIFACTS_API_TOKEN",
+  "CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL",
+  "CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL",
+  "CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL",
+  "CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL",
+  "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+  "CLAUDE_CODE_GATEWAY_TOKEN",
+  "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_GB_BASE_URL",
+  "CLAUDE_CODE_HFI_BEARER_TOKEN",
+  "CLAUDE_CODE_HOST_CREDS_FILE",
+  "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN",
+  "CLAUDE_CODE_MEMORY_API_BASE_URL",
+  "CLAUDE_CODE_MEMORY_API_TOKEN",
+  "CLAUDE_CODE_MESSAGING_TOKEN",
+  "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
+  "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+  "CLAUDE_CODE_SESSION_ACCESS_TOKEN",
+  "CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH",
+  "CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH",
+  "CLAUDE_CODE_SKIP_AWS_CRED_CACHE",
+  "CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+  "CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS",
+  "CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK",
+  "CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+  "CLAUDE_CODE_SKIP_HFI_VERSION_CHECK",
+  "CLAUDE_CODE_SKIP_MANTLE_AUTH",
+  "CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY",
+  "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS",
+  "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT",
+  "CLAUDE_CODE_SKIP_PROJECT_BACKFILL",
+  "CLAUDE_CODE_SKIP_PROMPT_HISTORY",
+  "CLAUDE_CODE_SKIP_REPO_UPLOAD",
+  "CLAUDE_CODE_SKIP_VERTEX_AUTH",
+  "CLAUDE_CODE_SLACK_TAG_TOKEN",
+  "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+  "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+  "CLAUDE_CODE_USE_BEDROCK",
+  "CLAUDE_CODE_USE_CCR_V2",
+  "CLAUDE_CODE_USE_COWORK_PLUGINS",
+  "CLAUDE_CODE_USE_FOUNDRY",
+  "CLAUDE_CODE_USE_GATEWAY",
+  "CLAUDE_CODE_USE_MANTLE",
+  "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH",
+  "CLAUDE_CODE_USE_POWERSHELL_TOOL",
+  "CLAUDE_CODE_USE_VERTEX",
+  "CLAUDE_CODE_WEBSOCKET_AUTH_FILE_DESCRIPTOR",
+  "CLAUDE_LOCAL_OAUTH_API_BASE",
+  "CLAUDE_RUNNER_API_BASE_URL",
+  "CLAUDE_TRUSTED_DEVICE_TOKEN",
+  "CLIENT_CREDENTIALS_GRANT",
+  "CLIENT_EARLY_TRAFFIC_SECRET",
+  "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
+  "CLIENT_TRAFFIC_SECRET_0",
+  "CLOUDPROVIDERVALUES_ALIBABA_CLOUD",
+  "CLOUDPROVIDERVALUES_AWS",
+  "CLOUDPROVIDERVALUES_AZURE",
+  "CLOUDPROVIDERVALUES_GCP",
+  "CLOUDSDK_AUTH_ACCESS_TOKEN",
+  "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+  "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
+  "CLOUDSDK_PROXY_PASSWORD",
+  "CODEARTIFACT_AUTH_TOKEN",
+  "CONAN_PASSWORD",
+  "CONSUL_HTTP_TOKEN",
+  "COURSIER_CREDENTIALS",
+  "CREDENTIALED_URL_MESSAGE",
+  "CREDENTIALS_CODE",
+  "CREDENTIALS_DIRECTORY",
+  "CREDENTIALS_ENV_VARS",
+  "CREDENTIALS_ENV_VARS0",
+  "CREDENTIALS_ENV_VARS_STS_WEB_ID_TOKEN",
+  "CREDENTIALS_HTTP",
+  "CREDENTIALS_LOGIN",
+  "CREDENTIALS_PROCESS",
+  "CREDENTIALS_PROFILE",
+  "CREDENTIALS_PROFILE_LOGIN",
+  "CREDENTIALS_PROFILE_NAMED_PROVIDER",
+  "CREDENTIALS_PROFILE_PROCESS",
+  "CREDENTIALS_PROFILE_SOURCE_PROFILE",
+  "CREDENTIALS_PROFILE_SSO",
+  "CREDENTIALS_PROFILE_SSO_LEGACY",
+  "CREDENTIALS_PROFILE_STS_WEB_ID_TOKEN",
+  "CREDENTIALS_SSO",
+  "CREDENTIALS_SSO_LEGACY",
+  "CREDENTIALS_STS_ASSUME_ROLE",
+  "CREDENTIALS_STS_ASSUME_ROLE_WEB_ID",
+  "CREDENTIAL_HELPER_SETTINGS_KEYS",
+  "CREDENTIAL_KINDS_FOR_PROVIDER",
+  "CREDENTIAL_QUERY_PARAM",
+  "CREDENTIAL_SPEC",
+  "DATADOG_API_KEY",
+  "DATADOG_CLIENT_TOKEN",
+  "DEFAULT_INFERENCE_PROVIDER",
+  "DEFAULT_WORKFLOW_TOKEN",
+  "DOLLAR_TOKEN",
+  "ENVIRONMENT_SECRET",
+  "ENV_SECRET",
+  "ERR_INVALID_HTTP_TOKEN",
+  "ERR_MYSQL_FAILED_TO_ENCRYPT_PASSWORD",
+  "ERR_MYSQL_PASSWORD_REQUIRED",
+  "ERR_REDIS_INVALID_PASSWORD",
+  "ERR_S3_INVALID_SESSION_TOKEN",
+  "ERR_S3_MISSING_CREDENTIALS",
+  "ERR_SECRETS_ACCESS_DENIED",
+  "ERR_SECRETS_AUTH_FAILED",
+  "ERR_SECRETS_INTERACTION_NOT_ALLOWED",
+  "ERR_SECRETS_INTERACTION_REQUIRED",
+  "ERR_SECRETS_INTERACTION_REQUIREDBUG",
+  "ERR_SECRETS_NOT_FOUND",
+  "ERR_SECRETS_PLATFORM_ERROR",
+  "ERR_SECRETS_USER_CANCELED",
+  "ERR_UNKNOWN_CREDENTIAL",
+  "EXPORTER_SECRET",
+  "FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD",
+  "FAASINVOKEDPROVIDERVALUES_AWS",
+  "FAASINVOKEDPROVIDERVALUES_AZURE",
+  "FAASINVOKEDPROVIDERVALUES_GCP",
+  "FLIT_PASSWORD",
+  "FOO_API_KEY",
+  "GEM_HOST_API_KEY",
+  "GH_ENTERPRISE_TOKEN",
+  "GH_TOKEN",
+  "GITHUB_ACCESS_TOKEN",
+  "GITHUB_ENTERPRISE_TOKEN",
+  "GITHUB_TOKEN",
+  "GITLAB_ACCESS_TOKEN",
+  "GITLAB_TOKEN",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+  "GOOGLE_OAUTH_ACCESS_TOKEN",
+  "HF_TOKEN",
+  "HPE_INVALID_HEADER_TOKEN",
+  "HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS",
+  "HTTP_PARSER_ERROR_INVALID_HEADER_TOKEN",
+  "HUGGINGFACEHUB_API_TOKEN",
+  "HUGGING_FACE_HUB_TOKEN",
+  "HYBRID_SERVABLE_CREDENTIAL_KINDS",
+  "HYBRID_SERVABLE_PROVIDERS",
+  "IDTOKEN_TOKEN",
+  "ID_TOKEN",
+  "INCORRECT_PASSWORD",
+  "INFERENCE_CREDENTIAL_KINDS",
+  "INVALID_DELEGATED_CREDENTIAL",
+  "INVALID_PASSWORD",
+  "INVALID_SECRET_LENGTH",
+  "INVALID_TOKEN",
+  "LISTENER_NEW_TOKEN",
+  "LONG_LIVED_OAUTH_TOKEN_TTL_SECONDS",
+  "LSQUIC_LOG_SECRETS",
+  "MARIADB_PASSWORD",
+  "MARKETPLACE_CREDENTIAL_KINDS",
+  "MATURIN_PASSWORD",
+  "MATURIN_PYPI_TOKEN",
+  "MCP_CLIENT_SECRET",
+  "MCP_XAA_IDP_CLIENT_SECRET",
+  "MISSING_CREDENTIALS",
+  "ML_AND_SF_SECRET_HEADER_NAME",
+  "MSI_SECRET",
+  "MYSQL_PASSWORD",
+  "MY_API_KEY",
+  "NEW_TOKEN",
+  "NODE_AUTH_TOKEN",
+  "NOMAD_TOKEN",
+  "NOOP_METER_PROVIDER",
+  "NO_CACHED_ACCESS_TOKEN",
+  "NO_CREDENTIALS_FOUND",
+  "NPM_CONFIG_TOKEN",
+  "NPM_TOKEN",
+  "NUGET_AUTH_TOKEN",
+  "OAUTH_TOKEN",
+  "OAUTH_TOKEN_SAVE_FAILED_WARNING",
+  "OVERRIDE_GITHUB_TOKEN",
+  "PG_PASSWORD",
+  "PLACEHOLDER_CREDENTIAL_KEYS",
+  "PROVIDER_ARMS",
+  "PROVIDER_CLI_FLAG",
+  "PROVIDER_DETECTED",
+  "PROVIDER_DISPLAY",
+  "PROVIDER_SELECTOR_ENV_FLAGS",
+  "PYPI_API_TOKEN",
+  "PYPI_TOKEN",
+  "QUIC_FRAME_NEW_TOKEN",
+  "REFRESH_TOKEN",
+  "RESOURCE_OWNER_PASSWORD_GRANT",
+  "RUNNER_ENVIRONMENT_SECRET",
+  "RUNNER_POOL_SECRET",
+  "SBT_CREDENTIALS",
+  "SECRET_ACCESS_KEY",
+  "SELF_HOSTED_RUNNER_ENVIRONMENT_SECRET",
+  "SELF_HOSTED_RUNNER_POOL_SECRET",
+  "SEMATTRS_FAAS_INVOKED_PROVIDER",
+  "SEMRESATTRS_CLOUD_PROVIDER",
+  "SERVER_HANDSHAKE_TRAFFIC_SECRET",
+  "SERVER_TRAFFIC_SECRET_0",
+  "SESSION_TOKEN",
+  "SHR_GIT_PROXY_TOKEN",
+  "SIGN_IN_CREDENTIAL_KINDS",
+  "SONAR_TOKEN",
+  "THIRD_PARTY_PROVIDER_ENV_VARS",
+  "THIRD_PARTY_PROVIDER_LABELS",
+  "TRUST_TOKEN",
+  "TWINE_PASSWORD",
+  "UNSUPPORTED_CREDENTIAL_LIST",
+  "USER_CREDENTIALS_CHANGED",
+  "UV_PUBLISH_PASSWORD",
+  "UV_PUBLISH_TOKEN",
+  "U_UNEXPECTED_TOKEN",
+  "VAULT_AUTH_TOKEN",
+  "VAULT_SECRET_ID",
+  "VAULT_TOKEN",
+  "VERTEX_OAUTH_CREDENTIAL_KIND",
+  "VOICE_STREAM_BASE_URL",
+  "VSS_NUGET_ACCESSTOKEN",
+  "WEB_SEARCH_PROVIDERS",
+  "WEB_SEARCH_PROVIDER_HOSTS"
+ ],
+ "route_names_sha256": "f7b7c0240611ea4caeee38d9490fafae3cc320e1903c6ce30750069c43a4ca7a",
+ "rows": [
+  {
+   "class": "pattern-matched",
+   "name": "ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ACCESS_TOKEN_WITH_AUTH_SCHEME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ACTIONS_RUNTIME_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AGENT_PROXY_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AMPERSAND_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANACONDA_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANSIBLE_VAULT_PASSWORD_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_API_HOST",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_ASSETS_HOST",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_AWS_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_AWS_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_AWS_WORKSPACE_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_BEDROCK_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_BEDROCK_REGION_PREFIX",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_BEDROCK_SERVICE_TIER",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_BETAS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_CONFIG_DIR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_CUSTOM_HEADERS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_CUSTOM_MODEL_OPTION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_FABLE_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_FABLE_MODEL_DESCRIPTION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES3",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES4",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_OPUS_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_SONNET_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_ENVIRONMENT_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_ENVIRONMENT_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_FEDERATION_RULE_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_FOUNDRY_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_FOUNDRY_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_FOUNDRY_RESOURCE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_GOOGLE_CLOUD_LOCATION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_GOOGLE_CLOUD_PROJECT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_IDENTITY_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_IDENTITY_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_LOG",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_ORGANIZATION_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_PROFILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_SCOPE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_SERVICE_ACCOUNT_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_SESSION_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_SMALL_FAST_MODEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_TELEMETRY_GROUP",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_TIER_NAMES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_UNIX_SOCKET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_VERTEX_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_VERTEX_PROJECT_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_WEBHOOK_SIGNING_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_WORKSPACE_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ANTHROPIC_WORK_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_WORK_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "API_KEY_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "API_KEY_WITH_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "APP_SERVICE_SECRET_HEADER_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "ATTR_CLOUD_PROVIDER",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AUTO_REPLIES_ARMED_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ACCESS_KEY_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ACCOUNT_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_AUTH_SCHEME_PREFERENCE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_BEARER_TOKEN_BEDROCK",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CA_BUNDLE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CHAIN_RESOLVE_REQUEST_TIMEOUT_MS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CONFIG_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CONTAINER_AUTHORIZATION_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CONTAINER_CREDENTIALS_FULL_URI",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CONTAINER_CREDENTIALS_RELATIVE_URI",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CREDENTIAL_EXPIRATION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_CREDENTIAL_SCOPE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_DEFAULTS_MODE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_DEFAULT_REGION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EC2_METADATA_DISABLED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EC2_METADATA_IPV4_ADDRESS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EC2_METADATA_IPV6_ADDRESS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EC2_METADATA_SERVICE_ENDPOINT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EC2_METADATA_V1_DISABLED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ECS_EC2",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ECS_FARGATE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ENDPOINT_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ENDPOINT_URL_BEDROCK",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "AWS_ENDPOINT_URL_BEDROCK_RUNTIME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ENDPOINT_URL_SSO",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ENDPOINT_URL_SSO_OIDC",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ENDPOINT_URL_STS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_EXECUTION_ENV",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_IAM_ROLE_ARN_RE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_LAMBDA_BENCHMARK_MODE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_LAMBDA_FUNCTION_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_LAMBDA_MAX_CONCURRENCY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_LAMBDA_NODEJS_NO_GLOBAL_AWSLAMBDA",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_LOGIN_CACHE_DIRECTORY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_MAX_ATTEMPTS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_PAGER",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_PROFILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_REGION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_REGION_RE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_RETRY_MODE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ROLE_ARN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_ROLE_SESSION_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_SDK_UA_APP_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_SECRET_ACCESS_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_SESSION_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_SHARED_CREDENTIALS_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_SIGV4A_SIGNING_REGION_SET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_USE_DUALSTACK_ENDPOINT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_USE_FIPS_ENDPOINT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AWS_WEB_IDENTITY_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_ADDITIONALLY_ALLOWED_TENANTS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_ARC",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_AUTHORITY_HOST",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_AUTH_LOCATION",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLIENT_CERTIFICATE_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLIENT_CERTIFICATE_PATH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLIENT_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLIENT_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLIENT_SEND_CERTIFICATE_CHAIN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLOUDS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CLOUD_HOSTS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_CONFIG_DIR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_FEDERATED_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_FUNCTIONS_ENVIRONMENT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_IDENTITY_DISABLE_MULTITENANTAUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_LOG_LEVEL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_POD_IDENTITY_AUTHORITY_HOST",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_REGIONAL_AUTHORITY_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_REGION_AUTO_DISCOVER_FLAG",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_TENANT_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_TOKEN_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "AZURE_USERNAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "BAD_PASSWORD_READ",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "BINSTAR_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CACHED_ACCESS_TOKEN_EXPIRED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CARGO_REGISTRY_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CCR_OAUTH_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CHOICE_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_BRIDGE_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_BRIDGE_OAUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_API_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_API_KEY_HELPER_TTL_MS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_ARTIFACTS_API_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_ARTIFACTS_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "CLAUDE_CODE_GATEWAY_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_GB_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_HFI_BEARER_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-outside",
+   "name": "CLAUDE_CODE_HOST_CREDS_FILE",
+   "record": "record-bytes"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_MEMORY_API_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_MEMORY_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_MESSAGING_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "exempt",
+   "name": "CLAUDE_CODE_OAUTH_TOKEN",
+   "reason": "the Claude row's own login (run_take.LOGIN_VARIABLE[claude-code]); refused for every other arm by SUBSCRIPTION_TOKEN_VARIABLES",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SESSION_ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_AWS_CRED_CACHE",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_HFI_VERSION_CHECK",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SKIP_MANTLE_AUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_PROJECT_BACKFILL",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_PROMPT_HISTORY",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_SKIP_REPO_UPLOAD",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SKIP_VERTEX_AUTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_SLACK_TAG_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_USE_BEDROCK",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_USE_CCR_V2",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_USE_COWORK_PLUGINS",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_USE_FOUNDRY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_GATEWAY",
+   "record": "route-names"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_MANTLE",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_CODE_USE_POWERSHELL_TOOL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_CODE_USE_VERTEX",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-context",
+   "name": "CLAUDE_CODE_WEBSOCKET_AUTH_FILE_DESCRIPTOR",
+   "record": "record-bytes"
+  },
+  {
+   "class": "route-context",
+   "name": "CLAUDE_LOCAL_OAUTH_API_BASE",
+   "record": "record-bytes"
+  },
+  {
+   "class": "route-read",
+   "name": "CLAUDE_RUNNER_API_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLAUDE_TRUSTED_DEVICE_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLIENT_CREDENTIALS_GRANT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLIENT_EARLY_TRAFFIC_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLIENT_HANDSHAKE_TRAFFIC_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLIENT_TRAFFIC_SECRET_0",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "CLOUDPROVIDERVALUES_ALIBABA_CLOUD",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLOUDPROVIDERVALUES_AWS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLOUDPROVIDERVALUES_AZURE",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "CLOUDPROVIDERVALUES_GCP",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLOUDSDK_AUTH_ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLOUDSDK_AUTH_ACCESS_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CLOUDSDK_PROXY_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CODEARTIFACT_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CONAN_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CONSUL_HTTP_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "COURSIER_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALED_URL_MESSAGE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_CODE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_DIRECTORY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_ENV_VARS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_ENV_VARS0",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_ENV_VARS_STS_WEB_ID_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_HTTP",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_LOGIN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROCESS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_LOGIN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_NAMED_PROVIDER",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_PROCESS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_SOURCE_PROFILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_SSO",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_SSO_LEGACY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_PROFILE_STS_WEB_ID_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_SSO",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_SSO_LEGACY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_STS_ASSUME_ROLE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIALS_STS_ASSUME_ROLE_WEB_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIAL_HELPER_SETTINGS_KEYS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIAL_KINDS_FOR_PROVIDER",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIAL_QUERY_PARAM",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "CREDENTIAL_SPEC",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "DATADOG_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "DATADOG_CLIENT_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "DEFAULT_INFERENCE_PROVIDER",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "DEFAULT_WORKFLOW_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "DOLLAR_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ENVIRONMENT_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ENV_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_INVALID_HTTP_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_MYSQL_FAILED_TO_ENCRYPT_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_MYSQL_PASSWORD_REQUIRED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_REDIS_INVALID_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_S3_INVALID_SESSION_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_S3_MISSING_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_ACCESS_DENIED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_AUTH_FAILED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_INTERACTION_NOT_ALLOWED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_INTERACTION_REQUIRED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_INTERACTION_REQUIREDBUG",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_NOT_FOUND",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_PLATFORM_ERROR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_SECRETS_USER_CANCELED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ERR_UNKNOWN_CREDENTIAL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "EXPORTER_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "FAASINVOKEDPROVIDERVALUES_AWS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "FAASINVOKEDPROVIDERVALUES_AZURE",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "FAASINVOKEDPROVIDERVALUES_GCP",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "FLIT_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "FOO_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GEM_HOST_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GH_ENTERPRISE_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GITHUB_ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GITHUB_ENTERPRISE_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GITHUB_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GITLAB_ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GITLAB_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GOOGLE_APPLICATION_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "GOOGLE_OAUTH_ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HF_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HPE_INVALID_HEADER_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HTTP2_HEADER_ACCESS_CONTROL_ALLOW_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HTTP_PARSER_ERROR_INVALID_HEADER_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HUGGINGFACEHUB_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HUGGING_FACE_HUB_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "HYBRID_SERVABLE_CREDENTIAL_KINDS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "HYBRID_SERVABLE_PROVIDERS",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "IDTOKEN_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ID_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "INCORRECT_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "INFERENCE_CREDENTIAL_KINDS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "INVALID_DELEGATED_CREDENTIAL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "INVALID_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "INVALID_SECRET_LENGTH",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "INVALID_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "LISTENER_NEW_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "LONG_LIVED_OAUTH_TOKEN_TTL_SECONDS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "LSQUIC_LOG_SECRETS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MARIADB_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MARKETPLACE_CREDENTIAL_KINDS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MATURIN_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MATURIN_PYPI_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MCP_CLIENT_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MCP_XAA_IDP_CLIENT_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MISSING_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "ML_AND_SF_SECRET_HEADER_NAME",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MSI_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MYSQL_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "MY_API_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NEW_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NODE_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NOMAD_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "NOOP_METER_PROVIDER",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NO_CACHED_ACCESS_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NO_CREDENTIALS_FOUND",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NPM_CONFIG_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NPM_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "NUGET_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "OAUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "OAUTH_TOKEN_SAVE_FAILED_WARNING",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "OVERRIDE_GITHUB_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "PG_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "PLACEHOLDER_CREDENTIAL_KEYS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "PROVIDER_ARMS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "PROVIDER_CLI_FLAG",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "PROVIDER_DETECTED",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "PROVIDER_DISPLAY",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "PROVIDER_SELECTOR_ENV_FLAGS",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "PYPI_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "PYPI_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "QUIC_FRAME_NEW_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "REFRESH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "RESOURCE_OWNER_PASSWORD_GRANT",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "RUNNER_ENVIRONMENT_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "RUNNER_POOL_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SBT_CREDENTIALS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SECRET_ACCESS_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SELF_HOSTED_RUNNER_ENVIRONMENT_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SELF_HOSTED_RUNNER_POOL_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "SEMATTRS_FAAS_INVOKED_PROVIDER",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "SEMRESATTRS_CLOUD_PROVIDER",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SERVER_HANDSHAKE_TRAFFIC_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SERVER_TRAFFIC_SECRET_0",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SESSION_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SHR_GIT_PROXY_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SIGN_IN_CREDENTIAL_KINDS",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "SONAR_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "THIRD_PARTY_PROVIDER_ENV_VARS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "THIRD_PARTY_PROVIDER_LABELS",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "TRUST_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "TWINE_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "UNSUPPORTED_CREDENTIAL_LIST",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "USER_CREDENTIALS_CHANGED",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "UV_PUBLISH_PASSWORD",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "UV_PUBLISH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "U_UNEXPECTED_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "VAULT_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "VAULT_SECRET_ID",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "VAULT_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "VERTEX_OAUTH_CREDENTIAL_KIND",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "VOICE_STREAM_BASE_URL",
+   "record": "route-names"
+  },
+  {
+   "class": "pattern-matched",
+   "name": "VSS_NUGET_ACCESSTOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-read",
+   "name": "WEB_SEARCH_PROVIDERS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-read",
+   "name": "WEB_SEARCH_PROVIDER_HOSTS",
+   "record": "route-names"
+  }
+ ],
+ "ruled": [
+  "ANTHROPIC_AWS_BASE_URL",
+  "ANTHROPIC_BEDROCK_BASE_URL",
+  "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+  "ANTHROPIC_ENVIRONMENT_KEY",
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+  "ANTHROPIC_FOUNDRY_BASE_URL",
+  "ANTHROPIC_FOUNDRY_RESOURCE",
+  "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+  "ANTHROPIC_IDENTITY_TOKEN",
+  "ANTHROPIC_IDENTITY_TOKEN_FILE",
+  "ANTHROPIC_UNIX_SOCKET",
+  "ANTHROPIC_VERTEX_BASE_URL",
+  "ANTHROPIC_WORK_SECRET",
+  "AWS_ENDPOINT_URL_BEDROCK_RUNTIME",
+  "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+  "CLAUDE_CODE_GATEWAY_TOKEN",
+  "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_HOST_CREDS_FILE",
+  "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+  "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+  "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+  "CLAUDE_CODE_USE_GATEWAY",
+  "CLAUDE_CODE_USE_MANTLE"
+ ],
+ "sweep_sha256": "ea41aeb1c5ea1063d829d1377bce53b1de983674d4d223b325a8a79443eb0fa6",
+ "version": 2
+}

@@ -1,0 +1,15 @@
+# Lane pf1-codex-fcdelete: Gap Study round 4, glitch-45's brief of Tue 27 Oct 2026 (arm O walk w-o76, gpt-6-luna, held:
+# "item file_change: change kind with no entry: 'delete'"): a Codex file_change of kind delete is read in the exec
+# stream as a write call on its path and in the rollout as a FileChange {type delete, content}; any other kind still
+# refuses, and a delete of a guarded path is caught by the grader helpers that catch an update of it. One command per
+# line, run from the repository root. No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_fcdelete.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_fcdelete.py --mutants
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py --witnesses
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py --witnesses
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py --witnesses
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_native.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_turnitem.py

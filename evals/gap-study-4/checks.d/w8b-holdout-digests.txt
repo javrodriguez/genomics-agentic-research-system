@@ -1,0 +1,7 @@
+# Lane w8b-holdout-digests: Gap Study round 4, the holdout's salted digests and count enter at the freeze commit only
+# (ruling W8B-gap4-1, Javier's "holdout digests A"). One command per line, run from the repository root.
+# --witnesses runs every registered mutant against its bound test (rule B). Synthetic strings only.
+python3 -B -W ignore evals/gap-study-4/tests/test_holdout_digests.py
+python3 -B -W ignore evals/gap-study-4/tests/test_holdout_digests.py --witnesses
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check
+python3 -B -W ignore evals/gap-study-4/freeze.py --check

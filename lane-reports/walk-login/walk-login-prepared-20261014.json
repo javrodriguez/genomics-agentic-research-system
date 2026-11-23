@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "what": "the Claude1 walk-token file prepared on athena (box lane); no token exists yet",
+  "when_utc": "2026-10-14T17:38:20Z",
+  "gate": {
+    "athena_suite_list": "no gars-gap4 run in progress",
+    "athena_suite_processes": 0,
+    "note": "8 athena-suite python processes at 17:29Z; waited until 0 (17:37:55Z)"
+  },
+  "scripts_on_athena": [
+    {
+      "path": "/home/javier/gap4-tools/walk-token/prepare_walk_token.py",
+      "sha256": "a48d98e46cae00fc70ba7f030341ff299416c4ca73d9bc565b2989a634d852fa"
+    },
+    {
+      "path": "/home/javier/gap4-tools/walk-token/verify_walk_token.py",
+      "sha256": "407500efbd1041717b7698d9c6ddbecc738bd401cb4227ac8fe55e0486243f7f"
+    }
+  ],
+  "prepare": {
+    "ok": true,
+    "entries": [
+      {
+        "path": "/home/javier/gap4-secrets",
+        "type": "dir",
+        "mode": "0o700",
+        "uid": 1000,
+        "size": null
+      },
+      {
+        "path": "/home/javier/gap4-secrets/claude1",
+        "type": "dir",
+        "mode": "0o700",
+        "uid": 1000,
+        "size": null
+      },
+      {
+        "path": "/home/javier/gap4-secrets/claude1/claude-walk-token",
+        "type": "file",
+        "mode": "0o600",
+        "uid": 1000,
+        "size": 24
+      }
+    ],
+    "expected": {
+      "folders": "0o700",
+      "file": "0o600",
+      "file_bytes_before_paste": 24
+    }
+  },
+  "stat": [
+    "/home/javier/gap4-secrets directory 700 javier:javier 4096 3",
+    "/home/javier/gap4-secrets/claude1 directory 700 javier:javier 4096 2",
+    "/home/javier/gap4-secrets/claude1/claude-walk-token regular file 600 javier:javier 24 1"
+  ],
+  "outside_git": [
+    "fatal: not a git repository (or any of the parent directories): .git"
+  ],
+  "verify_before_paste": [
+    "present: yes",
+    "mode ok (600): yes",
+    "owner ok: yes",
+    "folder ok (700, yours, not a link): yes",
+    "one line: NO",
+    "format ok (CLAUDE_CODE_OAUTH_TOKEN=..., no spaces or quotes): yes",
+    "length class: empty",
+    "RESULT: NOT OK",
+    "verify_rc=1"
+  ],
+  "reading": "Folders /home/javier/gap4-secrets and .../claude1 are mode 700, javier:javier; the file claude-walk-token is a regular file, mode 600, javier:javier, one link, 24 bytes: only 'CLAUDE_CODE_OAUTH_TOKEN=' (no value, no newline). Not inside a git repository. verify reports NOT OK (one line NO, length empty) until Javier pastes, as designed."
+}

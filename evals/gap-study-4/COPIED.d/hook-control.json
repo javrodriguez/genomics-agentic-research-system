@@ -1,0 +1,25 @@
+{
+  "lane": "hook-control",
+  "files": [
+    {
+      "path": "box/hook_control_probe.py",
+      "status": "new",
+      "reason": "Lane hook-control (glitch-f1's rulings on the D8 hook-control design, 21 Oct 2026, under Javier's standing delegation): D8's hook positive control for arms O and G, a measurement on B27's stub-model road, never a study take. Gemini G-on/G-off on B27's stub; Codex O-on-bypass, O-off-bypass, O-off-study and O-on-study on roads C0 (no model, no login) and C1 (a dead local provider), each run its own config folder, run tree, --internal network and locked take image by id with --pull=never. The twins are built from take_config.files_for bytes and held to the diff rule (the switch alone differs); a self-test of the exact marker command and a pre-run check stop a run before any CLI process unless fired.log reads exactly the self-test line; the verdict is PASS only when every on twin fires and every off twin stays silent, INCONCLUSIVE when an on twin is silent, FAIL on any off event. No login, no lease, records labelled stub-model-probe in a stub-probe-* folder; a dry-run mode."
+    },
+    {
+      "path": "tests/test_hook_control_probe.py",
+      "status": "new",
+      "reason": "Lane hook-control (glitch-f1's rulings on the D8 hook-control design, 21 Oct 2026, under Javier's standing delegation): the hook control on fakes: the marker's exact text and a real bash -c run of it, the hooks documents, the diff rule and its refused mutant twins, the Codex argv and the trust flag's placement, the Codex environment equal to the row and the exec equal to the walk's byte for byte, Gemini equal to B27's exec, the ast bindings (no exec_argv, run_turn, read_login or place_lease; no production import), the verdict truth table, the pre-run marker check, the dry run, full runs on a fake box (honest, switch-ignoring, dead, a broken self-test), and walk_launch's probe-hooks entry and witnesses."
+    },
+    {
+      "path": "checks.d/hook-control.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_hook_control_probe.py."
+    },
+    {
+      "path": "COPIED.d/hook-control.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane hook-control (glitch-f1's rulings on the D8 hook-control design, 21 Oct 2026, under Javier's standing delegation). Edits without transfer, additive only: box/walk_launch.py (lane live-box-2026-10-14's entry; the probe-hooks verb, hook_probe_command and probe_hooks beside the stub-model probe's entries, which stay byte-unchanged) and tests/test_stub_model_probe.py (lane vendor-admission's entry, lane vendor-b27's test; one exemption in its no-production-import test for box/hook_control_probe.py, itself bound unimported by tests/test_hook_control_probe.py)."
+    }
+  ]
+}

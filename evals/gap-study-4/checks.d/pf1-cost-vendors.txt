@@ -1,0 +1,6 @@
+# Lane pf1-cost-vendors: Gap Study round 4, cost-calls.json assembled for every arm (cost_calls.py). One command per
+# line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_cost_vendors.py
+# Empty ledger: no takes, nothing assembled or written. Vacuous until takes exist (review aa4394c NIT-4); the real
+# road is the test module's, on copies of committed walks.
+python3 -B -W ignore evals/gap-study-4/cost_calls.py --check

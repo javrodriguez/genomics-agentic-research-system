@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_ownership.py", line 17, in <module>
+    from box import measure_live, ownership as ow, run_take as rt  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: cannot import name 'ownership' from 'box' (unknown location)

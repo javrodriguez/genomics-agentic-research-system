@@ -1,0 +1,69 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-07
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six bulk RNA-seq samples relate to one another with a PCA of the samples computed
+from the gene counts, coloured by condition (untreated vs treated). The deliverable is the PCA
+plot plus the per-sample PC scores and per-component variance explained behind it; judging
+whether samples group by condition is left to the reader.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+Everything runs as one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib 3.11.1),
+submitted as one batch job. Inputs are read only; nothing is written outside `results/`.
+
+1. **Resolve inputs** at run time with `_system/resolve_artifact.py --type counts_gene` and
+   `--type design` for assay `rnaseq_bulk`. Stop with an error if either fails to resolve.
+2. **Load counts.** Read the TSV, index it by `gene_id`, drop the `gene_name` column, and keep
+   only the sample columns. Stop with an error unless the sample columns and the design's
+   `sample_id` values are the same set; then put the design rows in the count-matrix order.
+3. **Make integer counts.** These are salmon length-scaled estimates, so they are not integers.
+   Round them to the nearest integer for DESeq2 (the usual tximport `countsFromAbundance`
+   practice). This happens on an in-memory copy only.
+4. **Filter low-count genes.** Keep genes with at least 10 counts in total across all samples.
+5. **Variance-stabilise.** Build a PyDESeq2 `DeseqDataSet` from the counts with
+   `design="~condition"`, then run `vst()` with `use_design=False`, i.e. blind to condition, so
+   the transform does not use the labels the plot is coloured by. Size factors use DESeq2's
+   default median-of-ratios method.
+6. **Select genes.** Take the 500 genes with the highest row variance of the VST values
+   (DESeq2 `plotPCA` default `ntop=500`), or every gene if fewer than 500 remain.
+7. **PCA.** Centre each selected gene across samples (no scaling) and run
+   `sklearn.decomposition.PCA` with `n_components = min(n_samples, n_genes)` (= 6 here) and
+   `svd_solver="full"`. Record every sample's scores on all components, plus each component's
+   explained-variance ratio.
+8. **Plot.** Draw a PC1 vs PC2 scatter, one point per sample, coloured by `condition` with a
+   fixed two-colour categorical palette and a legend. Label each point with its `sample_id`.
+   Axis titles give the percentage of variance explained, e.g. `PC1 (xx.x%)`. Save it as PNG at
+   300 dpi and as PDF.
+9. **Write tables.** Write the per-sample scores with the design columns joined on, and the
+   per-component variance explained (see Outputs).
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter, coloured by condition, points labelled by sample_id, axis titles with % variance; 300 dpi |
+| results/pca_pc1_pc2.pdf | figure | the same plot as vector PDF |
+| results/pca_scores.csv | table | one row per sample: `sample_id,condition,group,replicate,PC1..PC6` |
+| results/pca_variance_explained.csv | table | one row per component: `component,explained_variance_ratio,cumulative_ratio` |
+
+## Execution
+Runs: batch
+One batch job through the workspace's configured executor (`_system/executorlib.py submit`):
+1 CPU, 4 GB memory, 30-minute limit. Expected wall time is under 5 minutes for 6 samples. All
+outputs together should be under 1 MB.

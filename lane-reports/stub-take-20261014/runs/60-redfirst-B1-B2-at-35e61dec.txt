@@ -1,0 +1,12 @@
+== test_run_take (new tests, 35e61dec modules)
+FAIL: test_the_inline_settings (test_run_take.TestClaudeSettings.test_the_inline_settings)
+AssertionError: Lists differ: ['background-long: admitted', 'background-[211 chars]sal'] != []
+'background-long: admitted'
+- ['background-long: admitted',
+-  'background-long-eq: admitted',
+-  'bash-program: admitted',
+-  'abs-bash-program: admitted',
+-  'claude-lookalike: admitted',
+Ran 48 tests in 18.756s
+FAILED (failures=1)
+  mutant fallback-flag-admitted: red - the login was read before the fallback-model refusal

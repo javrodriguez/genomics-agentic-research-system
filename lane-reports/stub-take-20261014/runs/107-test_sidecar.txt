@@ -1,0 +1,175 @@
+.............................................................................................................................................................
+MUTANT finish leaving the sidecar's own temp behind: red 
+MUTANT the temp written to /tmp: red 
+MUTANT the temp in a private folder (the cross-mount rename fails): red 
+MUTANT a requested stop that ended on its own read as clean: red 
+MUTANT a clean deliberate stop recorded as 143: red 
+MUTANT an event name outside the table read as an op: red 
+MUTANT the control channel inside the evidence folder: red 
+MUTANT a watch path starting with - accepted: red 
+MUTANT a death while arming seen only at the timeout: red 
+MUTANT the stream logged on after a fault: red 
+MUTANT a moved consequential folder skips the paths beneath it: red 
+MUTANT a re-arm stamped before its snapshot accepted: red 
+MUTANT a non-object request reaching the handler (PID 1 dies): red 
+MUTANT stderr ignored after the watches are established: red 
+MUTANT any line before the marker accepted: red 
+MUTANT stderr not drained after the first read (a late line reads clean): red 
+MUTANT a deeply nested request kills PID 1: red 
+MUTANT a setup failure seen only at the timeout: red 
+MUTANT an exited watcher's unterminated stderr tail never counted: red 
+MUTANT an unnormalised control folder accepted: red 
+MUTANT the Popen keyword shape widened (cwd accepted): red 
+MUTANT the attribute vocabulary emptied (the real module refused): red 
+MUTANT the attribute vocabulary widened (os.popen through): red 
+MUTANT a watcher given up on while arming left running: red 
+MUTANT a filled format with setup_lines still PENDING read as ready: red 
+MUTANT a fault in the last drain after a self-exit dropped: red 
+MUTANT the free-name set emptied (the real module refused): red 
+MUTANT the free-name set widened (with the builtin denylist narrowed, eval through): red 
+MUTANT a format whose fields is the string PENDING read as ready: red 
+MUTANT a builtin binding exempting its reads (the module-wide exemption back): red 
+MUTANT the rebinds set widened (a builtin binding accepted): red 
+MUTANT a death recorded with exit code 0: red 
+MUTANT a moved chain folder read as a watcher fault: red 
+MUTANT a moved chain folder logs no per-path delete: red 
+MUTANT finish writes a second stop after a death: red 
+MUTANT a self-exit before the stop request read as a clean stop: red 
+MUTANT an rm -rf of a chain folder read as a watcher fault: red 
+MUTANT a stream stamp later than the clock kept: red 
+MUTANT an event mapped to no path read through: red 
+MUTANT the overflow event not written as queue-overflow: red 
+MUTANT a self-exit 0 after post-N recorded clean: red 
+MUTANT create argv: the run tree mounted read-write: red 
+MUTANT create argv: a network: red 
+MUTANT create argv: root watcher: red 
+MUTANT create argv: no cap drop: red 
+MUTANT create argv: a second capability: red 
+MUTANT create argv: no no-new-privileges: red 
+MUTANT create argv: a pulled image: red 
+MUTANT create argv: a shared pid namespace: red 
+MUTANT create argv: an environment variable: red 
+MUTANT create argv: privileged: red 
+MUTANT create argv: a device: red 
+MUTANT create argv: a published port: red 
+MUTANT create argv: a third mount: red 
+MUTANT create argv: evidence elsewhere: red 
+MUTANT create argv: an ipc namespace: red 
+MUTANT create argv: volumes-from: red 
+MUTANT create argv: another program: red 
+MUTANT the label regex admitting post-01: red 
+MUTANT pre-1 signalled as a snapshot: red 
+MUTANT the re-arm stamped at the pause's start (a false stamp): red 
+MUTANT the stop stamped after taken_at: red 
+MUTANT the watcher left running through a snapshot: red 
+MUTANT the real factory without its PENDING refusal: red 
+MUTANT a public function taking a PENDING value: red 
+MUTANT the Popen call moved out of the named factory: red 
+MUTANT a second subprocess call site: red 
+MUTANT scan_record importing subprocess: red 
+MUTANT an attribute allowlist widened (os.popen through): red 
+MUTANT the refused builtins dropped (eval through): red 
+MUTANT a folder event's trailing slash kept: red 
+MUTANT the snapshot follows a link: red 
+MUTANT a box/sidecar/__init__.py shadowing the module: red 
+MUTANT a 3.12 feature in the in-container code: red 
+MUTANT an in-container import outside the standard library: red 
+MUTANT a FIFO opened: red 
+MUTANT the monotonic clock: red 
+MUTANT no O_NOFOLLOW: red 
+MUTANT no O_NONBLOCK (a race onto a FIFO blocks): red 
+MUTANT access.jsonl not created at begin: red 
+MUTANT the missing chain watched non-recursively: red 
+MUTANT a rename away not read as a delete: red 
+MUTANT a rename-replace onto a consequential path missed: red 
+MUTANT the watcher stopped at post-N (a late writer never logged): red 
+mutants run red in this file (84):
+  finish leaving the sidecar's own temp behind
+  the temp written to /tmp
+  the temp in a private folder (the cross-mount rename fails)
+  a requested stop that ended on its own read as clean
+  a clean deliberate stop recorded as 143
+  an event name outside the table read as an op
+  the control channel inside the evidence folder
+  a watch path starting with - accepted
+  a death while arming seen only at the timeout
+  the stream logged on after a fault
+  a moved consequential folder skips the paths beneath it
+  a re-arm stamped before its snapshot accepted
+  a non-object request reaching the handler (PID 1 dies)
+  stderr ignored after the watches are established
+  any line before the marker accepted
+  stderr not drained after the first read (a late line reads clean)
+  a deeply nested request kills PID 1
+  a setup failure seen only at the timeout
+  an exited watcher's unterminated stderr tail never counted
+  an unnormalised control folder accepted
+  the Popen keyword shape widened (cwd accepted)
+  the attribute vocabulary emptied (the real module refused)
+  the attribute vocabulary widened (os.popen through)
+  a watcher given up on while arming left running
+  a filled format with setup_lines still PENDING read as ready
+  a fault in the last drain after a self-exit dropped
+  the free-name set emptied (the real module refused)
+  the free-name set widened (with the builtin denylist narrowed, eval through)
+  a format whose fields is the string PENDING read as ready
+  a builtin binding exempting its reads (the module-wide exemption back)
+  the rebinds set widened (a builtin binding accepted)
+  a death recorded with exit code 0
+  a moved chain folder read as a watcher fault
+  a moved chain folder logs no per-path delete
+  finish writes a second stop after a death
+  a self-exit before the stop request read as a clean stop
+  an rm -rf of a chain folder read as a watcher fault
+  a stream stamp later than the clock kept
+  an event mapped to no path read through
+  the overflow event not written as queue-overflow
+  a self-exit 0 after post-N recorded clean
+  create argv: the run tree mounted read-write
+  create argv: a network
+  create argv: root watcher
+  create argv: no cap drop
+  create argv: a second capability
+  create argv: no no-new-privileges
+  create argv: a pulled image
+  create argv: a shared pid namespace
+  create argv: an environment variable
+  create argv: privileged
+  create argv: a device
+  create argv: a published port
+  create argv: a third mount
+  create argv: evidence elsewhere
+  create argv: an ipc namespace
+  create argv: volumes-from
+  create argv: another program
+  the label regex admitting post-01
+  pre-1 signalled as a snapshot
+  the re-arm stamped at the pause's start (a false stamp)
+  the stop stamped after taken_at
+  the watcher left running through a snapshot
+  the real factory without its PENDING refusal
+  a public function taking a PENDING value
+  the Popen call moved out of the named factory
+  a second subprocess call site
+  scan_record importing subprocess
+  an attribute allowlist widened (os.popen through)
+  the refused builtins dropped (eval through)
+  a folder event's trailing slash kept
+  the snapshot follows a link
+  a box/sidecar/__init__.py shadowing the module
+  a 3.12 feature in the in-container code
+  an in-container import outside the standard library
+  a FIFO opened
+  the monotonic clock
+  no O_NOFOLLOW
+  no O_NONBLOCK (a race onto a FIFO blocks)
+  access.jsonl not created at begin
+  the missing chain watched non-recursively
+  a rename away not read as a delete
+  a rename-replace onto a consequential path missed
+  the watcher stopped at post-N (a late writer never logged)
+----------------------------------------------------------------------
+Ran 157 tests in 6.863s
+
+OK
+

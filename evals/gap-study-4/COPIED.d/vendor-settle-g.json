@@ -1,0 +1,15 @@
+{
+ "lane": "vendor-settle-g",
+ "files": [
+  {
+   "path": "COPIED.d/vendor-settle-g.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage G (glitch-f1's settle-design rulings and the adopted NOT COMPARABLE rulings, Wed 21 Oct 2026, under Javier's standing delegation): the Gemini rows, readers and cases. This fragment: the files stage G adds."
+  },
+  {
+   "path": "checks.d/vendor-settle-g.txt",
+   "status": "new",
+   "reason": "Lane vendor-settle stage G (glitch-f1's settle-design rulings and the adopted NOT COMPARABLE rulings, Wed 21 Oct 2026, under Javier's standing delegation): the Gemini rows, readers and cases. Its battery lines."
+  }
+ ]
+}

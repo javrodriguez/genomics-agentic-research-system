@@ -1,0 +1,20 @@
+{
+  "lane": "wave6-merge",
+  "files": [
+    {
+      "path": "tests/test_wave6_bindings.py",
+      "status": "new",
+      "reason": "The wave 6 merge bindings. Binding 1 (W6M1): test_box_integration, test_check_take and test_checker_body each put sys.path back when their tearDownModule closes the stack, after check_take.py (a round 3 copy) has put evals/ on it; checked per module in a fresh interpreter, with a non-vacuity check that the import does insert evals/. Found by athena's run_checks on 7e057eb2 (test_confounded_design's contract-drift test saw evals/ in the battery's one process)."
+    },
+    {
+      "path": "COPIED.d/wave6-merge.json",
+      "status": "new",
+      "reason": "The wave 6 merge's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/wave6-merge.txt",
+      "status": "new",
+      "reason": "The wave 6 merge's local checks (interface 2)."
+    }
+  ]
+}

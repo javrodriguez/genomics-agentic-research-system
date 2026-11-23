@@ -1,0 +1,12 @@
+control 0 of 5
+RED   1/5 env allowed
+RED   6/5 local file ignored
+RED   10/5 forbidden keys not checked
+RED   1/5 link file followed
+RED   1/5 claude link admitted
+RED   2/5 new file admitted
+RED   1/5 hash not compared
+RED   1/5 removal admitted
+RED   1/5 dir type unchecked
+RED   1/5 pattern too loose
+ALIVE: none

@@ -1,0 +1,20 @@
+{
+  "lane": "w4g-cp4-declarations-eligibility",
+  "files": [
+    {
+      "path": "COPIED.d/w4g-cp4-declarations-eligibility.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4g-cp4-declarations-eligibility.txt",
+      "status": "new",
+      "reason": "This lane's local checks: the copy manifest check that binds its one research file."
+    },
+    {
+      "path": "research/declarations-eligibility.md",
+      "status": "new",
+      "reason": "CP4 gate step for the declarations candidate: the decision record draft, read from stage 01 at 844a4ce, for glitch-f3's ruling."
+    }
+  ]
+}

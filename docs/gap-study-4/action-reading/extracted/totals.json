@@ -1,0 +1,12 @@
+{
+ "totals": {
+  "stream files listed": 2178,
+  "stream files read": 2178,
+  "extracted": 900,
+  "reached the question": 566,
+  "stalled": 334,
+  "no agent message found": 0,
+  "tool-call redactions (model or harness names in tool text)": 1903
+ },
+ "no_message": []
+}

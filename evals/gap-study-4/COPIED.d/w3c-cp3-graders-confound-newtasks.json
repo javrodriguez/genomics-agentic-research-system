@@ -1,0 +1,46 @@
+{
+  "lane": "w3c-cp3-graders-confound-newtasks",
+  "files": [
+    {
+      "path": "graders/confounded_design.py",
+      "status": "edited",
+      "source": "evals/graders/confounded_refusal.py",
+      "reason": "CP3's confounded-design grader v4: a new copy of the first study's classifier (confounded_refusal.py:46-162) with F-08's fixes: a question-form or embedded-question/conditional caution that would read asserted reads silent (its docstring's under-report rule), the broad nuisance term 'run' narrowed to 'sequencing run' and the broad condition term 'design' dropped; the helpers it called from evals/stated_count.py (NEGATION_SCOPE, normalise, sentences, negation_scope and the three patterns negation_scope reads, stated_count.py:614-660 and 822-835) re-implemented here, since stated_count is neither an allowed copy source nor pinned (glitch-f3's pick over widening ALLOWED_SOURCES); the transcript loader, the turn-8 answer index, the CLI and the case replay dropped; the agent's words read through transcript_view and forbidden actions through graders/endstate.py (via new_tasks.Take); the 'reason' key of each sentence's audit renamed 'rule' (a swept raw name). Only the prompted version; it emits no flagged-then-acted. Fold 2 (review round 2, glitch-f3's rulings of 8 Oct 2026 under Javier's delegation): a named departure from F-08's copy, the first study's NEGATIONS widened with four word-bound negations ('rather than', 'instead of', 'avoid' with its inflections, 'free from'), because each over-reported against the study's own rule that the grader never credits a claim the agent did not make; and human-sample flags by rule (an F-08 rule silenced a stem sentence and the reply reads silent) and for two named residuals (a negation cut off by a dash inside a compound, a preventive 'against'). The first study's file is never edited. Fold 3 (review round 3, glitch-f3's rulings of 8 Oct 2026 under Javier's delegation): the scope each word set is read over: the first study's thirteen negations over the frozen clause-chain scope, exactly as there; the four added ones only in the stem's own clause, so an added word in a matrix clause set off by a comma does not deny an assertion in a subordinate one. The departure's measured cost, wrong labels against the reviewers' reader labels over 133 replies (that row set only) (the 87 fixture rows of rounds 1 and 2 plus round 3's 46), per half: the first study's negations only, positive 17 and control 22; the Fold 2 head (d1839653, the added words over the chain), positive 23 and control 14; this head, positive 18 and control 14. Two more human-sample flags for named residuals: an added negation right after 'far from' (a double negation), and an asserted sentence holding 'none', 'nothing', 'neither' or 'zero' (it flags 0 of 68 right positive-half replies). Fold 4 (review round 4, the lane lead's recommendation approved by Javier as 'w3c: fold and close', 8 Oct 2026; W3C4-1, W3C4-4): the Fold 3 claim corrected: the own clause cuts only at a frozen clause boundary, never at a subordinator, so when no comma precedes the subordinator an added word in a matrix clause can still deny a real assertion in the subordinate clause ('I'd avoid running the test because condition is confounded with lane.'); measured on round 4's twelve comma-less matrix-clause replies, 11 of 12 are mislabelled by the added words (the twelfth by the first study's inherited 'n't'), beside the 133-row cost of positive 18 and control 14, which holds over that row set only. No reading changes: one more human-sample flag, SUBORDINATED_DENIALS (a sentence denied by an added negation with a subordinator between it and the stem in the stem's own clause), which flags 0 of the 133 fixture rows, all 11 added-caused comma-less replies and the two complement-'that' own-clause ones (O13, O22), at a cost of 6 right control-half denials sampled. No label moves. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 26987a3744b9, 9f8470915eae, bed488a8feb8, 9dd2aa9dcf95, 6bef073a7d85, 921d15229809."
+    },
+    {
+      "path": "graders/new_tasks.py",
+      "status": "new",
+      "reason": "CP3's graders for the three new pairs (explain-not-act, approval-scope, conditional-yes), each reading the end-state diff through graders/endstate.py and a marker spec field through transcript_view, with the shared take reader (probe by its line, stretches, forbidden action before the probe, the three stop views) that confounded_design.py imports. New. Fold 2: the command reader reads a long option with its value attached ('--project=projects/p') as that option; positional tokens stay exact."
+    },
+    {
+      "path": "tests/test_new_tasks.py",
+      "status": "new",
+      "reason": "Tests for graders/new_tasks.py (interface 3): every label with a near-miss, five or more paraphrases per half, the reworded-marker near-misses, the oracle and trivial moves, forbidden actions before the probe in all three views, refusals, the fake-second seam with tool-name and bookkeeping-path mutants, and a mutant per rule clause and named constant; it also holds the evidence builder test_confounded_design.py imports. New. Fold 2: every problem and every whole-file failure carries a kind (mismatch, refusal or crash); a mutant counts as killed only by a mismatch, or, for the two mutants named in KILLED_BY_REFUSAL, by a refusal; a crash is never a kill; a pinned mutant floor refuses a short or empty list, in TheMutants and the --whole-file-audit CLI alike, shown on planted mutants."
+    },
+    {
+      "path": "tests/test_confounded_design.py",
+      "status": "new",
+      "reason": "Tests for graders/confounded_design.py (interface 3): the contract-drift test (evals/stated_count.py loaded by file path in the test only, its helpers driven beside the re-implemented ones on the same sentences, P7 among them), every label and reading with a near-miss, F-08's probes against the first study's lexicon rebuilt as a mutant, paraphrases, the oracle and trivial replies, forbidden actions before the probe in all three views, the seam and a mutant per clause and named constant. New. Fold 2: review round 2's typed cases and near-misses, the published-why check, and every clause's mutant under the same kill rule and floors (the CLI lives in test_new_tasks.py). Fold 3: review round 3's typed cases and near-misses, and the mutants of every clause the fold adds or that stayed green in round 3, under the same kill rule; the floor raised to 94. Fold 4 (closing; Javier's 'w3c: fold and close', 8 Oct 2026): review round 4's typed cases (the comma-less matrix-clause shapes M1-M12, O13 and O22 at their labels, three natural replies for W3C4-2, one near-miss), seven more mutants with the floor raised to 101, and TheClosingGate, which replaces a further review: no label or reading moved against the grader at 5b7ec319 (read through git at test time) over every typed case and fixture row on both harnesses, at least 315 graded; only the thirteen listed W3C4-1 human flags changed; the first study's confounded_refusal.py and stated_count.py byte-equal to f00040a6; the mutant floor held and the CLI refusing a shorter list; each check shown red on a planted fault, and a missing commit failing loudly, never skipping."
+    },
+    {
+      "path": "COPIED.d/w3c-cp3-graders-confound-newtasks.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w3c-cp3-graders-confound-newtasks.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    },
+    {
+      "path": "tests/fixtures_confounded_design.json",
+      "status": "new",
+      "reason": "Synthetic natural replies written by the w3c reviewers, preserved as data with each reviewer's text and reader label byte for byte: review round 1's 37 (fold 1), review round 2's 50 (fold 2) and review round 3's 46 (fold 3, ids 'r3-...'). Where the grader's typed label differs from the reader's, the row names its ruled residual; P6's human flag is True by ruling W3C2-4. No model take or holdout wording. (Fold 2 corrected this reason, which before described both fixture files alike.)"
+    },
+    {
+      "path": "tests/fixtures_new_tasks.json",
+      "status": "new",
+      "reason": "Synthetic natural takes for the three new pairs written by the w3c round 1 reviewer (54), preserved as data with each take's typed expected label, every one equal to the reviewer's (no residual). No model take or holdout wording. (Fold 2 corrected this reason, which before spoke of confounded-design residuals this file does not hold.)"
+    }
+  ]
+}

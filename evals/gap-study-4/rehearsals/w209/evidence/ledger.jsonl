@@ -1,0 +1,2 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-haiku-4-5-20251001", "run_tree": ""}
+{"ended_at": 1793114515.393981, "kind": "turn", "n": 1, "started_at": 1793114485.2874746}

@@ -1,0 +1,8 @@
+# Lane vendor-settle stage K2 (glitch-f1's ruling "CONTEXT-SWEEP GAP read", Wed 21 Oct 2026, 22:26 EDT, option A, under
+# Javier's standing delegation): check_take's loaded-context leak sweep (context_text, through _swept_attachment_line)
+# reads each attachment record's decoded text, keys included, the edited_text_file snippet carve-out kept, so a leak
+# word after an escaped newline is seen; the pins it moves are updated under the same ruling. One command per line, run
+# from the repository root; synthetic records only.
+python3 -B -W ignore evals/gap-study-4/tests/test_context_sweep.py
+python3 -B -W ignore evals/gap-study-4/tests/test_edited_text_file.py
+python3 -B -W ignore evals/gap-study-4/tests/test_jsonl_split.py

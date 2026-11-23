@@ -1,0 +1,38 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-11
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Create a principal component analysis (PCA) of the six RNA-seq samples from the gene counts and plot the samples with points coloured by their condition (`untreated` or `treated`). The plot will show the first two principal components and their explained variance.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+
+The sample condition labels come from the project design table `01_samplesheets/rnaseq_bulk_design.csv`, matched to count-matrix sample columns by sample ID.
+
+## Method
+1. In `gars-bio`, read the resolved gene count TSV and the project design CSV without modifying either input. Confirm that every design sample ID matches exactly one count column, and use the six shared samples only; stop with an error if IDs are missing, duplicated, or unmatched.
+2. Treat the count matrix as genes by samples. Remove genes with zero total count across these samples, apply `log2(count + 1)`, transpose to samples by genes, center each gene across samples, and compute PCA with scikit-learn `PCA(n_components=2)` using its default full-SVD solver. Do not scale genes to unit variance. Record the variance explained by each component.
+3. Using matplotlib, create a scatter plot of PC1 versus PC2, one point per sample, coloured by condition with a legend; label each point by sample ID and each axis with its component name and percent variance explained. Save as `results/sample-pca.png`.
+4. Write the sample IDs, condition labels, PC1 and PC2 coordinates, and explained-variance fractions to `results/sample-pca-coordinates.csv`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/sample-pca.png` | `figure` | PC1 versus PC2 scatter plot, coloured by condition and labelled by sample ID |
+| `results/sample-pca-coordinates.csv` | `table` | Per-sample PC coordinates, condition labels, and explained-variance fractions |
+
+## Execution
+Runs: batch
+Expected runtime: under 10 minutes; expected outputs: under 1 MB. Uses the workspace configured batch scheduler.

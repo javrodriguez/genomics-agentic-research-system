@@ -1,0 +1,52 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Do the six samples separate by treatment? Compute a sample-level PCA from the gene counts and draw one plot of PC1 vs PC2, with samples coloured treated versus untreated.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+Environment: `gars-bio` (pandas, numpy, scikit-learn, matplotlib). Every step runs inside one
+script, `scripts/sample_pca.py`, submitted through the executor. Inputs are read-only.
+
+1. Read the `counts_gene` table (genes x samples; `gene_id` and `gene_name` are annotation
+   columns, the remaining columns are samples) and the `design` table. Require that the sample
+   columns and the design's `sample_id` values are the same set (6 samples); stop with an error
+   otherwise.
+2. Transform: `log2(count + 1)`. The counts are salmon length-scaled gene counts, so no further
+   length normalisation is applied.
+3. Drop genes with zero variance across the samples, and keep all remaining genes (no
+   top-N selection). Record the number kept.
+4. Centre each gene (mean zero across samples); do not scale to unit variance.
+5. PCA with `sklearn.decomposition.PCA(n_components=min(n_samples, n_genes))`, `svd_solver="full"`.
+6. Plot PC1 (x) against PC2 (y), one point per sample, coloured by the design's `condition`
+   (`treated`, `untreated`), each point labelled with its `sample_id`, axis labels carrying the
+   percent variance explained, a legend for the two conditions. Colours are distinguishable
+   without relying on hue alone (different marker shapes per condition). Save as PNG at 300 dpi
+   (`results/sample_pca.png`) and as vector PDF (`results/sample_pca.pdf`).
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 vs PC2 sample PCA, coloured treated vs untreated (raster) |
+| results/sample_pca.pdf | figure | the same plot as vector PDF |
+
+## Execution
+Runs: batch
+Expected wall time: under a minute of compute (6 samples) plus scheduler queue time. Output size:
+under 1 MB in total.

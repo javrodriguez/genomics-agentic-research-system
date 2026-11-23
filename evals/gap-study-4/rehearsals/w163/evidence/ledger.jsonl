@@ -1,0 +1,4 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-sonnet-5-5", "run_tree": ""}
+{"ended_at": 1792150498.0106063, "kind": "turn", "n": 1, "started_at": 1792150484.7866018}
+{"ended_at": 1792150510.1878226, "kind": "turn", "n": 2, "started_at": 1792150498.4288356}
+{"ended_at": 1792150515.072817, "kind": "turn", "n": 3, "started_at": 1792150510.6027834}

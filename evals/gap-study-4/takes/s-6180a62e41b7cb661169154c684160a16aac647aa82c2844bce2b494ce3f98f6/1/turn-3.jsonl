@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1bcf8-fad8-7cf1-80c0-961079da0ac9"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The project gets symlinks under `00_data/rnaseq_bulk/raw/` pointing to the source FASTQ files. The source files are not copied or moved. After you confirm, GARS will also write `files.csv` with the registered file paths and `samples.csv` with one row per sample. The links have not been made yet; please confirm to proceed."}}
+{"type":"turn.completed","usage":{"input_tokens":324858,"cached_input_tokens":301568,"cache_write_input_tokens":0,"output_tokens":1610,"reasoning_output_tokens":105}}

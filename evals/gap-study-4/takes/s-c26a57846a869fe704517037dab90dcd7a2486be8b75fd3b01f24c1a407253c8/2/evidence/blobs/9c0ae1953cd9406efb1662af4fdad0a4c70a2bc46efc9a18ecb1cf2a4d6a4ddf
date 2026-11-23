@@ -1,0 +1,7 @@
+sample,fastq_1,fastq_2,strandedness
+A1,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/A1_S1_L001_R1_001.fastq.gz,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/A1_S1_L001_R2_001.fastq.gz,auto
+A2,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/A2_S2_L001_R1_001.fastq.gz,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/A2_S2_L001_R2_001.fastq.gz,auto
+A3,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/A3_S3_L001_R1_001.fastq.gz,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/A3_S3_L001_R2_001.fastq.gz,auto
+B1,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/B1_S4_L001_R1_001.fastq.gz,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/B1_S4_L001_R2_001.fastq.gz,auto
+B2,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/B2_S5_L001_R1_001.fastq.gz,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/B2_S5_L001_R2_001.fastq.gz,auto
+B3,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/B3_S6_L001_R1_001.fastq.gz,/tmp/run-6cf052b7/gars/projects/run-6cf052b7/00_data/rnaseq_bulk/raw/B3_S6_L001_R2_001.fastq.gz,auto

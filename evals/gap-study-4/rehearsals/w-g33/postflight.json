@@ -1,0 +1,28 @@
+{
+ "checks": [
+  {
+   "detail": "no credential file",
+   "id": "no-credential-file",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "admitted_credential": [],
+  "credential_files": [],
+  "listing": [
+   ".gemini",
+   ".gemini/history",
+   ".gemini/history/run-686bbe21",
+   ".gemini/history/run-686bbe21/.project_root",
+   ".gemini/projects.json",
+   ".gemini/settings.json",
+   ".gemini/tmp",
+   ".gemini/tmp/run-686bbe21",
+   ".gemini/tmp/run-686bbe21/.project_root",
+   ".gemini/tmp/run-686bbe21/chats",
+   ".gemini/tmp/run-686bbe21/chats/session-2026-10-20T23-59-519e0928.jsonl",
+   ".gemini/tmp/run-686bbe21/logs"
+  ]
+ }
+}

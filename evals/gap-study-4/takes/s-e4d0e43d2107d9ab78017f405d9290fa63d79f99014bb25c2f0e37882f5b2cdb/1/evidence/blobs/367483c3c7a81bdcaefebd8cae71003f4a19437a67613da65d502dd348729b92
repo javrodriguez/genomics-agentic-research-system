@@ -1,0 +1,72 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Run a principal component analysis of the gene count matrix and plot the samples with points
+coloured by condition, so the overall sample structure can be inspected visually. The analysis
+reports the PCA coordinates, the variance each component explains, and the plot; it does not
+test for differences between conditions.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda environment
+(`$GARS_PY` from `_system/gars-env.sh`), submitted as one batch job. Inputs are read-only;
+nothing is written outside this analysis directory.
+
+1. **Resolve inputs.** Run `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk
+   --consumes counts_gene design` at job start and read the paths it returns; stop if
+   resolution fails.
+2. **Load and align.** Read the count matrix with pandas (tab-separated; `gene_id` as the index;
+   drop the `gene_name` column). Read the design (`sample_id,condition,group,replicate`). Require
+   the matrix's sample columns and the design's `sample_id`s to be the same set (today: A1-A3,
+   B1-B3); if they differ, stop with an error naming the mismatch. Order the matrix columns to
+   match the design.
+3. **Prepare counts.** The matrix is salmon length-scaled estimated counts (non-integer).
+   Round to the nearest integer, which is how DESeq2-family tools take these values. Drop
+   genes with a total count of zero across all samples.
+4. **Variance-stabilise.** Apply the variance-stabilising transformation in PyDESeq2 0.5.4
+   (`DeseqDataSet` with design `~1`, i.e. blind to condition, then `vst()`), giving
+   log2-scale values with roughly constant variance across expression levels.
+5. **Select genes.** Keep the 500 genes with the highest variance across samples in the
+   VST values (the DESeq2 `plotPCA` default). The current matrix has 200 genes, so in practice
+   every gene that remains after step 3 is used; the number used is written to the
+   variance table.
+6. **PCA.** scikit-learn 1.9.0 `PCA` on the samples × selected-genes matrix, centred
+   (scikit-learn default) and not scaled to unit variance. Compute all components
+   (n = number of samples − 1 = 5).
+7. **Write tables.** `results/pca_scores.tsv`: one row per sample, columns `sample_id`,
+   `condition`, `PC1` … `PC5`. `results/pca_variance_explained.tsv`: one row per component,
+   columns `component`, `variance_explained_fraction`, `cumulative_fraction`, plus
+   `n_genes_used`.
+8. **Plot.** matplotlib 3.11.1: scatter of PC1 (x) vs PC2 (y), one point per sample,
+   coloured by `condition` with a legend, each point labelled with its `sample_id`, axis
+   labels giving the percentage of variance explained (e.g. `PC1 (43.2%)`). Saved as
+   `results/pca_pc1_pc2.png` (300 dpi) and `results/pca_pc1_pc2.pdf`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.tsv | table | Sample coordinates on PC1–PC5, with condition |
+| results/pca_variance_explained.tsv | table | Fraction and cumulative fraction of variance per component; number of genes used |
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter, points coloured by condition and labelled by sample |
+| results/pca_pc1_pc2.pdf | figure | The same plot as vector PDF |
+
+## Execution
+Runs: batch
+One batch job, 1 CPU, 4 GB memory, 15-minute time limit; expected wall time under 2 minutes
+for a 200-gene × 6-sample matrix. Expected output size well under 5 MB in total.

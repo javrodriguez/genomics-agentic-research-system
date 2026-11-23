@@ -1,0 +1,5 @@
+# Lane prefreeze-road: Gap Study round 4, the Lane-orchestrator's rulings of Sat 24 Oct 2026 (under Javier's standing
+# delegation) on the pre-freeze outputs road. fixture_walk places a /home path the same way on every machine (F5-home),
+# and the review kit's tests (K13, K14) run on lane review-kit-port's line. One command per line, from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_prefreeze_road.py
+python3 -B -W ignore evals/gap-study-4/fixture_walk.py --check

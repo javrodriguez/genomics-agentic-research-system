@@ -1,0 +1,110 @@
+{
+  "lane": "w11a-codex-adapter",
+  "files": [
+    {
+      "path": "codex_adapter.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter (arm O; D8 sections 1 and 3, D8:461-472; ruling Q-3): CodexAdapter, agent_adapter's interface for codex: one `codex exec --json` per turn through box/run_take.run_turn, `-m <model>` on every exec, `resume <thread id>` after the first turn only (the id read from turn 1's thread.started), the routing pin's mode looked up in MODE_FLAGS (D8:110), the version from `codex --version`; read_stream maps the documented events and items into the seam's records (api_errors from error and turn.failed only, never the agent's text; usage from turn.completed, a missing key refused, never 0; agent_output from event and item types); read_rollout takes the init's model from the rollout's turn_context, never the requested model. SHAPES_SOURCE = documented, reported in the harness record and every turn record. Not registered in any seam table (a later seam slice). Review round 1 fold: a line that is not JSON is accepted only as the stream's last line; the error words are read from the typed record; the mode check is one table lookup; the version exec's stdout must be a string. Live harness slice 6 (edit without transfer, under glitch-06's order, 14 Oct 2026): the exec is kept in executed_turns before any read; the stream read, resumed-thread check and rollout read moved verbatim into _read_turn; a refusal after the exec is ExecutedStreamRefused (a StreamError and an agent_adapter.ExecutedTurnRefused). No identity-source table. Bound by tests/test_codex_executed_refusal.py. Review nit 3: any other exception after the exec becomes a plain ExecutedTurnRefused (a defect, never a StreamError); BaseException still propagates. Codex slice 2 (glitch-06, 14 Oct 2026): the identity-source table. init is None on every turn (the rollout's turn_context names the requested model; kept as the turn record's requested_context); read_stream reads exactly one shape of exec error item, the reroute (exec_events.rs:132, 310-312; event_processor_with_jsonl_output.rs:494-507), as served-model evidence (two different reroutes refuse; any other error item stays off the tables); turn_identity: model stream-reroute else unobserved, version version-exec (observed before the exec), mode submitted_mode (the launch journal through launch_facts, exact argv; unobserved without one). Codex slice 3: native_session_path names the rollout under CODEX_HOME by turn 1's thread id (native_snapshot.codex_rollout_file), so the driver retains it per turn. Codex road review F1, F2: the reroute parser is codex_native's (reason pinned, from the turn's -m model); read_stream takes the model. Lane vendor-admission round-2 ruling 2 (glitch-b5, 16 Oct 2026), an edit without transfer: the SHAPES_SOURCE paragraph of the docstring (lines 13-14) now says freeze.py refuses a design row of this harness (arm O) while SHAPES_SOURCE is not \"recorded\" (T3), in place of \"owed to a later slice\"; no code changed. Bound by tests/test_freeze_shapes.py FS-docs. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): READ_SHAPES is box/od57_shapes.CODEX (the shapes moved there; the stream's flag is -lc only)."
+    },
+    {
+      "path": "transcript_codex.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter: the pre-registered Codex exec stream tables (D8 section 1's event types, item types and usage keys, and the keys it names as not in D8), check_record (anything off the tables refused, never guessed) and CodexParser into transcript_view.RawItem's closed vocabulary (command_execution -> shell, file_change -> write or edit, mcp_tool_call -> other, agent_message -> agent-text, reasoning -> agent-reasoning). NOT registered in transcript_view.PARSERS. Review round 1 fold: every documented value is type-checked (a bool is never an int), a file_change's changes are checked in check_record, an event or item type that is not a string is a typed refusal, and two unused names are gone. Lane vendor-b22 (glitch-26's ruling B22-6, Tue 20 Oct 2026; GPT walk w-o38): an item.started may carry file_change, read from the pinned Codex exec (openai/codex 092d3acd), admitted only with status exactly in_progress, and CodexParser maps that started record to no view item, so the completed record's one call per change keeps every call number (bound by tests/test_codex_started_file_change.py). Lane vendor-b23 (glitch-26's ruling Q1, option C, Tue 20 Oct 2026): the started file_change now carries the edit call (one per change) and its completion the result, so a patch a take's timeout cut off stays an unanswered call as a killed command does; a completion with no start keeps its call and result; one map per stream, reset at thread.started, refuses a second start and a completion whose changes differ (bound by tests/test_codex_patch_reads.py and tests/test_codex_started_file_change.py)."
+    },
+    {
+      "path": "tests/test_codex_adapter.py",
+      "status": "new",
+      "reason": "Lane w11a-codex-adapter (arm O, next-slices-plan-2026-10-12 section 2): the Codex CLI adapter and its stream parser on synthetic streams over a fake runtime: S1-S3 the closed event, item and key tables, P1 the view vocabulary through transcript_view.events with the parser in a copy of PARSERS for the test only, A1-A7 the stream read, the harness's errors kept apart from the agent's text, usage refused when a key is missing, the argv (-m every exec, resume after turn 1 only), the model from the rollout, the end reasons, SHAPES_SOURCE documented; whole-file witnesses of codex_adapter.py and transcript_codex.py compiled in memory. Review round 1 fold (ruling w11a-R1-fold): B1-B11 bind each condition and clause one case at a time (end_reason, the thread id at three seats, required keys, value types, the rollout init, usage values, empty model or line, blank messages, the cut last line, the turn record, the version exec), A7 requires a RECORDED label's walk id and harness version, and --generated-mutants (shardable) runs a generated mutation sweep of both modules with an EQUIVALENT list whose stale entries fail. Live-harness foundation: P1 now requires a bound published parser instead of asserting the future seam has not registered; native parser mapping assertions remain unchanged. Live harness (glitch-06's Codex ruling, option a, 14 Oct 2026): every turn here and in test_codex_executed_refusal runs through stub_run_turn, a plain agent exec that never reads a login and carries no credential (patched in setUpModule; a test checks it is in place and never opens the login file); A4's clause 'the login rides by name only' is retired with a dated note (it described the API-key route the reviewed subscription transition removed); the login value never riding in an argv stays checked. Nothing enables an API-key route; run_take's NotReady refusal of a Codex turn before any login read is bound outside this module (integration lane daf4311b, test_env_allowlist). Athena sweep survivors (gap4-harness-ab-86ca78e, 14 Oct 2026): B12-executed binds the executed-turn road of CodexAdapter._turn in this module's own checks (a clean turn's kept record, the reader refusal and the defect, each record exact). Codex slice 2: A5 rewritten (init None; requested_context kept; the reroute read, its exact shape, two reroutes refused, any other error item refused), A8-journal (the mode from the turn's journal, branch by branch, through two turns), B9 with the new record fields; witnesses model-defaulted re-anchored, reroute-unread and requested-model-as-served added (15 of 15); generated sweep 1044 mutants, 0 survivors. Codex slice 3: B13-native (the rollout located by the thread among others); generated sweep 1046 mutants, 0 survivors. Codex road review F1: A5 reads the reroute with its reason pinned and its from bound to the requested model; the loose spellings, another reason and another from are not reroutes; with no model named, a reroute-shaped item is refused. Lane vendor-b23 round 4 (glitch-26's ruling B23-8, athena battery gap4-t5-b23-a67b2b7): B15-fc-pair, B16-fc-second-start and B17-fc-changed bind B22's started file_change and its pairing (a start and its completion, a second start, changes off the start's, the results' refs and status text), each with its witness, so the generated sweep kills those mutants by the checks' own lines. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): READ_SHAPES_SHA256 pins the shapes with -lc only."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/README.md",
+      "status": "new",
+      "reason": "Lane w11a: labels every Codex fixture in its folder SYNTHETIC (none recorded; ruling Q-3), read by test_codex_adapter A7."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/agent-says-429.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/file-delete.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/mcp-call.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/reasoning-only.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/rollout-no-context.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/rollout-served-other.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/rollout-two-turns.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn-failed.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn1-tools.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn2-other-thread.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/turn2-resume.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/unknown-event.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/unknown-item.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/unknown-key.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "tests/fixtures/codex-streams/usage-missing.jsonl",
+      "status": "new",
+      "reason": "Lane w11a: a SYNTHETIC Codex exec stream or rollout fixture, written by hand from the documented shapes (D8 section 1, and the keys transcript_codex.py names as not in D8); not a recorded stream."
+    },
+    {
+      "path": "COPIED.d/w11a-codex-adapter.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w11a-codex-adapter.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the test module and its --witnesses. Review round 1 fold: the generated mutation sweep, run whole."
+    }
+  ]
+}

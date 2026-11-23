@@ -1,0 +1,5 @@
+2026-10-14T08:27:17-04:00
+== /sys/fs/cgroup/user.slice/user-1000.slice/pids.max
+78037
+== /sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/pids.max
+max

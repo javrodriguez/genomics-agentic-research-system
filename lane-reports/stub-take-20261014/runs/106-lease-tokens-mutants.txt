@@ -1,0 +1,12 @@
+control 0 of 4
+RED   3/4 only the access token searched
+RED   1/4 a missing token key admitted
+RED   1/4 a short value admitted
+RED   1/4 a link or special file admitted
+RED   1/4 any mode admitted
+RED   1/4 any owner admitted
+RED   1/4 an oversize file admitted
+RED   1/4 no read at take start
+RED   1/4 the take-start values dropped at the scan
+RED   1/4 postflight.json masked as agent text
+ALIVE: none

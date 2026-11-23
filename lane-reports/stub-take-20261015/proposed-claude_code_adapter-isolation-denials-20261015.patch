@@ -1,0 +1,32 @@
+diff --git a/evals/gap-study-4/claude_code_adapter.py b/evals/gap-study-4/claude_code_adapter.py
+index c6d036c6..f61926ec 100644
+--- a/evals/gap-study-4/claude_code_adapter.py
++++ b/evals/gap-study-4/claude_code_adapter.py
+@@ -73,7 +73,10 @@ OUTPUT_FLAGS = ("--output-format", "stream-json", "--verbose")
+ PERMISSION_PROMPTS = ("--permission-prompts", "none")
+ # Round 3's isolation flags (drive.py:165, ISOLATION_FLAGS), carried unchanged; a test binds the two.
+ ISOLATION_FLAGS = ("--setting-sources", "project,local", "--strict-mcp-config")
+-DISALLOWED_TOOLS = ("WebFetch", "WebSearch")
++# The isolation ruling (glitch-6b, 15 Oct 2026; box lane run_take.ISOLATION_DISALLOWED_TOOLS, read from the pinned
++# binary): RemoteTrigger, SendMessage and ListAgents are denied for every claude-code take; run_take refuses a turn
++# whose argv denies fewer.
++DISALLOWED_TOOLS = ("WebFetch", "WebSearch", *rt.ISOLATION_DISALLOWED_TOOLS)
+ VERSION_ARGV = (CLIENT, "--version")
+ # `claude --version`'s printed form at 2.1.267 ("2.1.267 (Claude Code)", the env-smoke report's claude_version).
+ VERSION_FORM = re.compile(r"([0-9]+\.[0-9]+\.[0-9]+) \(Claude Code\)")
+diff --git a/evals/gap-study-4/tests/test_claude_code_adapter.py b/evals/gap-study-4/tests/test_claude_code_adapter.py
+index 24eac387..d44f1397 100644
+--- a/evals/gap-study-4/tests/test_claude_code_adapter.py
++++ b/evals/gap-study-4/tests/test_claude_code_adapter.py
+@@ -316,8 +316,9 @@ def a3_argv(mod, p):
+         if inner[inner.index("--permission-mode") + 1] != BYPASS:
+             out.append(f"{p}: turn {n} passes mode {inner[inner.index('--permission-mode') + 1]!r}, not the pin's")
+         i = inner.index("--disallowedTools")
+-        if inner[i + 1:i + 3] != ["WebFetch", "WebSearch"]:
+-            out.append(f"{p}: turn {n} disallows {inner[i + 1:i + 3]}")
++        want_denied = ["WebFetch", "WebSearch", "RemoteTrigger", "SendMessage", "ListAgents"]
++        if inner[i + 1:i + 1 + len(want_denied)] != want_denied:
++            out.append(f"{p}: turn {n} disallows {inner[i + 1:i + 1 + len(want_denied)]}")
+         if not all(f in inner for f in mod.ISOLATION_FLAGS) or inner[inner.index("--model") + 1] != MODEL:
+             out.append(f"{p}: turn {n} lacks round 3's isolation flags or the row's model")
+         want = ["--session-id", SID] if n == 1 else ["--resume", SID]

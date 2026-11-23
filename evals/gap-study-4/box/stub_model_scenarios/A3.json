@@ -1,0 +1,195 @@
+{
+ "expect": {
+  "snapshots": {
+   "1": {
+    "verdict": "PASS"
+   },
+   "2": {
+    "verdict": "PASS"
+   },
+   "3": {
+    "reason_contains": "the resume after a history re-record",
+    "verdict": "refused"
+   }
+  },
+  "stub_log": "the first masked request is process 2's first request"
+ },
+ "fake_cross_check": false,
+ "files": {
+  "r01.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r02.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r03.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r04.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r05.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r06.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  }
+ },
+ "model": "gemini-3.8-flash",
+ "processes": [
+  "Read r01.txt to r05.txt one by one.",
+  "Read r06.txt too.",
+  "Thanks."
+ ],
+ "requests": [
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Read r01.txt to r05.txt one by one."
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r01.txt"
+      },
+      "name": "read_file"
+     }
+    ],
+    "thought": {
+     "description": "Reading r01.txt next, as asked.",
+     "subject": "Reading the files"
+    }
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r02.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r03.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r04.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r05.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "text": "I read the five files."
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Read r06.txt too."
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r06.txt"
+      },
+      "name": "read_file"
+     }
+    ],
+    "thought": {
+     "description": "Reading r06.txt next, as asked.",
+     "subject": "Reading the files"
+    }
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "text": "r06.txt is read as well."
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Thanks."
+   },
+   "respond": {
+    "text": "Any time."
+   }
+  }
+ ],
+ "road": "the w-g47 pattern with a boundary after it: five heavy reads, a resume whose re-added _response turns push the history over the masking line at its first request, then a resume after that",
+ "scenario": "A3",
+ "schema": 1
+}

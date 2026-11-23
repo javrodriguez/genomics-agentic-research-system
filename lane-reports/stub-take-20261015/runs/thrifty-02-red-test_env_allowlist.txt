@@ -1,0 +1,121 @@
+Thu Oct 15 18:30:51 EDT 2026
+test_each_row_is_the_ruling_s_set (__main__.E1Table.test_each_row_is_the_ruling_s_set) ... FAIL
+test_the_views_are_derived (__main__.E1Table.test_the_views_are_derived) ... FAIL
+test_an_old_list_name_is_still_refused (__main__.E2Allowlist.test_an_old_list_name_is_still_refused) ... ok
+test_codex_turn_is_refused_until_its_subscription_binding (__main__.E2Allowlist.test_codex_turn_is_refused_until_its_subscription_binding) ... ok
+test_launcher_refuses_container_ancestors_and_current_home (__main__.E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home) ... ok
+test_take_environment_is_the_row_alone (__main__.E2Allowlist.test_take_environment_is_the_row_alone) ... FAIL
+test_the_launcher_needs_the_credential (__main__.E2Allowlist.test_the_launcher_needs_the_credential) ... ok
+test_the_turn_hands_the_harness_the_row_alone (__main__.E2Allowlist.test_the_turn_hands_the_harness_the_row_alone) ... FAIL
+test_a_dangling_link_and_the_shape (__main__.E3EnvFiles.test_a_dangling_link_and_the_shape) ... ok
+test_a_parent_below_the_box_root (__main__.E3EnvFiles.test_a_parent_below_the_box_root) ... ok
+test_home (__main__.E3EnvFiles.test_home) ... ok
+test_launch_refuses_before_any_runtime_call (__main__.E3EnvFiles.test_launch_refuses_before_any_runtime_call) ... ok
+test_no_take_image_writes_an_env_file (__main__.E3EnvFiles.test_no_take_image_writes_an_env_file) ... ok
+test_run_turn_refuses_before_its_exec (__main__.E3EnvFiles.test_run_turn_refuses_before_its_exec) ... ok
+test_the_box_root (__main__.E3EnvFiles.test_the_box_root) ... ok
+test_the_working_folder (__main__.E3EnvFiles.test_the_working_folder) ... ok
+test_a_short_alias_is_refused_by_name (__main__.E4Model.test_a_short_alias_is_refused_by_name) ... ok
+test_all_gemini_exec_spellings_are_checked (__main__.E4Model.test_all_gemini_exec_spellings_are_checked) ... ok
+test_exec_refuses_an_alias (__main__.E4Model.test_exec_refuses_an_alias) ... ok
+test_non_model_options_need_non_flag_values (__main__.E4Model.test_non_model_options_need_non_flag_values) ... ok
+test_the_full_ids_pass_and_others_refuse (__main__.E4Model.test_the_full_ids_pass_and_others_refuse) ... ok
+test_the_table_is_the_pre_registered_one (__main__.E4Model.test_the_table_is_the_pre_registered_one) ... ok
+test_check_model_edges (__main__.E5Units.test_check_model_edges) ... ok
+test_home_must_be_the_config_mount (__main__.E5Units.test_home_must_be_the_config_mount) ... ok
+test_launcher_argv_refusals (__main__.E5Units.test_launcher_argv_refusals) ... ok
+test_take_environment_refusals (__main__.E5Units.test_take_environment_refusals) ... ok
+test_the_fallback_values_are_arm_a_s_alone (__main__.E5Units.test_the_fallback_values_are_arm_a_s_alone) ... ok
+test_the_no_login_launcher_reads_its_values (__main__.E5Units.test_the_no_login_launcher_reads_its_values)
+The merged battery's generated sweep (gap4-merge-66bacad): the no-login launcher's own branches, bound here ... ok
+test_the_equivalent_list_matches_the_generated_mutants (__main__.G1Generated.test_the_equivalent_list_matches_the_generated_mutants) ... ok
+
+======================================================================
+FAIL: test_each_row_is_the_ruling_s_set (__main__.E1Table.test_each_row_is_the_ruling_s_set)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 289, in test_each_row_is_the_ruling_s_set
+    self.assertEqual(filled, expected_row(h, "/r/t"), f"E1.table: {h}'s row is off the ruling's set")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'PAT[369 chars]DE_CONFIG_DIR': '/opt/cfg'} != {'PAT[369 chars]DE_CODE_THRIFTY_SONIC': 'false', 'CLAUDE_CONFI[14 chars]cfg'}
+  {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1',
+   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC': '1',
++  'CLAUDE_CODE_THRIFTY_SONIC': 'false',
+   'CLAUDE_CONFIG_DIR': '/opt/cfg',
+   'DISABLE_AUTOUPDATER': '1',
+   'ENABLE_CLAUDEAI_MCP_SERVERS': 'false',
+   'HOME': '/opt/cfg',
+   'HTTPS_PROXY': 'http://proxy:3128',
+   'LANG': 'C.UTF-8',
+   'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+   'TEMP': '/r/t/.tmp',
+   'TMP': '/r/t/.tmp',
+   'TMPDIR': '/r/t/.tmp'} : E1.table: claude-code's row is off the ruling's set
+
+======================================================================
+FAIL: test_the_views_are_derived (__main__.E1Table.test_the_views_are_derived)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 302, in test_the_views_are_derived
+    self.assertEqual(m.HARNESS_ENV[h], want, f"E1.derived: HARNESS_ENV[{h}] off")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'HTT[194 chars]DE_CONFIG_DIR': '/opt/cfg'} != {'HTT[194 chars]DE_CODE_THRIFTY_SONIC': 'false', 'CLAUDE_CONFI[14 chars]cfg'}
+  {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1',
+   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC': '1',
++  'CLAUDE_CODE_THRIFTY_SONIC': 'false',
+   'CLAUDE_CONFIG_DIR': '/opt/cfg',
+   'DISABLE_AUTOUPDATER': '1',
+   'ENABLE_CLAUDEAI_MCP_SERVERS': 'false',
+   'HTTPS_PROXY': 'http://proxy:3128'} : E1.derived: HARNESS_ENV[claude-code] off
+
+======================================================================
+FAIL: test_take_environment_is_the_row_alone (__main__.E2Allowlist.test_take_environment_is_the_row_alone)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 329, in test_take_environment_is_the_row_alone
+    self.assertEqual(got, want, f"E2.built: {h}'s environment is not exactly its row")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'PAT[399 chars]DE_CONFIG_DIR': '/opt/cfg', 'CLAUDE_CODE_OAUTH[33 chars]ly>'} != {'PAT[399 chars]DE_CODE_THRIFTY_SONIC': 'false', 'CLAUDE_CONFI[71 chars]ly>'}
+  {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1',
+   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC': '1',
+   'CLAUDE_CODE_OAUTH_TOKEN': '<credential, by name only>',
++  'CLAUDE_CODE_THRIFTY_SONIC': 'false',
+   'CLAUDE_CONFIG_DIR': '/opt/cfg',
+   'DISABLE_AUTOUPDATER': '1',
+   'ENABLE_CLAUDEAI_MCP_SERVERS': 'false',
+   'HOME': '/opt/cfg',
+   'HTTPS_PROXY': 'http://proxy:3128',
+   'LANG': 'C.UTF-8',
+   'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+   'TEMP': '/srv/w/t1/tree/.tmp',
+   'TMP': '/srv/w/t1/tree/.tmp',
+   'TMPDIR': '/srv/w/t1/tree/.tmp'} : E2.built: claude-code's environment is not exactly its row
+
+======================================================================
+FAIL: test_the_turn_hands_the_harness_the_row_alone (__main__.E2Allowlist.test_the_turn_hands_the_harness_the_row_alone)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_env_allowlist.py", line 403, in test_the_turn_hands_the_harness_the_row_alone
+    self.assertEqual(pairs, expected_row(h, "/srv/w/t1/tree"), f"E2.turn: {h}'s pairs are not the row")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1', 'C[383 chars]tmp'} != {'PATH': '/usr/local/sbin:/usr/local/bin:/u[421 chars]cfg'}
+  {'CLAUDE_CODE_DISABLE_AUTO_MEMORY': '1',
+   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC': '1',
++  'CLAUDE_CODE_THRIFTY_SONIC': 'false',
+   'CLAUDE_CONFIG_DIR': '/opt/cfg',
+   'DISABLE_AUTOUPDATER': '1',
+   'ENABLE_CLAUDEAI_MCP_SERVERS': 'false',
+   'HOME': '/opt/cfg',
+   'HTTPS_PROXY': 'http://proxy:3128',
+   'LANG': 'C.UTF-8',
+   'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+   'TEMP': '/srv/w/t1/tree/.tmp',
+   'TMP': '/srv/w/t1/tree/.tmp',
+   'TMPDIR': '/srv/w/t1/tree/.tmp'} : E2.turn: claude-code's pairs are not the row
+
+----------------------------------------------------------------------
+Ran 29 tests in 4.069s
+
+FAILED (failures=4)
+test_env_allowlist: 29 run, 4 failures, 0 errors, 0 skipped
+test_env_allowlist outcomes: {"failures": ["E1Table.test_each_row_is_the_ruling_s_set", "E1Table.test_the_views_are_derived", "E2Allowlist.test_take_environment_is_the_row_alone", "E2Allowlist.test_the_turn_hands_the_harness_the_row_alone"], "errors": [], "skipped": []}

@@ -1,0 +1,18 @@
+Thu Oct 15 18:56:23 EDT 2026
+check_take + the denial rule
+test_clean (__main__.Denials.test_clean) ... ok
+test_shape (__main__.Denials.test_shape) ... ok
+test_violated (__main__.Denials.test_violated) ... ok
+test_wired (__main__.Denials.test_wired) ... ok
+test_witnesses (__main__.Denials.test_witnesses) ... 
+WITNESS a tool dropped: red (['D-violated ListAgents: []']) 
+WITNESS no tools: red (['D-violated RemoteTrigger: []']) 
+WITNESS another stream name: red (['D-violated RemoteTrigger: []']) ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.072s
+
+OK
+Ran 6 tests in 0.096s
+
+OK

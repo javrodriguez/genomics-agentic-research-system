@@ -1,0 +1,320 @@
+{
+  "scope": "new-folder watch latency on an idle athena; provisional images; no credentials, no model",
+  "calls": [
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/gap-latency-62ua3eh8/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/gap-latency-62ua3eh8/tree,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "inotifywait",
+        "--monitor",
+        "--recursive",
+        "--format",
+        "%w%f|%e",
+        "--event",
+        "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+        "/tree"
+      ],
+      "exit": 0,
+      "stdout": "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/gap-latency-62ua3eh8/tree,target=/tree",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "366c80ea1095d46f0ed771f716879f9b5b209b60aaae2ad8fe1ecfa435f0c56a\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "366c80ea1095d46f0ed771f716879f9b5b209b60aaae2ad8fe1ecfa435f0c56a",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json,pathlib,time\np=pathlib.Path(\"/tree\"); delays=(0.0, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1); out=[]\nfor r in range(5):\n    for i,d in enumerate(delays):\n        f=p/(\"d%d-%d\" % (r,i)); f.mkdir()\n        if d: time.sleep(d)\n        (f/\"inner.txt\").write_text(\"x\"); out.append([f.name,d])\n        time.sleep(0.05)\nprint(json.dumps(out))\n"
+      ],
+      "exit": 0,
+      "stdout": "[[\"d0-0\", 0.0], [\"d0-1\", 0.0005], [\"d0-2\", 0.001], [\"d0-3\", 0.002], [\"d0-4\", 0.005], [\"d0-5\", 0.01], [\"d0-6\", 0.02], [\"d0-7\", 0.05], [\"d0-8\", 0.1], [\"d1-0\", 0.0], [\"d1-1\", 0.0005], [\"d1-2\", 0.001], [\"d1-3\", 0.002], [\"d1-4\", 0.005], [\"d1-5\", 0.01], [\"d1-6\", 0.02], [\"d1-7\", 0.05], [\"d1-8\", 0.1], [\"d2-0\", 0.0], [\"d2-1\", 0.0005], [\"d2-2\", 0.001], [\"d2-3\", 0.002], [\"d2-4\", 0.005], [\"d2-5\", 0.01], [\"d2-6\", 0.02], [\"d2-7\", 0.05], [\"d2-8\", 0.1], [\"d3-0\", 0.0], [\"d3-1\", 0.0005], [\"d3-2\", 0.001], [\"d3-3\", 0.002], [\"d3-4\", 0.005], [\"d3-5\", 0.01], [\"d3-6\", 0.02], [\"d3-7\", 0.05], [\"d3-8\", 0.1], [\"d4-0\", 0.0], [\"d4-1\", 0.0005], [\"d4-2\", 0.001], [\"d4-3\", 0.002], [\"d4-4\", 0.005], [\"d4-5\", 0.01], [\"d4-6\", 0.02], [\"d4-7\", 0.05], [\"d4-8\", 0.1]]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "stop",
+        "-t",
+        "2",
+        "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c"
+      ],
+      "exit": 0,
+      "stdout": "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c"
+      ],
+      "exit": 0,
+      "stdout": "/tree/d0-0|CREATE,ISDIR\n/tree/d0-0|OPEN,ISDIR\n/tree/d0-1|CREATE,ISDIR\n/tree/d0-1|OPEN,ISDIR\n/tree/d0-1/inner.txt|CREATE\n/tree/d0-1/inner.txt|OPEN\n/tree/d0-1/inner.txt|MODIFY\n/tree/d0-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-2|CREATE,ISDIR\n/tree/d0-2|OPEN,ISDIR\n/tree/d0-2/inner.txt|CREATE\n/tree/d0-2/inner.txt|OPEN\n/tree/d0-2/inner.txt|MODIFY\n/tree/d0-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-3|CREATE,ISDIR\n/tree/d0-3|OPEN,ISDIR\n/tree/d0-3/inner.txt|CREATE\n/tree/d0-3/inner.txt|OPEN\n/tree/d0-3/inner.txt|MODIFY\n/tree/d0-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-4|CREATE,ISDIR\n/tree/d0-4|OPEN,ISDIR\n/tree/d0-4/inner.txt|CREATE\n/tree/d0-4/inner.txt|OPEN\n/tree/d0-4/inner.txt|MODIFY\n/tree/d0-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-5|CREATE,ISDIR\n/tree/d0-5|OPEN,ISDIR\n/tree/d0-5/inner.txt|CREATE\n/tree/d0-5/inner.txt|OPEN\n/tree/d0-5/inner.txt|MODIFY\n/tree/d0-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-6|CREATE,ISDIR\n/tree/d0-6|OPEN,ISDIR\n/tree/d0-6/inner.txt|CREATE\n/tree/d0-6/inner.txt|OPEN\n/tree/d0-6/inner.txt|MODIFY\n/tree/d0-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-7|CREATE,ISDIR\n/tree/d0-7|OPEN,ISDIR\n/tree/d0-7/inner.txt|CREATE\n/tree/d0-7/inner.txt|OPEN\n/tree/d0-7/inner.txt|MODIFY\n/tree/d0-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-8|CREATE,ISDIR\n/tree/d0-8|OPEN,ISDIR\n/tree/d0-8/inner.txt|CREATE\n/tree/d0-8/inner.txt|OPEN\n/tree/d0-8/inner.txt|MODIFY\n/tree/d0-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-0|CREATE,ISDIR\n/tree/d1-0|OPEN,ISDIR\n/tree/d1-1|CREATE,ISDIR\n/tree/d1-1|OPEN,ISDIR\n/tree/d1-1/inner.txt|CREATE\n/tree/d1-1/inner.txt|OPEN\n/tree/d1-1/inner.txt|MODIFY\n/tree/d1-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-2|CREATE,ISDIR\n/tree/d1-2|OPEN,ISDIR\n/tree/d1-2/inner.txt|CREATE\n/tree/d1-2/inner.txt|OPEN\n/tree/d1-2/inner.txt|MODIFY\n/tree/d1-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-3|CREATE,ISDIR\n/tree/d1-3|OPEN,ISDIR\n/tree/d1-3/inner.txt|CREATE\n/tree/d1-3/inner.txt|OPEN\n/tree/d1-3/inner.txt|MODIFY\n/tree/d1-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-4|CREATE,ISDIR\n/tree/d1-4|OPEN,ISDIR\n/tree/d1-4/inner.txt|CREATE\n/tree/d1-4/inner.txt|OPEN\n/tree/d1-4/inner.txt|MODIFY\n/tree/d1-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-5|CREATE,ISDIR\n/tree/d1-5|OPEN,ISDIR\n/tree/d1-5/inner.txt|CREATE\n/tree/d1-5/inner.txt|OPEN\n/tree/d1-5/inner.txt|MODIFY\n/tree/d1-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-6|CREATE,ISDIR\n/tree/d1-6|OPEN,ISDIR\n/tree/d1-6/inner.txt|CREATE\n/tree/d1-6/inner.txt|OPEN\n/tree/d1-6/inner.txt|MODIFY\n/tree/d1-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-7|CREATE,ISDIR\n/tree/d1-7|OPEN,ISDIR\n/tree/d1-7/inner.txt|CREATE\n/tree/d1-7/inner.txt|OPEN\n/tree/d1-7/inner.txt|MODIFY\n/tree/d1-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-8|CREATE,ISDIR\n/tree/d1-8|OPEN,ISDIR\n/tree/d1-8/inner.txt|CREATE\n/tree/d1-8/inner.txt|OPEN\n/tree/d1-8/inner.txt|MODIFY\n/tree/d1-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-0|CREATE,ISDIR\n/tree/d2-0|OPEN,ISDIR\n/tree/d2-1|CREATE,ISDIR\n/tree/d2-1|OPEN,ISDIR\n/tree/d2-1/inner.txt|CREATE\n/tree/d2-1/inner.txt|OPEN\n/tree/d2-1/inner.txt|MODIFY\n/tree/d2-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-2|CREATE,ISDIR\n/tree/d2-2|OPEN,ISDIR\n/tree/d2-2/inner.txt|CREATE\n/tree/d2-2/inner.txt|OPEN\n/tree/d2-2/inner.txt|MODIFY\n/tree/d2-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-3|CREATE,ISDIR\n/tree/d2-3|OPEN,ISDIR\n/tree/d2-3/inner.txt|CREATE\n/tree/d2-3/inner.txt|OPEN\n/tree/d2-3/inner.txt|MODIFY\n/tree/d2-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-4|CREATE,ISDIR\n/tree/d2-4|OPEN,ISDIR\n/tree/d2-4/inner.txt|CREATE\n/tree/d2-4/inner.txt|OPEN\n/tree/d2-4/inner.txt|MODIFY\n/tree/d2-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-5|CREATE,ISDIR\n/tree/d2-5|OPEN,ISDIR\n/tree/d2-5/inner.txt|CREATE\n/tree/d2-5/inner.txt|OPEN\n/tree/d2-5/inner.txt|MODIFY\n/tree/d2-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-6|CREATE,ISDIR\n/tree/d2-6|OPEN,ISDIR\n/tree/d2-6/inner.txt|CREATE\n/tree/d2-6/inner.txt|OPEN\n/tree/d2-6/inner.txt|MODIFY\n/tree/d2-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-7|CREATE,ISDIR\n/tree/d2-7|OPEN,ISDIR\n/tree/d2-7/inner.txt|CREATE\n/tree/d2-7/inner.txt|OPEN\n/tree/d2-7/inner.txt|MODIFY\n/tree/d2-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-8|CREATE,ISDIR\n/tree/d2-8|OPEN,ISDIR\n/tree/d2-8/inner.txt|CREATE\n/tree/d2-8/inner.txt|OPEN\n/tree/d2-8/inner.txt|MODIFY\n/tree/d2-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-0|CREATE,ISDIR\n/tree/d3-0|OPEN,ISDIR\n/tree/d3-0/inner.txt|MODIFY\n/tree/d3-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-1|CREATE,ISDIR\n/tree/d3-1|OPEN,ISDIR\n/tree/d3-1/inner.txt|CREATE\n/tree/d3-1/inner.txt|OPEN\n/tree/d3-1/inner.txt|MODIFY\n/tree/d3-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-2|CREATE,ISDIR\n/tree/d3-2|OPEN,ISDIR\n/tree/d3-2/inner.txt|CREATE\n/tree/d3-2/inner.txt|OPEN\n/tree/d3-2/inner.txt|MODIFY\n/tree/d3-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-3|CREATE,ISDIR\n/tree/d3-3|OPEN,ISDIR\n/tree/d3-3/inner.txt|CREATE\n/tree/d3-3/inner.txt|OPEN\n/tree/d3-3/inner.txt|MODIFY\n/tree/d3-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-4|CREATE,ISDIR\n/tree/d3-4|OPEN,ISDIR\n/tree/d3-4/inner.txt|CREATE\n/tree/d3-4/inner.txt|OPEN\n/tree/d3-4/inner.txt|MODIFY\n/tree/d3-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-5|CREATE,ISDIR\n/tree/d3-5|OPEN,ISDIR\n/tree/d3-5/inner.txt|CREATE\n/tree/d3-5/inner.txt|OPEN\n/tree/d3-5/inner.txt|MODIFY\n/tree/d3-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-6|CREATE,ISDIR\n/tree/d3-6|OPEN,ISDIR\n/tree/d3-6/inner.txt|CREATE\n/tree/d3-6/inner.txt|OPEN\n/tree/d3-6/inner.txt|MODIFY\n/tree/d3-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-7|CREATE,ISDIR\n/tree/d3-7|OPEN,ISDIR\n/tree/d3-7/inner.txt|CREATE\n/tree/d3-7/inner.txt|OPEN\n/tree/d3-7/inner.txt|MODIFY\n/tree/d3-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-8|CREATE,ISDIR\n/tree/d3-8|OPEN,ISDIR\n/tree/d3-8/inner.txt|CREATE\n/tree/d3-8/inner.txt|OPEN\n/tree/d3-8/inner.txt|MODIFY\n/tree/d3-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-0|CREATE,ISDIR\n/tree/d4-0|OPEN,ISDIR\n/tree/d4-1|CREATE,ISDIR\n/tree/d4-1|OPEN,ISDIR\n/tree/d4-1/inner.txt|CREATE\n/tree/d4-1/inner.txt|OPEN\n/tree/d4-1/inner.txt|MODIFY\n/tree/d4-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-2|CREATE,ISDIR\n/tree/d4-2|OPEN,ISDIR\n/tree/d4-2/inner.txt|CREATE\n/tree/d4-2/inner.txt|OPEN\n/tree/d4-2/inner.txt|MODIFY\n/tree/d4-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-3|CREATE,ISDIR\n/tree/d4-3|OPEN,ISDIR\n/tree/d4-3/inner.txt|CREATE\n/tree/d4-3/inner.txt|OPEN\n/tree/d4-3/inner.txt|MODIFY\n/tree/d4-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-4|CREATE,ISDIR\n/tree/d4-4|OPEN,ISDIR\n/tree/d4-4/inner.txt|CREATE\n/tree/d4-4/inner.txt|OPEN\n/tree/d4-4/inner.txt|MODIFY\n/tree/d4-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-5|CREATE,ISDIR\n/tree/d4-5|OPEN,ISDIR\n/tree/d4-5/inner.txt|CREATE\n/tree/d4-5/inner.txt|OPEN\n/tree/d4-5/inner.txt|MODIFY\n/tree/d4-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-6|CREATE,ISDIR\n/tree/d4-6|OPEN,ISDIR\n/tree/d4-6/inner.txt|CREATE\n/tree/d4-6/inner.txt|OPEN\n/tree/d4-6/inner.txt|MODIFY\n/tree/d4-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-7|CREATE,ISDIR\n/tree/d4-7|OPEN,ISDIR\n/tree/d4-7/inner.txt|CREATE\n/tree/d4-7/inner.txt|OPEN\n/tree/d4-7/inner.txt|MODIFY\n/tree/d4-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-8|CREATE,ISDIR\n/tree/d4-8|OPEN,ISDIR\n/tree/d4-8/inner.txt|CREATE\n/tree/d4-8/inner.txt|OPEN\n/tree/d4-8/inner.txt|MODIFY\n/tree/d4-8/inner.txt|CLOSE_WRITE,CLOSE\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "366c80ea1095d46f0ed771f716879f9b5b209b60aaae2ad8fe1ecfa435f0c56a"
+      ],
+      "exit": 0,
+      "stdout": "366c80ea1095d46f0ed771f716879f9b5b209b60aaae2ad8fe1ecfa435f0c56a\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c"
+      ],
+      "exit": 0,
+      "stdout": "bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/gap-latency-62ua3eh8/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-a",
+        "-q",
+        "--no-trunc",
+        "--filter",
+        "id=bf0a5eb6351ec7d2ec349546056ca9585a9451284c42cb12aa5057611e75be9c"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-a",
+        "-q",
+        "--no-trunc",
+        "--filter",
+        "id=366c80ea1095d46f0ed771f716879f9b5b209b60aaae2ad8fe1ecfa435f0c56a"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "latency": {
+    "scope": "stub measurement: new-folder watch latency; provisional images",
+    "delays": [
+      0.0,
+      0.0005,
+      0.001,
+      0.002,
+      0.005,
+      0.01,
+      0.02,
+      0.05,
+      0.1
+    ],
+    "repeats": 5,
+    "by_delay": {
+      "0.0": {
+        "caught": 1,
+        "made": 5
+      },
+      "0.0005": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.001": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.002": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.005": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.01": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.02": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.05": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.1": {
+        "caught": 5,
+        "made": 5
+      }
+    },
+    "stdout": "/tree/d0-0|CREATE,ISDIR\n/tree/d0-0|OPEN,ISDIR\n/tree/d0-1|CREATE,ISDIR\n/tree/d0-1|OPEN,ISDIR\n/tree/d0-1/inner.txt|CREATE\n/tree/d0-1/inner.txt|OPEN\n/tree/d0-1/inner.txt|MODIFY\n/tree/d0-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-2|CREATE,ISDIR\n/tree/d0-2|OPEN,ISDIR\n/tree/d0-2/inner.txt|CREATE\n/tree/d0-2/inner.txt|OPEN\n/tree/d0-2/inner.txt|MODIFY\n/tree/d0-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-3|CREATE,ISDIR\n/tree/d0-3|OPEN,ISDIR\n/tree/d0-3/inner.txt|CREATE\n/tree/d0-3/inner.txt|OPEN\n/tree/d0-3/inner.txt|MODIFY\n/tree/d0-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-4|CREATE,ISDIR\n/tree/d0-4|OPEN,ISDIR\n/tree/d0-4/inner.txt|CREATE\n/tree/d0-4/inner.txt|OPEN\n/tree/d0-4/inner.txt|MODIFY\n/tree/d0-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-5|CREATE,ISDIR\n/tree/d0-5|OPEN,ISDIR\n/tree/d0-5/inner.txt|CREATE\n/tree/d0-5/inner.txt|OPEN\n/tree/d0-5/inner.txt|MODIFY\n/tree/d0-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-6|CREATE,ISDIR\n/tree/d0-6|OPEN,ISDIR\n/tree/d0-6/inner.txt|CREATE\n/tree/d0-6/inner.txt|OPEN\n/tree/d0-6/inner.txt|MODIFY\n/tree/d0-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-7|CREATE,ISDIR\n/tree/d0-7|OPEN,ISDIR\n/tree/d0-7/inner.txt|CREATE\n/tree/d0-7/inner.txt|OPEN\n/tree/d0-7/inner.txt|MODIFY\n/tree/d0-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-8|CREATE,ISDIR\n/tree/d0-8|OPEN,ISDIR\n/tree/d0-8/inner.txt|CREATE\n/tree/d0-8/inner.txt|OPEN\n/tree/d0-8/inner.txt|MODIFY\n/tree/d0-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-0|CREATE,ISDIR\n/tree/d1-0|OPEN,ISDIR\n/tree/d1-1|CREATE,ISDIR\n/tree/d1-1|OPEN,ISDIR\n/tree/d1-1/inner.txt|CREATE\n/tree/d1-1/inner.txt|OPEN\n/tree/d1-1/inner.txt|MODIFY\n/tree/d1-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-2|CREATE,ISDIR\n/tree/d1-2|OPEN,ISDIR\n/tree/d1-2/inner.txt|CREATE\n/tree/d1-2/inner.txt|OPEN\n/tree/d1-2/inner.txt|MODIFY\n/tree/d1-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-3|CREATE,ISDIR\n/tree/d1-3|OPEN,ISDIR\n/tree/d1-3/inner.txt|CREATE\n/tree/d1-3/inner.txt|OPEN\n/tree/d1-3/inner.txt|MODIFY\n/tree/d1-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-4|CREATE,ISDIR\n/tree/d1-4|OPEN,ISDIR\n/tree/d1-4/inner.txt|CREATE\n/tree/d1-4/inner.txt|OPEN\n/tree/d1-4/inner.txt|MODIFY\n/tree/d1-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-5|CREATE,ISDIR\n/tree/d1-5|OPEN,ISDIR\n/tree/d1-5/inner.txt|CREATE\n/tree/d1-5/inner.txt|OPEN\n/tree/d1-5/inner.txt|MODIFY\n/tree/d1-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-6|CREATE,ISDIR\n/tree/d1-6|OPEN,ISDIR\n/tree/d1-6/inner.txt|CREATE\n/tree/d1-6/inner.txt|OPEN\n/tree/d1-6/inner.txt|MODIFY\n/tree/d1-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-7|CREATE,ISDIR\n/tree/d1-7|OPEN,ISDIR\n/tree/d1-7/inner.txt|CREATE\n/tree/d1-7/inner.txt|OPEN\n/tree/d1-7/inner.txt|MODIFY\n/tree/d1-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-8|CREATE,ISDIR\n/tree/d1-8|OPEN,ISDIR\n/tree/d1-8/inner.txt|CREATE\n/tree/d1-8/inner.txt|OPEN\n/tree/d1-8/inner.txt|MODIFY\n/tree/d1-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-0|CREATE,ISDIR\n/tree/d2-0|OPEN,ISDIR\n/tree/d2-1|CREATE,ISDIR\n/tree/d2-1|OPEN,ISDIR\n/tree/d2-1/inner.txt|CREATE\n/tree/d2-1/inner.txt|OPEN\n/tree/d2-1/inner.txt|MODIFY\n/tree/d2-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-2|CREATE,ISDIR\n/tree/d2-2|OPEN,ISDIR\n/tree/d2-2/inner.txt|CREATE\n/tree/d2-2/inner.txt|OPEN\n/tree/d2-2/inner.txt|MODIFY\n/tree/d2-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-3|CREATE,ISDIR\n/tree/d2-3|OPEN,ISDIR\n/tree/d2-3/inner.txt|CREATE\n/tree/d2-3/inner.txt|OPEN\n/tree/d2-3/inner.txt|MODIFY\n/tree/d2-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-4|CREATE,ISDIR\n/tree/d2-4|OPEN,ISDIR\n/tree/d2-4/inner.txt|CREATE\n/tree/d2-4/inner.txt|OPEN\n/tree/d2-4/inner.txt|MODIFY\n/tree/d2-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-5|CREATE,ISDIR\n/tree/d2-5|OPEN,ISDIR\n/tree/d2-5/inner.txt|CREATE\n/tree/d2-5/inner.txt|OPEN\n/tree/d2-5/inner.txt|MODIFY\n/tree/d2-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-6|CREATE,ISDIR\n/tree/d2-6|OPEN,ISDIR\n/tree/d2-6/inner.txt|CREATE\n/tree/d2-6/inner.txt|OPEN\n/tree/d2-6/inner.txt|MODIFY\n/tree/d2-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-7|CREATE,ISDIR\n/tree/d2-7|OPEN,ISDIR\n/tree/d2-7/inner.txt|CREATE\n/tree/d2-7/inner.txt|OPEN\n/tree/d2-7/inner.txt|MODIFY\n/tree/d2-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-8|CREATE,ISDIR\n/tree/d2-8|OPEN,ISDIR\n/tree/d2-8/inner.txt|CREATE\n/tree/d2-8/inner.txt|OPEN\n/tree/d2-8/inner.txt|MODIFY\n/tree/d2-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-0|CREATE,ISDIR\n/tree/d3-0|OPEN,ISDIR\n/tree/d3-0/inner.txt|MODIFY\n/tree/d3-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-1|CREATE,ISDIR\n/tree/d3-1|OPEN,ISDIR\n/tree/d3-1/inner.txt|CREATE\n/tree/d3-1/inner.txt|OPEN\n/tree/d3-1/inner.txt|MODIFY\n/tree/d3-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-2|CREATE,ISDIR\n/tree/d3-2|OPEN,ISDIR\n/tree/d3-2/inner.txt|CREATE\n/tree/d3-2/inner.txt|OPEN\n/tree/d3-2/inner.txt|MODIFY\n/tree/d3-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-3|CREATE,ISDIR\n/tree/d3-3|OPEN,ISDIR\n/tree/d3-3/inner.txt|CREATE\n/tree/d3-3/inner.txt|OPEN\n/tree/d3-3/inner.txt|MODIFY\n/tree/d3-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-4|CREATE,ISDIR\n/tree/d3-4|OPEN,ISDIR\n/tree/d3-4/inner.txt|CREATE\n/tree/d3-4/inner.txt|OPEN\n/tree/d3-4/inner.txt|MODIFY\n/tree/d3-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-5|CREATE,ISDIR\n/tree/d3-5|OPEN,ISDIR\n/tree/d3-5/inner.txt|CREATE\n/tree/d3-5/inner.txt|OPEN\n/tree/d3-5/inner.txt|MODIFY\n/tree/d3-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-6|CREATE,ISDIR\n/tree/d3-6|OPEN,ISDIR\n/tree/d3-6/inner.txt|CREATE\n/tree/d3-6/inner.txt|OPEN\n/tree/d3-6/inner.txt|MODIFY\n/tree/d3-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-7|CREATE,ISDIR\n/tree/d3-7|OPEN,ISDIR\n/tree/d3-7/inner.txt|CREATE\n/tree/d3-7/inner.txt|OPEN\n/tree/d3-7/inner.txt|MODIFY\n/tree/d3-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-8|CREATE,ISDIR\n/tree/d3-8|OPEN,ISDIR\n/tree/d3-8/inner.txt|CREATE\n/tree/d3-8/inner.txt|OPEN\n/tree/d3-8/inner.txt|MODIFY\n/tree/d3-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-0|CREATE,ISDIR\n/tree/d4-0|OPEN,ISDIR\n/tree/d4-1|CREATE,ISDIR\n/tree/d4-1|OPEN,ISDIR\n/tree/d4-1/inner.txt|CREATE\n/tree/d4-1/inner.txt|OPEN\n/tree/d4-1/inner.txt|MODIFY\n/tree/d4-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-2|CREATE,ISDIR\n/tree/d4-2|OPEN,ISDIR\n/tree/d4-2/inner.txt|CREATE\n/tree/d4-2/inner.txt|OPEN\n/tree/d4-2/inner.txt|MODIFY\n/tree/d4-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-3|CREATE,ISDIR\n/tree/d4-3|OPEN,ISDIR\n/tree/d4-3/inner.txt|CREATE\n/tree/d4-3/inner.txt|OPEN\n/tree/d4-3/inner.txt|MODIFY\n/tree/d4-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-4|CREATE,ISDIR\n/tree/d4-4|OPEN,ISDIR\n/tree/d4-4/inner.txt|CREATE\n/tree/d4-4/inner.txt|OPEN\n/tree/d4-4/inner.txt|MODIFY\n/tree/d4-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-5|CREATE,ISDIR\n/tree/d4-5|OPEN,ISDIR\n/tree/d4-5/inner.txt|CREATE\n/tree/d4-5/inner.txt|OPEN\n/tree/d4-5/inner.txt|MODIFY\n/tree/d4-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-6|CREATE,ISDIR\n/tree/d4-6|OPEN,ISDIR\n/tree/d4-6/inner.txt|CREATE\n/tree/d4-6/inner.txt|OPEN\n/tree/d4-6/inner.txt|MODIFY\n/tree/d4-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-7|CREATE,ISDIR\n/tree/d4-7|OPEN,ISDIR\n/tree/d4-7/inner.txt|CREATE\n/tree/d4-7/inner.txt|OPEN\n/tree/d4-7/inner.txt|MODIFY\n/tree/d4-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-8|CREATE,ISDIR\n/tree/d4-8|OPEN,ISDIR\n/tree/d4-8/inner.txt|CREATE\n/tree/d4-8/inner.txt|OPEN\n/tree/d4-8/inner.txt|MODIFY\n/tree/d4-8/inner.txt|CLOSE_WRITE,CLOSE\n",
+    "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n",
+    "scratch_removed": true,
+    "containers_left": []
+  }
+}

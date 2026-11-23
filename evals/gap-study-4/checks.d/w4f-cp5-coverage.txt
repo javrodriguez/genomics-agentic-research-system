@@ -1,0 +1,6 @@
+# Lane w4f-cp5-coverage: CP5's coverage table, bound to GARS at the 6 Oct commit a626cdc2.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_coverage.py
+# The table is published beside the results, so its prose is linted (W4BR-w4f-4).
+python3 -B -W ignore evals/gap-study-4/lint_language.py evals/gap-study-4/coverage_today.md
+python3 -B -W ignore evals/gap-study-4/lint_pooling.py evals/gap-study-4/coverage_today.md

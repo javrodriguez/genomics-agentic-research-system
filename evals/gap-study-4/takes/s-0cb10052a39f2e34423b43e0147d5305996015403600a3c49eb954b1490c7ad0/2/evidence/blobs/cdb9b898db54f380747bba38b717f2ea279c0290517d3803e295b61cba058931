@@ -1,0 +1,40 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+## Goal
+Perform a PCA of the RNA-seq samples from gene counts, coloured by condition, to visualise sample relationships.
+
+## Inputs
+Resolve both artifacts through `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design` at execution time. Paths below are relative to the project and reflect current resolution; use native artifacts. Inputs remain read-only.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+The current design contains six samples: A1–A3 untreated and B1–B3 treated. The count matrix includes gene_id and gene_name annotation columns and fractional length-scaled counts.
+
+## Method
+1. After approval, write `scripts/sample_pca.py` and `scripts/submit.sh`. All computation runs in the configured batch executor using Python in `gars-bio`, with pandas, NumPy, scikit-learn and Matplotlib (headless Agg backend). Check these dependencies in the batch job; stop and report missing tools without installing packages.
+2. Resolve the inputs again, read the TSV counts and CSV design, and record resolved paths, SHA-256 hashes, package versions and parameters in the report. Validate unique non-empty gene_id and sample_id values, non-empty conditions, exact equality of design sample IDs and count sample columns after excluding gene_id/gene_name, and finite non-negative numeric counts. Require positive library totals and at least three samples. Align columns by sample_id; refuse mismatches rather than silently dropping samples. Retain all six design samples, without outlier removal or batch correction.
+3. Compute library totals across all genes and counts per million (CPM = counts / library total * 1,000,000). Retain genes with CPM >= 1 in at least two samples. Preserve fractional counts without rounding. Transform retained values as log2(CPM + 1), remove genes with zero variance across samples, and use all remaining genes without condition-based feature selection. Record input and retained gene counts; stop if fewer than two variable genes remain.
+4. Transpose to samples x genes and run `sklearn.decomposition.PCA(n_components=min(n_samples - 1, n_genes), svd_solver="full", whiten=False)`. Centre each gene across samples without scaling to unit variance. Condition is used only for plot colour and metadata, never to fit PCA.
+5. Plot PC1 versus PC2, with untreated in blue (#0072B2), treated in orange (#D55E00), sample-ID labels, a condition legend and axis labels giving explained variance percentages. Save PNG at 300 dpi and PDF. Export all computed sample PC scores with sample_id and condition, and per-component explained variance and explained variance ratio.
+6. Write a short report documenting validation, normalisation, filtering, PCA settings, provenance and output locations. Describe PCA as exploratory; no significance testing, differential expression, or causal interpretation of condition separation is included. Verify declared outputs through `stage03_analysis.py verify` after successful execution and append its returned history entry verbatim to project HISTORY.md as required by the stage contract.
+
+## Outputs
+Paths are relative to this analysis directory; types use the closed artifact vocabulary.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 versus PC2 coloured by condition and labelled by sample |
+| results/sample_pca.pdf | figure | PDF version of the PCA plot |
+| results/sample_pca_scores.csv | table | Sample IDs, conditions and scores for every computed PC |
+| results/sample_pca_variance.csv | table | Explained variance and proportion for every computed PC |
+| results/report.md | report | Method, validation, provenance, retained gene counts and output references |
+
+## Execution
+Runs: batch
+
+Use the project's configured executor through `_system/executorlib.py submit --workspace <project> <analysis>/scripts/submit.sh`. Source the workspace's `_system/gars-env.sh` and invoke its `GARS_PY`; request 1 CPU, 4 GB memory and 10 minutes wall time using executor-generated directives and the configured partition. Expected runtime is under 5 minutes for six samples; declared outputs should total less than 10 MB. Keep scripts and execution logs inside this analysis directory. No analysis executes while this plan is DRAFT. On failure, report the error and stop; a revised method requires a new plan.

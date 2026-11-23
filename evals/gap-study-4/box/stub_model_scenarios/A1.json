@@ -1,0 +1,222 @@
+{
+ "expect": {
+  "snapshots": {
+   "1": {
+    "verdict": "PASS"
+   },
+   "2": {
+    "reason_contains": "a retired native message id is recorded again",
+    "verdict": "refused"
+   },
+   "3": {
+    "reason_contains": "a retired native message id is recorded again",
+    "verdict": "refused"
+   }
+  },
+  "stub_log": "the first request carrying <tool_output_masked> sits in process 1"
+ },
+ "fake_cross_check": true,
+ "files": {
+  "r01.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r02.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r03.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r04.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r05.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r06.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r07.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  },
+  "r08.txt": {
+   "kind": "heavy",
+   "lines": 2000,
+   "width": 30
+  }
+ },
+ "model": "gemini-3.8-flash",
+ "processes": [
+  "Read the files r01.txt to r08.txt one by one.",
+  "Summarise what you read.",
+  "Thanks."
+ ],
+ "requests": [
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Read the files r01.txt to r08.txt one by one."
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r01.txt"
+      },
+      "name": "read_file"
+     }
+    ],
+    "thought": {
+     "description": "Reading r01.txt next, as asked.",
+     "subject": "Reading the files"
+    }
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r02.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r03.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r04.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r05.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r06.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "calls": [
+     {
+      "args": {
+       "file_path": "${RUN_TREE}/r07.txt"
+      },
+      "name": "read_file"
+     }
+    ]
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "function_response"
+   },
+   "respond": {
+    "text": "I read seven of the files; each is a numbered list of synthetic lines."
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Summarise what you read."
+   },
+   "respond": {
+    "text": "Each file held two thousand numbered synthetic lines.",
+    "thought": {
+     "description": "Answering from what was read.",
+     "subject": "Summarising"
+    }
+   }
+  },
+  {
+   "endpoint": "stream",
+   "match": {
+    "kind": "user_text",
+    "text": "Thanks."
+   },
+   "respond": {
+    "text": "You are welcome."
+   }
+  }
+ ],
+ "road": "a masking re-record in process 1, then a resume after it (process 2) and a second resume (process 3)",
+ "scenario": "A1",
+ "schema": 1
+}

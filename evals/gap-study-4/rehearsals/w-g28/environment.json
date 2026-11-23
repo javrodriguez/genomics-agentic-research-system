@@ -1,0 +1,97 @@
+{
+  "record": "The names of the variables in the environment the session under test was given, and whether each listed one was absent, empty or set; never a value.",
+  "schema": 1,
+  "session_id": "9a3a57f3-a48a-53a0-9e3f-97e58de567b9",
+  "row": null,
+  "row_commit": null,
+  "task": "template-adherence",
+  "half": "normal",
+  "model_requested": "gemini-3.8-flash",
+  "claude_version": "0.64.0",
+  "written_before_first_turn": true,
+  "name_patterns": {
+    "harness": [
+      "^ANTHROPIC_",
+      "^CLAUDE_CODE_USE_(BEDROCK|VERTEX|FOUNDRY)$",
+      "^CLAUDE_CODE_SKIP_.*_AUTH$",
+      "^CLAUDE_CODE_OAUTH_TOKEN$",
+      "^CLAUDE_CODE_OAUTH_REFRESH_TOKEN$",
+      "^CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR$",
+      "^CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR$",
+      "^CLAUDE_CODE_SESSION_ACCESS_TOKEN$",
+      "^CLAUDE_CODE_API_BASE_URL$",
+      "^CLAUDE_CODE_CUSTOM_OAUTH_URL$",
+      "^AWS_",
+      "^GOOGLE_APPLICATION_CREDENTIALS$",
+      "^AZURE_",
+      "^CLAUDE_CODE_USE_(ANTHROPIC_AWS|ANTHROPIC_GOOGLE_CLOUD|MANTLE|GATEWAY)$",
+      "^CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST$",
+      "^CLAUDE_CODE_HOST_CREDS_FILE$"
+    ],
+    "generic": [
+      "(API_?KEY|AUTH_?TOKEN|ACCESS_?TOKEN|_TOKEN$|SECRET|CREDENTIAL|PASSWORD)"
+    ]
+  },
+  "names_present": [
+    {
+      "name": "GEMINI_API_KEY",
+      "matched_by": "generic"
+    }
+  ],
+  "stripped_names": [],
+  "api_key_variables": {
+    "ANTHROPIC_API_KEY": "absent",
+    "ANTHROPIC_AUTH_TOKEN": "absent",
+    "ANTHROPIC_FOUNDRY_API_KEY": "absent",
+    "ANTHROPIC_AWS_API_KEY": "absent",
+    "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR": "absent",
+    "AWS_BEARER_TOKEN_BEDROCK": "absent",
+    "ANTHROPIC_FOUNDRY_AUTH_TOKEN": "absent",
+    "ANTHROPIC_IDENTITY_TOKEN": "absent",
+    "ANTHROPIC_IDENTITY_TOKEN_FILE": "absent",
+    "ANTHROPIC_ENVIRONMENT_KEY": "absent",
+    "ANTHROPIC_WORK_SECRET": "absent",
+    "CLAUDE_CODE_GATEWAY_TOKEN": "absent",
+    "CLAUDE_CODE_HOST_CREDS_FILE": "absent"
+  },
+  "api_key_set": false,
+  "billing_route_variables": {
+    "CLAUDE_CODE_USE_BEDROCK": "absent",
+    "CLAUDE_CODE_USE_VERTEX": "absent",
+    "CLAUDE_CODE_USE_FOUNDRY": "absent",
+    "ANTHROPIC_BASE_URL": "absent",
+    "CLAUDE_CODE_API_BASE_URL": "absent",
+    "CLAUDE_CODE_USE_ANTHROPIC_AWS": "absent",
+    "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD": "absent",
+    "CLAUDE_CODE_USE_MANTLE": "absent",
+    "CLAUDE_CODE_USE_GATEWAY": "absent",
+    "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST": "absent",
+    "ANTHROPIC_BEDROCK_BASE_URL": "absent",
+    "ANTHROPIC_VERTEX_BASE_URL": "absent",
+    "ANTHROPIC_FOUNDRY_BASE_URL": "absent",
+    "ANTHROPIC_FOUNDRY_RESOURCE": "absent",
+    "ANTHROPIC_AWS_BASE_URL": "absent",
+    "ANTHROPIC_GOOGLE_CLOUD_BASE_URL": "absent",
+    "ANTHROPIC_BEDROCK_MANTLE_BASE_URL": "absent",
+    "ANTHROPIC_UNIX_SOCKET": "absent"
+  },
+  "billing_route_set": false,
+  "subscription_token_variables": {
+    "CLAUDE_CODE_OAUTH_TOKEN": "absent",
+    "CLAUDE_CODE_OAUTH_REFRESH_TOKEN": "absent",
+    "CLAUDE_CODE_SESSION_ACCESS_TOKEN": "absent",
+    "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR": "absent"
+  },
+  "credential_source": {
+    "key": "system/init.apiKeySource",
+    "per_turn": [
+      {
+        "n": 1,
+        "recovery": false,
+        "exit": 0,
+        "apiKeySource": null
+      }
+    ],
+    "reported": null
+  }
+}

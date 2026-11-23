@@ -1,0 +1,105 @@
+{
+  "lane": "live-box-2026-10-14",
+  "files": [
+    {
+      "path": "box/measure_live.py",
+      "status": "new",
+      "reason": "Lane live-box (real box bring-up, 13-14 Oct 2026, glitch-06's assignment under Javier's standing delegation): the no-model component proof and full-tree watch measurement on athena (ownership probe, the four lifecycle scenarios (oracle, act on every take, hold on every take, a background writer), the watcher's measured count and establish time) through the pinned images with network none; it binds measured values only inside its own ephemeral interpreter and never writes a production constant."
+    },
+    {
+      "path": "box/sidecar_contract.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06 ruling 1, 14 Oct 2026): the sidecar's fixed launch contract, constants only (program, interpreter, watcher user, kept and boot capabilities, boot inspect spelling, setpriv launcher); sidecar.py loads it from its own folder, preflight imports it plainly so the box audit binds every name it reads, and the sidecar image copies it beside the program."
+    },
+    {
+      "path": "tests/test_live_box.py",
+      "status": "new",
+      "reason": "Lane live-box: focused regressions for the live findings (docker top's uid namespace measured and used, the same-user kill primitive, the launch journal before exec, the sidecar's fixed bootstrap and exact final privileges, the Codex subscription transition refusing before any login read, the Gemini legacy-path settings)."
+    },
+    {
+      "path": "tests/test_scan_witness.py",
+      "status": "new",
+      "reason": "Lane live-box: scan_record.scan_with_witness, the per-file scanner transformation witness (absolute original spans, fixed replacement ids, empty lists for unchanged and refused files, fail-closed rebuild before any write, scan's result unchanged); planted fake values only."
+    },
+    {
+      "path": "tests/test_staging_admission.py",
+      "status": "new",
+      "reason": "Lane live-box: ops/gap4_staging_admission.py (the one owner-approved directory finding, bound to managed byte-ruling metadata; reviews r3 and r4 folded, closure CLOSED) and lane-reports/measure_gap_box_tree.py's field-by-field admission re-check; no scanner or process runs."
+    },
+    {
+      "path": "checks.d/live-box-2026-10-14.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the three focused modules above."
+    },
+    {
+      "path": "COPIED.d/live-box-2026-10-14.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "tests/test_write_image_lock.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's lock-writer rulings, 14 Oct 2026): ops/write_image_lock.py on a throwaway git repository only, never the real locks: one positive schema-1 to schema-2 write that image_lock validates and preflight.load_take_lock projects, and each refusal alone (an uncommitted record, a commit not an ancestor, each row condition, zero or two rows, an unresolved or changed input, a filled or other lock, another record schema, a lock changed after reading)."
+    },
+    {
+      "path": "tests/test_new_folder_closed_check.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling on review r2-3, 14 Oct 2026): the new-folder gap's task-level closed check: over every built task half, each path an access-reading grader consults (scope_read planted, approval-scope link_paths) sits in a folder present before the take, so no registered task outcome rests on the gap; the access readers are pinned by a repository search."
+    },
+    {
+      "path": "box/stub_take.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's stub-take rulings, 14 Oct 2026): CP2's real-box step as a measurement road, one no-model stub take on athena's box through run_take's own step functions, sidecar and egress, preflight's real checks, teardown and the scan; fixed stub scripts through run_take.agent_exec_argv, no harness exec and no login; records labelled stub-take-measurement, never a study record; it writes no production constant."
+    },
+    {
+      "path": "tests/test_stub_take.py",
+      "status": "new",
+      "reason": "Lane live-box: the stub-take road's refusals (full image ids, lock ids, the output rule), that the production driver can never select it, that its records are labelled and refused by the walk and batch readers, and that its launch mirror is run_take.launch's steps argv for argv; fakes only."
+    },
+    {
+      "path": "box/ownership.py",
+      "status": "new",
+      "reason": "Lane live-box (stub-take review finding 9; glitch-06's assignment, 14 Oct 2026): the take's ownership road. grant() gives the run tree and the config folder to the agent and the evidence folder to the watcher before launch; restore() returns all three to the host user after teardown, before postflight, the scan and the config folder's removal. One-shot root containers of the take image running measure_live.OWN's reviewed walk (plus a link branch that lchowns and never follows); fails closed."
+    },
+    {
+      "path": "tests/test_ownership.py",
+      "status": "new",
+      "reason": "Lane live-box: the ownership road with a fake runtime (argv, order, uids bound to the locks, refusals before any call, grant stopping at the first failure, restore running every step, refusing while a container is present and verifying host-side ownership), and OWN_PROGRAM run on a local folder (links never followed, special files refused)."
+    },
+    {
+      "path": "box/rules_scanner.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling, 14 Oct 2026): the production rules scanner for scan_record.scan, the reviewed gitleaks adapter (one `gitleaks dir <file> --redact` per path) pinned to 8.30.1 by version line and binary sha256 at its athena path; it refuses on a mismatch and never reads a failed scan as clean. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): (item 8, design section 5a) every scan passes --gitleaks-ignore-path to an empty file of its own, made fresh in its report folder and checked empty before each scan, so a .gitleaksignore in the working folder is never read."
+    },
+    {
+      "path": "tests/test_rules_scanner.py",
+      "status": "new",
+      "reason": "Lane live-box: the scanner with a fake runtime (argv, findings by path/line/rule, feeding scan_record), every refusal (sha, version, exit, missing or malformed report, used report folder), and the pin bound to the four stub takes' athena readings. Lane vendor-b24 (glitch-26's rulings B24-2, 21 Oct 2026, under Javier's standing delegation): the argv test names the empty ignore file; EmptyIgnoreFile and PlantedIgnoreFile (a real gitleaks: a planted .gitleaksignore silences the argv without the flag and never the module's) are its red tests. Round 3 (R3-7, R3-8, athena's battery on 7fcba34e): PlantedIgnoreFile finds the real gitleaks as test_walk_launch does (PATH, ~/.local/bin, the pinned path), no environment variable; still a named failure when none is there. R3-9 (glitch-26): where the account has no gitleaks the real-gitleaks test skips with test_round4.SKIP_ALLOWED's one reason, as test_walk_launch's real return scan does."
+    },
+    {
+      "path": "box/settings_guard.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-06's ruling on review finding 1, 14 Oct 2026): the run tree's Claude Code settings files: a host-side baseline before grant and launch refusing env, model, fallbackModel, switchModelsOnFlag or availableModels, and a pre-turn check on the sidecar's own pre-k snapshot refusing any changed, new, removed or linked settings file."
+    },
+    {
+      "path": "tests/test_settings_guard.py",
+      "status": "new",
+      "reason": "Lane live-box: the settings guard against GARS's shipped gars/.claude/settings.json at the pinned commit and stub take 5's athena pre-1 snapshot, each forbidden key, links, shapes and every snapshot change."
+    },
+    {
+      "path": "tests/fixtures/machine-gate-athena-suite-list-20261015.txt",
+      "status": "new",
+      "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 2): the Mac's real `athena_suite.py list` read 15 Oct 2026 about 00:58 EDT (1202 lines; 844 busy, 55 refused, 9 started without a verdict), each run name and commit masked, kind, launched, verdict and scope words kept; test_machine_gate replays it through the Mac pre-check."
+    },
+    {
+      "path": "box/walk_launch.py",
+      "status": "new",
+      "reason": "Lane live-box (glitch-6b's ruling of 15 Oct 2026, item 3): the CP6 walk's launch road, a git bundle out and back. ship (Mac pre-check, pinned history, bundle, verify, athena_suite's own outward rule reused (its secret-shaped-name check, then scan_unpublished over every commit the public GARS remote does not serve, after its public fetch, with the push door's rulings and the committed allowlist), a neutral athena child, sha256 read back, athena clone at the head), run (umask 0022, reservation absent and the athena gate open before `athena-reserve hold`, the walk under the hold with the gate's three variables, nohup with pid and exit), status, fetch (new commits only, sha256, gitleaks with no allowance, then the Mac records clone). Pushes nothing; places no login. Lane vendor-b27 (glitch-f1's ruling 1 on the B27 design, 21 Oct 2026, under Javier's standing delegation): the stub-model probe's two entries, probe (the walk's claim, gate and hold, factored into _held_command with run_command's string byte-unchanged, pinned by test_stub_model_probe) and fetch-probe (the probe's one output folder tarred, copied, its sha256 read on both sides, unpacked by this code, checked against its manifest and canary-scanned with no allowance before it is moved); no walk path changes. Lane run-launcher (decision 3, glitch-f1, 22 Oct 2026), an edit without transfer: EVIDENCE_BLOB also admits a counted take's watcher blobs at takes/s-<64 hex>/<attempt>/evidence/blobs/<sha256>, so fetch can bring takes back; every other path is still refused. Bound by tests/test_run_builders.py S3Blob."
+    },
+    {
+      "path": "tests/test_walk_launch.py",
+      "status": "new",
+      "reason": "Lane live-box: the launch road on fakes (real local git on temporary repositories, a fake athena, a fake gitleaks, a fake athena_suite): L1 ship (a finding in a non-public commit, an unreadable or empty public-ref list and a secret-shaped file each refuse before athena is touched), L2 run, L3 fetch, L4 bounds (no push, no login path, neutral child, nine witnesses."
+    }
+  ]
+}

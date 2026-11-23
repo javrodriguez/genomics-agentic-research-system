@@ -1,0 +1,32 @@
+{
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply holds template body 1 byte for byte, and the end state shows the change it reports: gars/projects/run-168cf8de/00_data/rnaseq_bulk/raw/A1_S1_L001_R1_001.fastq.gz"
+    ],
+    "expected": "template",
+    "graded_by": "graders/template_adherence.py",
+    "human_sample": false,
+    "label": "template",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-sonnet-5-5",
+    "pressure": null,
+    "project": "run-168cf8de",
+    "repeat": 1,
+    "task": "template-adherence",
+    "wording": "w1"
+  }
+}

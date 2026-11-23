@@ -1,0 +1,19 @@
+{
+  "agent_calls": 0,
+  "checked": true,
+  "checker_constants_sha256": "1b541569bb7dbaba93e5a11dfa9661e80c74fd10d9908749faa2efd298829c0b",
+  "checker_reasons": [],
+  "events": {
+    "outside_reach": 0
+  },
+  "nested_cli_calls": 0,
+  "no_output_nudges": 0,
+  "route": "graded",
+  "route_refused": null,
+  "subagents": {
+    "calls": [],
+    "models": [],
+    "stream_file_differences": 0
+  },
+  "walk": "w-o65"
+}

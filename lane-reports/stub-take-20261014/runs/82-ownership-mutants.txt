@@ -1,0 +1,78 @@
+control 0 of 38
+RED   3/38 grant to keepalive
+RED   1/38 evidence to agent
+RED   2/38 grant goes on after a failure
+RED   1/38 restore ignores present containers
+RED   1/38 restore not verified
+RED   1/38 restore to the agent
+RED   3/38 links followed
+RED   2/38 specials admitted
+RED   4/38 link check skipped
+RED   2/38 overlap admitted
+RED   2/38 cfg repo check off
+RED   1/38 extra capability
+RED   1/38 DAC_OVERRIDE back
+RED   1/38 network on
+RED   2/38 write follows the final link
+RED   2/38 write nlink unchecked
+RED   2/38 write follows a folder link
+RED   3/38 write reply unchecked
+RED   2/38 read size unchecked
+RED   5/38 operator runs as root
+RED   1/38 rv: O_NOFOLLOW dropped on child open
+RED   2/38 rv: O_NONBLOCK dropped on child open
+RED   1/38 rv: verify follows links
+RED   1/38 rv: verify ignores unreadable subtrees
+RED   1/38 rv: verify top-level owner skipped
+RED   2/38 rv: restore stops at first failed step
+RED   3/38 rv: timeout counted ok in restore
+RED   1/38 rv: no-new-privileges dropped
+RED   1/38 rv: leaked checked with no ids
+RED   2/38 rv: restore folders check skipped
+RED   4/38 restore Refused not wrapped
+RED   2/38 timed-out container not removed
+RED   2/38 left container ignored
+RED   2/38 unreadable id ignored
+RED   1/38 grant not strict
+RED   2/38 strict ignores hard links
+RED   2/38 restore leaves 0000
+RED   2/38 restore widens to group and other
+RED   1/38 restore runs as grant mode
+RED   2/38 read: a folder link followed
+RED   2/38 read: the wrong root mounted
+RED   2/38 read: a write mount
+RED   4/38 read: readonly spelled away
+RED   1/38 read: hard links admitted
+RED   2/38 read: reply hash unchecked
+RED   2/38 read: reply length unchecked
+RED   1/38 read: config cap is the run tree's
+RED   5/38 read: capability added
+RED   1/38 list: a link listed as a dir
+RED   4/38 list: recursion
+RED   1/38 list: recursion admitted by the host
+RED   3/38 list: the wrong root mounted
+RED   2/38 list: a write mount
+RED   1/38 list: listed through a folder link
+RED   1/38 list: entry cap unchecked
+RED   1/38 list: host cap unchecked
+RED   1/38 list: reply hash unchecked
+RED   1/38 list: any kind
+RED   1/38 list: duplicates admitted
+RED   1/38 O-1: a torn read admitted
+RED   1/38 O-1: only the size compared
+RED   1/38 O-1: mtime not compared
+RED   1/38 L-1: a removed name admitted
+RED   1/38 L-1: the name's inode not compared
+RED   1/38 L-2: a non-UTF-8 name keeps its kind
+RED   2/38 O-2: credential path admitted
+RED   2/38 O-2: only the last part checked
+RED   2/38 O-2: the backstop dropped
+RED   1/38 O-2: listed credential readable
+RED   2/38 O-3: a link root admitted
+RED   2/38 O-3: nesting admitted
+RED   2/38 O-3: config in a repository admitted
+RED   6/38 O-3: any root kind
+RED   5/38 O-3: the other root mounted
+RED   4/38 operator path escapes
+RED   2/38 read: a final link followed (the pair)
+ALIVE: none

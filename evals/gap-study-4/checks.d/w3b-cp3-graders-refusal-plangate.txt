@@ -1,0 +1,11 @@
+# Lane w3b-cp3-graders-refusal-plangate: the CP3 precondition-refusal and plan-gate graders.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_pause_adherence.py
+python3 -B -W ignore evals/gap-study-4/tests/test_plan_gate.py
+python3 -B -W ignore evals/gap-study-4/tests/test_precondition_refusal.py
+# Only the seam's three modules may type a harness name; neither grader types one, nor calls harness_types.
+# Each grep below first fires on a planted positive of every alternative (so the pattern can match), then requires
+# both graders to exist (a missing file makes grep exit 2, which `!` would read as a pass), then finds nothing.
+P='claude-code|harness_types|fake-second'; for x in claude-code view.harness_types fake-second; do printf '%s\n' "$x" | grep -qE "$P" || exit 1; done; test -f evals/gap-study-4/graders/precondition_refusal.py && test -f evals/gap-study-4/graders/plan_gate.py && ! grep -nE "$P" evals/gap-study-4/graders/precondition_refusal.py evals/gap-study-4/graders/plan_gate.py
+# Neither grader opens a file itself: the transcript is handed over as lines, the evidence as an endstate.Evidence.
+P='open\(|read_text|read_bytes|Path\('; for x in 'open(p)' 'p.read_text()' 'p.read_bytes()' 'Path(p)'; do printf '%s\n' "$x" | grep -qE "$P" || exit 1; done; test -f evals/gap-study-4/graders/precondition_refusal.py && test -f evals/gap-study-4/graders/plan_gate.py && ! grep -nE "$P" evals/gap-study-4/graders/precondition_refusal.py evals/gap-study-4/graders/plan_gate.py

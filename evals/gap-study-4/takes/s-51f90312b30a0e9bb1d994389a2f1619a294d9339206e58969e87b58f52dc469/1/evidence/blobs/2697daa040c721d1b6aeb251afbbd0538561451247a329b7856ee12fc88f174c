@@ -1,0 +1,62 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the treated (B1-B3) and untreated (A1-A3) samples separate on a principal component
+analysis of the gene-level counts: whether the two groups occupy distinct regions of PC space,
+and how much variance each leading component explains. This is exploratory and descriptive;
+it runs no statistical test and draws no conclusion about differential expression.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+The count matrix is genes x samples (`gene_id`, `gene_name`, then A1 A2 A3 B1 B2 B3); values
+are length-scaled and non-integer. The design supplies `sample_id` -> `condition`
+(untreated: A1-A3, treated: B1-B3). Both are read-only.
+
+## Method
+Environment: `gars-bio` (pandas, numpy, scikit-learn, matplotlib; no installs). One script,
+`scripts/sample_pca.py`, takes the two input paths and the output directory as arguments.
+
+1. Read the count matrix and the design. Check that the matrix's sample columns and the
+   design's `sample_id` values are the same set; stop with an error if not. Order samples as
+   in the design.
+2. Drop genes with a total count below 10 across all six samples (removes unexpressed genes).
+3. Transform: `log2(count + 1)`. The counts are already length-scaled, so no further
+   length or library-size normalisation is applied.
+4. Select the 500 genes with the highest variance across samples on the log2 scale (all
+   retained genes if fewer than 500).
+5. Centre each gene to mean zero; do not scale to unit variance.
+6. PCA with `sklearn.decomposition.PCA` (full SVD, `n_components` = min(6, n_samples)).
+7. Write the per-sample PC scores and the explained-variance table.
+8. Plot PC1 vs PC2, one point per sample, coloured by `condition`, labelled with sample ID,
+   axis labels carrying percent variance explained. A second panel shows the scree
+   (variance explained per component).
+
+No input is modified. Parameters in steps 2, 4 and 5 are fixed here; changing them is a new
+analysis.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.tsv | table | One row per sample: `sample_id`, `condition`, PC1..PC6 scores |
+| results/pca_variance.tsv | table | One row per component: component, variance explained, cumulative |
+| results/pca_plot.png | figure | PC1 vs PC2 coloured by condition, plus scree panel |
+
+## Execution
+Runs: batch
+Expected wall time under a minute (6 samples, a few thousand genes at most), a few MB of
+memory, outputs well under 1 MB. Submitted through the executor door in `gars-bio`.

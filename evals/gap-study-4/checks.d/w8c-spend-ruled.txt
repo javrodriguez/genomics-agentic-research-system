@@ -1,0 +1,10 @@
+# Lane w8c-spend-ruled: Gap Study round 4, Javier's spend-marker ruling (W8C-gap4-1, "spend markers: 1A 2A 3A",
+# Mon 12 Oct 2026). One command per line, run from the repository root. tests/test_routing.py runs from
+# checks.d/w1b-cp1-routing-batch.txt and tests/test_spend_wiring.py from checks.d/w7c-spend-wiring.txt.
+python3 -B evals/gap-study-4/routing.py --check
+# Before CP5: spend_cap_markers_status ruled, pin_profiles_status not, and batch.py --check exited 1 on exactly two
+# lines. When CP5 fills pin_profiles this line goes red on purpose; replace it then with the plain
+# `python3 -B evals/gap-study-4/batch.py --check`, which must exit 0.
+# CP5 (Javier, 14 Oct 2026): routing.json is ready; the not-ready refusal stays exercised on an unpinned fixture.
+out=$(python3 -B evals/gap-study-4/batch.py --check); rc=$?; [ "$rc" -eq 0 ] && [ "$out" = "batch: routing.json ready" ]
+out=$(python3 -B -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import routing, batch; t = routing.load_table(); t.update(pin_profiles={}, pin_profiles_status='PENDING (CP5)'); routing.load_table = lambda *a: t; sys.exit(batch.main(['--check']))"); rc=$?; [ "$rc" -eq 1 ] && [ "$out" = "$(printf '%s\n' 'batch: not ready: pin_profiles is empty in routing.json (CP5 pre-registers them)' 'batch: not ready: pin_profiles_status is not ruled in routing.json (RULED or FILLED, with no PENDING)')" ]

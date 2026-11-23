@@ -1,0 +1,19 @@
+# Exit 0 binds the added job commands and publication boundary (R35-R44).
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py
+# Exit 0 binds derived rows, source commitments and pending inputs (R1-R34).
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py
+# Exit 0 means committed draft bytes equal the writer output (R1).
+python3 evals/gap-study-4/build_draft.py --check
+
+# Athena: disjoint whole-file witness groups; every named clause must fail by assertion.
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 1
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 2
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 3
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 4
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 5
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 6
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 7
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py --witnesses 8
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py --witnesses 1
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py --witnesses 2
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py --witnesses 3

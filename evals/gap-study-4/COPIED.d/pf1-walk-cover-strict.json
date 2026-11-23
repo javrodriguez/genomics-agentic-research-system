@@ -1,0 +1,25 @@
+{
+  "lane": "pf1-walk-cover-strict",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-walk-cover-strict.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane pf1-walk-cover-strict (the lane orchestrator's ruled design of 25 Oct 2026, under Javier's standing delegation) builds OD131, Javier's \"walk-cover strict\" (decision.jsonl, 25 Oct 2026): a Claude walk counts as covered only if it rechecks clean under the harness as it will be frozen. Edits without transfer, recorded here only so the owners' fragments stay untouched: pending_walk.py (live-harness-foundation): STRICT_WHY, STRICT_UNREAD, StrictUnreadable, head_routing_table (routing.json as HEAD's commit holds it, git show with no GIT_ variable of the environment, accepted only by routing.check_table), harness_error_reasons (the reasons a harness-error row's checker_reasons conditions route there, by routing.holds, derived and never typed) and strict_reasons; checker_standing, pending_standing and coverage_status take strict, and uncounted_walks takes strict_walks, reading the table once and, when it cannot be read, reporting each strict walk, never counting it. walk_plan.py (w11c-walk-plan): WALK_COVER_STRICT (arm A, by OD131's wording) and strict_walks, handed to uncounted_walks on the --coverage road and in coverage_report; arms O and G count as before. Tests edited where the rule changes what they stand in for: tests/test_walk_plan.py (w11c-walk-plan) gains P20.strict and its three witnesses, stands the HEAD read in under its process guard with the study's own routing.json, and re-anchors four named witnesses whose anchors occurred twice since lane pf1-l1-freeze-gates repeated their lines (pending-unread, per-model-arm-dropped, per-model-model-dropped, default-base-ignored: each went red only because walk_plan refused to load); tests/test_vendor_walk_road.py (vendor-admission): R-9's pending-branch witness follows the line it mutates. The fold of the review of ff58e02f (VERDICT PASS; the lane orchestrator's rulings of 25 Oct 2026): pending_walk.py gains StrictReasons and strict_hits, so a reason the table at HEAD does not know is a strict hit (MINOR 2); tests/test_walk_plan.py gains attributed_red and P21.witness-rule, so --witnesses reads a P0.module failure as FAIL, never red (NIT 3). Neither pending_walk.py nor walk_plan.py is among the checker's code files that lane pf1-checker-digest binds, so no walk's digest moves. The fold of the review of c6a0a4e1 (VERDICT PASS; the lane orchestrator's rulings of 26 Oct 2026): pending_walk.py's OD131 comment names OD132's arm O, and STRICT_WHY reads \"under OD131 and OD132\" (no committed output carries it; every test reads the constant); P20's method is renamed for the arms it pins (NITs)."
+    },
+    {
+      "path": "tests/test_walk_cover_strict.py",
+      "status": "new",
+      "reason": "Lane pf1-walk-cover-strict (OD131, Javier's \"walk-cover strict\", 25 Oct 2026; the lane orchestrator's ruled design under Javier's standing delegation): the clauses S1.derived, S2.head, S3.standing, S4.uncounted, S5.records and S6.witnesses, written red first against 166f8fa8, with twelve anchored witnesses of pending_walk.py, each red by a case. The fold of the review of ff58e02f (VERDICT PASS; the lane orchestrator's rulings of 25 Oct 2026): MINOR 1's pending walk read through coverage_status and uncounted_walks, MINOR 2's reason outside HEAD's vocabulary (synthetic and with an uncommitted addition), MINOR 4's non-graded reasons on HEAD's table and NIT 1's none_of row, red first against ff58e02f, with four more witnesses."
+    },
+    {
+      "path": "tests/test_walk_cover_o_records.py",
+      "status": "new",
+      "reason": "Lane pf1-walk-cover-strict, OD132 (Javier, 26 Oct 2026: \"walk-cover-o strict\"; the lane orchestrator's ruling under Javier's standing delegation): the real records, read-only; every arm O walk regraded and rechecked in memory into a scratch copy, R1.strict (an arm O walk counts only on a clean recheck, each figure the tests' own count), R2.arm-g (arm G, deferred, reads as without the rule) and R3.committed (a committed regrade.json is its re-derivation). Heavy: athena only. The fold of the review of c6a0a4e1 (VERDICT PASS; the lane orchestrator's rulings of 26 Oct 2026): R1 judges a walk clean or not by pending_walk.strict_hits against strict_reasons(), the rule's own set, never by any checker reason (MINOR), with R5.reason-set, light, red first against c6a0a4e1."
+    },
+    {
+      "path": "checks.d/pf1-walk-cover-strict.txt",
+      "status": "new",
+      "reason": "Lane pf1-walk-cover-strict (OD131, Javier's \"walk-cover strict\", 25 Oct 2026): this lane's listed checks."
+    }
+  ]
+}

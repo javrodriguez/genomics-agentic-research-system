@@ -1,0 +1,834 @@
+..................F...F..F.FFFFFF..F..FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.
+======================================================================
+FAIL: test_one_walk_end_to_end (test_walk_runner.R1Chain.test_one_walk_end_to_end)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 530, in test_one_walk_end_to_end
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R1.chain: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R1.chain: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_walk_is_read_as_a_walk (test_walk_runner.R2WalkCheck.test_a_walk_is_read_as_a_walk)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 557, in test_a_walk_is_read_as_a_walk
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R2.walk-check: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R2.walk-check: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_ledgerless_walk_whose_turns_ran_is_refused (test_walk_runner.R3DeadWalk.test_a_ledgerless_walk_whose_turns_ran_is_refused)
+W10-R2-3, the reviewer's ledgerless probe: a committed walk copied, its driver ledger removed. Its
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 685, in test_a_ledgerless_walk_whose_turns_ran_is_refused
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R3.dead-walk: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R3.dead-walk: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_walk_that_dies_before_turn_one_is_committed_with_its_reason (test_walk_runner.R3DeadWalk.test_a_walk_that_dies_before_turn_one_is_committed_with_its_reason)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 636, in test_a_walk_that_dies_before_turn_one_is_committed_with_its_reason
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R3.dead-walk: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R3.dead-walk: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_failed_teardown_write_still_keeps_the_config_folder (test_walk_runner.R4Held.test_a_failed_teardown_write_still_keeps_the_config_folder)
+W10-R2-2 (fail closed): a clean postflight with no teardown record proves nothing; the walk is committed
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 764, in test_a_failed_teardown_write_still_keeps_the_config_folder
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R4.held: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R4.held: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_postflight_refusal_is_never_committed (test_walk_runner.R4Held.test_a_postflight_refusal_is_never_committed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 712, in test_a_postflight_refusal_is_never_committed
+    self.assertIn("postflight", got[0].get("why", ""), "R4.held")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'postflight' not found in "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']" : R4.held
+
+======================================================================
+FAIL: test_a_refused_slot_leaves_a_kept_config_folder_alone (test_walk_runner.R4Held.test_a_refused_slot_leaves_a_kept_config_folder_alone)
+W10-R1-2: the reviewer's probe, made sharp for the `reached` guard alone (W10-R2 fold). w-0002 is committed
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 739, in test_a_refused_slot_leaves_a_kept_config_folder_alone
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R4.held: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R4.held: [{'walk': 'w-0002', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_scan_refusal_is_never_committed (test_walk_runner.R4Held.test_a_scan_refusal_is_never_committed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 725, in test_a_scan_refusal_is_never_committed
+    self.assertIn("scan", got[0].get("why", ""), "R4.held")
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'scan' not found in "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']" : R4.held
+
+======================================================================
+FAIL: test_a_teardown_problem_keeps_the_config_folder (test_walk_runner.R4Held.test_a_teardown_problem_keeps_the_config_folder)
+W10-R3-4: a drive whose teardown recorded a problem (here the leftover-process kill failing) is no proof
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 778, in test_a_teardown_problem_keeps_the_config_folder
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R4.held: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R4.held: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_round_3_walks_are_untouched (test_walk_runner.R5Round3.test_round_3_walks_are_untouched)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 848, in test_round_3_walks_are_untouched
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R5.round3: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R5.round3: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_check_fault_reaches_check_json_through_the_drive (test_walk_runner.R8WalkRoad.test_a_check_fault_reaches_check_json_through_the_drive)
+W10-R3-1: a walk whose driver built another fixture, driven end to end: check()'s fixture-binding is in
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1090, in test_a_check_fault_reaches_check_json_through_the_drive
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R8.walk-road: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_a_fixture_fault (test_walk_runner.R8WalkRoad.test_a_fixture_fault)
+W10-R3-1: the ledger's fixture record off the half's pinned fixture is check()'s fixture-binding.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1080, in test_a_fixture_fault
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_an_environment_record_that_cannot_be_read (test_walk_runner.R8WalkRoad.test_an_environment_record_that_cannot_be_read)
+No environment record, and one that is not an object: each is environment_problems' line, never a crash
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1247, in test_an_environment_record_that_cannot_be_read
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_an_event_is_counted_never_routed (test_walk_runner.R8WalkRoad.test_an_event_is_counted_never_routed)
+A problem whose reason id routing makes an event is counted as that event and kept out of the reasons.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1233, in test_an_event_is_counted_never_routed
+    got = self.read_with(self.copy(), design)
+                         ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_an_operator_line_improvised (test_walk_runner.R8WalkRoad.test_an_operator_line_improvised)
+W10-R3-1: an extra prompt the script never sent reaches check4_walk's result.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1067, in test_an_operator_line_improvised
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_an_operator_line_never_sent (test_walk_runner.R8WalkRoad.test_an_operator_line_never_sent)
+W10-R3-1: a fault only check() sees (the last scripted prompt missing) reaches check4_walk's result.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1056, in test_an_operator_line_never_sent
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_memory_offered (test_walk_runner.R8WalkRoad.test_memory_offered)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1007, in test_memory_offered
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_no_ledger (test_walk_runner.R8WalkRoad.test_no_ledger)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 992, in test_no_ledger
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_no_model (test_walk_runner.R8WalkRoad.test_no_model)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1151, in test_no_model
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_no_problem_at_all_is_refused (test_walk_runner.R8WalkRoad.test_no_problem_at_all_is_refused)
+check() returning nothing (no row-needed line) is refused by name, never read past.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1223, in test_no_problem_at_all_is_refused
+    self.row_needed_case([], "did not end at the ledger binding")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 975, in row_needed_case
+    path = self.copy() / "transcript.jsonl"
+           ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_no_snapshot (test_walk_runner.R8WalkRoad.test_no_snapshot)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 999, in test_no_snapshot
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_arm (test_walk_runner.R8WalkRoad.test_the_arm)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1196, in test_the_arm
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_checkout (test_walk_runner.R8WalkRoad.test_the_checkout)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1165, in test_the_checkout
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_clean_walk_reads_clean (test_walk_runner.R8WalkRoad.test_the_clean_walk_reads_clean)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1095, in test_the_clean_walk_reads_clean
+    self.assertEqual(self.read(self.copy()), [], "R8.walk-road: the clean walk is not clean")
+                               ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_constants (test_walk_runner.R8WalkRoad.test_the_constants)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1160, in test_the_constants
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_design_pre_is_put_back (test_walk_runner.R8WalkRoad.test_the_design_pre_is_put_back)
+check4_walk sets the design's pre for check() and puts the previous one back: a later check() in the same
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1241, in test_the_design_pre_is_put_back
+    self.read(self.copy())
+              ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_design_refusals (test_walk_runner.R8WalkRoad.test_the_design_refusals)
+W10-R2-1: each of check4_walk's design refusals, one bad input at a time, refused by its own words.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1018, in test_the_design_refusals
+    path = self.copy() / "transcript.jsonl"
+           ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_design_refusals_read_the_type (test_walk_runner.R8WalkRoad.test_the_design_refusals_read_the_type)
+A wording script of another type (a tuple) and a run tree that is not a non-empty string (a Path, '') are
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1213, in test_the_design_refusals_read_the_type
+    path = self.copy() / "transcript.jsonl"
+           ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_design_tree (test_walk_runner.R8WalkRoad.test_the_design_tree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1186, in test_the_design_tree
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_design_tree_through_the_drive (test_walk_runner.R8WalkRoad.test_the_design_tree_through_the_drive)
+The machinery (W10-R1-1, root cause 1): the check_take the drive imports is this module's MODS entry, a
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1294, in test_the_design_tree_through_the_drive
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R8.walk-road: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_environment_record (test_walk_runner.R8WalkRoad.test_the_environment_record)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1126, in test_the_environment_record
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_environment_row (test_walk_runner.R8WalkRoad.test_the_environment_row)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1132, in test_the_environment_row
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_environment_row_commit (test_walk_runner.R8WalkRoad.test_the_environment_row_commit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1138, in test_the_environment_row_commit
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_environment_row_in_a_record_named_by_the_pre (test_walk_runner.R8WalkRoad.test_the_environment_row_in_a_record_named_by_the_pre)
+The walk's row check reads the environment record the pre-registration names (its `file`), and the
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1265, in test_the_environment_row_in_a_record_named_by_the_pre
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_event_disagreement_refusal (test_walk_runner.R8WalkRoad.test_the_event_disagreement_refusal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1051, in test_the_event_disagreement_refusal
+    self.refuses("disagree", ct.check4_walk, self.copy() / "transcript.jsonl", w.row["task"],
+                                             ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_instructions (test_walk_runner.R8WalkRoad.test_the_instructions)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1172, in test_the_instructions
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_ledger_cell (test_walk_runner.R8WalkRoad.test_the_ledger_cell)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1108, in test_the_ledger_cell
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_ledger_row (test_walk_runner.R8WalkRoad.test_the_ledger_row)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1116, in test_the_ledger_row
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_ledger_row_commit (test_walk_runner.R8WalkRoad.test_the_ledger_row_commit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1121, in test_the_ledger_row_commit
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_model (test_walk_runner.R8WalkRoad.test_the_model)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1144, in test_the_model
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_permission_mode (test_walk_runner.R8WalkRoad.test_the_permission_mode)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1179, in test_the_permission_mode
+    f = self.copy()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_reason_id_refusal (test_walk_runner.R8WalkRoad.test_the_reason_id_refusal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1043, in test_the_reason_id_refusal
+    self.refuses("no reason id", ct.check4_walk, self.copy() / "transcript.jsonl", w.row["task"],
+                                                 ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_row_needed_line_is_alone (test_walk_runner.R8WalkRoad.test_the_row_needed_line_is_alone)
+W10-R2-3: two row-needed lines are refused, even when the last one is one.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 989, in test_the_row_needed_line_is_alone
+    self.row_needed_case([ct.TAKE_ROW_NEEDED, ct.TAKE_ROW_NEEDED], "did not end at the ledger binding")
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 975, in row_needed_case
+    path = self.copy() / "transcript.jsonl"
+           ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_row_needed_line_is_asserted (test_walk_runner.R8WalkRoad.test_the_row_needed_line_is_asserted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1101, in test_the_row_needed_line_is_asserted
+    path = self.copy() / "transcript.jsonl"
+           ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_row_needed_line_is_last (test_walk_runner.R8WalkRoad.test_the_row_needed_line_is_last)
+W10-R2-3: the row-needed line first and a real problem after it is refused (never strip the real one).
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 983, in test_the_row_needed_line_is_last
+    self.row_needed_case([ct.TAKE_ROW_NEEDED, "[leak-in-operator-turn] synthetic: a real problem"],
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                         "did not end at the ledger binding")
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 975, in row_needed_case
+    path = self.copy() / "transcript.jsonl"
+           ~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 946, in copy
+    self.assertEqual([g.get("state") for g in self.ran], ["committed"], f"R8.walk-road: {self.ran}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R8.walk-road: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+======================================================================
+FAIL: test_the_real_grader_reads_a_fake_walk (test_walk_runner.R9RealGrade.test_the_real_grader_reads_a_fake_walk)
+Q-w10-1: the fake sidecar watches the half's planted paths, and the REAL v4 grader grades the walk end to
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_runner.py", line 1308, in test_the_real_grader_reads_a_fake_walk
+    self.assertEqual([g.get("state") for g in got], ["committed"], f"R9.real-grade: {got}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['held'] != ['committed']
+
+First differing element 0:
+'held'
+'committed'
+
+- ['held']
++ ['committed'] : R9.real-grade: [{'walk': 'w-0001', 'state': 'held', 'why': "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']", 'config': 'the config folder is kept for a human: no clean postflight and teardown record proves the drive clean'}]
+
+----------------------------------------------------------------------
+Ran 75 tests in 29.654s
+
+FAILED (failures=46)

@@ -1,0 +1,115 @@
+{
+ "harness": "gemini",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     ".gemini/tmp/run-aae85f4c",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/chats/session-2026-10-20T21-00-4ddda67d.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/logs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/tool-outputs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/tool-outputs/session-4ddda67d-d3c3-4931-ae3d-e87f3e57a004",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/tool-outputs/session-4ddda67d-d3c3-4931-ae3d-e87f3e57a004/run_shell_command__call_564032.txt",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     ".gemini/tmp/run-aae85f4c",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/chats/session-2026-10-20T21-00-4ddda67d.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/logs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/tool-outputs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/tool-outputs/session-4ddda67d-d3c3-4931-ae3d-e87f3e57a004",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-aae85f4c/tool-outputs/session-4ddda67d-d3c3-4931-ae3d-e87f3e57a004/run_shell_command__call_564032.txt",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 3,
+ "root": ".gemini/tmp",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-aae85f4c",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-aae85f4c/chats/session-2026-10-20T21-00-4ddda67d.jsonl",
+     "gemini",
+     "4ddda67d-d3c3-4931-ae3d-e87f3e57a004"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-aae85f4c",
+    "/var/tmp"
+   ],
+   "scanned": 433,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}

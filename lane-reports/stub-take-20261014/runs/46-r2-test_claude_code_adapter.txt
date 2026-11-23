@@ -1,0 +1,33 @@
+test_a1_the_recorded_streams_read_as_recorded (__main__.TestTheReaders.test_a1_the_recorded_streams_read_as_recorded) ... ok
+test_a2_the_harness_api_error_is_never_the_agents (__main__.TestTheReaders.test_a2_the_harness_api_error_is_never_the_agents) ... ok
+test_a3_the_turn_argv (__main__.TestTheReaders.test_a3_the_turn_argv) ... ok
+test_a4_a_turn_on_the_fake_runtime (__main__.TestTheReaders.test_a4_a_turn_on_the_fake_runtime) ... ok
+test_a5_the_cost_is_read_per_call (__main__.TestTheReaders.test_a5_the_cost_is_read_per_call) ... ok
+test_a6_a_null_session_id_is_a_problem (__main__.TestTheReaders.test_a6_a_null_session_id_is_a_problem) ... ok
+test_a_version_that_does_not_parse_refuses (__main__.TestTheReaders.test_a_version_that_does_not_parse_refuses) ... ok
+test_the_isolation_flags_are_round_3s (__main__.TestTheReaders.test_the_isolation_flags_are_round_3s) ... ok
+test_the_session_file_calls_count_once_each (__main__.TestTheReaders.test_the_session_file_calls_count_once_each) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_allowed_tools_back (__main__.TestWitnesses.test_witness_allowed_tools_back) ... 
+WITNESS allowed-tools-back: red by A3-argv (2 own, 0 collateral, 0 errors) ok
+test_witness_api_error_as_agent (__main__.TestWitnesses.test_witness_api_error_as_agent) ... 
+WITNESS api-error-as-agent: red by A2-api-error (2 own, 0 collateral, 0 errors) ok
+test_witness_count_records (__main__.TestWitnesses.test_witness_count_records) ... 
+WITNESS count-records: red by A5-cost (3 own, 0 collateral, 0 errors) ok
+test_witness_exit_ignored (__main__.TestWitnesses.test_witness_exit_ignored) ... 
+WITNESS exit-ignored: red by A4-turn (1 own, 0 collateral, 0 errors) ok
+test_witness_init_any_record (__main__.TestWitnesses.test_witness_init_any_record) ... 
+WITNESS init-any-record: red by A1-recorded (10 own, 0 collateral, 0 errors) ok
+test_witness_missing_class_as_zero (__main__.TestWitnesses.test_witness_missing_class_as_zero) ... 
+WITNESS missing-class-as-zero: red by A5-cost (2 own, 0 collateral, 0 errors) ok
+test_witness_mode_constant (__main__.TestWitnesses.test_witness_mode_constant) ... 
+WITNESS mode-constant: red by A3-argv (2 own, 0 collateral, 0 errors) ok
+test_witness_null_id_unreported (__main__.TestWitnesses.test_witness_null_id_unreported) ... 
+WITNESS null-id-unreported: red by A6-null-id (1 own, 0 collateral, 0 errors) ok
+test_witness_zero_dollars_per_call (__main__.TestWitnesses.test_witness_zero_dollars_per_call) ... 
+WITNESS zero-dollars-per-call: red by A5-cost (2 own, 0 collateral, 0 errors) ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.173s
+
+OK

@@ -1,0 +1,7 @@
+control 0 of 1
+RED   1/1 the launcher copies the reserved name
+RED   1/1 the launcher skips every credential
+RED   1/1 no gate on the reserved name
+RED   1/1 the reserved name for any harness
+RED   1/1 the reserved name not reserved
+ALIVE: none

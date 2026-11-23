@@ -1,0 +1,329 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-3",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-4",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-5",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-6",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-7",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-var-tmp-run-ddc002ca",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 416,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 423,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-3",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 423,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-4",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 426,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-5",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 426,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-6",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 428,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-7",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-ddc002ca",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-ddc002ca/ddc002ca-75f7-5a04-841f-dfee10ff45e4.jsonl",
+     "claude",
+     "ddc002ca-75f7-5a04-841f-dfee10ff45e4"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-ddc002ca"
+   ],
+   "scanned": 428,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}

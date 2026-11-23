@@ -1,0 +1,143 @@
+./Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:1133: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmp4v34zkrv/records/s1-1/postflight.json' mode='r' encoding='utf-8'>
+  if not os.path.isfile(rec) or json.loads(open(rec, encoding="utf-8").read()).get("ok") is not True:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:1160: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmpubehrp1v/records/s1-1/postflight.json' mode='r' encoding='utf-8'>
+  if not os.path.isfile(rec) or json.loads(open(rec, encoding="utf-8").read()).get("ok") is not False:
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+....../Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py:2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmpzqwcpfqy-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+  errors="replace").read()):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py:2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmpyggj88xx-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+  errors="replace").read()):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py:2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmpcf4o4xcg-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+  errors="replace").read()):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..../Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:767: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmppq3tpa3n/records/s1-3/refusal.json' mode='r' encoding='utf-8'>
+  if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:767: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmp5jgkbkki/records/s1-3/refusal.json' mode='r' encoding='utf-8'>
+  if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.../Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:880: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmpngb5pi5t/records/s1-1/teardown.json' mode='r' encoding='utf-8'>
+  record = json.load(open(os.path.join(rig.take().folder, mod.TEARDOWN_RECORD)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..........................
+WITNESS adapter-private-state: red by B10-adapter-end (3 own, 0 collateral, 0 errors) .
+WITNESS bare-keyerror: red by B13-history (2 own, 0 collateral, 0 errors) ./Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py:2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmp3u31p7h1-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+  errors="replace").read()):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py:2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmp4jj5p2vc-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+  errors="replace").read()):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py:2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmpre7a8n5u-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+  errors="replace").read()):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness):2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmponmf9n10-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness):2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmp68ga86l8-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness):2069: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tree-tmptyetswnk-1/gars/projects/run-0000abcd/00_data/rnaseq_bulk/samples.csv' mode='r' encoding='utf-8'>
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+WITNESS design-unbound: red by B17-finalize (1 own, 0 collateral, 0 errors) ./Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:767: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmp1sciq5gj/records/s1-3/refusal.json' mode='r' encoding='utf-8'>
+  if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:767: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmpmtz3v32x/records/s1-3/refusal.json' mode='r' encoding='utf-8'>
+  if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:767: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmpc2_sjph4/records/s1-3/refusal.json' mode='r' encoding='utf-8'>
+  if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:767: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmp8q9hjb50/records/s1-3/refusal.json' mode='r' encoding='utf-8'>
+  if want and (not os.path.isfile(refusal) or json.load(open(refusal))["refused"] != want):
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+WITNESS failed-preflight-read-as-passed: red by B3-preturn (3 own, 0 collateral, 0 errors) .
+WITNESS launch-ignores-publish-problems: red by B12-publish (1 own, 0 collateral, 0 errors) .
+WITNESS leaked-take-id-only: red by B9-restart (2 own, 0 collateral, 0 errors) .
+WITNESS log-excluded-write: red by B16-excluded (1 own, 0 collateral, 0 errors) .
+WITNESS no-background-line: red by B18-evidence (1 own, 0 collateral, 0 errors) ./Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:880: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmp6uxelgll/records/s1-1/teardown.json' mode='r' encoding='utf-8'>
+  record = json.load(open(os.path.join(rig.take().folder, mod.TEARDOWN_RECORD)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py:880: ResourceWarning: unclosed file <_io.TextIOWrapper name='/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-n8zph0g1/tmpb6fh0337/records/s1-1/teardown.json' mode='r' encoding='utf-8'>
+  record = json.load(open(os.path.join(rig.take().folder, mod.TEARDOWN_RECORD)))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+
+WITNESS no-cap-kill: red by B6-quiesce (3 own, 0 collateral, 0 errors) .Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/__main__.py", line 18, in <module>
+    main(module=None)
+    ~~~~^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/main.py", line 104, in __init__
+    self.runTests()
+    ~~~~~~~~~~~~~^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/main.py", line 270, in runTests
+    self.result = testRunner.run(self.test)
+                  ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/runner.py", line 240, in run
+    test(result)
+    ~~~~^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/suite.py", line 122, in run
+    test(result)
+    ~~~~^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/suite.py", line 122, in run
+    test(result)
+    ~~~~^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/suite.py", line 84, in __call__
+    return self.run(*args, **kwds)
+           ~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/suite.py", line 122, in run
+    test(result)
+    ~~~~^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/case.py", line 707, in __call__
+    return self.run(*args, **kwds)
+           ~~~~~~~~^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/case.py", line 651, in run
+    self._callTestMethod(testMethod)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/case.py", line 606, in _callTestMethod
+    if method() is not None:
+       ~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py", line 1854, in test_witness_no_drive_scan
+    self.kill("no-drive-scan")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py", line 1833, in kill
+    got = check(witness_module(edits))
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py", line 643, in check
+    return fn(mod, prefix)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py", line 794, in b4_scan
+    b, got = run_batch(rig, [row(1)])
+             ~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py", line 654, in run_batch
+    return b, b.run(rows)
+              ~~~~~^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/batch.py", line 861, in run
+    outcome = self._commit(row, attempt, outcome)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/batch.py", line 949, in _commit
+    self.repo.commit_records(row, attempt, outcome)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness)", line 1736, in commit_records
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness)", line 1674, in _commit_step
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness)", line 1643, in _take_files
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/drive.py (witness)", line 1533, in _git_bytes
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_box_integration.py", line 143, in gate
+    return real(args, *a, **kw)
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 558, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+                     ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 1221, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/subprocess.py", line 2130, in _communicate
+    ready = selector.select(timeout)
+  File "/usr/local/Cellar/python@3.13/3.13.2/Frameworks/Python.framework/Versions/3.13/lib/python3.13/selectors.py", line 398, in select
+    fd_event_list = self._selector.poll(timeout)
+KeyboardInterrupt

@@ -1,0 +1,57 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-11
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the treated (B1-B3) and untreated (A1-A3) samples separate on a principal component
+analysis of the gene-level counts from the rnaseq_bulk run. The analysis only reports the
+sample layout and variance explained; whether the separation is biologically meaningful is
+left to the reader.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | `01_prepare_samplesheets` (native) | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+Environment: `gars-bio` (pandas, numpy, scikit-learn, matplotlib, all in its lockfile). One
+Python script, `scripts/sample_pca.py`; inputs are read-only.
+
+1. Read the `counts_gene` matrix (genes x samples; `gene_id`, `gene_name`, then A1..B3) and the
+   `design` table. Check the sample columns match the design's `sample_id` exactly (6 of 6);
+   stop with an error otherwise.
+2. Filter low-expression genes: keep genes with count >= 10 in at least 3 samples (the size
+   of the smaller group). Report how many genes are kept.
+3. Transform: log2(count + 1). These are length-scaled salmon counts (non-integer), so no
+   integer-count model (e.g. DESeq2 VST) is applied.
+4. Select the 500 genes with the highest variance across samples on the log2 scale (all
+   retained genes if fewer than 500).
+5. PCA with scikit-learn (`PCA`, `svd_solver="full"`): mean-centre each gene, no unit-variance
+   scaling; keep all components (at most 5 for 6 samples).
+6. Write PC coordinates per sample joined to the design (`condition`), and the variance
+   explained per PC.
+7. Plot PC1 vs PC2, points coloured by `condition` (treated / untreated) and labelled by
+   sample ID, with axis labels giving percent variance explained. Save as PNG (200 dpi) and SVG.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_coordinates.csv` | `table` | Per-sample PC scores (PC1..PCn) with `sample_id`, `condition`, `group`, `replicate` |
+| `results/pca_variance_explained.csv` | `table` | Variance explained (fraction and cumulative) per PC, plus the filter and gene-selection counts |
+| `results/pca_pc1_pc2.png` | `figure` | PC1 vs PC2 scatter coloured by condition, samples labelled |
+| `results/pca_pc1_pc2.svg` | `figure` | Same plot, vector format |
+
+## Execution
+Runs: batch
+Expected wall time under one minute (6 samples, one matrix); output under 1 MB. Submitted
+through the executor door, per the default.

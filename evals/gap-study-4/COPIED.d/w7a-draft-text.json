@@ -1,0 +1,26 @@
+{
+  "lane": "w7a-draft-text",
+  "files": [
+    {
+      "path": "COPIED.d/w7a-draft-text.json",
+      "status": "new",
+      "reason": "Lane w7a-draft-text's copy-record fragment (Gap Study round 4 wave 7, piece P1). Transfers under ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026): build_draft.py from lane w5c-draft-ci and prereg.py from lane w1a-cp1-scaffold. Edits without transfer, recorded in their owners' entries: tests/test_build_draft.py (w5c-draft-ci) and tests/test_scaffold.py (w1a-cp1-scaffold; departure w7a-1, ratified by ruling W7A-close-1). Transfer (ruling W7A-close-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026), Q-w7a-2): prereg-draft.json from lane w5c-draft-ci, with its writer. Transfer (ruling W8B-gap4-1 (Javier's own decision, typed in glitch-1b's window Mon 12 Oct 2026 08:51 EDT, \"holdout digests A\"; slice w8b, assigned by glitch-1b)): build_draft.py, prereg-draft.json moved to lane w8b-holdout-digests, which edits them so the holdout's salted digests and count enter at the freeze commit only, and claims them in COPIED.d/w8b-holdout-digests.json."
+    },
+    {
+      "path": "prereg.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/prereg.py",
+      "reason": "Slice S3 (lane w6d-prereg-order, 11 Oct 2026) closes the w5c carry: --order and order() now name freeze.planned_order, the one permutation of the design's whole planned rows that the freeze writes, in place of round 3's per-axis positive/control order; a design whose agent versions are still pending is refused by that function's own ledger check, never filled. The per-axis AXES and axis_of went with it. The entry stays in this fragment as the copy's provenance; tests/test_prereg_order.py (claimed by w6d-prereg-order) binds the change. Lane w7a (W7A-gap4-1, W6D-R1-1): --status names the arms as arms with each arm's harness, models and planned rows, and counts the planned rows themselves (1260 on the committed draft); models() lists the models of round 4's arm-keyed table; round 3's cells() count is removed. Fold W7A-close-1 (W7A-R1-2, R1-6): models() adds the optional arms' models; running_models() and not_run_reason() come from the planned rows; the dead NOT RUN loop is gone. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/pf1-l1-freeze-gates.json, COPIED.d/w1a-cp1-scaffold.json, COPIED.d/w6d-prereg-order.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 447fab0835d1, 973c3b032eec, 7eef1417e496, 632ae20ef738, 6a108ede10cb, 81c84b4d3014, 2bf9754898ca, c6b13457f357, cb9f9416b1ec."
+    },
+    {
+      "path": "tests/test_prereg_status.py",
+      "status": "new",
+      "reason": "Lane w7a's tests for prereg.py --status (W6D-R1-1): arms labelled as arms with their models (S1), the planned rows counted from the rows on the committed draft and on a synthetic thinned design with a stale counts field (S2), models() returning the seven models (S3), and four mutation witnesses (rule B). Fold W7A-close-1: S4 (running models from the rows) and a fifth witness."
+    },
+    {
+      "path": "checks.d/w7a-draft-text.txt",
+      "status": "new",
+      "reason": "Lane w7a's local checks: the status test module and its witnesses, and the draft writer check."
+    }
+  ]
+}

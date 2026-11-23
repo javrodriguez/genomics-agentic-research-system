@@ -1,0 +1,9 @@
+== test_env_allowlist at 10888c68, unchanged
+ERROR: test_launcher_refuses_container_ancestors_and_current_home (test_env_allowlist.E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home)
+ERROR: test_the_launcher_needs_the_credential (test_env_allowlist.E2Allowlist.test_the_launcher_needs_the_credential)
+FAIL: test_an_old_list_name_is_still_refused (test_env_allowlist.E2Allowlist.test_an_old_list_name_is_still_refused)
+FAIL: test_the_turn_hands_the_harness_the_row_alone (test_env_allowlist.E2Allowlist.test_the_turn_hands_the_harness_the_row_alone)
+Ran 27 tests in 4.266s
+FAILED (failures=2, errors=2)
+== --witnesses at HEAD
+

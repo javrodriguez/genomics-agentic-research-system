@@ -1,0 +1,45 @@
+{
+ "box_dir": "/home/javier/gap4-cand2-20261014-uDo6eAsi/src/box",
+ "images": [
+  {
+   "argv": [
+    "docker",
+    "build",
+    "--pull=false",
+    "--file",
+    "/home/javier/gap4-cand2-20261014-uDo6eAsi/src/box/sidecar/Dockerfile",
+    "--build-arg",
+    "BASE=docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "BASE_NAME=docker.io/library/node",
+    "--build-arg",
+    "BASE_DIGEST=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--build-arg",
+    "PYTHON_VERSION=3.11.2",
+    "--label",
+    "org.opencontainers.image.base.name=docker.io/library/node",
+    "--label",
+    "org.opencontainers.image.base.digest=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "--label",
+    "app.python.version=3.11.2",
+    "--iidfile",
+    "/home/javier/gap4-cand2-20261014-uDo6eAsi/build-out/sidecar.iid",
+    "/home/javier/gap4-cand2-20261014-uDo6eAsi/src/box"
+   ],
+   "baked_sidecar_sha256": "3633ed7f7778422b7225931617a2c4ef8c1c403085af0f5cd3c0640bfa124591",
+   "commit_sidecar_sha256": "3633ed7f7778422b7225931617a2c4ef8c1c403085af0f5cd3c0640bfa124591",
+   "exit": 0,
+   "image": "sidecar",
+   "image_id": "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+   "label_problems": [],
+   "labels": {
+    "app.python.version": "3.11.2",
+    "org.opencontainers.image.base.digest": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+    "org.opencontainers.image.base.name": "docker.io/library/node"
+   },
+   "provisional_image_id": "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+   "sidecar_bound": true
+  }
+ ],
+ "scope": "production CANDIDATE build for review; provisional lock inputs; no lock written"
+}

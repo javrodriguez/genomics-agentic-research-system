@@ -1,0 +1,68 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Do the samples separate by experimental condition on the gene-level expression? A principal
+component analysis of the six samples (A1-A3 untreated, B1-B3 treated) from the gene counts,
+plotted with points coloured by `condition`, as a sanity check on the design and on sample-level
+outliers. This is exploratory; no statistical test is part of it.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+The counts file is genes x samples with leading `gene_id`, `gene_name` columns, then A1..B3.
+It is nf-core's length-scaled gene counts (tximport `lengthScaledTPM`), not raw integers. The
+design supplies `condition` (untreated / treated) per `sample_id`.
+
+## Method
+All steps run in one script, `scripts/sample_pca.py`, in the `gars-bio` environment, using
+pandas, numpy, scikit-learn and matplotlib. Inputs are read-only.
+
+1. Resolve both inputs with `_system/resolve_artifact.py` (types `counts_gene`, `design`).
+2. Read the counts; use `gene_id` as the index and keep only the sample columns. Read the
+   design; require that its `sample_id` set equals the count columns exactly, else stop with
+   an error (no silent dropping or reordering).
+3. Filter genes: keep genes with a summed count >= 10 across the six samples.
+4. Transform: `log2(count + 1)`.
+5. Select the 500 genes with the highest variance across samples (all genes if fewer than 500
+   pass the filter).
+6. PCA with `sklearn.decomposition.PCA` on the samples x genes matrix: mean-centred per gene,
+   not scaled to unit variance (the usual convention for expression PCA on log scale, as in
+   DESeq2's `plotPCA`). Compute all components (at most 5 with 6 samples).
+7. Plot PC1 vs PC2, one point per sample, coloured by `condition`, labelled with `sample_id`,
+   with the percent variance explained on each axis. Colour-blind-safe two-colour palette,
+   legend titled "condition". Save as PNG (200 dpi) and SVG.
+8. Write the sample coordinates (all PCs, with `condition`) and the variance explained per PC.
+
+Parameters fixed here (gene filter 10, top 500 genes, log2+1, no scaling) are the plan's
+choices; changing any of them is a new analysis. No tool outside `gars-bio` is installed or
+used. If scikit-learn or matplotlib is missing from `gars-bio`, execution is blocked on that
+and is reported rather than worked around.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 vs PC2 scatter of the six samples, coloured by condition |
+| results/sample_pca.svg | figure | the same plot, vector format |
+| results/pca_coordinates.csv | table | per-sample PC scores (PC1..PC5) with condition |
+| results/pca_variance_explained.csv | table | variance explained per principal component |
+
+## Execution
+Runs: batch
+Expected wall time: well under a minute of compute (6 samples, a few tens of thousands of
+genes), plus scheduler queue time. Output size: under 1 MB in total. The `batch` default is
+kept; login-node execution was not requested. Submitted through
+`_system/executorlib.py submit`.

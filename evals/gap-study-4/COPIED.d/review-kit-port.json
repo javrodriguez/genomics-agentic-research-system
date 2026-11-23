@@ -1,0 +1,66 @@
+{
+  "lane": "review-kit-port",
+  "files": [
+    {
+      "path": "review_kit/BRIEF.md",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/BRIEF.md",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Ported to round 4 (freeze-path plan section 4; glitch-f1's ruling F5): the bytes under review, the folder and every command path name evals/gap-study-4/; the threat model is stated in the brief (plan CP6, line 888) and the reviewer restates it; the code is named by its parts (entry points, the container, the harnesses, the checker and graders, the walks, publication, the freeze), never with a list of ways around a rule (line 887); the vendor arms, their adapters and per-harness configs join the scope (D8-non-claude-arms.md, CP6's added review scope); the heavy gates (run_checks.py, freeze_rehearsal.py's COMMANDS including the walk gates, freeze.py --check) are read from athena/ at COMMIT and only light checks are run, among them the three legs through freeze.unrecorded_shapes_problem; the classes are MAJOR, MINOR (loosens or tightens) and NIT, and DO FREEZE needs no MAJOR (the stop rule, line 889). Bound by tests/test_review_kit.py K1, K4, K5, K6. Review of c41b7d50 (NIT 1): step 9 reads the draft's views, routes and stop_taxonomy (the draft has no outcomes key). Bound by K4. Freeze merge 1 (integration with lane freeze-gates-fix S9, which retired round 4's allowlist.py under glitch-f1's ruling): step 4 no longer names allowlist.py --check. Bound by K5. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w1a-cp1-scaffold.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 8c3c95ae8279, b7319580b816, f9fd2472ea7a."
+    },
+    {
+      "path": "review_kit/why.md",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/why.md",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Round 4's purpose in place of round 3's: a new instrument (sealed pinned container, end-state graders, several wordings, ten tries), agents of more than one vendor with model and agent-system comparisons kept apart, its counts never added to an earlier round's. Names no study folder, round or person. Bound by tests/test_review_kit.py K1, K6. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w1a-cp1-scaffold.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 8c3c95ae8279."
+    },
+    {
+      "path": "review_kit/blindness.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/blindness.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). The usage line names evals/gap-study-4/; MARKERS lead with round 4's names (gap-study-4, round 4, gap4), keep every earlier marker, and add the operator's coordinating-session and board words (lane-orchestrator, Lane Board, OrgOS); the docstring says so. No logic changed. Bound by tests/test_review_kit.py K1, K2, K3. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; its copy-record rule, applied at the L6b merge of Sun 25 Oct 2026, where the rule first met this file's later edits): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/blindness-sidechains.json. The commits that changed it after its copy commit, oldest first: 8c3c95ae8279, 411ecaf83e69, 97a1bd29f8c3, fff7e0d3d000, b71594931c93."
+    },
+    {
+      "path": "review_kit/launch.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/launch.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). The two usage lines name evals/gap-study-4/, and the docstring names the athena/ inputs the operator adds before the row is registered (ruling F5). No code line changed. Bound by tests/test_review_kit.py K1. Fold 1 (glitch-f1, Wed 21 Oct 2026): MODEL is claude-opus-5-5 in place of round 3's Fable (the study plan's fresh Opus reviewers; the agent-engine policy); no effort flag is passed, as before. Bound by K7. Review of c41b7d50 (MAJOR 1, NIT 2; glitch-f1's rulings): the environment is built from ALLOWED_ENV (each name with its reason) plus REVIEWER_ENV, never the driver's take environment or the caller's, and its names (never values) are recorded in env-names.txt; --effort medium on launch and resume (OD56); folder_problems refuses a folder with no athena/ or COMMIT; the docstring says build_kit copies athena/. Bound by K10 and K11."
+    },
+    {
+      "path": "tests/test_review_kit.py",
+      "status": "new",
+      "reason": "Lane review-kit-port: K1.port, K2.markers, K3.nested, K4.brief, K5.light, K6.public over the ported kit; --witnesses runs eleven mutants in process, each required to fail its bound test with its clause token. Reads committed files only; interpreter state left as found. Folds of glitch-f1's rulings (Wed 21 Oct 2026), written red first: K7.model, K8.athena, K9.smoke; K6.public also reads review_kit/README.md; sixteen mutants in all. Review of c41b7d50, written red first: K10.env, K11.effort, K12.producer, the tightened K8 and K9, and the brief's draft keys (NIT 1); mutants compile under the real file's path; 26 mutants in all."
+    },
+    {
+      "path": "COPIED.d/review-kit-port.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Transfer (lane review-kit-port, under glitch-f1's freeze-path rulings, Wed 21 Oct 2026): review_kit/BRIEF.md, why.md, blindness.py and launch.py from lane w1a-cp1-scaffold, named in that lane's self-entry. Transfer (glitch-f1's folds 1 and 2, Wed 21 Oct 2026): review_kit/build_kit.py and review_kit/commit_review.py from lane w1a-cp1-scaffold, named in that lane's self-entry."
+    },
+    {
+      "path": "checks.d/review-kit-port.txt",
+      "status": "new",
+      "reason": "This lane's local checks: tests/test_review_kit.py, its --witnesses, and review_kit/rounds.py --check."
+    },
+    {
+      "path": "review_kit/build_kit.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/build_kit.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Fold 2 (glitch-f1, Wed 21 Oct 2026; ruling F5): --athena is required, and copy_athena checks the remote runner's outputs before the kit folder is made and again as it copies them to athena/ (regular files only, flat, none empty, each naming the full sha of the commit the clone is at), so rounds.py --add hashes them with the rest. The usage line names evals/gap-study-4/. Bound by tests/test_review_kit.py K8. Review of c41b7d50 (MINOR 2, NIT 3): each athena file needs its own line `commit: <head>`; dotfiles, absolute paths, person names and operator markers are refused, with one named rule admitting the study folder names the clone carries; a refused second check removes the half-built folder. Bound by K8. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w1a-cp1-scaffold.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: 0e6938290f17, 164b272c7d66, c41b7d508474, b7319580b816, 6d7624e8d0d3, 1f6672de5c4c, a75d21aebb67."
+    },
+    {
+      "path": "review_kit/commit_review.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/commit_review.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (an identical copy). Fold 1 (glitch-f1, Wed 21 Oct 2026): the review commit's co-author line names Claude Opus 5.5, the reviewer launch.py opens, in place of Fable; the usage line names evals/gap-study-4/. Bound by tests/test_review_kit.py K7. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates' citation rule): more than half of this file's lines now differ from its source, the near-rewrite line passed by lane fold9/round7-residual's UNBOUND_REPORTS on top of fold 5's edits 873dad03, 8be281ad and ffa2d974."
+    },
+    {
+      "path": "review_kit/README.md",
+      "status": "new",
+      "reason": "Lane review-kit-port, glitch-f1's ruling on question 3 (Wed 21 Oct 2026): the operator notes, the order of a round, and the one-turn skills smoke required before round 1 with what it must show. The reviewer is never handed this file. Bound by tests/test_review_kit.py K9 and K6. Review of c41b7d50 (MINOR 1, MINOR 3, MAJOR 1): the smoke admits only the written list of 13 built-in skills, read from round 3's reviewer sessions' skill_listing records (prefreeze-3, -4, -5), and checks effort medium and env-names.txt; step 1 names athena_outputs.py. Bound by K9 and K12."
+    },
+    {
+      "path": "review_kit/athena_outputs.py",
+      "status": "new",
+      "reason": "Lane review-kit-port, the review of c41b7d50 (MINOR 3: nothing produced the files the kit requires): run on the remote runner at a committed head, it runs run_checks.py, each freeze_rehearsal.COMMANDS entry the way the rehearsal does (holdout through the aegis tool or OWED), freeze.py --check and the three legs, and writes one file per gate with command, commit and exit lines and the masked tail of its output. Bound by tests/test_review_kit.py K12."
+    }
+  ]
+}

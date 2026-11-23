@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c4b1-ff5d-76b3-a20c-1f38fc3f10df"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The stage 00 helper reported 12 FASTQ files and 6 sample IDs: A1, A2, A3, B1, B2, B3. I haven’t linked anything. The confirmation is still pending: link those 12 files, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":315723,"cached_input_tokens":278912,"cache_write_input_tokens":0,"output_tokens":1756,"reasoning_output_tokens":158}}

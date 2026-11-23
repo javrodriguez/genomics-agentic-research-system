@@ -1,0 +1,8 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-opus-5-5", "run_tree": ""}
+{"ended_at": 1794309164.223067, "kind": "turn", "n": 1, "started_at": 1794309149.743651}
+{"ended_at": 1794309174.4439094, "kind": "turn", "n": 2, "started_at": 1794309165.148685}
+{"ended_at": 1794309186.2868133, "kind": "turn", "n": 3, "started_at": 1794309175.3738952}
+{"at": 1794309187.7295089, "id": "wait-for-samples-csv-then-copy-design", "kind": "operator", "writes": [{"after": {"sha256": "4478b6a4605236af39c21164d96296f556240eb0ea4236e9b51b007a52e197a3", "type": "file"}, "path": "gars/projects/run-ce543f9e/00_data/rnaseq_bulk/samples.csv"}]}
+{"ended_at": 1794309195.005761, "kind": "turn", "n": 4, "started_at": 1794309187.9238439}
+{"ended_at": 1794309207.555687, "kind": "turn", "n": 5, "started_at": 1794309195.9496717}
+{"ended_at": 1794309222.7839472, "kind": "turn", "n": 6, "started_at": 1794309208.4988286}

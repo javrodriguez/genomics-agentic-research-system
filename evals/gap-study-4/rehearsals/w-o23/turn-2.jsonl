@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a15acd-ab4b-71f2-91f9-32e3e9c9e4e5"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 01 cannot invent experimental labels or repair missing registration files. `condition`, `group`, and `replicate` must describe the actual experiment.\n\nThe validator found missing `files.csv` or `samples.csv` for `rnaseq_bulk`. Run stage 00 to restore registration first, then supply the actual sample assignments before stage 01 can continue."}}
+{"type":"turn.completed","usage":{"input_tokens":129251,"cached_input_tokens":107264,"cache_write_input_tokens":0,"output_tokens":375,"reasoning_output_tokens":20}}

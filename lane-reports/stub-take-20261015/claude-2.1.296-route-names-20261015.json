@@ -1,0 +1,1112 @@
+{
+ "absent_extra": [],
+ "binary_bytes": 257068216,
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "extra": [
+  "ANTHROPIC_API_HOST",
+  "ANTHROPIC_AWS_WORKSPACE_ID",
+  "ANTHROPIC_BETAS",
+  "ANTHROPIC_CONFIG_DIR",
+  "ANTHROPIC_CUSTOM_HEADERS",
+  "ANTHROPIC_ENVIRONMENT_KEY",
+  "ANTHROPIC_FEDERATION_RULE_ID",
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+  "ANTHROPIC_FOUNDRY_RESOURCE",
+  "ANTHROPIC_GOOGLE_CLOUD_LOCATION",
+  "ANTHROPIC_GOOGLE_CLOUD_PROJECT",
+  "ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID",
+  "ANTHROPIC_IDENTITY_TOKEN",
+  "ANTHROPIC_IDENTITY_TOKEN_FILE",
+  "ANTHROPIC_ORGANIZATION_ID",
+  "ANTHROPIC_PROFILE",
+  "ANTHROPIC_SCOPE",
+  "ANTHROPIC_SERVICE_ACCOUNT_ID",
+  "ANTHROPIC_UNIX_SOCKET",
+  "ANTHROPIC_WEBHOOK_SIGNING_KEY",
+  "ANTHROPIC_WORKSPACE_ID",
+  "ANTHROPIC_WORK_SECRET",
+  "CCR_OAUTH_TOKEN_FILE",
+  "CLAUDE_API_KEY",
+  "CLAUDE_BRIDGE_OAUTH_TOKEN",
+  "CLAUDE_CODE_API_KEY_HELPER_TTL_MS",
+  "CLAUDE_CODE_ARTIFACTS_API_TOKEN",
+  "CLAUDE_CODE_GATEWAY_TOKEN",
+  "CLAUDE_CODE_HFI_BEARER_TOKEN",
+  "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN",
+  "CLAUDE_CODE_MEMORY_API_TOKEN",
+  "CLAUDE_CODE_MESSAGING_TOKEN",
+  "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_SLACK_TAG_TOKEN",
+  "CLAUDE_TRUSTED_DEVICE_TOKEN"
+ ],
+ "extraction": [
+  {
+   "argv": [
+    "docker",
+    "create",
+    "--pull=never",
+    "--network",
+    "none",
+    "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+    "true"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "3d32b6a1ef6d149f2476d642e7eea2da823fe93044ad412b528d5aaf1f5d2384"
+  },
+  {
+   "argv": [
+    "docker",
+    "cp",
+    "-L",
+    "3d32b6a1ef6d149f2476d642e7eea2da823fe93044ad412b528d5aaf1f5d2384:/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+    "/home/javier/w-2QOWQt6Y/claude.bin"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": ""
+  },
+  {
+   "argv": [
+    "docker",
+    "rm",
+    "3d32b6a1ef6d149f2476d642e7eea2da823fe93044ad412b528d5aaf1f5d2384"
+   ],
+   "rc": 0,
+   "stderr": "",
+   "stdout": "3d32b6a1ef6d149f2476d642e7eea2da823fe93044ad412b528d5aaf1f5d2384"
+  }
+ ],
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "names": {
+  "ANTHROPIC_API_HOST": {
+   "contexts": [
+    "MINIMAL_EGRESS_DOMAINS.......kl.VM_BUNDLE_HOST........).UPDATE_FEED_HOST.....e..ANTHROPIC_API_HOST.......3..CLAUDE_AI_HOST......z#..GCS_SIGNED_URL_HOST.....li..PLATFORM_CLAUDE_HO",
+    "NT_CDN_HOST=rT.PLATFORM_CLAUDE_HOST=rT.GCS_SIGNED_URL_HOST=rT.CLAUDE_AI_HOST=rT.ANTHROPIC_API_HOST=rT.UPDATE_FEED_HOST=rT.VM_BUNDLE_HOST=rT.MINIMAL_EGRESS_DOMAINS=void 0;rT.isAnt",
+    "_BUNDLE_HOST=\"downloads.claude.ai\";rT.UPDATE_FEED_HOST=\"releases.claude.com\";rT.ANTHROPIC_API_HOST=\"api.anthropic.com\";rT.CLAUDE_AI_HOST=\"claude.ai\";rT.GCS_SIGNED_URL_HOST=\"stora",
+    "tch(r===null||r===void 0?void 0:r.provider){case\"anthropic\":return`https://${ql.ANTHROPIC_API_HOST}/v1/models`;case\"gateway\":return r.baseUrl?`${r.baseUrl.replace(/\\/+$/,\"\")}/v1/"
+   ],
+   "count": 9,
+   "env_access_like": 8
+  },
+  "ANTHROPIC_AWS_BASE_URL": {
+   "contexts": [
+    ".w..ANTHROPIC_FOUNDRY_RESOURCE..........CLAUDE_CODE_SKIP_FOUNDRY_AUTH.......?T..ANTHROPIC_AWS_BASE_URL......(.#.ANTHROPIC_AWS_WORKSPACE_ID..#...x...CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUT",
+    "igure a `region` for your profile in `~/.aws/config`, or provide a `baseURL` / `ANTHROPIC_AWS_BASE_URL` environment variable.D.......Cannot destructure property 'awsRegion' from null",
+    ",ai=H.bool(),Bi=H.int(),ui=H.int({min:0});var F={};Mr(F,{AGENT_PROXY_URL:()=>Vx,ANTHROPIC_AWS_BASE_URL:()=>Vi,ANTHROPIC_AWS_WORKSPACE_ID:()=>wi,ANTHROPIC_BASE_URL:()=>fi,ANTHROPIC_BE",
+    "&&vi()}function qtn(){let e=Ie();return e===\"firstParty\"||e===\"anthropicAws\"&&a.ANTHROPIC_AWS_BASE_URL===void 0}function vi(){if(dse())return!0;return af()}function dse(){return a._C"
+   ],
+   "count": 17,
+   "env_access_like": 6
+  },
+  "ANTHROPIC_AWS_WORKSPACE_ID": {
+   "contexts": [
+    "........CLAUDE_CODE_SKIP_FOUNDRY_AUTH.......?T..ANTHROPIC_AWS_BASE_URL......(.#.ANTHROPIC_AWS_WORKSPACE_ID..#...x...CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH.....H...ANTHROPIC_GOOGLE_CLOUD_BAS",
+    "....u...e...No workspace ID found. Set `workspaceId` in the constructor or the `ANTHROPIC_AWS_WORKSPACE_ID` environment variable.........<..`credentials`, `config`, and `profile` are not",
+    "nt({min:0});var F={};Mr(F,{AGENT_PROXY_URL:()=>Vx,ANTHROPIC_AWS_BASE_URL:()=>Vi,ANTHROPIC_AWS_WORKSPACE_ID:()=>wi,ANTHROPIC_BASE_URL:()=>fi,ANTHROPIC_BEDROCK_BASE_URL:()=>vi,ANTHROPIC_BE",
+    "E_CODE_USE_GATEWAY\",\"ANTHROPIC_FOUNDRY_RESOURCE\",\"ANTHROPIC_VERTEX_PROJECT_ID\",\"ANTHROPIC_AWS_WORKSPACE_ID\",\"ANTHROPIC_GOOGLE_CLOUD_PROJECT\",\"ANTHROPIC_GOOGLE_CLOUD_LOCATION\",\"ANTHROPIC_"
+   ],
+   "count": 10,
+   "env_access_like": 2
+  },
+  "ANTHROPIC_BASE_URL": {
+   "contexts": [
+    ".4....8..code-sign: CLAUDE_CODE_SESSION_ACCESS_TOKEN is unset\\....I[.code-sign: ANTHROPIC_BASE_URL (child) / CLAUDE_RUNNER_API_BASE_URL (lifecycle hook) is unset....r...utf8.....",
+    ".....4W.CLAUDE_RUNNER_SESSION_ID .....m.CLAUDE_CODE_SESSION_ACCESS_TOKEN....B/..ANTHROPIC_BASE_URL........g.SESSION_INGRESS_URL.........CLAUDE_RUNNER_API_BASE_URL..........JSON..",
+    "e on Bedrock/Vertex/third-party providers.......h...not available with a custom ANTHROPIC_BASE_URL..J.......not available: the active profile's base_url is not the Anthropic API ",
+    "OOL_SEARCH=.......+.,., result=false..5.......[ToolSearch:optimistic] disabled: ANTHROPIC_BASE_URL=........... is not a first-party Anthropic host. Set ENABLE_TOOL_SEARCH=true (o"
+   ],
+   "count": 112,
+   "env_access_like": 43
+  },
+  "ANTHROPIC_BEDROCK_BASE_URL": {
+   "contexts": [
+    "Additional CA cert(s).........T.mTLS client cert.....D..mTLS client key......|G.ANTHROPIC_BEDROCK_BASE_URL........V.ANTHROPIC_BEDROCK_SERVICE_TIER.......2|.CLAUDE_CODE_SKIP_BEDROCK_AUTH.",
+    " values replace the user's. To route Bedrock through a gateway for a fleet, pin ANTHROPIC_BEDROCK_BASE_URL there (it is what the clients use, ahead of an endpoint_url in ~/.aws/config, w",
+    "AWS_BASE_URL:()=>Vi,ANTHROPIC_AWS_WORKSPACE_ID:()=>wi,ANTHROPIC_BASE_URL:()=>fi,ANTHROPIC_BEDROCK_BASE_URL:()=>vi,ANTHROPIC_BEDROCK_MANTLE_BASE_URL:()=>yi,ANTHROPIC_BEDROCK_REGION_PREFIX",
+    "\\\\.)?${X}$`)}var C={firstParty:void 0,gateway:void 0,bedrock:{variables:[{name:\"ANTHROPIC_BEDROCK_BASE_URL\"},{name:\"AWS_ENDPOINT_URL_BEDROCK_RUNTIME\"},{name:\"AWS_ENDPOINT_URL_BEDROCK\"},{"
+   ],
+   "count": 24,
+   "env_access_like": 14
+  },
+  "ANTHROPIC_BEDROCK_MANTLE_BASE_URL": {
+   "contexts": [
+    "OGLE_CLOUD_LOCATION.,....!..CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH!.....P.ANTHROPIC_BEDROCK_MANTLE_BASE_URL........u?.CLAUDE_CODE_SKIP_MANTLE_AUTH....z...NODE_EXTRA_CA_CERTS......P5., mer",
+    "_REGION` / `AWS_DEFAULT_REGION` environment variable, or provide a `baseURL` / `ANTHROPIC_BEDROCK_MANTLE_BASE_URL` environment variable............AnthropicBedrockMantle/JS ..........Failed to ",
+    "WORKSPACE_ID:()=>wi,ANTHROPIC_BASE_URL:()=>fi,ANTHROPIC_BEDROCK_BASE_URL:()=>vi,ANTHROPIC_BEDROCK_MANTLE_BASE_URL:()=>yi,ANTHROPIC_BEDROCK_REGION_PREFIX:()=>Yi,ANTHROPIC_BEDROCK_SERVICE_TIER:()",
+    "WS_ENDPOINT_URL\"}],ownHost:y(\"bedrock(?:-runtime)?\")},mantle:{variables:[{name:\"ANTHROPIC_BEDROCK_MANTLE_BASE_URL\"}],ownHost:y(\"bedrock-mantle\")},anthropicAws:{variables:[{name:\"ANTHROPIC_AWS_B"
+   ],
+   "count": 17,
+   "env_access_like": 6
+  },
+  "ANTHROPIC_BETAS": {
+   "contexts": [
+    "lue......Z..[servedCatalog] off (.......u...servedCatalogShadowStarted.......R-.ANTHROPIC_BETAS.'....$%.managed_settings_resolved emit failed (.%.......managed_settings_resolv",
+    "-z]+)?...........Claude configuration file at ......2.8. is corrupted: .V...`.L.ANTHROPIC_BETAS ignored: experimental betas are disabled by your organization's policy........'",
+    "(),uU=H.bool(),bU=H.str(),HU=H.str(),GU=H.str();var m={};Mr(m,{ALL_PROXY:()=>vU,ANTHROPIC_BETAS:()=>XU,ANTHROPIC_CUSTOM_HEADERS:()=>kU,API_FORCE_IDLE_TIMEOUT:()=>Di,API_TIMEOU",
+    "leavedThinking:pBn(e)},s=[];for(let y of YF)if(y.when(r))s.push(y.beta);let h=a.ANTHROPIC_BETAS;if(h)if(EF())t(\"ANTHROPIC_BETAS ignored: experimental betas are disabled by you"
+   ],
+   "count": 6,
+   "env_access_like": 2
+  },
+  "ANTHROPIC_CONFIG_DIR": {
+   "contexts": [
+    "_RULE_ID........ANTHROPIC_ORGANIZATION_ID...........ANTHROPIC_PROFILE.......i...ANTHROPIC_CONFIG_DIR........flags_unloaded........9.policy_unloaded......sz.feature_flags.......*.k.",
+    " .u.s.e.d. .h.e.r.e..._...1.P.Cannot locate the Anthropic config directory. Set ANTHROPIC_CONFIG_DIR (or HOME) and try again..2...h...Console profile login refused: no config direc",
+    "me leaves the configs directoryZ....,>.the Anthropic profile configs directory (ANTHROPIC_CONFIG_DIR/configs) could not be read (..g...:...).,. .s.o. .t.h.e. .B.a.s.h. .s.a.n.d.b.o",
+    " credentials pointer variable (AWS_CONFIG_FILE, GOOGLE_APPLICATION_CREDENTIALS, ANTHROPIC_CONFIG_DIR and the like) holds a relative path...,...#Uc.an npm prefix variable holds a re"
+   ],
+   "count": 21,
+   "env_access_like": 2
+  },
+  "ANTHROPIC_CUSTOM_HEADERS": {
+   "contexts": [
+    "S.........3.iq..........CLAUDE_CODE_EXTRA_BODY......g+..FF......'...$Wn.......w.ANTHROPIC_CUSTOM_HEADERS........q3e. ...b.].CLAUDE_CODE_HOST_GATEWAY_LINEAGE....O.l.CLAUDE_CODE_HOST_CRE",
+    "al API key..,.......Invalid auth token . Fix external auth token?....ts.Invalid ANTHROPIC_CUSTOM_HEADERS . Fix the environment variable.J...p_..Invalid request header from the environm",
+    "nd retry.a....... . refresh the gateway token provided via ANTHROPIC_AUTH_TOKEN/ANTHROPIC_CUSTOM_HEADERS and retry.........c.gateway_token...S...^.$. . if credentials are current, chec",
+    "gest-running tasks.......T..default_claude_zero.......\\.parsed_output...n...u...ANTHROPIC_CUSTOM_HEADERS anthropic-beta ignored: experimental betas are disabled by your organization's "
+   ],
+   "count": 49,
+   "env_access_like": 8
+  },
+  "ANTHROPIC_ENVIRONMENT_KEY": {
+   "contexts": [
+    "C_WORK_ID.........3.ANTHROPIC_ENVIRONMENT_ID.....-..ANTHROPIC_SESSION_ID....(.M.ANTHROPIC_ENVIRONMENT_KEY.........x.ANTHROPIC_WORK_SECRET...A.......h.a.n.d.l.e.I.t.e.m.:. .w.o.r.k.I.d. ",
+    ", or provide the environment key (pass it, construct the worker with it, or set ANTHROPIC_ENVIRONMENT_KEY)...p.....<.work item carried a secret payload but no sessions token could be ex",
+    "onId??Oy(\"ANTHROPIC_SESSION_ID\"),y=(r?.environmentKey??this.environmentKey??Oy(\"ANTHROPIC_ENVIRONMENT_KEY\"))||void 0,w=r?.workSecret||Oy(\"ANTHROPIC_WORK_SECRET\")||null;if(!n)throw new X",
+    "en there is no work secret \\u2014 pass it, construct the worker with it, or set ANTHROPIC_ENVIRONMENT_KEY\");let S={id:n,environment_id:s,secret:w,data:{type:\"session\",id:h}};await he(th"
+   ],
+   "count": 5,
+   "env_access_like": 0
+  },
+  "ANTHROPIC_FEDERATION_RULE_ID": {
+   "contexts": [
+    "5.e.CLAUDE_BRIDGE_BASE_URL..!.......CLAUDE_BRIDGE_SESSION_INGRESS_URL...........ANTHROPIC_FEDERATION_RULE_ID........ANTHROPIC_ORGANIZATION_ID...........ANTHROPIC_PROFILE.......i...ANTHROPI",
+    "kStore.......`..Workload identity federation is configured in this environment (ANTHROPIC_FEDERATION_RULE_ID and ANTHROPIC_ORGANIZATION_ID), and it takes precedence over the default profil",
+    "n_rule_id'. Set it in authentication.federation_rule_id in your profile, or via ANTHROPIC_FEDERATION_RULE_ID (profile takes precedence)...i...3.T.oidc_federation config requires organizati",
+    "HROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or WIF env vars (ANTHROPIC_FEDERATION_RULE_ID + ANTHROPIC_ORGANIZATION_ID) required........#1.ccr:role.....f..session_worker."
+   ],
+   "count": 21,
+   "env_access_like": 3
+  },
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN": {
+   "contexts": [
+    " permissions and workspace access........... . refresh your Foundry credential (ANTHROPIC_FOUNDRY_AUTH_TOKEN, ANTHROPIC_FOUNDRY_API_KEY, Azure sign-in for Entra, or your proxy token) and r",
+    "dleWatchdog.....v...bodyIdleTimeout.....-.0.X-Amzn-Bedrock-Service-Tier......DI.ANTHROPIC_FOUNDRY_AUTH_TOKEN........ANTHROPIC_FOUNDRY_API_KEY...........azureADTokenProvider........ANTHROPI",
+    "KEY:()=>Ht,ANTHROPIC_FEDERATION_RULE_ID:()=>Po,ANTHROPIC_FOUNDRY_API_KEY:()=>Gt,ANTHROPIC_FOUNDRY_AUTH_TOKEN:()=>mt,ANTHROPIC_ORGANIZATION_ID:()=>ao,ANTHROPIC_PROFILE:()=>uo,ANTHROPIC_WORK",
+    "LAUDE_CODE_OAUTH_TOKEN\",\"AWS_BEARER_TOKEN_BEDROCK\",\"ANTHROPIC_FOUNDRY_API_KEY\",\"ANTHROPIC_FOUNDRY_AUTH_TOKEN\",\"ANTHROPIC_AWS_API_KEY\"],$Wn=[\"CLAUDE_CODE_SKIP_BEDROCK_AUTH\",\"CLAUDE_CODE_SKI"
+   ],
+   "count": 9,
+   "env_access_like": 2
+  },
+  "ANTHROPIC_FOUNDRY_BASE_URL": {
+   "contexts": [
+    "......S.ANTHROPIC_VERTEX_BASE_URL.......D...CLAUDE_CODE_SKIP_VERTEX_AUTH.....0o.ANTHROPIC_FOUNDRY_BASE_URL.......w..ANTHROPIC_FOUNDRY_RESOURCE..........CLAUDE_CODE_SKIP_FOUNDRY_AUTH.....",
+    " a hyphen, such as my-resource), not a URL or host name. To use a full URL, set ANTHROPIC_FOUNDRY_BASE_URL instead.G.......Cannot destructure property 'AnthropicAws' from null or undefin",
+    "ch as my-resource), not a URL or host, then run claude again....\"...Sl..replace ANTHROPIC_FOUNDRY_BASE_URL..Z....\".. with ANTHROPIC_FOUNDRY_RESOURCE set to your Foundry resource name, th",
+    "y or the credential helper's output. Claude Code sessions receive the value as `ANTHROPIC_FOUNDRY_BASE_URL`, so use the same value you would give Claude Code in a terminal. `inferenceFou"
+   ],
+   "count": 17,
+   "env_access_like": 5
+  },
+  "ANTHROPIC_FOUNDRY_RESOURCE": {
+   "contexts": [
+    "....D...CLAUDE_CODE_SKIP_VERTEX_AUTH.....0o.ANTHROPIC_FOUNDRY_BASE_URL.......w..ANTHROPIC_FOUNDRY_RESOURCE..........CLAUDE_CODE_SKIP_FOUNDRY_AUTH.......?T..ANTHROPIC_AWS_BASE_URL......(.",
+    "r undefined value...,...4...https://cognitiveservices.azure.com/.default....d...ANTHROPIC_FOUNDRY_RESOURCE must be a Foundry resource name (2-64 letters, digits and hyphens, not starting",
+    "ents at ..../+..; that is not one of ........g..'s own service hosts....!.......ANTHROPIC_FOUNDRY_RESOURCE is set.......P... to a value that makes the ......... endpoint ..y.......set AN",
+    "CE is set.......P... to a value that makes the ......... endpoint ..y.......set ANTHROPIC_FOUNDRY_RESOURCE to the bare resource name (such as my-resource), not a URL or host, then run cl"
+   ],
+   "count": 21,
+   "env_access_like": 3
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_BASE_URL": {
+   "contexts": [
+    "ANTHROPIC_AWS_WORKSPACE_ID..#...x...CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH.....H...ANTHROPIC_GOOGLE_CLOUD_BASE_URL.#... ...ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID.........ANTHROPIC_GOOGLE_CLOUD_PROJ",
+    "TIER:()=>gi,ANTHROPIC_FOUNDRY_BASE_URL:()=>zi,ANTHROPIC_FOUNDRY_RESOURCE:()=>$i,ANTHROPIC_GOOGLE_CLOUD_BASE_URL:()=>Zi,ANTHROPIC_GOOGLE_CLOUD_LOCATION:()=>Xi,ANTHROPIC_GOOGLE_CLOUD_PROJECT:()",
+    "|[a-z0-9-]+\\\\.p)\\\\.googleapis\\\\.com$`)},anthropicGoogleCloud:{variables:[{name:\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\"}],ownHost:new RegExp(`^(?:claude|claude\\\\.${h}\\\\.rep|[a-z0-9-]+\\\\.p)\\\\.googlea",
+    "E_VERTEX\",\"CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD\",\"ANTHROPIC_VERTEX_BASE_URL\",\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\"]},Gs=[\"CLAUDE_CODE_MEMORY_API_BASE_URL\",\"CLAUDE_CODE_MEMORY_API_TOKEN\"];functi"
+   ],
+   "count": 12,
+   "env_access_like": 4
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_LOCATION": {
+   "contexts": [
+    "ROPIC_GOOGLE_CLOUD_WORKSPACE_ID.........ANTHROPIC_GOOGLE_CLOUD_PROJECT.......7..ANTHROPIC_GOOGLE_CLOUD_LOCATION.,....!..CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH!.....P.ANTHROPIC_BEDROCK_M",
+    "()=>zi,ANTHROPIC_FOUNDRY_RESOURCE:()=>$i,ANTHROPIC_GOOGLE_CLOUD_BASE_URL:()=>Zi,ANTHROPIC_GOOGLE_CLOUD_LOCATION:()=>Xi,ANTHROPIC_GOOGLE_CLOUD_PROJECT:()=>hi,ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_I",
+    "RTEX_PROJECT_ID\",\"ANTHROPIC_AWS_WORKSPACE_ID\",\"ANTHROPIC_GOOGLE_CLOUD_PROJECT\",\"ANTHROPIC_GOOGLE_CLOUD_LOCATION\",\"ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID\",\"CLOUD_ML_REGION\"],Jn=[\"CLAUDE_CODE_USE_",
+    "oud\"){Zt(\"ANTHROPIC_GOOGLE_CLOUD_PROJECT\",a.ANTHROPIC_GOOGLE_CLOUD_PROJECT),Zt(\"ANTHROPIC_GOOGLE_CLOUD_LOCATION\",a.ANTHROPIC_GOOGLE_CLOUD_LOCATION),Zt(\"ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID\",a."
+   ],
+   "count": 8,
+   "env_access_like": 2
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_PROJECT": {
+   "contexts": [
+    "ROPIC_GOOGLE_CLOUD_BASE_URL.#... ...ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID.........ANTHROPIC_GOOGLE_CLOUD_PROJECT.......7..ANTHROPIC_GOOGLE_CLOUD_LOCATION.,....!..CLAUDE_CODE_SKIP_ANTHROPIC_GOO",
+    "..%.......file:///$bunfs/root/chunk-b064gy3d.js...b....B..Set `project` or the `ANTHROPIC_GOOGLE_CLOUD_PROJECT` environment variable (or provide `baseURL`).../...(...https://claude.googleapi",
+    "i,ANTHROPIC_GOOGLE_CLOUD_BASE_URL:()=>Zi,ANTHROPIC_GOOGLE_CLOUD_LOCATION:()=>Xi,ANTHROPIC_GOOGLE_CLOUD_PROJECT:()=>hi,ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID:()=>ki,ANTHROPIC_SMALL_FAST_MODEL_AW",
+    "C_FOUNDRY_RESOURCE\",\"ANTHROPIC_VERTEX_PROJECT_ID\",\"ANTHROPIC_AWS_WORKSPACE_ID\",\"ANTHROPIC_GOOGLE_CLOUD_PROJECT\",\"ANTHROPIC_GOOGLE_CLOUD_LOCATION\",\"ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID\",\"CLOUD"
+   ],
+   "count": 12,
+   "env_access_like": 4
+  },
+  "ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID": {
+   "contexts": [
+    "DE_CODE_SKIP_ANTHROPIC_AWS_AUTH.....H...ANTHROPIC_GOOGLE_CLOUD_BASE_URL.#... ...ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID.........ANTHROPIC_GOOGLE_CLOUD_PROJECT.......7..ANTHROPIC_GOOGLE_CLOUD_LOCATION",
+    "ls).~.......No workspace ID found. Set `workspaceId` in the constructor or the `ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID` environment variable........VL.No project was given. ......G*..https://unresol",
+    "Zi,ANTHROPIC_GOOGLE_CLOUD_LOCATION:()=>Xi,ANTHROPIC_GOOGLE_CLOUD_PROJECT:()=>hi,ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID:()=>ki,ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION:()=>Tx,ANTHROPIC_UNIX_SOCKET:()=>L",
+    "RKSPACE_ID\",\"ANTHROPIC_GOOGLE_CLOUD_PROJECT\",\"ANTHROPIC_GOOGLE_CLOUD_LOCATION\",\"ANTHROPIC_GOOGLE_CLOUD_WORKSPACE_ID\",\"CLOUD_ML_REGION\"],Jn=[\"CLAUDE_CODE_USE_BEDROCK\",\"CLAUDE_CODE_USE_ANTHROPIC_AW"
+   ],
+   "count": 10,
+   "env_access_like": 2
+  },
+  "ANTHROPIC_IDENTITY_TOKEN": {
+   "contexts": [
+    ".}..ENVIRONMENT_SERVICE_KEY.!.......AWS_CONTAINER_AUTHORIZATION_TOKEN...........ANTHROPIC_IDENTITY_TOKEN........GOOGLE_OAUTH_ACCESS_TOKEN...!.....+.AZURE_CLIENT_CERTIFICATE_PASSWORD...",
+    "ity token (set authentication.identity_token, ANTHROPIC_IDENTITY_TOKEN_FILE, or ANTHROPIC_IDENTITY_TOKEN)........\"..oidc_federation config requires 'federation_rule_id'. Set it in auth",
+    "ROPIC_ORGANIZATION_ID\",\"ANTHROPIC_WORKSPACE_ID\",\"ANTHROPIC_SERVICE_ACCOUNT_ID\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_TOKEN_FILE\",\"ANTHROPIC_SCOPE\",\"ANTHROPIC_PROFILE\",\"ANTHROP",
+    "CORD_WEBHOOK\",\"DISCORD_WEBHOOK_URL\",\"TEAMS_WEBHOOK_URL\",\"MS_TEAMS_WEBHOOK_URI\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_TOKEN_FILE\",\"CLOUDSDK_AUTH_ACCESS_TOKEN_FILE\",\"CLOUDSDK_AU"
+   ],
+   "count": 10,
+   "env_access_like": 0
+  },
+  "ANTHROPIC_IDENTITY_TOKEN_FILE": {
+   "contexts": [
+    ".....Mr.ENETDOWN....AZ9.UND_ERR_CONNECT_TIMEOUT......v..UND_ERR_SOCKET......l.v.ANTHROPIC_IDENTITY_TOKEN_FILE.......JR..ANTHROPIC_WORKSPACE_ID.......Nq.ANTHROPIC_SERVICE_ACCOUNT_ID.....>..A",
+    "ederation config requires an identity token (set authentication.identity_token, ANTHROPIC_IDENTITY_TOKEN_FILE, or ANTHROPIC_IDENTITY_TOKEN)........\"..oidc_federation config requires 'federa",
+    "HROPIC_WORKSPACE_ID\",\"ANTHROPIC_SERVICE_ACCOUNT_ID\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_TOKEN_FILE\",\"ANTHROPIC_SCOPE\",\"ANTHROPIC_PROFILE\",\"ANTHROPIC_CONFIG_DIR\",\"CLAUDE_CODE_FEDE",
+    "OOK_URL\",\"TEAMS_WEBHOOK_URL\",\"MS_TEAMS_WEBHOOK_URI\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_TOKEN_FILE\",\"CLOUDSDK_AUTH_ACCESS_TOKEN_FILE\",\"CLOUDSDK_AUTH_AUTHORIZATION_TOKEN_FILE\",\"AZ"
+   ],
+   "count": 12,
+   "env_access_like": 0
+  },
+  "ANTHROPIC_ORGANIZATION_ID": {
+   "contexts": [
+    "CLAUDE_BRIDGE_SESSION_INGRESS_URL...........ANTHROPIC_FEDERATION_RULE_ID........ANTHROPIC_ORGANIZATION_ID...........ANTHROPIC_PROFILE.......i...ANTHROPIC_CONFIG_DIR........flags_unloade",
+    " federation is configured in this environment (ANTHROPIC_FEDERATION_RULE_ID and ANTHROPIC_ORGANIZATION_ID), and it takes precedence over the default profile. Set ANTHROPIC_PROFILE to a ",
+    "akes precedence)...i...3.T.oidc_federation config requires organization_id (set ANTHROPIC_ORGANIZATION_ID or config.organization_id)........1U.user_oauth config requires authentication.",
+    "TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or WIF env vars (ANTHROPIC_FEDERATION_RULE_ID + ANTHROPIC_ORGANIZATION_ID) required........#1.ccr:role.....f..session_worker........v.ccr:account_id....."
+   ],
+   "count": 21,
+   "env_access_like": 4
+  },
+  "ANTHROPIC_PROFILE": {
+   "contexts": [
+    "........ANTHROPIC_FEDERATION_RULE_ID........ANTHROPIC_ORGANIZATION_ID...........ANTHROPIC_PROFILE.......i...ANTHROPIC_CONFIG_DIR........flags_unloaded........9.policy_unloaded..",
+    "mtr.....4...r2o.....[...w$n.........xQt.....S...xSs.........user_oauth..........ANTHROPIC_PROFILE \".>...7...\" is not a valid profile name (letters, digits, '_', '.', '-')..-...l",
+    ">...7...\" is not a valid profile name (letters, digits, '_', '.', '-')..-...lrb.ANTHROPIC_PROFILE is not a valid profile name...J...}.@.Cannot destructure property 'clearOnboard",
+    "THROPIC_ORGANIZATION_ID), and it takes precedence over the default profile. Set ANTHROPIC_PROFILE to a profile name to sign in with a profile that outranks it...P...R. .Console "
+   ],
+   "count": 25,
+   "env_access_like": 10
+  },
+  "ANTHROPIC_SCOPE": {
+   "contexts": [
+    "E.......JR..ANTHROPIC_WORKSPACE_ID.......Nq.ANTHROPIC_SERVICE_ACCOUNT_ID.....>..ANTHROPIC_SCOPE.....p-..identity_token..........oidc_federation config requires an identity tok",
+    "SERVICE_ACCOUNT_ID\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_TOKEN_FILE\",\"ANTHROPIC_SCOPE\",\"ANTHROPIC_PROFILE\",\"ANTHROPIC_CONFIG_DIR\",\"CLAUDE_CODE_FEDERATION_CACHE_DIR\",",
+    "C_SERVICE_ACCOUNT_ID\"),identity_token:k?{source:\"file\",path:k}:void 0,scope:Oy(\"ANTHROPIC_SCOPE\")}}};return null}let p;try{p=JSON.parse(_)}catch(E){throw Error(`failed to pars",
+    "?(p.base_url=Oy(\"ANTHROPIC_BASE_URL\")),(n=p.authentication).scope??(n.scope=Oy(\"ANTHROPIC_SCOPE\")),p.authentication.type===\"oidc_federation\"){if(!p.authentication.identity_tok"
+   ],
+   "count": 6,
+   "env_access_like": 0
+  },
+  "ANTHROPIC_SERVICE_ACCOUNT_ID": {
+   "contexts": [
+    "....l.v.ANTHROPIC_IDENTITY_TOKEN_FILE.......JR..ANTHROPIC_WORKSPACE_ID.......Nq.ANTHROPIC_SERVICE_ACCOUNT_ID.....>..ANTHROPIC_SCOPE.....p-..identity_token..........oidc_federation config r",
+    "ROPIC_FEDERATION_RULE_ID\",\"ANTHROPIC_ORGANIZATION_ID\",\"ANTHROPIC_WORKSPACE_ID\",\"ANTHROPIC_SERVICE_ACCOUNT_ID\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_TOKEN_FILE\",\"ANTHROPIC_SCOPE\",\"",
+    "hentication:{type:\"oidc_federation\",federation_rule_id:I,service_account_id:Oy(\"ANTHROPIC_SERVICE_ACCOUNT_ID\"),identity_token:k?{source:\"file\",path:k}:void 0,scope:Oy(\"ANTHROPIC_SCOPE\")}}}",
+    "ULE_ID\")??\"\";(r=p.authentication).service_account_id??(r.service_account_id=Oy(\"ANTHROPIC_SERVICE_ACCOUNT_ID\"))}return{config:p,fromFile:!0}};var S=async(e,n)=>{if(e?.authentication.creden"
+   ],
+   "count": 6,
+   "env_access_like": 0
+  },
+  "ANTHROPIC_UNIX_SOCKET": {
+   "contexts": [
+    "read....N.;./api/hello.......r..providerCache........._.preconnectFired.......?.ANTHROPIC_UNIX_SOCKET........g..CLAUDE_CODE_CLIENT_CERT......='.CLAUDE_CODE_CLIENT_KEY..........BASE_",
+    "DE_CODE_API_KEY_FILE_DESCRIPTOR=.......3..  CLAUDE_CODE_OAUTH_TOKEN=......C.E.  ANTHROPIC_UNIX_SOCKET=.....B..  3P env=...'.....}..[debug] failed to collect auth state: .....O...  i",
+    ".u.t. .i.t.). ......L\\. This session is using .....TT.. .a.u.t.h. ..  .....Q.X. ANTHROPIC_UNIX_SOCKET is set without CLAUDE_CODE_OAUTH_TOKEN, so requests on the socket carry no clau",
+    ".a.n.n.o.t. .v.e.r.i.f.y...p...Y...run claude on this machine directly (without ANTHROPIC_UNIX_SOCKET) and sign in here, or ask your administrator.....[...no allowedProviders entry "
+   ],
+   "count": 61,
+   "env_access_like": 42
+  },
+  "ANTHROPIC_VERTEX_BASE_URL": {
+   "contexts": [
+    "ANTHROPIC_BEDROCK_SERVICE_TIER.......2|.CLAUDE_CODE_SKIP_BEDROCK_AUTH.........S.ANTHROPIC_VERTEX_BASE_URL.......D...CLAUDE_CODE_SKIP_VERTEX_AUTH.....0o.ANTHROPIC_FOUNDRY_BASE_URL.......",
+    ")=>ki,ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION:()=>Tx,ANTHROPIC_UNIX_SOCKET:()=>Lx,ANTHROPIC_VERTEX_BASE_URL:()=>ji,ANTHROPIC_VERTEX_PROJECT_ID:()=>Ji,AWS_ACCESS_KEY_ID:()=>rx,AWS_CONFIG_F",
+    "_AWS_BASE_URL\"}],ownHost:y(\"aws-external-anthropic\")},vertex:{variables:[{name:\"ANTHROPIC_VERTEX_BASE_URL\"}],ownHost:new RegExp(`^(?:aiplatform|${h}-aiplatform|aiplatform\\\\.${h}\\\\.rep|[",
+    "AuthRefresh:[\"CLAUDE_CODE_USE_VERTEX\",\"CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD\",\"ANTHROPIC_VERTEX_BASE_URL\",\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\"]},Gs=[\"CLAUDE_CODE_MEMORY_API_BASE_URL\",\"CLA"
+   ],
+   "count": 15,
+   "env_access_like": 8
+  },
+  "ANTHROPIC_WEBHOOK_SIGNING_KEY": {
+   "contexts": [
+    "Q...Cannot destructure property 'baseURL' from null or undefined value......C.?.ANTHROPIC_WEBHOOK_SIGNING_KEY...:...^2..Pass at most one of `profile`, `credentials`, or `config`...]...ttL.I",
+    "uctor({baseURL:r=Oy(\"ANTHROPIC_BASE_URL\"),apiKey:n,authToken:s,webhookKey:h=Oy(\"ANTHROPIC_WEBHOOK_SIGNING_KEY\")??null,...y}={}){if(Ka.add(this),this._requestAuthFlags=new WeakMap,ms.set(thi"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "ANTHROPIC_WORKSPACE_ID": {
+   "contexts": [
+    "TIMEOUT......v..UND_ERR_SOCKET......l.v.ANTHROPIC_IDENTITY_TOKEN_FILE.......JR..ANTHROPIC_WORKSPACE_ID.......Nq.ANTHROPIC_SERVICE_ACCOUNT_ID.....>..ANTHROPIC_SCOPE.....p-..identity_t",
+    "en. ........A.If your federation rule is scoped to multiple workspaces, set the ANTHROPIC_WORKSPACE_ID environment variable, the 'workspace_id' config key, or the `workspaceId` optio",
+    "DRY_AUTH_TOKEN:()=>mt,ANTHROPIC_ORGANIZATION_ID:()=>ao,ANTHROPIC_PROFILE:()=>uo,ANTHROPIC_WORKSPACE_ID:()=>Bo,AWS_BEARER_TOKEN_BEDROCK:()=>bt,AWS_CONTAINER_CREDENTIALS_FULL_URI:()=>K",
+    "_REMOTE_SESSION_ID\",\"ANTHROPIC_FEDERATION_RULE_ID\",\"ANTHROPIC_ORGANIZATION_ID\",\"ANTHROPIC_WORKSPACE_ID\",\"ANTHROPIC_SERVICE_ACCOUNT_ID\",\"ANTHROPIC_IDENTITY_TOKEN\",\"ANTHROPIC_IDENTITY_"
+   ],
+   "count": 10,
+   "env_access_like": 1
+  },
+  "ANTHROPIC_WORK_SECRET": {
+   "contexts": [
+    "NMENT_ID.....-..ANTHROPIC_SESSION_ID....(.M.ANTHROPIC_ENVIRONMENT_KEY.........x.ANTHROPIC_WORK_SECRET...A.......h.a.n.d.l.e.I.t.e.m.:. .w.o.r.k.I.d. .i.s. .r.e.q.u.i.r.e.d. ..  .p.a",
+    "s.environmentKey??Oy(\"ANTHROPIC_ENVIRONMENT_KEY\"))||void 0,w=r?.workSecret||Oy(\"ANTHROPIC_WORK_SECRET\")||null;if(!n)throw new Xn(\"handleItem: workId is required \\u2014 pass it or se"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN": {
+   "contexts": [
+    "EDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS....T...VSS_NUGET_ACCESSTOKEN...(....x..ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN.....\\..COMPOSER_AUTH........j..OVERRIDE_GITHUB_TOKEN...........DEFAULT_WORKFLOW",
+    "\"ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS\",\"VSS_NUGET_ACCESSTOKEN\",\"ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN\",\"COMPOSER_AUTH\",\"OVERRIDE_GITHUB_TOKEN\",\"DEFAULT_WORKFLOW_TOKEN\",\"SSH_SIGNING_"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS": {
+   "contexts": [
+    "IME_URL.......V.ALL_INPUTS..!.....L.VSS_NUGET_EXTERNAL_FEED_ENDPOINTS...4...}.,.ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS....T...VSS_NUGET_ACCESSTOKEN...(....x..ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN",
+    "_TOKEN\",\"ACTIONS_RUNTIME_URL\",\"ALL_INPUTS\",\"VSS_NUGET_EXTERNAL_FEED_ENDPOINTS\",\"ARTIFACTS_CREDENTIALPROVIDER_EXTERNAL_FEED_ENDPOINTS\",\"VSS_NUGET_ACCESSTOKEN\",\"ARTIFACTS_CREDENTIALPROVIDER_ACCESSTOKEN\",\"COMPOSER_A"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "ATTR_CLOUD_PROVIDER": {
+   "contexts": [
+    "tags........ATTR_CLOUD_ACCOUNT_ID...........ATTR_CLOUD_AVAILABILITY_ZONE......*.ATTR_CLOUD_PROVIDER.....9.,.ATTR_CLOUD_REGION...........ATTR_CONTAINER_ID........_M.ATTR_CONTAINER_",
+    "_TAGS=KA.ATTR_CONTAINER_IMAGE_NAME=KA.ATTR_CONTAINER_ID=KA.ATTR_CLOUD_REGION=KA.ATTR_CLOUD_PROVIDER=KA.ATTR_CLOUD_AVAILABILITY_ZONE=KA.ATTR_CLOUD_ACCOUNT_ID=void 0;KA.ATTR_CLOUD_A",
+    "\"cloud.account.id\";KA.ATTR_CLOUD_AVAILABILITY_ZONE=\"cloud.availability_zone\";KA.ATTR_CLOUD_PROVIDER=\"cloud.provider\";KA.ATTR_CLOUD_REGION=\"cloud.region\";KA.ATTR_CONTAINER_ID=\"cont"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "CCR_OAUTH_TOKEN_FILE": {
+   "contexts": [
+    "errer\" sandbox=\"........\"></iframe></body></html>.......;.1.artifactRead.....X..CCR_OAUTH_TOKEN_FILE*.....}.the ANTHROPIC_API_KEY environment variable........L.the apiKeyHelper set",
+    "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR:\" from the OAuth token file descriptor\",CCR_OAUTH_TOKEN_FILE:\" from the OAuth token file\",\"claude.ai\":\" from the saved claude.ai login\",ANTH",
+    "opic/configs/.\";case\"apiKeyHelper\":return\"Unset the apiKeyHelper setting.\";case\"CCR_OAUTH_TOKEN_FILE\":return\"This token is injected by the CCR host; check the host session.\";case\"n",
+    "rn{source:\"CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR\",hasToken:!0};return{source:\"CCR_OAUTH_TOKEN_FILE\",hasToken:!0}}if(um()&&!vr())return{source:\"apiKeyHelper\",hasToken:!0};if(_d())"
+   ],
+   "count": 10,
+   "env_access_like": 0
+  },
+  "CLAUDE_API_KEY": {
+   "contexts": [
+    "..6.....R.Enter new secret name (alphanumeric with underscores):.......li.e.g., CLAUDE_API_KEY....t...S.t.a.r.t.i.n.g. .a.u.t.h.e.n.t.i.c.a.t.i.o.n.& 4...d...O.p.e.n.i.n.g. .",
+    "erscores):\"})}),e(Sr,{value:f,onChange:x,onSubmit:o,focus:!0,placeholder:\"e.g., CLAUDE_API_KEY\",columns:A.columns,cursorOffset:a,onChangeCursorOffset:E,showCursor:!0})]}),_[2"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_BRIDGE_BASE_URL": {
+   "contexts": [
+    "_HOST_ALLOWS_UNATTENDED.....R.$.Hwo.......6.CLAUDE_BRIDGE_OAUTH_TOKEN.......5.e.CLAUDE_BRIDGE_BASE_URL..!.......CLAUDE_BRIDGE_SESSION_INGRESS_URL...........ANTHROPIC_FEDERATION_RULE_",
+    "GE_MS:()=>vS,CLAUDE_BG_TCC_DISCLAIMED:()=>tL,CLAUDE_BG_WORKSPACE_TRUSTED:()=>oL,CLAUDE_BRIDGE_BASE_URL:()=>EL,CLAUDE_BRIDGE_OAUTH_TOKEN:()=>rL,CLAUDE_BRIDGE_REATTACH_GROUPING:()=>sL,",
+    "UTH_API_BASE\",\"CLAUDE_LOCAL_OAUTH_APPS_BASE\",\"CLAUDE_LOCAL_OAUTH_CONSOLE_BASE\",\"CLAUDE_BRIDGE_BASE_URL\",\"CLAUDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_BRIDGE_SESSION_INGRESS_URL\",\"CLAUDE_REMOTE",
+    "root/chunk-5s4qvyjz.js\";import{G4r}from\"/$bunfs/root/chunk-1x7naexb.js\";var w=[\"CLAUDE_BRIDGE_BASE_URL\",\"USE_LOCAL_OAUTH\",\"USE_STAGING_OAUTH\",\"CLAUDE_LOCAL_OAUTH_API_BASE\",\"CLAUDE_CO"
+   ],
+   "count": 5,
+   "env_access_like": 0
+  },
+  "CLAUDE_BRIDGE_OAUTH_TOKEN": {
+   "contexts": [
+    "qLr./...\"...CLAUDE_CODE_REMOTE_TOOLS_HOST_ALLOWS_UNATTENDED.....R.$.Hwo.......6.CLAUDE_BRIDGE_OAUTH_TOKEN.......5.e.CLAUDE_BRIDGE_BASE_URL..!.......CLAUDE_BRIDGE_SESSION_INGRESS_URL....",
+    "CLAIMED:()=>tL,CLAUDE_BG_WORKSPACE_TRUSTED:()=>oL,CLAUDE_BRIDGE_BASE_URL:()=>EL,CLAUDE_BRIDGE_OAUTH_TOKEN:()=>rL,CLAUDE_BRIDGE_REATTACH_GROUPING:()=>sL,CLAUDE_BRIDGE_REATTACH_NO_BACKFIL",
+    "IFACTS_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"CLAUDE_CODE_HFI_BEARER_TOKEN\",\"CLAUDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_TRUSTED_DEVICE_TOKEN\",\"AGENT_PROXY_AUTH_TOKEN\",\"CLAUDE_CODE_MCP_SERVE_",
+    "AL_OAUTH_APPS_BASE\",\"CLAUDE_LOCAL_OAUTH_CONSOLE_BASE\",\"CLAUDE_BRIDGE_BASE_URL\",\"CLAUDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_BRIDGE_SESSION_INGRESS_URL\",\"CLAUDE_REMOTE_TOOLS_BRIDGE_URL\",\"CLAUDE_C"
+   ],
+   "count": 5,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_API_BASE_URL": {
+   "contexts": [
+    "FACE_HUB_TOKEN........#.HUGGINGFACEHUB_API_TOKEN......4.D3e.....8%..tnn......;C.CLAUDE_CODE_API_BASE_URL........useKey..0.......sync root no longer verifies (changed mid-round)$.....,.",
+    "UDE_CODE_AGENT_PROXY_GIT_CONFIG:()=>ux,CLAUDE_CODE_AGENT_PROXY_GIT_HOSTS:()=>Hx,CLAUDE_CODE_API_BASE_URL:()=>Wi,CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY:()=>lx,CLAUDE_CODE_GATEWAY_MO",
+    "COUNT_ALLOW_EXECUTABLES\",\"GCLOUD_PROJECT\",\"CLAUDE_CODE_CUSTOM_OAUTH_URL\",...UF,\"CLAUDE_CODE_API_BASE_URL\",\"CLAUDE_CODE_OAUTH_REFRESH_TOKEN\",\"CLAUDE_CODE_OAUTH_SCOPES\",\"CLAUDE_CODE_OAUT",
+    "\"inference\"){if(a.ANTHROPIC_UNIX_SOCKET)return[];let r=a.ANTHROPIC_BASE_URL,s=a.CLAUDE_CODE_API_BASE_URL;if(e!==void 0){if($i(e))return[];if(e===r)return Ki(\"ANTHROPIC_BASE_URL\",r);if("
+   ],
+   "count": 12,
+   "env_access_like": 2
+  },
+  "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": {
+   "contexts": [
+    "Overrides, if it is a provider id of a model this version knows)..T.....$.Found CLAUDE_CODE_API_KEY_HELPER_TTL_MS env var, but it was not a valid number. Got !...b./.CLAUDE_CODE_API_KEY_HELPER_",
+    "_CODE_API_KEY_HELPER_TTL_MS env var, but it was not a valid number. Got !...b./.CLAUDE_CODE_API_KEY_HELPER_TTL_MS.........T.ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, CLAUDE_CODE_OAUTH_TOKEN, or ",
+    "=>Ho,CLAUDE_CODE_ACCOUNT_UUID:()=>bo,CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR:()=>wt,CLAUDE_CODE_API_KEY_HELPER_TTL_MS:()=>Lo,CLAUDE_CODE_AUTH_FAIL_EXIT_MS:()=>To,CLAUDE_CODE_AWS_CHAIN_RESOLVE_TIMEO",
+    "UTPUT_LENGTH\",\"BASH_MAX_TIMEOUT_MS\",\"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR\",\"CLAUDE_CODE_API_KEY_HELPER_TTL_MS\",\"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS\",\"CLAUDE_CODE_DISABLE_TERMINAL_TITLE\","
+   ],
+   "count": 7,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_ARTIFACTS_API_BASE_URL": {
+   "contexts": [
+    "....7...OTEL_METRICS_EXPORTER........g..CLAUDE_CODE_MEMORY_API_BASE_URL.\"...`X~.CLAUDE_CODE_ARTIFACTS_API_BASE_URL..#...7...CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL.\".......CLAUDE_CODE_ARTIFACT_LIVE_",
+    "MARIES:()=>SL,CLAUDE_CODE_APPEND_PROMPT_HEAD:()=>IL,CLAUDE_CODE_ARTIFACT:()=>UL,CLAUDE_CODE_ARTIFACTS_API_BASE_URL:()=>xL,CLAUDE_CODE_ARTIFACTS_API_TOKEN:()=>NL,CLAUDE_CODE_ARTIFACT_ASSET_BASE_U",
+    "ASE_URL\",\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\",\"ANTHROPIC_BEDROCK_MANTLE_BASE_URL\",\"CLAUDE_CODE_ARTIFACTS_API_BASE_URL\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL\",\"CLAUD"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_ARTIFACTS_API_TOKEN": {
+   "contexts": [
+    "fact_frame_relay.....x..bot_context_not_served......X.*.botContextNoted......o..CLAUDE_CODE_ARTIFACTS_API_TOKEN.....w(..tengu_cobalt_plinth_sorrel..........bodyText.....X|.no version........F",
+    "AD:()=>IL,CLAUDE_CODE_ARTIFACT:()=>UL,CLAUDE_CODE_ARTIFACTS_API_BASE_URL:()=>xL,CLAUDE_CODE_ARTIFACTS_API_TOKEN:()=>NL,CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL:()=>lL,CLAUDE_CODE_ARTIFACT_AUTO_OPE",
+    "_URL\",\"ANTHROPIC_BEDROCK_MANTLE_BASE_URL\",\"CLAUDE_CODE_ARTIFACTS_API_BASE_URL\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL\",\"CL",
+    "\"CCR_AGENT_PROXY_TOKEN_FILE_DESCRIPTOR\"],tnn=[\"CLAUDE_CODE_OAUTH_TOKEN\",...enn,\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"CLAUDE_CODE_HFI_BEARER_TOKEN\",\"CLAUDE_BRIDGE_OA"
+   ],
+   "count": 9,
+   "env_access_like": 3
+  },
+  "CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL": {
+   "contexts": [
+    "DE_CODE_MEMORY_API_BASE_URL.\"...`X~.CLAUDE_CODE_ARTIFACTS_API_BASE_URL..#...7...CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL.\".......CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL..\".......CLAUDE_CODE_ARTIFACT_SYNC_B",
+    "LAUDE_CODE_ARTIFACTS_API_BASE_URL:()=>xL,CLAUDE_CODE_ARTIFACTS_API_TOKEN:()=>NL,CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL:()=>lL,CLAUDE_CODE_ARTIFACT_AUTO_OPEN:()=>iL,CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL",
+    "SE_URL\",\"CLAUDE_CODE_ARTIFACTS_API_BASE_URL\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL\",\"CLA"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL": {
+   "contexts": [
+    "ODE_ARTIFACTS_API_BASE_URL..#...7...CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL.\".......CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL..\".......CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL..$...#...CLAUDE_CODE_ARTIFACT_VIEWE",
+    "LAUDE_CODE_ARTIFACT_ASSET_BASE_URL:()=>lL,CLAUDE_CODE_ARTIFACT_AUTO_OPEN:()=>iL,CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL:()=>PL,CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL:()=>ML,CLAUDE_CODE_ARTIFACT_VIEWER_BA",
+    "E_URL\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL\",.."
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL": {
+   "contexts": [
+    "ODE_ARTIFACT_ASSET_BASE_URL.\".......CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL..\".......CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL..$...#...CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL........CLAUDE_CODE_HFI_BEARER_TOK",
+    "CLAUDE_CODE_ARTIFACT_AUTO_OPEN:()=>iL,CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL:()=>PL,CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL:()=>ML,CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL:()=>aL,CLAUDE_CODE_ATTRIBUTION_STAT",
+    "EN\",\"CLAUDE_CODE_ARTIFACT_ASSET_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL\",...Gs],V3e=[{endpoint:\"ANTHROPIC_BASE_U"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL": {
+   "contexts": [
+    "ODE_ARTIFACT_LIVE_BASE_URL..\".......CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL..$...#...CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL........CLAUDE_CODE_HFI_BEARER_TOKEN!...$...AWS_EC2_METADATA_SERVICE_ENDPOINT...",
+    "DE_CODE_ARTIFACT_LIVE_BASE_URL:()=>PL,CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL:()=>ML,CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL:()=>aL,CLAUDE_CODE_ATTRIBUTION_STATUS_TIMEOUT_MS:()=>BL,CLAUDE_CODE_AUTO_COMPAC",
+    "URL\",\"CLAUDE_CODE_ARTIFACT_LIVE_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_SYNC_BASE_URL\",\"CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL\",...Gs],V3e=[{endpoint:\"ANTHROPIC_BASE_URL\",companions:[\"_CLAUDE_CODE_ASSUME_FI"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_GATEWAY_TOKEN": {
+   "contexts": [
+    "ODE_CONNECT_TIMEOUT_MS..%.....n.CLAUDE_CODE_ENABLE_OPUS_4_7_FAST_MODE........[o.CLAUDE_CODE_GATEWAY_TOKEN...%...|...CLAUDE_CODE_INSTALLED_VIA_NPM_WRAPPER...'....St.CLAUDE_CODE_OPUS_4_6_",
+    "AUDE_CODE_ENABLE_TELEMETRY\",\"CLAUDE_CODE_EXECPATH\",\"CLAUDE_CODE_FORCE_SANDBOX\",\"CLAUDE_CODE_GATEWAY_TOKEN\",\"CLAUDE_CODE_HTTPS_PROXY\",\"CLAUDE_CODE_HTTP_PROXY\",\"CLAUDE_CODE_INSTALLED_VIA_"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_GB_BASE_URL": {
+   "contexts": [
+    ".U..CLAUDE_LOCAL_OAUTH_APPS_BASE....x.|.CLAUDE_LOCAL_OAUTH_CONSOLE_BASE.......[.CLAUDE_CODE_GB_BASE_URL.........\\w*$....oBD.[object Boolean]....rM..[object Date]...........[object Map",
+    "AY_MODEL_DISCOVERY:()=>lx,CLAUDE_CODE_GATEWAY_MODEL_DISCOVERY_TIMEOUT_MS:()=>Px,CLAUDE_CODE_GB_BASE_URL:()=>Mx,CLAUDE_CODE_GB_REFRESH_INTERVAL_MS:()=>ax,CLAUDE_CODE_HOST_GATEWAY_LINEA",
+    "TH_TOKEN\",\"CLAUDE_BRIDGE_SESSION_INGRESS_URL\",\"CLAUDE_REMOTE_TOOLS_BRIDGE_URL\",\"CLAUDE_CODE_GB_BASE_URL\"].map((e)=>e.toUpperCase()));function pl(e){if(!e||!e.env&&!(\"managedMcpServers"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_HFI_BEARER_TOKEN": {
+   "contexts": [
+    "ODE_ARTIFACT_SYNC_BASE_URL..$...#...CLAUDE_CODE_ARTIFACT_VIEWER_BASE_URL........CLAUDE_CODE_HFI_BEARER_TOKEN!...$...AWS_EC2_METADATA_SERVICE_ENDPOINT...&...q...AWS_EC2_METADATA_SERVICE_END",
+    "DE_FEDERATION_CACHE_DIR:()=>Mo,CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR:()=>Xt,CLAUDE_CODE_HFI_BEARER_TOKEN:()=>vt,CLAUDE_CODE_HOST_AUTH_ENV_VAR:()=>_o,CLAUDE_CODE_HOST_AUTH_REFRESH_TIMEO",
+    "_TOKEN\",...enn,\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"CLAUDE_CODE_HFI_BEARER_TOKEN\",\"CLAUDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_TRUSTED_DEVICE_TOKEN\",\"AGENT_PROXY_AUTH_TO"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN": {
+   "contexts": [
+    "MODE.....Hx.CLAUDE_CODE_HOSTED_DESKTOP.......\"].VOICE_STREAM_BASE_URL... ...?.%.CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN.....)..CLAUDE_CODE_MCP_SERVE_SETTINGS..!....-..CLAUDE_CODE_REMOTE_SESSION_ORIGI",
+    "UDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_TRUSTED_DEVICE_TOKEN\",\"AGENT_PROXY_AUTH_TOKEN\",\"CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN\",\"CLAUDE_BG_AUTH_SNAPSHOT_PATH\",\"CLAUDE_BG_SOCKET_TOKENS_PATH\",\"CLAUDE_BG_RV_AU",
+    "_B64\",\"CCR_AGENT_PROXY_FRAME_HOSTS\",\"AGENT_PROXY_URL\",\"AGENT_PROXY_AUTH_TOKEN\",\"CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN\",\"CLAUDE_CODE_MCP_SERVE_SETTINGS\",\"CLAUDE_CODE_MCP_SERVE_TOOL_OUTPUT\",...[],\"CL",
+    "t/chunk-cj4xndke.js\";var e={};Mr(e,{CCR_AGENT_PROXY_TOKEN_FILE_DESCRIPTOR:()=>E,CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN:()=>r,CLAUDE_CODE_MCP_SERVE_SETTINGS:()=>t,CLAUDE_CODE_MCP_SERVE_TOOL_OUTPUT:()"
+   ],
+   "count": 6,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_MEMORY_API_BASE_URL": {
+   "contexts": [
+    "....lj..OTEL_EXPORTER_PROMETHEUS_PORT.......7...OTEL_METRICS_EXPORTER........g..CLAUDE_CODE_MEMORY_API_BASE_URL.\"...`X~.CLAUDE_CODE_ARTIFACTS_API_BASE_URL..#...7...CLAUDE_CODE_ARTIFACT_ASSET_",
+    "GLE_CLOUD\",\"ANTHROPIC_VERTEX_BASE_URL\",\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\"]},Gs=[\"CLAUDE_CODE_MEMORY_API_BASE_URL\",\"CLAUDE_CODE_MEMORY_API_TOKEN\"];function Axe(e){return Gs.includes(e)}var FF=["
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_MEMORY_API_TOKEN": {
+   "contexts": [
+    "ite through; the change is in memory only...........kelp_forest_sonnet........ .CLAUDE_CODE_MEMORY_API_TOKEN)........Claude configuration file not found at: .......\"...(unrecognized model ",
+    "URL\",\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\"]},Gs=[\"CLAUDE_CODE_MEMORY_API_BASE_URL\",\"CLAUDE_CODE_MEMORY_API_TOKEN\"];function Axe(e){return Gs.includes(e)}var FF=[\"ANTHROPIC_BASE_URL\",\"_CLAUDE_C",
+    "ANTHROPIC_API_KEY\",\"CLAUDE_CODE_OAUTH_TOKEN\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_MEMORY_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"ANTHROPIC_AUTH_TOKEN\",\"ANTHROPIC_FOUNDRY_API_KE",
+    "UTH_TOKEN\",\"CLAUDE_CODE_OAUTH_REFRESH_TOKEN\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_MEMORY_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"ANTHROPIC_FOUNDRY_API_KEY\",\"ANTHROPIC_FOUNDRY_A"
+   ],
+   "count": 5,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_MESSAGING_TOKEN": {
+   "contexts": [
+    "CTIONS......$...CLAUDE_CODE_EXECPATH....5.u.CLAUDE_CODE_COORDINATOR_MODE....P\\..CLAUDE_CODE_MESSAGING_TOKEN......Ar.CLAUDE_AX_SCREEN_READER......Vc.CLAUDE_CODE_SKIP_PROMPT_HISTORY.......B",
+    "UDE_CODE_ARTIFACT_PREVIEW_EMULATOR\",\"USER_TYPE\",\"CLAUDE_CODE_MESSAGING_SOCKET\",\"CLAUDE_CODE_MESSAGING_TOKEN\",\"CLAUDE_CODE_DISABLE_ADMIN_ENV_UNION\",\"CLAUDE_CODE_MANAGED_SETTINGS_PATH\",\"CLA",
+    "HOT_PATH\",\"CLAUDE_BG_SOCKET_TOKENS_PATH\",...enn,\"CLAUDE_CODE_MESSAGING_SOCKET\",\"CLAUDE_CODE_MESSAGING_TOKEN\",\"CLAUDE_CODE_DISABLE_ADMIN_ENV_UNION\",\"CLAUDE_CODE_DISABLE_DANGEROUS_RM_TIMEOU",
+    "FRESH_TOKEN\",\"CLAUDE_SESSION_INGRESS_TOKEN_FILE\",\"CLAUDE_CODE_HOST_CREDS_FILE\",\"CLAUDE_CODE_MESSAGING_TOKEN\",\"MCP_CLIENT_SECRET\",\"MCP_XAA_IDP_CLIENT_SECRET\",\"ENVIRONMENT_SERVICE_KEY\",\"SEL"
+   ],
+   "count": 11,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR": {
+   "contexts": [
+    "--session-tunnel!....y..the session tunnel's line of JSON.........\".null'...W0..CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR......z..[session tunnel] the line has ........%. OAuth token and ........... ag",
+    "ESH_TOKEN:()=>jt,CLAUDE_CODE_OAUTH_SCOPES:()=>zt,CLAUDE_CODE_OAUTH_TOKEN:()=>ut,CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR:()=>ht,CLAUDE_CODE_ORGANIZATION_UUID:()=>Go,CLAUDE_CODE_PROXY_AUTH_HELPER_TTL_M",
+    "ODEL_OPTION_NAME\",\"ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES\"],enn=[\"CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR\",\"CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR\",\"CLAUDE_CODE_API_KEY_FILE_DESCRIPT",
+    "(process.env[e]?.trim()??\"\")!==\"\"||bPo(e)}function vP(){return lWn(),y({envVar:\"CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR\",wellKnownPath:_xe,label:\"OAuth token\",getCached:Oq,setCached:LN,skipInReviewOr"
+   ],
+   "count": 27,
+   "env_access_like": 5
+  },
+  "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST": {
+   "contexts": [
+    "CLAUDE_CODE_ENTRYPOINT........^.isolation.......2...CLAUDE_BG_ISOLATION.$.....z.CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST.....]..selection.......j...endpoint.....2..companions......C...ANTHROPIC_AUTH_T",
+    "...{D..host-managed tombstone unreadable: ._.......Cannot destructure property 'CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST' from null or undefined value......:y.ack_timeout.\"....L!.bg: respawn dispatch ",
+    "AUDE_CODE_GB_REFRESH_INTERVAL_MS:()=>ax,CLAUDE_CODE_HOST_GATEWAY_LINEAGE:()=>px,CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST:()=>cx,CLAUDE_CODE_PROXY_RESOLVES_HOSTS:()=>Sx,CLAUDE_CODE_SIMULATE_PROXY_USAGE",
+    "=\"remote_cowork_trigger\"}function A0(){{let e=a.CLAUDE_CODE_ENTRYPOINT;return a.CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST&&a.CLAUDE_CODE_USE_GATEWAY&&(e!==void 0&&ORr.has(e)||d())}return!1}function MRr"
+   ],
+   "count": 48,
+   "env_access_like": 32
+  },
+  "CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH": {
+   "contexts": [
+    "H.......?T..ANTHROPIC_AWS_BASE_URL......(.#.ANTHROPIC_AWS_WORKSPACE_ID..#...x...CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH.....H...ANTHROPIC_GOOGLE_CLOUD_BASE_URL.#... ...ANTHROPIC_GOOGLE_CLOUD_WORKSPAC",
+    "LAUDE_CODE_SDK_HAS_OAUTH_REFRESH:()=>qt,CLAUDE_CODE_SESSION_ACCESS_TOKEN:()=>ro,CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH:()=>Uo,CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH:()=>io,CLAUDE_CODE_SKIP_AWS",
+    "\"ANTHROPIC_AWS_BASE_URL\",selection:\"CLAUDE_CODE_USE_ANTHROPIC_AWS\",companions:[\"CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH\",\"ANTHROPIC_CUSTOM_HEADERS\"]},{endpoint:\"ANTHROPIC_GOOGLE_CLOUD_BASE_URL\",selec",
+    "P_BEDROCK_AUTH\",\"CLAUDE_CODE_SKIP_VERTEX_AUTH\",\"CLAUDE_CODE_SKIP_FOUNDRY_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH\",\"CLAUDE_CODE_SKIP_MANTLE_AUTH\"]"
+   ],
+   "count": 9,
+   "env_access_like": 3
+  },
+  "CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH": {
+   "contexts": [
+    "ANTHROPIC_GOOGLE_CLOUD_PROJECT.......7..ANTHROPIC_GOOGLE_CLOUD_LOCATION.,....!..CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH!.....P.ANTHROPIC_BEDROCK_MANTLE_BASE_URL........u?.CLAUDE_CODE_SKIP_MANTLE_AUTH",
+    "UDE_CODE_SESSION_ACCESS_TOKEN:()=>ro,CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH:()=>Uo,CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH:()=>io,CLAUDE_CODE_SKIP_AWS_CRED_CACHE:()=>No,CLAUDE_CODE_SKIP_BEDROCK_AUTH:()=",
+    "CLOUD_BASE_URL\",selection:\"CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD\",companions:[\"CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH\",\"ANTHROPIC_CUSTOM_HEADERS\"]},{endpoint:\"ANTHROPIC_BEDROCK_MANTLE_BASE_URL\",sel",
+    "EX_AUTH\",\"CLAUDE_CODE_SKIP_FOUNDRY_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH\",\"CLAUDE_CODE_SKIP_MANTLE_AUTH\"],Vdt=[\"ANTHROPIC_MODEL\",\"ANTHROPIC_DEFAULT_MODE"
+   ],
+   "count": 10,
+   "env_access_like": 4
+  },
+  "CLAUDE_CODE_SKIP_AWS_CRED_CACHE": {
+   "contexts": [
+    "reToolHooks called for tool: .......t~..PreToolUse function-hook chain.......\"|.CLAUDE_CODE_SKIP_AWS_CRED_CACHE.+.....@.transcript storage folder creation failed (.)...P}..transcript storage ",
+    "P_ANTHROPIC_AWS_AUTH:()=>Uo,CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH:()=>io,CLAUDE_CODE_SKIP_AWS_CRED_CACHE:()=>No,CLAUDE_CODE_SKIP_BEDROCK_AUTH:()=>Ro,CLAUDE_CODE_SKIP_FOUNDRY_AUTH:()=>I",
+    "KeyId,secretAccessKey:y.secretAccessKey,sessionToken:y.sessionToken};else if(!a.CLAUDE_CODE_SKIP_AWS_CRED_CACHE)h.credentials=async(S)=>(await zbe(n))(S)}return new e(h)}async function Nws(){",
+    "KeyId,secretAccessKey:y.secretAccessKey,sessionToken:y.sessionToken};else if(!a.CLAUDE_CODE_SKIP_AWS_CRED_CACHE)h.credentials=async(S)=>(await zbe(n))(S)}return new e(h)}async function mUn(e,"
+   ],
+   "count": 8,
+   "env_access_like": 6
+  },
+  "CLAUDE_CODE_SKIP_BEDROCK_AUTH": {
+   "contexts": [
+    ".|G.ANTHROPIC_BEDROCK_BASE_URL........V.ANTHROPIC_BEDROCK_SERVICE_TIER.......2|.CLAUDE_CODE_SKIP_BEDROCK_AUTH.........S.ANTHROPIC_VERTEX_BASE_URL.......D...CLAUDE_CODE_SKIP_VERTEX_AUTH.....",
+    "_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH:()=>io,CLAUDE_CODE_SKIP_AWS_CRED_CACHE:()=>No,CLAUDE_CODE_SKIP_BEDROCK_AUTH:()=>Ro,CLAUDE_CODE_SKIP_FOUNDRY_AUTH:()=>Io,CLAUDE_CODE_SKIP_MANTLE_AUTH:()=>xo",
+    "t:\"ANTHROPIC_BEDROCK_BASE_URL\",selection:\"CLAUDE_CODE_USE_BEDROCK\",companions:[\"CLAUDE_CODE_SKIP_BEDROCK_AUTH\",\"ANTHROPIC_CUSTOM_HEADERS\"]},{endpoint:\"ANTHROPIC_VERTEX_BASE_URL\",selection:\"",
+    "_FOUNDRY_API_KEY\",\"ANTHROPIC_FOUNDRY_AUTH_TOKEN\",\"ANTHROPIC_AWS_API_KEY\"],$Wn=[\"CLAUDE_CODE_SKIP_BEDROCK_AUTH\",\"CLAUDE_CODE_SKIP_VERTEX_AUTH\",\"CLAUDE_CODE_SKIP_FOUNDRY_AUTH\",\"CLAUDE_CODE_SK"
+   ],
+   "count": 14,
+   "env_access_like": 9
+  },
+  "CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS": {
+   "contexts": [
+    "nguins_off..........sdk_opt_in_required.....Am..fastModePerSessionOptIn.)....|..CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS........1x.familySpellingVerdicts..5.......Auto mode classifier: ANTHROPIC_DEFAU",
+    ")=>bU,CLAUDE_CODE_MODEL_CATALOG_URL:()=>HU,CLAUDE_CODE_NO_MODEL_FALLBACK:()=>SU,CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS:()=>MU,CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK:()=>aU,CLAUDE_CODE_SKIP_MODEL_ACCES",
+    "abled\"&&(!Xs()||Gc.orgStatus.source===\"server\")){if(iy(Gc.orgStatus.reason)&&(a.CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS&&!$n()||h))return null;return Gc.orgStatus.reason}return null}function d7(e,n={"
+   ],
+   "count": 3,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK": {
+   "contexts": [
+    "a no, from a listener it is ignored......Q..(?:\"[^\"]*\"|'[^']*'|[^\\s\"'])+$...k2,.CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK.....S..opusplan upgrade....>F..haiku plan upgrade..........stepDown.....Ks.Plan",
+    "_CODE_NO_MODEL_FALLBACK:()=>SU,CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS:()=>MU,CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK:()=>aU,CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY:()=>nU,CLAUDE_CODE_SUBAGENT_MODEL:(",
+    "CODE_DISABLE_FAST_MODE}function Jh(){return yIt()||Cwr()}function Xs(){return a.CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK&&!$n()}function QYe(){return Qo()&&cWn()}function Rd(){return If()||QYe()&&v7(\""
+   ],
+   "count": 3,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_SKIP_FOUNDRY_AUTH": {
+   "contexts": [
+    ".....0o.ANTHROPIC_FOUNDRY_BASE_URL.......w..ANTHROPIC_FOUNDRY_RESOURCE..........CLAUDE_CODE_SKIP_FOUNDRY_AUTH.......?T..ANTHROPIC_AWS_BASE_URL......(.#.ANTHROPIC_AWS_WORKSPACE_ID..#...x...C",
+    ">io,CLAUDE_CODE_SKIP_AWS_CRED_CACHE:()=>No,CLAUDE_CODE_SKIP_BEDROCK_AUTH:()=>Ro,CLAUDE_CODE_SKIP_FOUNDRY_AUTH:()=>Io,CLAUDE_CODE_SKIP_MANTLE_AUTH:()=>xo,CLAUDE_CODE_SKIP_VERTEX_AUTH:()=>So,",
+    "t:\"ANTHROPIC_FOUNDRY_BASE_URL\",selection:\"CLAUDE_CODE_USE_FOUNDRY\",companions:[\"CLAUDE_CODE_SKIP_FOUNDRY_AUTH\",\"ANTHROPIC_CUSTOM_HEADERS\"]},{endpoint:\"ANTHROPIC_AWS_BASE_URL\",selection:\"CLA",
+    "_API_KEY\"],$Wn=[\"CLAUDE_CODE_SKIP_BEDROCK_AUTH\",\"CLAUDE_CODE_SKIP_VERTEX_AUTH\",\"CLAUDE_CODE_SKIP_FOUNDRY_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD"
+   ],
+   "count": 7,
+   "env_access_like": 2
+  },
+  "CLAUDE_CODE_SKIP_HFI_VERSION_CHECK": {
+   "contexts": [
+    "CLAUDE_MOCK_HEADERLESS_429..\".....!.CLAUDE_CODE_GB_REFRESH_INTERVAL_MS..\".......CLAUDE_CODE_SKIP_HFI_VERSION_CHECK......<...CLAUDE_GATEWAY_ALLOW_LOOPBACK.......9.z.CLAUDE_GATEWAY_DRAIN_TIMEOUT_M",
+    "CLAUDE_CODE_PROXY_RESOLVES_HOSTS:()=>Sx,CLAUDE_CODE_SIMULATE_PROXY_USAGE:()=>Rx,CLAUDE_CODE_SKIP_HFI_VERSION_CHECK:()=>wx,CLAUDE_CODE_USE_ANTHROPIC_AWS:()=>mi,CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CL"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_SKIP_MANTLE_AUTH": {
+   "contexts": [
+    "_ANTHROPIC_GOOGLE_CLOUD_AUTH!.....P.ANTHROPIC_BEDROCK_MANTLE_BASE_URL........u?.CLAUDE_CODE_SKIP_MANTLE_AUTH....z...NODE_EXTRA_CA_CERTS......P5., merged)...A....wS.Cannot destructure prope",
+    ")=>No,CLAUDE_CODE_SKIP_BEDROCK_AUTH:()=>Ro,CLAUDE_CODE_SKIP_FOUNDRY_AUTH:()=>Io,CLAUDE_CODE_SKIP_MANTLE_AUTH:()=>xo,CLAUDE_CODE_SKIP_VERTEX_AUTH:()=>So,CLAUDE_CODE_SUBSCRIPTION_TYPE:()=>Fo",
+    "HROPIC_BEDROCK_MANTLE_BASE_URL\",selection:\"CLAUDE_CODE_USE_MANTLE\",companions:[\"CLAUDE_CODE_SKIP_MANTLE_AUTH\",\"ANTHROPIC_CUSTOM_HEADERS\"]}],rUe=D(V3e.flatMap((e)=>[e.endpoint,...e.companio",
+    "E_CODE_SKIP_ANTHROPIC_AWS_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_GOOGLE_CLOUD_AUTH\",\"CLAUDE_CODE_SKIP_MANTLE_AUTH\"],Vdt=[\"ANTHROPIC_MODEL\",\"ANTHROPIC_DEFAULT_MODEL\",\"ANTHROPIC_DEFAULT_FABLE_MOD"
+   ],
+   "count": 12,
+   "env_access_like": 6
+  },
+  "CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY": {
+   "contexts": [
+    "n...........provider-probe-verdicts.json..... .. not used this start: ..$.......CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY........ (remembered).......UBf.rememberedAt........not switching to it.9...;...",
+    "KIP_FAST_MODE_NETWORK_ERRORS:()=>MU,CLAUDE_CODE_SKIP_FAST_MODE_ORG_CHECK:()=>aU,CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY:()=>nU,CLAUDE_CODE_SUBAGENT_MODEL:()=>OU,CLAUDE_CODE_SUBAGENT_MODEL_FORCE:()=>T",
+    "s/hooks-worker/hooks-worker.js\",DD_SOURCEMAP_GROUP:\"default\"}.VERSION){try{if(a.CLAUDE_CODE_SKIP_MODEL_ACCESS_MEMORY||be())return;let d=e===\"vertex\"?await j():await L();if(d===void 0)return;let s="
+   ],
+   "count": 3,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS": {
+   "contexts": [
+    "e text summary...*...H...Skipping plugin MCP server discovery for \"......(-&.\" (CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS is set).......K..Loading MCP servers for \"...g...Ai..\" despite CLAUDE_CODE_SKIP",
+    "UGIN_MCP_SERVERS is set).......K..Loading MCP servers for \"...g...Ai..\" despite CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS (exempted via CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT).;.......Skipping MCP ",
+    ".7V.Dropped MCP server \"........\" of plugin .....f.. transport type \"...#...6.u.CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS.j...q.{.WorktreeCreate hook failed: hook is configured but did not run (workspa",
+    "LAUDE_CODE_SILENT_TURN_REMINDER_TURNS:()=>Ws,CLAUDE_CODE_SKILL_PROPOSALS:()=>Dn,CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS:()=>An,CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT:()=>On,CLAUDE_CODE_SKIP_PROJE"
+   ],
+   "count": 7,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT": {
+   "contexts": [
+    "a.c.e. .6...!...cannot match them. Use the clamped Bash forms instead...*...../.CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT........A.foreignBlocks........+..overlongToolNames...I....Zv.Cannot destructure",
+    "ers for \"...g...Ai..\" despite CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS (exempted via CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT).;.......Skipping MCP server discovery for claude.ai-synced plugin \".....7...\":",
+    "s,CLAUDE_CODE_SKILL_PROPOSALS:()=>Dn,CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS:()=>An,CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT:()=>On,CLAUDE_CODE_SKIP_PROJECT_BACKFILL:()=>Tn,CLAUDE_CODE_SKIP_PROMPT_HISTORY",
+    "urce:G,plugin:e.name,mcpbPath:S,reason:H});return null}}function RUo(e){let n=a.CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT;if(!n)return!1;let r=!JW(e);return n.split(\",\").some((s)=>{let h=s.trim();if(!h"
+   ],
+   "count": 5,
+   "env_access_like": 1
+  },
+  "CLAUDE_CODE_SKIP_PROJECT_BACKFILL": {
+   "contexts": [
+    "LE_BACKGROUND_PLUGIN_REFRESH\".......CLAUDE_CODE_ENABLE_LAUNCH_COMPOSER..!.....x.CLAUDE_CODE_SKIP_PROJECT_BACKFILL........ks.CLAUDE_CODE_SKIP_REPO_UPLOAD.....w..CLAUDE_CODE_TAG_ISMETA_MESSAGES. ",
+    "KIP_PLUGIN_MCP_SERVERS:()=>An,CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS_EXCEPT:()=>On,CLAUDE_CODE_SKIP_PROJECT_BACKFILL:()=>Tn,CLAUDE_CODE_SKIP_PROMPT_HISTORY:()=>Ln,CLAUDE_CODE_SKIP_REPO_UPLOAD:()=>"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_SKIP_PROMPT_HISTORY": {
+   "contexts": [
+    "MODE....P\\..CLAUDE_CODE_MESSAGING_TOKEN......Ar.CLAUDE_AX_SCREEN_READER......Vc.CLAUDE_CODE_SKIP_PROMPT_HISTORY.......B.TMUX_PANE...\"...>5..CLAUDE_CODE_RELAUNCH_TERMINAL_SIZE..........CLAUDE_",
+    "_SKIP_PLUGIN_MCP_SERVERS_EXCEPT:()=>On,CLAUDE_CODE_SKIP_PROJECT_BACKFILL:()=>Tn,CLAUDE_CODE_SKIP_PROMPT_HISTORY:()=>Ln,CLAUDE_CODE_SKIP_REPO_UPLOAD:()=>cn,CLAUDE_CODE_SNAPPY_PELICAN:()=>AE,CL",
+    "3e(){if(a.CLAUDE_CODE_CHILD_SESSION)return!0;if(!a.CLAUDECODE)return!1;return a.CLAUDE_CODE_SKIP_PROMPT_HISTORY||!process.stdin.isTTY&&!process.stdout.isTTY}function I2s(e){n().setAmbientMark",
+    ".size>0)await Promise.all(this.pendingPasteWrites)}add(e,n,r){if(Ne(process.env.CLAUDE_CODE_SKIP_PROMPT_HISTORY)||y3e())return;if(this.isSensitive(typeof e===\"string\"?{display:e,pastedContent"
+   ],
+   "count": 9,
+   "env_access_like": 5
+  },
+  "CLAUDE_CODE_SKIP_REPO_UPLOAD": {
+   "contexts": [
+    "ODE_ENABLE_LAUNCH_COMPOSER..!.....x.CLAUDE_CODE_SKIP_PROJECT_BACKFILL........ks.CLAUDE_CODE_SKIP_REPO_UPLOAD.....w..CLAUDE_CODE_TAG_ISMETA_MESSAGES. ...l(;.CLAUDE_CODE_TWO_STAGE_CLASSIFIER",
+    "CLAUDE_CODE_SKIP_PROJECT_BACKFILL:()=>Tn,CLAUDE_CODE_SKIP_PROMPT_HISTORY:()=>Ln,CLAUDE_CODE_SKIP_REPO_UPLOAD:()=>cn,CLAUDE_CODE_SNAPPY_PELICAN:()=>AE,CLAUDE_CODE_SQUISHY_NEWT:()=>IE,CLAUDE"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_SKIP_VERTEX_AUTH": {
+   "contexts": [
+    ".2|.CLAUDE_CODE_SKIP_BEDROCK_AUTH.........S.ANTHROPIC_VERTEX_BASE_URL.......D...CLAUDE_CODE_SKIP_VERTEX_AUTH.....0o.ANTHROPIC_FOUNDRY_BASE_URL.......w..ANTHROPIC_FOUNDRY_RESOURCE..........",
+    "()=>Ro,CLAUDE_CODE_SKIP_FOUNDRY_AUTH:()=>Io,CLAUDE_CODE_SKIP_MANTLE_AUTH:()=>xo,CLAUDE_CODE_SKIP_VERTEX_AUTH:()=>So,CLAUDE_CODE_SUBSCRIPTION_TYPE:()=>Fo,CLAUDE_CODE_USER_EMAIL:()=>mo,CLAUD",
+    "int:\"ANTHROPIC_VERTEX_BASE_URL\",selection:\"CLAUDE_CODE_USE_VERTEX\",companions:[\"CLAUDE_CODE_SKIP_VERTEX_AUTH\",\"ANTHROPIC_CUSTOM_HEADERS\"]},{endpoint:\"ANTHROPIC_FOUNDRY_BASE_URL\",selection:",
+    "NDRY_AUTH_TOKEN\",\"ANTHROPIC_AWS_API_KEY\"],$Wn=[\"CLAUDE_CODE_SKIP_BEDROCK_AUTH\",\"CLAUDE_CODE_SKIP_VERTEX_AUTH\",\"CLAUDE_CODE_SKIP_FOUNDRY_AUTH\",\"CLAUDE_CODE_SKIP_ANTHROPIC_AWS_AUTH\",\"CLAUDE_"
+   ],
+   "count": 14,
+   "env_access_like": 8
+  },
+  "CLAUDE_CODE_SLACK_TAG_TOKEN": {
+   "contexts": [
+    "..y.GLOBSORT........PATH_LOCALE.......M./usr/bin:/bin:/usr/sbin:/sbin...........CLAUDE_CODE_SLACK_TAG_TOKEN.........GOOGLE_GHA_CREDS_PATH........*y.AZURE_CLIENT_SECRET....._...IDENTITY_HE",
+    "PTOR\"],tnn=[\"CLAUDE_CODE_OAUTH_TOKEN\",...enn,\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"CLAUDE_CODE_HFI_BEARER_TOKEN\",\"CLAUDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_TRUSTED_DEV",
+    "_OAUTH_TOKEN\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_MEMORY_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"ANTHROPIC_AUTH_TOKEN\",\"ANTHROPIC_FOUNDRY_API_KEY\",\"ANTHROPIC_FOUNDRY_AUTH_TOK",
+    "EFRESH_TOKEN\",\"CLAUDE_CODE_ARTIFACTS_API_TOKEN\",\"CLAUDE_CODE_MEMORY_API_TOKEN\",\"CLAUDE_CODE_SLACK_TAG_TOKEN\",\"ANTHROPIC_FOUNDRY_API_KEY\",\"ANTHROPIC_FOUNDRY_AUTH_TOKEN\",\"ANTHROPIC_AWS_API_"
+   ],
+   "count": 4,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_USE_ANTHROPIC_AWS": {
+   "contexts": [
+    "BEDROCK.....*[..CLAUDE_CODE_USE_VERTEX..........CLAUDE_CODE_USE_FOUNDRY......._.CLAUDE_CODE_USE_ANTHROPIC_AWS...&...)...CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD......>...ANTHROPIC_DEFAULT_SON",
+    "//code.claude.com/docs/en/microsoft-foundry)t....Y..Claude Platform on AWS: set CLAUDE_CODE_USE_ANTHROPIC_AWS=1 (https://code.claude.com/docs/en/claude-platform-on-aws)........the Cloud gat",
+    "LAUDE_CODE_USE_VERTEX)||Ne(process.env.CLAUDE_CODE_USE_FOUNDRY)||Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_AWS)||Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD)||Ne(process.env.CLAUDE",
+    "AUDE_CODE_SIMULATE_PROXY_USAGE:()=>Rx,CLAUDE_CODE_SKIP_HFI_VERSION_CHECK:()=>wx,CLAUDE_CODE_USE_ANTHROPIC_AWS:()=>mi,CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD:()=>Fi,CLAUDE_CODE_USE_BEDROCK:()"
+   ],
+   "count": 20,
+   "env_access_like": 4
+  },
+  "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD": {
+   "contexts": [
+    "........CLAUDE_CODE_USE_FOUNDRY......._.CLAUDE_CODE_USE_ANTHROPIC_AWS...&...)...CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD......>...ANTHROPIC_DEFAULT_SONNET_MODEL......U.\\.ANTHROPIC_DEFAULT_OPUS_MODEL..",
+    "ODE_USE_FOUNDRY)||Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_AWS)||Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD)||Ne(process.env.CLAUDE_CODE_USE_MANTLE)||process.env.DISABLE_ERROR_REPORTING||",
+    ",CLAUDE_CODE_SKIP_HFI_VERSION_CHECK:()=>wx,CLAUDE_CODE_USE_ANTHROPIC_AWS:()=>mi,CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD:()=>Fi,CLAUDE_CODE_USE_BEDROCK:()=>bi,CLAUDE_CODE_USE_FOUNDRY:()=>Gi,CLAUDE_COD",
+    "USE_FOUNDRY\",anthropicAws:\"CLAUDE_CODE_USE_ANTHROPIC_AWS\",anthropicGoogleCloud:\"CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD\",mantle:\"CLAUDE_CODE_USE_MANTLE\",vertex:\"CLAUDE_CODE_USE_VERTEX\"};function BTr("
+   ],
+   "count": 18,
+   "env_access_like": 4
+  },
+  "CLAUDE_CODE_USE_BEDROCK": {
+   "contexts": [
+    "ception.........accessKey.......!...discoveredProfiles.......!..bearer......qw..CLAUDE_CODE_USE_BEDROCK.....*[..CLAUDE_CODE_USE_VERTEX..........CLAUDE_CODE_USE_FOUNDRY......._.CLAUDE_",
+    "e (allowedProviders). Contact your administrator....s.......Amazon Bedrock: set CLAUDE_CODE_USE_BEDROCK=1 with AWS credentials (https://code.claude.com/docs/en/amazon-bedrock)........",
+    "unction ECo(t){b8e.attachSink(t)}function c(t){let e=W(t);try{if(Ne(process.env.CLAUDE_CODE_USE_BEDROCK)||Ne(process.env.CLAUDE_CODE_USE_VERTEX)||Ne(process.env.CLAUDE_CODE_USE_FOUNDR",
+    "UDE_CODE_USE_ANTHROPIC_AWS:()=>mi,CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD:()=>Fi,CLAUDE_CODE_USE_BEDROCK:()=>bi,CLAUDE_CODE_USE_FOUNDRY:()=>Gi,CLAUDE_CODE_USE_GATEWAY:()=>Ix,CLAUDE_COD"
+   ],
+   "count": 22,
+   "env_access_like": 6
+  },
+  "CLAUDE_CODE_USE_CCR_V2": {
+   "contexts": [
+    "........CLAUDE_RUNNER_CLAUDE_BIN....D`q.CLAUDE_CODE_REMOTE_SESSION_UUID.....J...CLAUDE_CODE_USE_CCR_V2........Q.gitConfig.......7...ghPathShim.......B..hostSplit...\"...X...SELF_HOSTE",
+    "base_url.includes(\"staging\")?{USE_STAGING_OAUTH:\"1\"}:{USE_STAGING_OAUTH:void 0},CLAUDE_CODE_USE_CCR_V2:\"1\",CLAUDE_CODE_AGENT_PROXY_GIT_CONFIG:k?.toolConfig.gitConfig?\"1\":void 0,CLAUD",
+    "E_SESSION_UUID\",\"CLAUDE_CODE_SPAWNED_BY_SERVER\",\"CLAUDE_CODE_TEAMMATE_COMMAND\",\"CLAUDE_CODE_USE_CCR_V2\"]);function pn(n){let e=new Set([...Object.keys(a),...Object.keys(Yn),...Object"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_USE_COWORK_PLUGINS": {
+   "contexts": [
+    "....next_response.......Y <.sender stopped: ......=.tengu_zinc_harbor...6.......CLAUDE_CODE_USE_COWORK_PLUGINS makes Claude Code read ......1...no tool calls yet.......T...last tool call ...",
+    "ATH.....>.&.DYLD_VERSIONED_FRAMEWORK_PATH...........OPENSSL_CONF_INCLUDE........CLAUDE_CODE_USE_COWORK_PLUGINS.......w..[*?[\\]{}]...........PYTHONPATH......H.'.NODE_PATH.......~...RUBYLIB...",
+    ":()=>ln,CLAUDE_CODE_TURN_UPDATES:()=>fs,CLAUDE_CODE_TWO_STAGE_CLASSIFIER:()=>Pn,CLAUDE_CODE_USE_COWORK_PLUGINS:()=>Mn,CLAUDE_CODE_USE_NATIVE_FILE_SEARCH:()=>an,CLAUDE_CODE_USE_POWERSHELL_TOO",
+    "tings.json\",cowork:\"cowork_settings.json\"};function k_(e){if(e.coworkPlugins||a.CLAUDE_CODE_USE_COWORK_PLUGINS)return $v.cowork;return $v.default}function Mz(e,n){switch(e){case\"userSettings"
+   ],
+   "count": 7,
+   "env_access_like": 2
+  },
+  "CLAUDE_CODE_USE_FOUNDRY": {
+   "contexts": [
+    "bearer......qw..CLAUDE_CODE_USE_BEDROCK.....*[..CLAUDE_CODE_USE_VERTEX..........CLAUDE_CODE_USE_FOUNDRY......._.CLAUDE_CODE_USE_ANTHROPIC_AWS...&...)...CLAUDE_CODE_USE_ANTHROPIC_GOOGL",
+    "ttps://code.claude.com/docs/en/google-vertex-ai).d....i..Microsoft Foundry: set CLAUDE_CODE_USE_FOUNDRY=1 (https://code.claude.com/docs/en/microsoft-foundry)t....Y..Claude Platform on",
+    "LAUDE_CODE_USE_BEDROCK)||Ne(process.env.CLAUDE_CODE_USE_VERTEX)||Ne(process.env.CLAUDE_CODE_USE_FOUNDRY)||Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_AWS)||Ne(process.env.CLAUDE_CODE_USE",
+    "mi,CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD:()=>Fi,CLAUDE_CODE_USE_BEDROCK:()=>bi,CLAUDE_CODE_USE_FOUNDRY:()=>Gi,CLAUDE_CODE_USE_GATEWAY:()=>Ix,CLAUDE_CODE_USE_MANTLE:()=>di,CLAUDE_CODE"
+   ],
+   "count": 17,
+   "env_access_like": 2
+  },
+  "CLAUDE_CODE_USE_GATEWAY": {
+   "contexts": [
+    "parked_source.......v.!.holder_kind......!..lineage.......X.providerEnv.....z.A.CLAUDE_CODE_USE_GATEWAY.......T.resumeTranscriptPath........probe_ms......x.kill_ms.....c{Z.transcript_",
+    " gateway requirement...........This session is set up for a ...Y....9?. because CLAUDE_CODE_USE_GATEWAY is set with ANTHROPIC_BASE_URL and ANTHROPIC_AUTH_TOKEN....\".....A. because you",
+    "THROPIC_AUTH_TOKEN....\".....A. because you are signed in to one...5.....].unset CLAUDE_CODE_USE_GATEWAY, then run claude again..../....3D.run: claude auth logout, then run claude agai",
+    " on usage credits at ...'...hk..ask your admin to turn on usage credits.#....^E.CLAUDE_CODE_USE_GATEWAY is set but .........ANTHROPIC_BASE_URL is missing...G....&..no ANTHROPIC_AUTH_T"
+   ],
+   "count": 30,
+   "env_access_like": 3
+  },
+  "CLAUDE_CODE_USE_MANTLE": {
+   "contexts": [
+    "....E...KSn.....J...Uxt.........Wpt.....'...serviceAccount......?... = .....W...CLAUDE_CODE_USE_MANTLE........d.projectId...........CLOUD_ML_REGION.....h.G.Set up Google Vertex AI.J.",
+    "IC_AWS)||Ne(process.env.CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD)||Ne(process.env.CLAUDE_CODE_USE_MANTLE)||process.env.DISABLE_ERROR_REPORTING||Tt())return;let s={error:A0t(e),timestam",
+    "SE_BEDROCK:()=>bi,CLAUDE_CODE_USE_FOUNDRY:()=>Gi,CLAUDE_CODE_USE_GATEWAY:()=>Ix,CLAUDE_CODE_USE_MANTLE:()=>di,CLAUDE_CODE_USE_VERTEX:()=>Hi,CLAUDE_GATEWAY_ALLOW_LOOPBACK:()=>Ux,CLAUD",
+    "OPIC_AWS\",anthropicGoogleCloud:\"CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD\",mantle:\"CLAUDE_CODE_USE_MANTLE\",vertex:\"CLAUDE_CODE_USE_VERTEX\"};function BTr(e){switch(e){case\"firstParty\":re"
+   ],
+   "count": 18,
+   "env_access_like": 5
+  },
+  "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH": {
+   "contexts": [
+    "CLAUDE_CODE_TAG_ISMETA_MESSAGES. ...l(;.CLAUDE_CODE_TWO_STAGE_CLASSIFIER\".......CLAUDE_CODE_USE_NATIVE_FILE_SEARCH.......)..CLAUDE_IMPORT_CONVERSATIONS......nj.CLAUDE_RUNNER_DISABLE_AWAITING_ACT",
+    "s,CLAUDE_CODE_TWO_STAGE_CLASSIFIER:()=>Pn,CLAUDE_CODE_USE_COWORK_PLUGINS:()=>Mn,CLAUDE_CODE_USE_NATIVE_FILE_SEARCH:()=>an,CLAUDE_CODE_USE_POWERSHELL_TOOL:()=>Bn,CLAUDE_CODE_WEBFETCH_CACHE_TTL_MS"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CLAUDE_CODE_USE_POWERSHELL_TOOL": {
+   "contexts": [
+    "uires a shell tool. Git Bash was not found and the PowerShell tool is disabled (CLAUDE_CODE_USE_POWERSHELL_TOOL=0)..  - Install Git for Windows: https://git-scm.com/downloads/win, or.  - Remo",
+    "..  - Install Git for Windows: https://git-scm.com/downloads/win, or.  - Remove CLAUDE_CODE_USE_POWERSHELL_TOOL from your environment or settings...........shell_tool_missing......?...init_sc",
+    "lso turns off the %...[... tool, so Claude has neither. To use ...(...R.)., set CLAUDE_CODE_USE_POWERSHELL_TOOL=1.$.......tengu_ant_overly_broad_bash_detected......<.Ignoring --allowedTools X",
+    "bleBypassPermissionsMode......N.hostFiles........C..strictPersistedTrust....`.Z.CLAUDE_CODE_USE_POWERSHELL_TOOL.........yoloEquivEnabled........willStrip...D....m..Cannot destructure property"
+   ],
+   "count": 16,
+   "env_access_like": 3
+  },
+  "CLAUDE_CODE_USE_VERTEX": {
+   "contexts": [
+    "!...discoveredProfiles.......!..bearer......qw..CLAUDE_CODE_USE_BEDROCK.....*[..CLAUDE_CODE_USE_VERTEX..........CLAUDE_CODE_USE_FOUNDRY......._.CLAUDE_CODE_USE_ANTHROPIC_AWS...&...).",
+    " (https://code.claude.com/docs/en/amazon-bedrock).........Google Vertex AI: set CLAUDE_CODE_USE_VERTEX=1 with Google Cloud credentials (https://code.claude.com/docs/en/google-vertex-",
+    " c(t){let e=W(t);try{if(Ne(process.env.CLAUDE_CODE_USE_BEDROCK)||Ne(process.env.CLAUDE_CODE_USE_VERTEX)||Ne(process.env.CLAUDE_CODE_USE_FOUNDRY)||Ne(process.env.CLAUDE_CODE_USE_ANTHR",
+    "USE_FOUNDRY:()=>Gi,CLAUDE_CODE_USE_GATEWAY:()=>Ix,CLAUDE_CODE_USE_MANTLE:()=>di,CLAUDE_CODE_USE_VERTEX:()=>Hi,CLAUDE_GATEWAY_ALLOW_LOOPBACK:()=>Ux,CLAUDE_GATEWAY_DRAIN_TIMEOUT_MS:()="
+   ],
+   "count": 23,
+   "env_access_like": 7
+  },
+  "CLAUDE_RUNNER_API_BASE_URL": {
+   "contexts": [
+    "DE_SESSION_ACCESS_TOKEN is unset\\....I[.code-sign: ANTHROPIC_BASE_URL (child) / CLAUDE_RUNNER_API_BASE_URL (lifecycle hook) is unset....r...utf8.....Q=.git_repository......<.../v1/code/s",
+    "ION_ACCESS_TOKEN....B/..ANTHROPIC_BASE_URL........g.SESSION_INGRESS_URL.........CLAUDE_RUNNER_API_BASE_URL..........JSON.....~..stringify.........^.contents.....Uk.source......w...git_ob",
+    "SION_ACCESS_TOKEN,t=(n.env.ANTHROPIC_BASE_URL||n.env.SESSION_INGRESS_URL||n.env.CLAUDE_RUNNER_API_BASE_URL||\"\").replace(/\\/+$/,\"\");if(!i||!oe.test(i))throw Error(\"code-sign: CLAUDE_CODE_",
+    "ESS_TOKEN is unset\");if(!t)throw Error(\"code-sign: ANTHROPIC_BASE_URL (child) / CLAUDE_RUNNER_API_BASE_URL (lifecycle hook) is unset\");let s=await ee(e.bufferFile,\"utf8\"),r=await me(),g="
+   ],
+   "count": 6,
+   "env_access_like": 1
+  },
+  "CLAUDE_TRUSTED_DEVICE_TOKEN": {
+   "contexts": [
+    "estructure property 'isClaudeAISubscriber' from null or undefined value.....n\\W.CLAUDE_TRUSTED_DEVICE_TOKEN.......X.enrolls.*....G..Nothing was sent: Remote Control session '......[... un",
+    "}#.[trusted-device] Proactive enrollment disabled via .k...eTH.[trusted-device] CLAUDE_TRUSTED_DEVICE_TOKEN env var is set, skipping enrollment (env var takes precedence).....7(..server_d",
+    "CLAUDE_LOCAL_OAUTH_CONSOLE_BASE:()=>Ao,CLAUDE_SESSION_INGRESS_TOKEN_FILE:()=>Zt,CLAUDE_TRUSTED_DEVICE_TOKEN:()=>so,CLOUDSDK_AUTH_ACCESS_TOKEN:()=>Wt,ENVIRONMENT_SERVICE_KEY:()=>gt,MCP_CLI",
+    "DE_SLACK_TAG_TOKEN\",\"CLAUDE_CODE_HFI_BEARER_TOKEN\",\"CLAUDE_BRIDGE_OAUTH_TOKEN\",\"CLAUDE_TRUSTED_DEVICE_TOKEN\",\"AGENT_PROXY_AUTH_TOKEN\",\"CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN\",\"CLAUDE_BG_AUTH_SN"
+   ],
+   "count": 10,
+   "env_access_like": 5
+  },
+  "CLOUDPROVIDERVALUES_ALIBABA_CLOUD": {
+   "contexts": [
+    "SEMRESATTRS_WEBENGINE_DESCRIPTION.......X...SemanticResourceAttributes..!...2...CLOUDPROVIDERVALUES_ALIBABA_CLOUD...........CLOUDPROVIDERVALUES_AWS......Q_.CLOUDPROVIDERVALUES_AZURE.......!Gr.C",
+    "UDPROVIDERVALUES_GCP=US.CLOUDPROVIDERVALUES_AZURE=US.CLOUDPROVIDERVALUES_AWS=US.CLOUDPROVIDERVALUES_ALIBABA_CLOUD=US.SemanticResourceAttributes=US.SEMRESATTRS_WEBENGINE_DESCRIPTION=US.SEMRESATT",
+    "E,ME,PE,DE,xE,LE,UE,VE]);var jE=\"alibaba_cloud\",GE=\"aws\",BE=\"azure\",HE=\"gcp\";US.CLOUDPROVIDERVALUES_ALIBABA_CLOUD=jE;US.CLOUDPROVIDERVALUES_AWS=GE;US.CLOUDPROVIDERVALUES_AZURE=BE;US.CLOUDPROVID"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "CLOUDPROVIDERVALUES_AWS": {
+   "contexts": [
+    "SemanticResourceAttributes..!...2...CLOUDPROVIDERVALUES_ALIBABA_CLOUD...........CLOUDPROVIDERVALUES_AWS......Q_.CLOUDPROVIDERVALUES_AZURE.......!Gr.CLOUDPROVIDERVALUES_GCP.....h.Z.Clo",
+    ".CloudProviderValues=US.CLOUDPROVIDERVALUES_GCP=US.CLOUDPROVIDERVALUES_AZURE=US.CLOUDPROVIDERVALUES_AWS=US.CLOUDPROVIDERVALUES_ALIBABA_CLOUD=US.SemanticResourceAttributes=US.SEMRESATT",
+    "_cloud\",GE=\"aws\",BE=\"azure\",HE=\"gcp\";US.CLOUDPROVIDERVALUES_ALIBABA_CLOUD=jE;US.CLOUDPROVIDERVALUES_AWS=GE;US.CLOUDPROVIDERVALUES_AZURE=BE;US.CLOUDPROVIDERVALUES_GCP=HE;US.CloudProvid"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "CLOUDPROVIDERVALUES_AZURE": {
+   "contexts": [
+    "2...CLOUDPROVIDERVALUES_ALIBABA_CLOUD...........CLOUDPROVIDERVALUES_AWS......Q_.CLOUDPROVIDERVALUES_AZURE.......!Gr.CLOUDPROVIDERVALUES_GCP.....h.Z.CloudProviderValues.%...4m..CLOUDPLAT",
+    "RMVALUES_ALIBABA_CLOUD_ECS=US.CloudProviderValues=US.CLOUDPROVIDERVALUES_GCP=US.CLOUDPROVIDERVALUES_AZURE=US.CLOUDPROVIDERVALUES_AWS=US.CLOUDPROVIDERVALUES_ALIBABA_CLOUD=US.SemanticReso",
+    "=\"gcp\";US.CLOUDPROVIDERVALUES_ALIBABA_CLOUD=jE;US.CLOUDPROVIDERVALUES_AWS=GE;US.CLOUDPROVIDERVALUES_AZURE=BE;US.CLOUDPROVIDERVALUES_GCP=HE;US.CloudProviderValues=X.createConstMap([jE,GE"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "CLOUDPROVIDERVALUES_GCP": {
+   "contexts": [
+    "D...........CLOUDPROVIDERVALUES_AWS......Q_.CLOUDPROVIDERVALUES_AZURE.......!Gr.CLOUDPROVIDERVALUES_GCP.....h.Z.CloudProviderValues.%...4m..CLOUDPLATFORMVALUES_ALIBABA_CLOUD_ECS...$..",
+    "ABA_CLOUD_FC=US.CLOUDPLATFORMVALUES_ALIBABA_CLOUD_ECS=US.CloudProviderValues=US.CLOUDPROVIDERVALUES_GCP=US.CLOUDPROVIDERVALUES_AZURE=US.CLOUDPROVIDERVALUES_AWS=US.CLOUDPROVIDERVALUES_",
+    "IBABA_CLOUD=jE;US.CLOUDPROVIDERVALUES_AWS=GE;US.CLOUDPROVIDERVALUES_AZURE=BE;US.CLOUDPROVIDERVALUES_GCP=HE;US.CloudProviderValues=X.createConstMap([jE,GE,BE,HE]);var KE=\"alibaba_cloud"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "CREDENTIALS_PROFILE_NAMED_PROVIDER": {
+   "contexts": [
+    "tadata or Environment.......zr..EcsContainer........Ec2InstanceMetadata.\".....:.CREDENTIALS_PROFILE_NAMED_PROVIDER.......=u.role_session_name.......b...external_id.......n.mfa_serial.......... i",
+    "InstanceMetadata or Environment.`,{logger:t})},S=(e)=>L.setCredentialFeature(e,\"CREDENTIALS_PROFILE_NAMED_PROVIDER\",\"p\");var K=(e,{profile:r=\"default\",logger:t}={})=>Boolean(e)&&typeof e===\"obje"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "CREDENTIAL_KINDS_FOR_PROVIDER": {
+   "contexts": [
+    "+JO.AwsSigV4Credential..........InferenceConfig.....<.F.PROVIDER_ARMS........A..CREDENTIAL_KINDS_FOR_PROVIDER.........c.PROVIDER_CLI_FLAG.........F.isBedrockFamily.....x...PROVIDER_SELECTOR",
+    "overy=v$.PROVIDER_SELECTOR_ENV_FLAGS=v$.isBedrockFamily=v$.PROVIDER_CLI_FLAG=v$.CREDENTIAL_KINDS_FOR_PROVIDER=v$.PROVIDER_ARMS=v$.InferenceConfig=v$.AwsSigV4Credential=v$.whereIdpKeysExist=",
+    "rn(t=E.variantMetaForNode(v$.PROVIDER_ARMS.get(e)))!==null&&t!==void 0?t:{}};v$.CREDENTIAL_KINDS_FOR_PROVIDER=Object.fromEntries(E.PROVIDERS.map((e)=>[e,E.discriminatorArmsOf(v$.PROVIDER_AR",
+    "DER_CLI_FLAG[e];if(r)t[r]=\"1\";return t}function b$(e,t){if(!e)return!0;let r=v$.CREDENTIAL_KINDS_FOR_PROVIDER[e];if(r.length===0)return!1;let i=eh(e).noDiscoveryFor;if(t===void 0)return r.s"
+   ],
+   "count": 11,
+   "env_access_like": 8
+  },
+  "DEFAULT_INFERENCE_PROVIDER": {
+   "contexts": [
+    "force...........external-idp.... 0..PROVIDER_DISPLAY......w.PROVIDERS.......H3..DEFAULT_INFERENCE_PROVIDER......m...getProviderLabel.....SQ.isAnthropicOAuthToken.........4.INFERENCE_CRED",
+    "E=fT.INFERENCE_CREDENTIAL_KINDS=fT.isAnthropicOAuthToken=fT.getProviderLabel=fT.DEFAULT_INFERENCE_PROVIDER=fT.PROVIDERS=fT.PROVIDER_DISPLAY=void 0;fT.legacyCredentialKindAliases=C7;fT.le",
+    "\"Vertex AI\",foundry:\"Foundry\"};fT.PROVIDERS=Object.keys(fT.PROVIDER_DISPLAY);fT.DEFAULT_INFERENCE_PROVIDER=\"gateway\";var A7=(e)=>e?fT.PROVIDER_DISPLAY[e]:\"\";fT.getProviderLabel=A7;var T7",
+    "DISPLAY=La.KIND_PRECEDENCE=La.INFERENCE_CREDENTIAL_KINDS=La.getProviderLabel=La.DEFAULT_INFERENCE_PROVIDER=void 0;La.isRemoteOnly=z7;La.intakeReportKeepsValue=F7;La.effectiveVisibility=h"
+   ],
+   "count": 12,
+   "env_access_like": 8
+  },
+  "FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD": {
+   "contexts": [
+    "FAASDOCUMENTOPERATIONVALUES_DELETE......AB..FaasDocumentOperationValues.'.....C.FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD.........FAASINVOKEDPROVIDERVALUES_AWS.........U.FAASINVOKEDPROVIDERVALUES_AZURE",
+    "tf.SEMATTRS_MESSAGING_PROTOCOL=tf.SEMATTRS_MESSAGING_TEMP_DESTINATION=void 0;tf.FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD=tf.FaasDocumentOperationValues=tf.FAASDOCUMENTOPERATIONVALUES_DELETE=tf.FAASDOC",
+    "eateConstMap([jm,qm,Gm]);var Hm=\"alibaba_cloud\",Km=\"aws\",Fm=\"azure\",Ym=\"gcp\";tf.FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD=Hm;tf.FAASINVOKEDPROVIDERVALUES_AWS=Km;tf.FAASINVOKEDPROVIDERVALUES_AZURE=Fm;tf"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "FAASINVOKEDPROVIDERVALUES_AWS": {
+   "contexts": [
+    "DocumentOperationValues.'.....C.FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD.........FAASINVOKEDPROVIDERVALUES_AWS.........U.FAASINVOKEDPROVIDERVALUES_AZURE.......:.FAASINVOKEDPROVIDERVALUES_GCP",
+    "erValues=tf.FAASINVOKEDPROVIDERVALUES_GCP=tf.FAASINVOKEDPROVIDERVALUES_AZURE=tf.FAASINVOKEDPROVIDERVALUES_AWS=void 0;tf.MessageTypeValues=tf.MESSAGETYPEVALUES_RECEIVED=tf.MESSAGETYPEVALUES_",
+    "\",Km=\"aws\",Fm=\"azure\",Ym=\"gcp\";tf.FAASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD=Hm;tf.FAASINVOKEDPROVIDERVALUES_AWS=Km;tf.FAASINVOKEDPROVIDERVALUES_AZURE=Fm;tf.FAASINVOKEDPROVIDERVALUES_GCP=Ym;tf"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "FAASINVOKEDPROVIDERVALUES_AZURE": {
+   "contexts": [
+    "KEDPROVIDERVALUES_ALIBABA_CLOUD.........FAASINVOKEDPROVIDERVALUES_AWS.........U.FAASINVOKEDPROVIDERVALUES_AZURE.......:.FAASINVOKEDPROVIDERVALUES_GCP.......7./.FaasInvokedProviderValues......",
+    "TVALUES_IP_TCP=tf.FaasInvokedProviderValues=tf.FAASINVOKEDPROVIDERVALUES_GCP=tf.FAASINVOKEDPROVIDERVALUES_AZURE=tf.FAASINVOKEDPROVIDERVALUES_AWS=void 0;tf.MessageTypeValues=tf.MESSAGETYPEVALU",
+    "ASINVOKEDPROVIDERVALUES_ALIBABA_CLOUD=Hm;tf.FAASINVOKEDPROVIDERVALUES_AWS=Km;tf.FAASINVOKEDPROVIDERVALUES_AZURE=Fm;tf.FAASINVOKEDPROVIDERVALUES_GCP=Ym;tf.FaasInvokedProviderValues=D.createCon"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "FAASINVOKEDPROVIDERVALUES_GCP": {
+   "contexts": [
+    "FAASINVOKEDPROVIDERVALUES_AWS.........U.FAASINVOKEDPROVIDERVALUES_AZURE.......:.FAASINVOKEDPROVIDERVALUES_GCP.......7./.FaasInvokedProviderValues.........~.NETTRANSPORTVALUES_IP_TCP.......}",
+    "SPORTVALUES_IP_UDP=tf.NETTRANSPORTVALUES_IP_TCP=tf.FaasInvokedProviderValues=tf.FAASINVOKEDPROVIDERVALUES_GCP=tf.FAASINVOKEDPROVIDERVALUES_AZURE=tf.FAASINVOKEDPROVIDERVALUES_AWS=void 0;tf.M",
+    "Hm;tf.FAASINVOKEDPROVIDERVALUES_AWS=Km;tf.FAASINVOKEDPROVIDERVALUES_AZURE=Fm;tf.FAASINVOKEDPROVIDERVALUES_GCP=Ym;tf.FaasInvokedProviderValues=D.createConstMap([Hm,Km,Fm,Ym]);var Wm=\"ip_tcp\""
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "HYBRID_SERVABLE_PROVIDERS": {
+   "contexts": [
+    "moved or removed hosted path'... .....W.HYBRID_SERVABLE_CREDENTIAL_KINDS........HYBRID_SERVABLE_PROVIDERS........!..HYBRID_MAX_ITEMS_DEFAULT........buildHybridServableSchema........k..r",
+    "bject.defineProperty(aj,\"__esModule\",{value:!0});aj.HYBRID_MAX_ITEMS_DEFAULT=aj.HYBRID_SERVABLE_PROVIDERS=aj.HYBRID_SERVABLE_CREDENTIAL_KINDS=void 0;aj.buildHybridServableSchema=lv;aj.r",
+    "Hybrid(i))continue;let s=lue(n.credential);if(s.length>0)r[o]=s}return r})();aj.HYBRID_SERVABLE_PROVIDERS=Object.keys(aj.HYBRID_SERVABLE_CREDENTIAL_KINDS);function cue(e,t){var r,i;if(t",
+    "=g.droppedKeyIssue=g.ABSENT_INFERENCE_REASONS=g.releasedHybridCredentialKinds=g.HYBRID_SERVABLE_PROVIDERS=g.HYBRID_SERVABLE_CREDENTIAL_KINDS=g.buildHybridServableSchema=g.refuseForHybri"
+   ],
+   "count": 6,
+   "env_access_like": 4
+  },
+  "NOOP_METER_PROVIDER": {
+   "contexts": [
+    "M...TraceStateImpl..........createTraceState......n.NoopMeterProvider.......,...NOOP_METER_PROVIDER.......,.setGlobalMeterProvider.......P..getMeterProvider........MetricsAPI.....",
+    "()});var gh=C(function(_h){Object.defineProperty(_h,\"__esModule\",{value:!0});_h.NOOP_METER_PROVIDER=_h.NoopMeterProvider=void 0;var ph=qr();class ln{getMeter(e,s,r){return ph.NOOP",
+    "=qr();class ln{getMeter(e,s,r){return ph.NOOP_METER}}_h.NoopMeterProvider=ln;_h.NOOP_METER_PROVIDER=new ln});var bh=C(function(Eh){Object.defineProperty(Eh,\"__esModule\",{value:!0}",
+    "obal(cn,e,Ss.DiagAPI.instance())}getMeterProvider(){return Qe.getGlobal(cn)||fh.NOOP_METER_PROVIDER}getMeter(e,s,r){return this.getMeterProvider().getMeter(e,s,r)}disable(){Qe.unr"
+   ],
+   "count": 4,
+   "env_access_like": 3
+  },
+  "PROVIDER_ARMS": {
+   "contexts": [
+    "whereIdpKeysExist.......+JO.AwsSigV4Credential..........InferenceConfig.....<.F.PROVIDER_ARMS........A..CREDENTIAL_KINDS_FOR_PROVIDER.........c.PROVIDER_CLI_FLAG.........F.i",
+    "AGS=v$.isBedrockFamily=v$.PROVIDER_CLI_FLAG=v$.CREDENTIAL_KINDS_FOR_PROVIDER=v$.PROVIDER_ARMS=v$.InferenceConfig=v$.AwsSigV4Credential=v$.whereIdpKeysExist=v$.GATEWAY_INTERA",
+    "c\",\"helper-script\",\"interactive\"],noBearerFor:[\"static\",\"helper-script\"]})]);v$.PROVIDER_ARMS=new Map(v$.InferenceConfig.options.map((e)=>[e.shape.provider.value,e]));var eh",
+    "e.shape.provider.value,e]));var eh=(e)=>{var t;return(t=E.variantMetaForNode(v$.PROVIDER_ARMS.get(e)))!==null&&t!==void 0?t:{}};v$.CREDENTIAL_KINDS_FOR_PROVIDER=Object.fromE"
+   ],
+   "count": 8,
+   "env_access_like": 7
+  },
+  "PROVIDER_CLI_FLAG": {
+   "contexts": [
+    "eConfig.....<.F.PROVIDER_ARMS........A..CREDENTIAL_KINDS_FOR_PROVIDER.........c.PROVIDER_CLI_FLAG.........F.isBedrockFamily.....x...PROVIDER_SELECTOR_ENV_FLAGS......i\".providerH",
+    "});v$.providerHasDiscovery=v$.PROVIDER_SELECTOR_ENV_FLAGS=v$.isBedrockFamily=v$.PROVIDER_CLI_FLAG=v$.CREDENTIAL_KINDS_FOR_PROVIDER=v$.PROVIDER_ARMS=v$.InferenceConfig=v$.AwsSigV",
+    "$.PROVIDER_ARMS.get(e).shape.credential).filter((t)=>t.id).map((t)=>t.id)]));v$.PROVIDER_CLI_FLAG=Object.fromEntries(E.PROVIDERS.flatMap((e)=>{let t=eh(e).cliFlag;return t?[[e,t",
+    "==!0;v$.isBedrockFamily=uoe;v$.PROVIDER_SELECTOR_ENV_FLAGS=[...Object.values(v$.PROVIDER_CLI_FLAG),\"CLAUDE_CODE_USE_ANTHROPIC_AWS\",\"CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD\",\"CLAU"
+   ],
+   "count": 12,
+   "env_access_like": 9
+  },
+  "PROVIDER_DETECTED": {
+   "contexts": [
+    "ner ? { inner } : {}) }), null).      : null;.    if (provider) console.error(`[PROVIDER_DETECTED] ${chain.map((p) => p.component).join(' > ')}`);.    return { provider };.  } c"
+   ],
+   "count": 1,
+   "env_access_like": 0
+  },
+  "PROVIDER_DISPLAY": {
+   "contexts": [
+    "cript........\"..vendor-profile..........workforce...........external-idp.... 0..PROVIDER_DISPLAY......w.PROVIDERS.......H3..DEFAULT_INFERENCE_PROVIDER......m...getProviderLabel",
+    "picOAuthToken=fT.getProviderLabel=fT.DEFAULT_INFERENCE_PROVIDER=fT.PROVIDERS=fT.PROVIDER_DISPLAY=void 0;fT.legacyCredentialKindAliases=C7;fT.legacyCredentialKindAlias=$7;fT.PRO",
+    "LAY=void 0;fT.legacyCredentialKindAliases=C7;fT.legacyCredentialKindAlias=$7;fT.PROVIDER_DISPLAY={gateway:\"Gateway\",anthropic:\"Claude API\",bedrock:\"Bedrock\",mantle:\"Bedrock Man",
+    "drock Mantle\",vertex:\"Vertex AI\",foundry:\"Foundry\"};fT.PROVIDERS=Object.keys(fT.PROVIDER_DISPLAY);fT.DEFAULT_INFERENCE_PROVIDER=\"gateway\";var A7=(e)=>e?fT.PROVIDER_DISPLAY[e]:\""
+   ],
+   "count": 14,
+   "env_access_like": 10
+  },
+  "PROVIDER_SELECTOR_ENV_FLAGS": {
+   "contexts": [
+    "INDS_FOR_PROVIDER.........c.PROVIDER_CLI_FLAG.........F.isBedrockFamily.....x...PROVIDER_SELECTOR_ENV_FLAGS......i\".providerHasDiscovery....b.>.editorListsGatewayIdpNotices........gateway",
+    "Gy;Object.defineProperty(v$,\"__esModule\",{value:!0});v$.providerHasDiscovery=v$.PROVIDER_SELECTOR_ENV_FLAGS=v$.isBedrockFamily=v$.PROVIDER_CLI_FLAG=v$.CREDENTIAL_KINDS_FOR_PROVIDER=v$.PRO",
+    "}));var uoe=(e)=>e!==void 0&&eh(e).bedrockFamily===!0;v$.isBedrockFamily=uoe;v$.PROVIDER_SELECTOR_ENV_FLAGS=[...Object.values(v$.PROVIDER_CLI_FLAG),\"CLAUDE_CODE_USE_ANTHROPIC_AWS\",\"CLAUDE",
+    "OGLE_CLOUD\",\"CLAUDE_CODE_USE_GATEWAY\"];function doe(e){let t={};for(let i of v$.PROVIDER_SELECTOR_ENV_FLAGS)t[i]=\"\";let r=e&&v$.PROVIDER_CLI_FLAG[e];if(r)t[r]=\"1\";return t}function b$(e,t"
+   ],
+   "count": 10,
+   "env_access_like": 7
+  },
+  "SEMATTRS_FAAS_INVOKED_PROVIDER": {
+   "contexts": [
+    "ON........!.SEMATTRS_FAAS_COLDSTART.........SEMATTRS_FAAS_INVOKED_NAME......(...SEMATTRS_FAAS_INVOKED_PROVIDER......[/<.SEMATTRS_FAAS_INVOKED_REGION......[.SEMATTRS_NET_TRANSPORT......b.{.SE",
+    "MATTRS_NET_PEER_IP=tf.SEMATTRS_NET_TRANSPORT=tf.SEMATTRS_FAAS_INVOKED_REGION=tf.SEMATTRS_FAAS_INVOKED_PROVIDER=tf.SEMATTRS_FAAS_INVOKED_NAME=tf.SEMATTRS_FAAS_COLDSTART=tf.SEMATTRS_FAAS_CRON=",
+    "_FAAS_CRON=Du;tf.SEMATTRS_FAAS_COLDSTART=xu;tf.SEMATTRS_FAAS_INVOKED_NAME=Lu;tf.SEMATTRS_FAAS_INVOKED_PROVIDER=Uu;tf.SEMATTRS_FAAS_INVOKED_REGION=Vu;tf.SEMATTRS_NET_TRANSPORT=ju;tf.SEMATTRS_"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "SEMRESATTRS_CLOUD_PROVIDER": {
+   "contexts": [
+    "........ia64....1...dragonflybsd....J.W.hpux....vzi.z_os........webjs...........SEMRESATTRS_CLOUD_PROVIDER.......a..SEMRESATTRS_CLOUD_ACCOUNT_ID........SEMRESATTRS_CLOUD_REGION#.......SE",
+    "VAILABILITY_ZONE=US.SEMRESATTRS_CLOUD_REGION=US.SEMRESATTRS_CLOUD_ACCOUNT_ID=US.SEMRESATTRS_CLOUD_PROVIDER=void 0;US.CLOUDPLATFORMVALUES_GCP_COMPUTE_ENGINE=US.CLOUDPLATFORMVALUES_AZURE_A",
+    "rsion\",LE=\"webengine.name\",UE=\"webengine.version\",VE=\"webengine.description\";US.SEMRESATTRS_CLOUD_PROVIDER=hf;US.SEMRESATTRS_CLOUD_ACCOUNT_ID=uf;US.SEMRESATTRS_CLOUD_REGION=_f;US.SEMRESA"
+   ],
+   "count": 3,
+   "env_access_like": 2
+  },
+  "THIRD_PARTY_PROVIDER_ENV_VARS": {
+   "contexts": [
+    "....isUdsEnableRemoteControlEnabled.......q.resolveCcrAutoConnectDefault....N...THIRD_PARTY_PROVIDER_ENV_VARS.......7...THIRD_PARTY_PROVIDER_LABELS.........allowedProviderLabel.....Z\".allow",
+    "fs/root/chunk-jtpfgrzr.js\";import\"/$bunfs/root/chunk-j27d47mr.js\";export{B3e as THIRD_PARTY_PROVIDER_ENV_VARS,Lw as THIRD_PARTY_PROVIDER_LABELS,Vtn as allowedProviderLabel,BTr as allowedPro"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "THIRD_PARTY_PROVIDER_LABELS": {
+   "contexts": [
+    "..q.resolveCcrAutoConnectDefault....N...THIRD_PARTY_PROVIDER_ENV_VARS.......7...THIRD_PARTY_PROVIDER_LABELS.........allowedProviderLabel.....Z\".allowedProviderNameOf.........*.assumesFirs",
+    "bunfs/root/chunk-j27d47mr.js\";export{B3e as THIRD_PARTY_PROVIDER_ENV_VARS,Lw as THIRD_PARTY_PROVIDER_LABELS,Vtn as allowedProviderLabel,BTr as allowedProviderNameOf,dse as assumesFirstPar"
+   ],
+   "count": 2,
+   "env_access_like": 0
+  },
+  "VOICE_STREAM_BASE_URL": {
+   "contexts": [
+    "KXl.CLAUDE_CODE_REMOTE_HERMETIC_MODE.....Hx.CLAUDE_CODE_HOSTED_DESKTOP.......\"].VOICE_STREAM_BASE_URL... ...?.%.CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN.....)..CLAUDE_CODE_MCP_SERVE_SETTING",
+    "()=>mS,ULTRAPLAN_PROMPT_FILE:()=>$p,VCR_RECORD:()=>FS,VITALS_EMITTER_BIN:()=>qp,VOICE_STREAM_BASE_URL:()=>tR});var mT=H.str(),FT=H.str(),dT=H.str(),fT=H.str(),KT=H.str(),WT=H.rawStr",
+    "OUNT_UUID\",\"CLAUDE_CODE_BRIDGE_OWNER_ORG_UUID\",\"CLAUDE_CODE_BRIDGE_SOURCE_DIR\",\"VOICE_STREAM_BASE_URL\",\"CLAUDE_CODE_POLL_EVENTS\",\"CLAUDE_CODE_POLL_EVENT_DECLARATIONS\",\"CLAUDE_CODE_A"
+   ],
+   "count": 3,
+   "env_access_like": 0
+  },
+  "WEB_SEARCH_PROVIDERS": {
+   "contexts": [
+    "RG_UNSAFE_MESSAGE.........>.safeHelperArg.......u...BUILTIN_MCP_SERVERS.....;...WEB_SEARCH_PROVIDERS......b.WEB_SEARCH_PROVIDER_HOSTS.......-l..AZURE_CLOUDS........AZURE_CLOUD_HOST",
+    "TED_SCOPES=Ka.AZURE_CLOUD_HOSTS=Ka.AZURE_CLOUDS=Ka.WEB_SEARCH_PROVIDER_HOSTS=Ka.WEB_SEARCH_PROVIDERS=Ka.BUILTIN_MCP_SERVERS=Ka.safeHelperArg=Ka.HELPER_ARG_UNSAFE_MESSAGE=Ka.safeWin",
+    "toolPolicy:xl});Ka.BUILTIN_MCP_SERVERS=[\"microsoft365\",\"websearch\",\"github\"];Ka.WEB_SEARCH_PROVIDERS=[\"brave\",\"tavily\",\"exa\",\"custom\"];Ka.WEB_SEARCH_PROVIDER_HOSTS={brave:\"api.sear",
+    "bSearchOpt\"}),{availableInVersion:\"1.19367.0\"}),provider:k.subfield(A.z.enum(Ka.WEB_SEARCH_PROVIDERS),{label:O.msg({defaultMessage:\"Search provider\",id:\"McpBuiltinWebSearchProvider"
+   ],
+   "count": 7,
+   "env_access_like": 5
+  },
+  "WEB_SEARCH_PROVIDER_HOSTS": {
+   "contexts": [
+    "safeHelperArg.......u...BUILTIN_MCP_SERVERS.....;...WEB_SEARCH_PROVIDERS......b.WEB_SEARCH_PROVIDER_HOSTS.......-l..AZURE_CLOUDS........AZURE_CLOUD_HOSTS...........M365_GRANTABLE_DELEGA",
+    "OPES=Ka.M365_GRANTABLE_DELEGATED_SCOPES=Ka.AZURE_CLOUD_HOSTS=Ka.AZURE_CLOUDS=Ka.WEB_SEARCH_PROVIDER_HOSTS=Ka.WEB_SEARCH_PROVIDERS=Ka.BUILTIN_MCP_SERVERS=Ka.safeHelperArg=Ka.HELPER_ARG_U",
+    "bsearch\",\"github\"];Ka.WEB_SEARCH_PROVIDERS=[\"brave\",\"tavily\",\"exa\",\"custom\"];Ka.WEB_SEARCH_PROVIDER_HOSTS={brave:\"api.search.brave.com\",tavily:\"api.tavily.com\",exa:\"api.exa.ai\"};Ka.AZUR",
+    "ch\":{if(e.provider===\"custom\")return Mr.singleHostEgress(e.customUrl);return[Ka.WEB_SEARCH_PROVIDER_HOSTS[e.provider]]}case\"github\":{let r=typeof e.host===\"string\"?e.host.trim():\"\";if(r"
+   ],
+   "count": 7,
+   "env_access_like": 5
+  }
+ },
+ "probe": "claude-route-names",
+ "want": "^CLAUDE_CODE_USE_|_BASE_URL$|PROVIDER|^CLAUDE_CODE_SKIP_"
+}

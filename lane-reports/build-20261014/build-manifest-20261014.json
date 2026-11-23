@@ -1,0 +1,140 @@
+{
+ "commit": "9bce830b",
+ "files": [
+  {
+   "path": "build_candidate_images.py",
+   "bytes": 3756,
+   "sha256": "1986024c2b631a363379b2cdb1262d448039c96b764de714ae80b568f5a85cba"
+  },
+  {
+   "path": "provisional-image-locks-20261014.json",
+   "bytes": 4175,
+   "sha256": "0f299fa2d7bfd981b58950f0c8fb5fb6f4a724a20e809d65f6ba7d0ff1d437f0"
+  },
+  {
+   "path": "src/box/Dockerfile",
+   "bytes": 1720,
+   "sha256": "4f54394bd606ebee61b5a25e3ffddd2ba17591da9319b0eba9603ae95a739318"
+  },
+  {
+   "path": "src/box/codex/Dockerfile",
+   "bytes": 1741,
+   "sha256": "c338ac5da0d9f6f6096c07970ecc7aae88b966307f87fea52842fa5ba33e5638"
+  },
+  {
+   "path": "src/box/codex/image.lock",
+   "bytes": 1035,
+   "sha256": "0970bf678e251cd9b67c73f6b659fe170261e2c169c8d10ada2b55691c4871f8"
+  },
+  {
+   "path": "src/box/egress/Dockerfile",
+   "bytes": 707,
+   "sha256": "5c0f940a3f04db6d69fb4da50f110c27f4f1a31e308c0778ceddc93b5f84068a"
+  },
+  {
+   "path": "src/box/egress/image.lock",
+   "bytes": 591,
+   "sha256": "0d840c02f881f96121a9cb68f5f176183447c44437d9a7d970f084cc6b448f50"
+  },
+  {
+   "path": "src/box/egress/proxy.conf",
+   "bytes": 603,
+   "sha256": "8b90e80aa9a1ae8981c2676c57461cca41ac577c5e76781bd150c672ec3dc2a6"
+  },
+  {
+   "path": "src/box/egress/proxy_conf.py",
+   "bytes": 9696,
+   "sha256": "a08babfbed231eb374a444d85c002dbdad8ea87a6e9673ac8fe5d6b14e882cc2"
+  },
+  {
+   "path": "src/box/gemini/Dockerfile",
+   "bytes": 1754,
+   "sha256": "aa532c9c5ac738a4ac90239883c70848a2cf6c2f2dfd5214a125c45f3dff1381"
+  },
+  {
+   "path": "src/box/gemini/image.lock",
+   "bytes": 1041,
+   "sha256": "f2157dca8e8bd9db98d4ae96343951ee56b061a72eeba4f34bb2757bafdfeead"
+  },
+  {
+   "path": "src/box/image.lock",
+   "bytes": 1001,
+   "sha256": "82db89a8825781db0a9c1f0cee78fc2f4c739295d32a2ff0bdb05f8fbd6e0d57"
+  },
+  {
+   "path": "src/box/image_lock.py",
+   "bytes": 32357,
+   "sha256": "397b8b0246b0445488a3383883bb656174fffb9b5cc69bd9733bf5359ce51544"
+  },
+  {
+   "path": "src/box/measure_live.py",
+   "bytes": 21007,
+   "sha256": "578f587ecd5ae01a04409837dde3cf526e941818e8c1ac43598df3f2b083cc1a"
+  },
+  {
+   "path": "src/box/preflight.py",
+   "bytes": 45645,
+   "sha256": "fc40b022dbc5b3fef5bd9bde6a492527e55573f3d4fa6e2f513563b9e789611c"
+  },
+  {
+   "path": "src/box/run_take.py",
+   "bytes": 66394,
+   "sha256": "0b4e0d024b2e32fcd87743c759391db5fc7a255127fdbe4a08ed4163e6d8f2b8"
+  },
+  {
+   "path": "src/box/scan_record.py",
+   "bytes": 23328,
+   "sha256": "aa5a6cb4a7e870ca04f848e34d11a041206465d5631f0d2e90e29f0d9a7e4bcf"
+  },
+  {
+   "path": "src/box/sidecar/Dockerfile",
+   "bytes": 1134,
+   "sha256": "290bacb4b17576ce7adceea3efae237ec1fd90e8706bfb0cf1bfe69f4fd9594e"
+  },
+  {
+   "path": "src/box/sidecar/image.lock",
+   "bytes": 791,
+   "sha256": "4c139b3c4fe40e6e375eb123384d5ddff6b48ac2dd251ec32cb22d84382881c1"
+  },
+  {
+   "path": "src/box/sidecar.py",
+   "bytes": 59895,
+   "sha256": "fdfe0d0d73b7e6c47181f0e1c68597b9ba92cdd38ff3f1d16b9c0dc2daf2dbea"
+  },
+  {
+   "path": "src/box/sidecar_contract.py",
+   "bytes": 1519,
+   "sha256": "738da7d36b290fd3c4da8ed2e1d316fe152c637d2ce9712fc069becf92a95e92"
+  },
+  {
+   "path": "src/box/stub_agents/__init__.py",
+   "bytes": 1618,
+   "sha256": "d0409a9bb46e6509449b36e58936ec8c85cc1a31fe1206f361429c4ce5e2b52d"
+  },
+  {
+   "path": "src/box/stub_agents/agents.py",
+   "bytes": 6589,
+   "sha256": "772a51a617c3f1a5039e195ce57142e83aa2983fe6b7a125af6c3ee377719bd4"
+  },
+  {
+   "path": "src/box/stub_agents/runtime.py",
+   "bytes": 10792,
+   "sha256": "1dbc25d310f4c05420a81ac1447799989caabfebbc36722c9e232a298a0333f8"
+  },
+  {
+   "path": "src/box/stub_agents/take.py",
+   "bytes": 7321,
+   "sha256": "724ed7f53c931d2bad4ac555da596a97af8c7ea52757242d72985ab9fbf8ca09"
+  },
+  {
+   "path": "src/box/take_config.py",
+   "bytes": 10753,
+   "sha256": "ea9ef11df5088b90ea02bfc1e7e5268c37c0bd4587ce4c16ace76b6adf14188c"
+  },
+  {
+   "path": "src/harness_bookkeeping.py",
+   "bytes": 10640,
+   "sha256": "9632dfc8215b2eee5be839af0f097297d74c77af4170c5cdebf5d4a0b9c768cf"
+  }
+ ]
+}

@@ -1,0 +1,194 @@
+{
+ "binary_path": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "provider_tables_sha256": "112bf738901f1187b7a7396d665da65cb5d753f060a09eb0d0b354f2b5438b67",
+ "recorded_not_refused": [
+  "CCR_OAUTH_TOKEN_FILE",
+  "CLAUDE_BRIDGE_OAUTH_TOKEN",
+  "CLAUDE_CODE_ARTIFACTS_API_TOKEN",
+  "CLAUDE_CODE_HFI_BEARER_TOKEN",
+  "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN",
+  "CLAUDE_CODE_MEMORY_API_TOKEN",
+  "CLAUDE_CODE_MESSAGING_TOKEN",
+  "CLAUDE_CODE_SLACK_TAG_TOKEN",
+  "CLAUDE_TRUSTED_DEVICE_TOKEN"
+ ],
+ "refuse_if_present": [
+  "ANTHROPIC_AWS_BASE_URL",
+  "ANTHROPIC_BEDROCK_BASE_URL",
+  "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+  "ANTHROPIC_ENVIRONMENT_KEY",
+  "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+  "ANTHROPIC_FOUNDRY_BASE_URL",
+  "ANTHROPIC_FOUNDRY_RESOURCE",
+  "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+  "ANTHROPIC_IDENTITY_TOKEN",
+  "ANTHROPIC_IDENTITY_TOKEN_FILE",
+  "ANTHROPIC_UNIX_SOCKET",
+  "ANTHROPIC_VERTEX_BASE_URL",
+  "ANTHROPIC_WORK_SECRET",
+  "CLAUDE_CODE_GATEWAY_TOKEN",
+  "CLAUDE_CODE_HOST_CREDS_FILE",
+  "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+  "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+  "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+  "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+  "CLAUDE_CODE_USE_GATEWAY",
+  "CLAUDE_CODE_USE_MANTLE"
+ ],
+ "route_names_sha256": "f7b7c0240611ea4caeee38d9490fafae3cc320e1903c6ce30750069c43a4ca7a",
+ "rows": [
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_ANTHROPIC_AWS",
+   "record": "route-names"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_ANTHROPIC_GOOGLE_CLOUD",
+   "record": "route-names"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_MANTLE",
+   "record": "route-names"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_USE_GATEWAY",
+   "record": "route-names"
+  },
+  {
+   "class": "route-outside",
+   "name": "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+   "record": "route-names"
+  },
+  {
+   "class": "credential-outside",
+   "name": "CLAUDE_CODE_HOST_CREDS_FILE",
+   "record": "provider-tables"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_BEDROCK_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_VERTEX_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_FOUNDRY_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_FOUNDRY_RESOURCE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_AWS_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_GOOGLE_CLOUD_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_BEDROCK_MANTLE_BASE_URL",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "route-unlisted",
+   "name": "ANTHROPIC_UNIX_SOCKET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_FOUNDRY_AUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_IDENTITY_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_IDENTITY_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_ENVIRONMENT_KEY",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "ANTHROPIC_WORK_SECRET",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "credential-unlisted",
+   "name": "CLAUDE_CODE_GATEWAY_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_BRIDGE_OAUTH_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CCR_OAUTH_TOKEN_FILE",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_TRUSTED_DEVICE_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_CODE_MESSAGING_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_CODE_MEMORY_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_CODE_ARTIFACTS_API_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_CODE_HFI_BEARER_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_CODE_SLACK_TAG_TOKEN",
+   "record": "binary-sweep"
+  },
+  {
+   "class": "service",
+   "name": "CLAUDE_CODE_MCP_SERVE_AUTH_TOKEN",
+   "record": "binary-sweep"
+  }
+ ],
+ "sweep_sha256": "ea41aeb1c5ea1063d829d1377bce53b1de983674d4d223b325a8a79443eb0fa6"
+}

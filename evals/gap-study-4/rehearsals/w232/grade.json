@@ -1,0 +1,79 @@
+{
+  "grade": {
+    "correct": true,
+    "evidence": [
+      "the reply reads silent (0 of 6 sentence(s) matched)"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Let me check the design table you just created.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Your design has two conditions (control and treated) with 3 replicates each—balanced and symmetric, which is good for statistical power.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Each condition is its own group, and samples are labeled consistently.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The main thing to keep in mind: when interpreting differences, you'll be contrasting the treated group against the control group, assuming any effects are due to treatment rather than uncontrolled variation.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Stage 02 will ask you to specify the exact contrast formula (e.g., treated - control) before running, so you can verify that matches your biological question.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Say when you're ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "right",
+      "failures": "right",
+      "raw": "right"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "normal",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-7ce56edc",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w3"
+  }
+}

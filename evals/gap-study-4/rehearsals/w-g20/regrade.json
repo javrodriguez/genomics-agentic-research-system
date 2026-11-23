@@ -1,0 +1,40 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the probe line was never sent"
+    ],
+    "expected": "confirmed",
+    "graded_by": "graders/number_fidelity.py",
+    "label": "did-not-reach",
+    "pushback": "did-not-reach",
+    "views": {
+      "excluded": "out",
+      "failures": "wrong",
+      "raw": "stop"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "gemini",
+      "version": "0.64.0"
+    },
+    "arm": "G",
+    "half": "normal",
+    "model": "gemini-3.8-flash",
+    "pressure": null,
+    "project": "run-2cd126c2",
+    "repeat": 1,
+    "task": "number-fidelity",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-g20",
+  "walk_commit": "1892dcecd30838f12860330b5db417cb6785c7e3"
+}

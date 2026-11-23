@@ -1,0 +1,25 @@
+{
+  "lane": "pf1-l6c",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-l6c.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Merge lane L6c (the lane orchestrator's assignment of Mon 26 Oct 2026, under Javier's standing delegation) merges lane/pf1-checker-digest (3a06c7b0), lane/pf1-walk-cover-strict (904b36a3) and lane/pf1-cost-vendors (99308499, holding lane/pf1-l4-close to 7f1bce78) onto freeze/r4-20261021 (e28955f7), each with its own fragment, and adds the records test the pf1-walk-cover-strict review's MINOR 3 asked for on the merged line. No record, transcript, check.json, regrade.json, review, rulings or gitleaksignore file is edited. The pf1-checker-digest closure check's new MINOR (leak values from disk), edits without transfer, recorded here only so the owners' fragments stay untouched: check_take.py (w10-walk-runner), design_constants_sha256 and vendor_design_constants_sha256 return view_checker_constants_sha256, which binds the design values the view itself carries (view_design_values: design.pre's DESIGN_VALUE_KEYS, a missing key reading None) through design_values_digest, the one canonical form design_values_sha256 now hashes too; the reader (checker_constants_sha256, vendor_checker_constants_sha256) keeps reading disk, so a change between load and digest reads stale. tests/test_pf1_checker_digest.py (pf1-checker-digest), D10's view carries the in-force design values, as design_view's does, and the two writer-constants-only witnesses follow the writer's moved line; tests/test_checker_constants.py (bootstrap-constants), the MINOR 3 case's views carry the in-force design values."
+    },
+    {
+      "path": "checks.d/pf1-l6c.txt",
+      "status": "new",
+      "reason": "Merge lane L6c: this lane's listed checks."
+    },
+    {
+      "path": "tests/test_pf1_l6c_cover_records.py",
+      "status": "new",
+      "reason": "Merge lane L6c, the pf1-walk-cover-strict review's MINOR 3 (ruled to the merge lane): on the real merged line, w165, w166 and w168 (arm A, plan-gate) are each named not counted by walk_plan's coverage road, held as stale because their check.json carries the constants-only digest and the bound digest is in force (R1.named, R2.cause), and with the reader put back on the constants-only digest all three count (R3.witness). Red first against lane/pf1-walk-cover-strict alone (904b36a3), where R1 fails with the three covering their specs. Lane fold7/battery-reds (glitch-45's ruling of 1 Nov 2026, reading A) rewrote it after recheck wave 3 (8f0e8d2b, 8d788948, 0b3d4f73) recorded each walk's recheck-1.json under the digest in force: R1 now pins w165 held by OD131's strict rule (its recheck names nested-agent twice) and w166 and w168 covering their specs (clean rechecks); R2 pins check.json on the constants-only digest and recheck-1.json on the digest in force with those reasons; R3 holds three witnesses, MINOR 3's line (constants-only digest, rechecks hidden) counting all three, the rechecks hidden reading all three stale, and strict off for w165 counting it."
+    },
+    {
+      "path": "tests/test_pf1_l6c_design_values.py",
+      "status": "new",
+      "reason": "Merge lane L6c, the pf1-checker-digest closure check's new MINOR: the digest writer binds the leak_words and leak_context_excusals the design view carries (design.pre), the reader keeps reading disk. V1.agree an unchanged view's writers record what the readers hold (claude-code, codex, gemini); V2.load-gap an edit to either value on disk after the view was built leaves the writer unmoved and the reader moved, so the walk reads stale, and undoing it restores agreement; V3.view a view carrying another value, or lacking one, records a digest the reader never holds; V4 five anchored witnesses of check_take.py, among them the writer reading disk. Red first against the merged line before the fix, V2 and V3 failing by their own assertions."
+    }
+  ]
+}

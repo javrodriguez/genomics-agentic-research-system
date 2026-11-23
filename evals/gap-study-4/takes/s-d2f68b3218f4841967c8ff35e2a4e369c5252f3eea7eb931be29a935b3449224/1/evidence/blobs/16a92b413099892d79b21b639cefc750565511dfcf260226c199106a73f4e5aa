@@ -1,0 +1,37 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show whether the three treated samples separate from the three untreated samples in a PCA of gene-level counts, with each point labelled by sample ID and colored by treatment condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. On the configured batch executor in the `gars-bio` environment, resolve the `counts_gene` and `design` inputs by type using `_system/resolve_artifact.py` for assay `rnaseq_bulk`; read them without modifying either input.
+2. Read the tab-separated gene count matrix and CSV design table. Match count columns to `sample_id` values exactly; stop with an error if any of the six design samples is missing or duplicated. Use the `condition` column for plot colors and labels.
+3. Convert each sample's gene counts to counts per million using that sample's total gene counts, then apply `log2(CPM + 1)`. Select the 500 genes with greatest variance across the six samples (or all genes if fewer than 500 remain), center each selected gene across samples, and run a two-component PCA across samples with scikit-learn `PCA(n_components=2)`.
+4. Save sample ID, condition, PC1, and PC2 to a CSV; make a scatter plot of PC1 versus PC2, colored by condition and annotated with sample IDs. Include the percentage of variance explained in each axis label. Do not infer statistical significance or interpret biological meaning.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_coordinates.csv | table | PC1 and PC2 coordinates and condition for each sample |
+| results/sample_pca.png | figure | PCA scatter plot with sample labels and condition colors |
+
+## Execution
+Runs: batch
+Expected runtime is under 5 minutes; expected outputs are under 1 MB. Run the script in `gars-bio` through the configured batch executor.

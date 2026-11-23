@@ -1,0 +1,141 @@
+test_d11_the_script_is_numbered_1_to_k (__main__.TestReviewFold.test_d11_the_script_is_numbered_1_to_k) ... ok
+test_d1_the_copy_writes_the_hashed_bytes (__main__.TestStage1Carried.test_d1_the_copy_writes_the_hashed_bytes) ... ok
+test_d2_nothing_is_sent_past_an_unheld_marker (__main__.TestStage3MarkerLoop.test_d2_nothing_is_sent_past_an_unheld_marker) ... ok
+test_d3_the_recovery_is_sent_only_where_pre_registered (__main__.TestStage3MarkerLoop.test_d3_the_recovery_is_sent_only_where_pre_registered) ... ok
+test_d4_the_marker_is_matched_exactly (__main__.TestStage3MarkerLoop.test_d4_the_marker_is_matched_exactly) ... ok
+test_d5_the_outcome_is_round_3s_vocabulary (__main__.TestStage3MarkerLoop.test_d5_the_outcome_is_round_3s_vocabulary) ... ok
+test_d6_the_stop_is_classified_from_the_drivers_rows (__main__.TestStage3MarkerLoop.test_d6_the_stop_is_classified_from_the_drivers_rows) ... ok
+test_d7_the_takes_records_through_the_claude_code_adapter (__main__.TestStage5Records.test_d7_the_takes_records_through_the_claude_code_adapter) ... FAIL
+test_d8_the_production_checker_is_check4 (__main__.TestStage5Records.test_d8_the_production_checker_is_check4) ... ok
+test_d10_a_start_that_raises_is_ended (__main__.TestStage6Carried.test_d10_a_start_that_raises_is_ended) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_abort_before_output (__main__.TestWitnesses.test_witness_abort_before_output) ... 
+WITNESS abort-before-output: red by D5-outcome (2 own, 0 collateral, 0 errors) ok
+test_witness_any_numbering (__main__.TestWitnesses.test_witness_any_numbering) ... 
+WITNESS any-numbering: red by D11-numbering (4 own, 0 collateral, 0 errors) ok
+test_witness_continued_past_unheld_marker (__main__.TestWitnesses.test_witness_continued_past_unheld_marker) ... 
+WITNESS continued-past-unheld-marker: red by D2-stop (3 own, 0 collateral, 0 errors) ok
+test_witness_cost_refusal_raises (__main__.TestWitnesses.test_witness_cost_refusal_raises) ... FAIL
+test_witness_cross_check_unrouted (__main__.TestWitnesses.test_witness_cross_check_unrouted) ... 
+WITNESS cross-check-unrouted: red by D8-checker (1 own, 0 collateral, 0 errors) ok
+test_witness_env_per_turn_dropped (__main__.TestWitnesses.test_witness_env_per_turn_dropped) ... FAIL
+test_witness_marker_casefold (__main__.TestWitnesses.test_witness_marker_casefold) ... 
+WITNESS marker-casefold: red by D4-exact (1 own, 0 collateral, 0 errors) ok
+test_witness_missing_transcript_graded (__main__.TestWitnesses.test_witness_missing_transcript_graded) ... 
+WITNESS missing-transcript-graded: red by D8-checker (1 own, 0 collateral, 0 errors) ok
+test_witness_no_cross_check (__main__.TestWitnesses.test_witness_no_cross_check) ... FAIL
+test_witness_open_after_start (__main__.TestWitnesses.test_witness_open_after_start) ... 
+WITNESS open-after-start: red by D10-start (1 own, 0 collateral, 0 errors) ok
+test_witness_recovery_never_sent (__main__.TestWitnesses.test_witness_recovery_never_sent) ... 
+WITNESS recovery-never-sent: red by D3-recovery (3 own, 0 collateral, 0 errors) ok
+test_witness_recovery_unbounded (__main__.TestWitnesses.test_witness_recovery_unbounded) ... 
+WITNESS recovery-unbounded: red by D3-recovery (1 own, 0 collateral, 0 errors) ok
+test_witness_session_raw (__main__.TestWitnesses.test_witness_session_raw) ... FAIL
+test_witness_strict_ignored (__main__.TestWitnesses.test_witness_strict_ignored) ... 
+WITNESS strict-ignored: red by D11-numbering (1 own, 0 collateral, 0 errors) ok
+test_witness_table_reread (__main__.TestWitnesses.test_witness_table_reread) ... 
+WITNESS table-reread: red by D1-table (1 own, 0 collateral, 0 errors) ok
+test_witness_turn_ends_dropped (__main__.TestWitnesses.test_witness_turn_ends_dropped) ... 
+WITNESS turn-ends-dropped: red by D6-taxonomy (1 own, 0 collateral, 0 errors) ok
+
+======================================================================
+FAIL: test_d7_the_takes_records_through_the_claude_code_adapter (__main__.TestStage5Records.test_d7_the_takes_records_through_the_claude_code_adapter)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 656, in test_d7_the_takes_records_through_the_claude_code_adapter
+    self.assertEqual(d7_records(tbi.drive), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR D7-records: DriveRefused: turn-1.j[49 chars]ind'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder has no scan kind'
+
++ []
+- ['ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder '
+-  'has no scan kind']
+
+======================================================================
+FAIL: test_witness_cost_refusal_raises (__main__.TestWitnesses.test_witness_cost_refusal_raises)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 780, in test_witness_cost_refusal_raises
+    self.kill("cost-refusal-raises")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 728, in kill
+    self.assertEqual(check(tbi.drive), [], f"{name}: the bound check is not green on drive.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR D7-records: DriveRefused: turn-1.j[49 chars]ind'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder has no scan kind'
+
++ []
+- ['ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder '
+-  'has no scan kind'] : cost-refusal-raises: the bound check is not green on drive.py
+
+======================================================================
+FAIL: test_witness_env_per_turn_dropped (__main__.TestWitnesses.test_witness_env_per_turn_dropped)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 768, in test_witness_env_per_turn_dropped
+    self.kill("env-per-turn-dropped")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 728, in kill
+    self.assertEqual(check(tbi.drive), [], f"{name}: the bound check is not green on drive.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR D7-records: DriveRefused: turn-1.j[49 chars]ind'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder has no scan kind'
+
++ []
+- ['ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder '
+-  'has no scan kind'] : env-per-turn-dropped: the bound check is not green on drive.py
+
+======================================================================
+FAIL: test_witness_no_cross_check (__main__.TestWitnesses.test_witness_no_cross_check)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 762, in test_witness_no_cross_check
+    self.kill("no-cross-check")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 728, in kill
+    self.assertEqual(check(tbi.drive), [], f"{name}: the bound check is not green on drive.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR D7-records: DriveRefused: turn-1.j[49 chars]ind'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder has no scan kind'
+
++ []
+- ['ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder '
+-  'has no scan kind'] : no-cross-check: the bound check is not green on drive.py
+
+======================================================================
+FAIL: test_witness_session_raw (__main__.TestWitnesses.test_witness_session_raw)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 765, in test_witness_session_raw
+    self.kill("session-raw")
+    ~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_drive_loop.py", line 728, in kill
+    self.assertEqual(check(tbi.drive), [], f"{name}: the bound check is not green on drive.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR D7-records: DriveRefused: turn-1.j[49 chars]ind'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder has no scan kind'
+
++ []
+- ['ERROR D7-records: DriveRefused: turn-1.jsonl.launch.json in the take folder '
+-  'has no scan kind'] : session-raw: the bound check is not green on drive.py
+
+----------------------------------------------------------------------
+Ran 27 tests in 37.134s
+
+FAILED (failures=5)

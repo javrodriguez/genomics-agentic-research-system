@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c8ad-40c3-7950-860b-fa70bf3f21fd"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The plan estimates **under 5 minutes** on the batch executor. That’s an estimate; the actual runtime will depend on the count matrix size. The plan is still awaiting your approval, so nothing has run yet."}}
+{"type":"turn.completed","usage":{"input_tokens":170266,"cached_input_tokens":128512,"cache_write_input_tokens":0,"output_tokens":1775,"reasoning_output_tokens":0}}

@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1ca89-0f60-7800-bd30-e88b6c41be5e"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 00 does not allow reading QC reports, including `multiqc_report.txt`. Your raw data path is inspected, and no symlinks have been created. The pending step is your confirmation to create symlinks under `00_data/rnaseq_bulk/raw/`, or a different source path."}}
+{"type":"turn.completed","usage":{"input_tokens":240328,"cached_input_tokens":191872,"cache_write_input_tokens":0,"output_tokens":2054,"reasoning_output_tokens":733}}

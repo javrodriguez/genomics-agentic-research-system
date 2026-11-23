@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c543-44dd-7671-af50-44b950a6b699"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The samplesheet run reported **2 groups**, but that doesn’t tell me how many distinct `condition` values are in the design table. I can check the project’s design and samplesheet to trace the third condition back to the corresponding `samples.csv` rows."}}
+{"type":"turn.completed","usage":{"input_tokens":191653,"cached_input_tokens":165760,"cache_write_input_tokens":0,"output_tokens":1138,"reasoning_output_tokens":27}}

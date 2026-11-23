@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1cb10-f56e-7e72-a506-20fe269461b5"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Yes: 12 raw files across 6 samples. Confirm to create symlinks under `00_data/rnaseq_bulk/raw/`, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":228598,"cached_input_tokens":176128,"cache_write_input_tokens":0,"output_tokens":1709,"reasoning_output_tokens":653}}

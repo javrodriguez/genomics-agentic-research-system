@@ -428,3 +428,157 @@ jobs:
         run: python reproduction/gse58638/test_recompute.py
       - name: GEO recompute, the published binding
         run: python reproduction/gse58638/recompute.py --check-published
+  gap-study-4:
+    # Local draft only. CP8 pins checkout to the done commit by full sha in the
+    # publication commit, on Javier's push word. Until then checkout reads the pushed commit.
+    # No lane branch, walk or transcript is published by this local change.
+    # The brief's reading of plan 299 carries the scratch repositories' maintenance settings.
+    # The probes step mirrors plan 299's validity step; the intervals job stays unchanged.
+    # Round 4 intervals belong to stats.py and are published at CP8.
+    # THE ZERO RULE. Each step below either grades a countable number of items or says it graded none.
+    # Before the freeze there are no takes and no result, so the two steps that need them report
+    # `not applicable — not frozen` rather than a pass. AFTER the freeze, a step that grades zero items
+    # is a FAILURE: a green that measured nothing is the defect this study spent a round learning about.
+    # The five separate after-freeze command steps below each require a nonzero record count.
+    runs-on: ubuntu-latest
+    env:
+      GIT_CONFIG_COUNT: "2"
+      GIT_CONFIG_KEY_0: maintenance.auto
+      GIT_CONFIG_VALUE_0: "false"
+      GIT_CONFIG_KEY_1: gc.auto
+      GIT_CONFIG_VALUE_1: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the copy gate, ledger and history checks read committed history
+          # and refuse in a shallow clone. CP8 adds the full sha ref here.
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Language rules
+        # Binds the permitted publication language.
+        run: python3 evals/gap-study-4/lint_language.py evals/gap-study-4/
+      - name: Separation of rounds
+        # Binds the fresh baseline's prohibition on joining earlier counts.
+        run: python3 evals/gap-study-4/lint_pooling.py evals/gap-study-4/
+      - name: Module battery
+        # Binds every module's clauses, including the workflow contract.
+        run: python3 -W ignore evals/gap-study-4/test_round4.py
+      - name: Copy record
+        # PL-5(c), w5b-4: bind pre-freeze HEAD or the freeze commit; never post-freeze HEAD.
+        # Fold 13: only the freeze commit's own code then lists what HEAD added, so a later file cannot shadow the reader;
+        # an importable file no run writes fails, any other is printed.
+        run: |
+          if [ ! -f evals/gap-study-4/prereg.json ]; then
+            echo "copy gate commit: $(git rev-parse HEAD)"
+            python3 evals/gap-study-4/copy_manifest.py --check
+          else
+            freeze=$(git log --format=%H --reverse -- evals/gap-study-4/prereg.json | head -1)
+            test -n "$freeze"
+            copy_root="$RUNNER_TEMP/frozen-tree"
+            git worktree add --detach "$copy_root" "$freeze"
+            trap 'git worktree remove "$copy_root"' EXIT
+            echo "copy gate commit: $freeze"
+            python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --check
+            python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --later-files "$(git rev-parse HEAD)"
+          fi
+      - name: Round 4 pooling guard on the published page
+        # Pre-freeze review 1, m14: round 3's step, ported. Only this round's marked section of
+        # docs/EVALS.md is read, and the step says so while no section exists; never a pass. Pre-freeze
+        # review 2, m5: --allow-absent only while no RESULT.md exists; after it, no section is a red.
+        run: python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md $(test -f evals/gap-study-4/RESULT.md || echo --allow-absent)
+      - name: Round 4 language rules on the published page
+        # Lane review 3 (pf1-l2b): the language rules, the comparatives included, over this round's
+        # marked section of docs/EVALS.md only; the step says so while no section exists.
+        run: python3 evals/gap-study-4/lint_language.py --section-of docs/EVALS.md $(test -f evals/gap-study-4/RESULT.md || echo --allow-absent)
+      - name: Round 4 commit bodies
+        # Pre-freeze review 1, m14: round 3's step, ported. The commit bodies since the freeze
+        # commit, the ones that carry what the study found; before the freeze it says so.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            freeze=$(git log --format=%H --reverse -- evals/gap-study-4/prereg.json | head -1)
+            test -n "$freeze"
+            echo "scanning commit bodies since the freeze commit $freeze"
+            python3 evals/gap-study-4/lint_language.py --commits-since "$freeze"
+            python3 evals/gap-study-4/lint_pooling.py --commits-since "$freeze"
+          else
+            echo "not applicable — not frozen"
+          fi
+      - name: Round 4 workflow diff is additive
+        # Binds this workflow to added lines only since the introducing commit.
+        run: |
+          git cat-file -e ad88d14d82f8e88e5bf6253f03faadcfbbb242f4^{commit}
+          removed=$(git diff ad88d14d82f8e88e5bf6253f03faadcfbbb242f4 HEAD --numstat -- .github/workflows/ \
+                    | awk '{s+=$2} END {print s+0}')
+          echo "workflow lines removed since the kickoff: $removed"
+          test "$removed" -eq 0
+      - name: Box integration
+        # Binds the integrated box interface supplied by CP2.
+        run: python3 -W ignore evals/gap-study-4/tests/test_box_integration.py
+      - name: Pipeline integration
+        # Binds registration, identity, freeze and publication contracts.
+        run: python3 -W ignore evals/gap-study-4/tests/test_pipeline.py
+      - name: Constructed cases
+        # Binds the task expectations, mirroring plan 299's validity command.
+        run: python3 evals/gap-study-4/probes4.py --check
+      - name: Draft derivation
+        # Binds the committed draft to its builder; an absent draft fails loudly.
+        run: python3 evals/gap-study-4/build_draft.py --check
+      - name: Context words
+        # Binds the word list against recorded sessions; zero sessions is no pass.
+        run: python3 evals/gap-study-4/leak_grep.py --check
+      - name: Private material deferred
+        # The local command belongs to freeze_rehearsal.py at the freeze, outside CI.
+        run: echo "holdout lives in the private aegis repo; checked locally at each freeze step"
+      - name: Review register
+        # Binds each registered review to its committed report.
+        run: python3 evals/gap-study-4/review_kit/rounds.py --check
+      - name: Walk register
+        # Binds each registered walk to the one walk commit that wrote it; zero walks is said, not passed.
+        run: python3 evals/gap-study-4/walk_register.py --check
+      - name: Frozen pins
+        # Binds frozen bytes and publication; zero records after the freeze fails.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            python3 -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import stats; n = len(stats.load_results()); print(f'records available: {n}'); raise SystemExit(0 if n else 'FAIL: frozen and 0 records')"
+            python3 evals/gap-study-4/check_results.py
+          else
+            echo "not applicable — not frozen"
+          fi
+      - name: Committed ledger
+        # Binds registrations to history; zero records after the freeze fails.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            python3 -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import stats; n = len(stats.load_results()); print(f'records available: {n}'); raise SystemExit(0 if n else 'FAIL: frozen and 0 records')"
+            python3 evals/gap-study-4/check_results.py --ledger
+          else
+            echo "not applicable — not frozen"
+          fi
+      - name: Recomputed labels
+        # Binds plan 1036 as written. OPEN-value: regrade-flag; its implementation is owed.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            python3 -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import stats; n = len(stats.load_results()); print(f'records available: {n}'); raise SystemExit(0 if n else 'FAIL: frozen and 0 records')"
+            python3 evals/gap-study-4/check_results.py --regrade
+          else
+            echo "not applicable — not frozen"
+          fi
+      - name: Published result
+        # Binds the rendered result to committed records; zero records fails.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            python3 -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import stats; n = len(stats.load_results()); print(f'records available: {n}'); raise SystemExit(0 if n else 'FAIL: frozen and 0 records')"
+            python3 evals/gap-study-4/result.py --check
+          else
+            echo "not applicable — not frozen"
+          fi
+      - name: Planned cells
+        # Binds every planned cell's disposition; zero records fails.
+        run: |
+          if [ -f evals/gap-study-4/prereg.json ]; then
+            python3 -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import stats; n = len(stats.load_results()); print(f'records available: {n}'); raise SystemExit(0 if n else 'FAIL: frozen and 0 records')"
+            python3 evals/gap-study-4/completeness.py --check
+          else
+            echo "not applicable — not frozen"
+          fi

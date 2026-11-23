@@ -1,0 +1,6 @@
+# Lane fold2-ld: Gap Study round 4, lane L-D of pre-freeze review 2's fold (FOLD-PLAN-prefreeze-2.md section 3:
+# m8, m10, m13, m16). One command per line, run from the repository root. test_run_builders and test_pf1_l2b are
+# their owners' lines (and the battery's); the verdict record's check says out loud when there is no record.
+python3 -B -W ignore evals/gap-study-4/tests/test_fold2_ld.py
+python3 -B -W ignore evals/gap-study-4/labelling/flagged_verdicts.py --check
+python3 -B -W ignore evals/gap-study-4/walk_native_cross.py --check

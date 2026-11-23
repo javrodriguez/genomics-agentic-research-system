@@ -1,0 +1,20 @@
+{
+  "lane": "prefreeze-road",
+  "files": [
+    {
+      "path": "COPIED.d/prefreeze-road.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane prefreeze-road (the Lane-orchestrator's ruling of Sat 24 Oct 2026, under Javier's standing delegation, after the first pre-freeze round's remote outputs at 9c21054f came back with four reds: run_checks.py timed out serially at 21600 s, test_round4 failed on the walk child's umask 002 and its backgrounded start's ignored SIGINT, holdout.py was OWED as ruled, and fixture_walk.py --check could not place a path). Edits without transfer, additive only, in three files lane review-kit-port's fragment claims: review_kit/athena_outputs.py gains --run-checks-from and battery_gate (the remote suite's parallel battery copy, bound to this HEAD by its own first line and closed by this commit's own summary line, once and last, taken as the run_checks gate with this commit's own run_checks.verdict as its exit; every other gate runs exactly as before); review_kit/README.md names python3.12 for every step and makes step 1 the aegis suite road (athena_suite.py run --kind gars-gap4 --outputs, then fetch); tests/test_review_kit.py gains K13.battery, written red first, with eight witnesses each red by K13.battery alone (three from the fresh review of f8e4a7de: the copy must count this commit's whole battery and carry its tree-unchanged line before the summary, and the inside-repository rule is exercised on its own). No new file but this one. The Lane-orchestrator's rulings on the lane's second hand-back (Sat 24 Oct 2026, under Javier's standing delegation), recorded as theirs: ruling 1 (fixture_walk, (a) plus (c), no general rule for `<` segments): fixture_walk.py (lane w8a-walk-layout's entry) reads a system root by the path's own spelling only (spelled_under), so /home is never placed through /System on the Mac, and RECORDED_EXCEPTIONS gains one exact entry each for w142 (lines 11 and 86) and w158 (lines 11 and 49), the quoted placeholder /home/<user, each line bound by its bytes, with its reason; tests/test_freeze_gates_fix.py (lane freeze-gates-fix's entry) names the three committed exceptions. Ruling 2 (the Workflow residual): review_kit/launch.py passes --disallowedTools Workflow on launch and resume; README.md's smoke requires an init record with no Workflow tool and cites the probe session e02da1fd-a604-4570-91f5-ed48a7b5faa4; tests/test_review_kit.py gains K14.workflow with two witnesses and re-anchors effort-dropped-on-resume."
+    },
+    {
+      "path": "tests/test_prefreeze_road.py",
+      "status": "new",
+      "reason": "Lane prefreeze-road, ruling 1 of the Lane-orchestrator (24 Oct 2026): F5-home, written red first (on the Mac before the change, /home/<user and a real /home path read system and w142 and w158 read clean), with two witnesses (home-through-system, walk-unbound) each red by F5-home alone."
+    },
+    {
+      "path": "checks.d/prefreeze-road.txt",
+      "status": "new",
+      "reason": "Lane prefreeze-road's listed checks: test_prefreeze_road.py and fixture_walk.py --check."
+    }
+  ]
+}

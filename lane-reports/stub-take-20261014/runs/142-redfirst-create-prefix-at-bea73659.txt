@@ -1,0 +1,5 @@
+== test_preflight -k TestCreatePrefixRefusal against bea73659's preflight.py
+FAIL: test_prefixed_names_refused_at_create (test_preflight.TestCreatePrefixRefusal.test_prefixed_names_refused_at_create)
+AssertionError: True is not false : claude-code: CODEX_NETWORK_PROXY_SNAPSHOT_BROKERED_UNSET_HTTPS_PROXY
+Ran 1 test in 0.019s
+FAILED (failures=1)

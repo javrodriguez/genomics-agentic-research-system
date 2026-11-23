@@ -1,0 +1,26 @@
+{
+  "lane": "w5c-draft-ci",
+  "files": [
+    {
+      "path": "checks.d/w5c-draft-ci.txt",
+      "status": "new",
+      "reason": "R41 and interface 2: the publication job's local command."
+    },
+    {
+      "path": "COPIED.d/w5c-draft-ci.json",
+      "status": "new",
+      "reason": "Interface 1: records this lane's added files. Transfer (ruling W7A-gap4-1 (glitch-1b, under Javier's standing delegation, Sun 11 Oct 2026)): build_draft.py, which this lane edited from evals/gap-study-3/build_draft.py, moved to lane w7a-draft-text, which edits it for W6D-R1-2, OPEN-4 and W6C-R1-2 and claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W7A-close-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026), Q-w7a-2): prereg-draft.json moved with its writer to lane w7a-draft-text, which claims it in COPIED.d/w7a-draft-text.json. Transfer (ruling W8D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8d, CP8 prep)): tests/test_ci_job.py moved to lane w8d-cp8-prep, which adds the walk register's CI step to the contract (W8A-R1-5) and claims it in COPIED.d/w8d-cp8-prep.json."
+    },
+    {
+      "path": "tests/test_build_draft.py",
+      "status": "new",
+      "reason": "R1-R34: derived draft commitments and accessor mutations. Edit W7A-gap4-1 (lane w7a, no ownership transfer): R3.carry, R8.mode-residual, the floor-spelling clauses with five whole-file witnesses, and Claims derived from every COPIED.d fragment. Departure w7b-1 (lane w7b, under ruling W7B-gap4-1) added COPIED.d/w7b-walk-wiring.json to the Claims hand list; ruled at the wave 7 merge (glitch-1b): w7a's derived list is taken, which reads w7b's fragment. Edit W8B-gap4-1 (lane w8b-holdout-digests, no ownership transfer; ruling W8B-gap4-1 (Javier's own decision, typed in glitch-1b's window Mon 12 Oct 2026 08:51 EDT, \"holdout digests A\"; slice w8b, assigned by glitch-1b)): R7.pending becomes R7.absent (no holdout digest, count or stand-in in the draft; witnesses digests-pending and digests-count), fill_fake no longer plants digests, the required-set exclusion drops /holdout_salted_digests, and R34 reads the draft's claim from COPIED.d/w8b-holdout-digests.json, where it moved with its writer. Fold W8B-close-1 (glitch-1b, Mon 12 Oct 2026, review round 1) (lane w8b, no transfer): W8B-R1-2, the digests-count mutant and the digest-shape cases use 7 digests, never the real count. D-INT-2: R15.values binds served_model_rule.codex to routing.SERVED_MODEL_LIMIT, every other harness PENDING. Lane vendor-admission T4 P2, R-6 (glitch-b5's ruling of Sat 17 Oct 2026, about 12:35 EDT, under Javier's delegation: byte-identical instructions under each vendor CLI's native name, no configured fallback name used or accepted), an edit without transfer: R15.instructions binds the draft's instruction_files to take_config.INSTRUCTION_FILES (the one assertion change, named by R-6)."
+    },
+    {
+      "path": "study.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/study.py",
+      "reason": "The binding for round 4: the study's name, folder and title (gap-study-4), its published-section markers, the prior round it reads as data (ROUND1 now points at evals/gap-study-3, with PRIOR_STUDY and PRIOR_REL naming it honestly) and the arms it runs (ARMS = A and C). Every copied file builds its paths and markers from this file, so no other copied file needs to name this study. PL-1 w5c-1 and R13: ARMS adds O and G; C remains optional. Pre-freeze review 1, m8 (lane pf1-l1-freeze-gates; the copy-record rule of its review folds of 25 Oct 2026): this copy is a near-rewrite of its source. The edits beyond this reason are recorded in COPIED.d/w1a-cp1-scaffold.json, COPIED.d/w7d-rehearsals.json. The commits that changed it after its copy commit and before this lane's review folds, oldest first: e337fe4449b3."
+    }
+  ]
+}

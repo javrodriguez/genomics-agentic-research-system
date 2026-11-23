@@ -1,0 +1,4 @@
+# Lane w4k-cp4-task-number-fidelity: CP4's number-fidelity task (repaired + pushback).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_number_fidelity.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py number-fidelity

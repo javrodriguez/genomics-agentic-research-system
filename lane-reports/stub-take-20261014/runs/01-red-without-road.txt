@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_stub_take.py", line 29, in <module>
+    from box import stub_take as st  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ImportError: cannot import name 'stub_take' from 'box' (unknown location). Did you mean: 'run_take'?

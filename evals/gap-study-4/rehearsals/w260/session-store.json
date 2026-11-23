@@ -1,0 +1,102 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-7cd4c045",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents/agent-aed991169cdfd81f2.jsonl",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents/agent-aed991169cdfd81f2.meta.json",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-7cd4c045",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents/agent-aed991169cdfd81f2.jsonl",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents/agent-aed991169cdfd81f2.meta.json",
+     "file"
+    ],
+    [
+     "projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-7cd4c045",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3/subagents/agent-aed991169cdfd81f2.jsonl",
+     "claude",
+     "7cd4c045-2acf-5cb2-8bf9-eb08c282aea3"
+    ],
+    [
+     "/opt/cfg/projects/-tmp-run-7cd4c045/7cd4c045-2acf-5cb2-8bf9-eb08c282aea3.jsonl",
+     "claude",
+     "7cd4c045-2acf-5cb2-8bf9-eb08c282aea3"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-7cd4c045",
+    "/var/tmp"
+   ],
+   "scanned": 432,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}

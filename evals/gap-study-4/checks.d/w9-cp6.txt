@@ -1,0 +1,7 @@
+# Lane w9-cp6: Gap Study round 4, CP6 wiring (glitch-2f's wave 9 ruling): K1-launch (Q-w8d-1, a take or walk checked
+# against its records before launch), W8B-R2-2 (check_results re-reads the committed prereg.json for the rehearsal's
+# synthetic digests), and freeze_rehearsal's holdout step on the aegis tool and the synthetic fixture.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container, network, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_cp6_wiring.py
+python3 -B -W ignore evals/gap-study-4/tests/test_cp6_wiring.py --witnesses

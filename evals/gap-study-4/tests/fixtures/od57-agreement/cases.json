@@ -1,0 +1,5608 @@
+{
+ "cases": [
+  {
+   "admit": [
+    3,
+    4,
+    5,
+    6
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-match",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      },
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u3",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "$patch": {
+      "removeIds": [],
+      "updates": [
+       {
+        "id": "msg-g1",
+        "toolCalls": [
+         {
+          "id": "call-g1",
+          "result": [
+           {
+            "functionResponse": {
+             "id": "call-g1",
+             "name": "grep_search",
+             "response": {
+              "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+             }
+            }
+           },
+           {
+            "functionResponse": {
+             "id": "call-g1",
+             "name": "grep_search",
+             "response": {
+              "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+             }
+            }
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "refuse": [],
+   "why": "w-g22's shape: `L175: ` in its File: environment.md block (dir_path gars/_references), attested by the display's match 175 on the doc, in the gemini, user, replayed and $patch records"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-match-no-replay-abs-dir",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "/tmp/run-b24c0de5/gars/_references",
+        "pattern": "pinned"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned\" in path \"/tmp/run-b24c0de5/gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned\" in path \"/tmp/run-b24c0de5/gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "an absolute dir_path inside the run tree"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-auto-one",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL140: line 140\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 140",
+          "lineNumber": 140
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL140: line 140\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "auto-context, one match at 140: 50 lines each side (321598-321599), 175 inside"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-auto-three",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 3 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL101: line 101\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\nL300: line 300\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 300",
+          "lineNumber": 300
+         }
+        ],
+        "summary": "Found 3 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 3 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL101: line 101\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\nL300: line 300\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "auto-context, three matches: 15 lines each side, 175-160=15"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-explicit-context",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "context": 20,
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "explicit context 20 around 160"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-explicit-after",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "after": 15,
+        "before": 2,
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "explicit after 15 from 160"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-auto-one-outside",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL124: line 124\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 124",
+          "lineNumber": 124
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL124: line 124\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "175 is 51 lines after the one match: outside the 50-line auto window"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-auto-three-outside",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 3 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL101: line 101\nL159: line 159\nL174- line 174\nL175- @OD57@\nL176- line 176\nL300: line 300\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 159",
+          "lineNumber": 159
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 300",
+          "lineNumber": 300
+         }
+        ],
+        "summary": "Found 3 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 3 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL101: line 101\nL159: line 159\nL174- line 174\nL175- @OD57@\nL176- line 176\nL300: line 300\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "175 is 16 after the nearest of three matches"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-explicit-outside",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "context": 14,
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "explicit context 14 around 160 ends at 174"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-explicit-after-outside",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "after": 14,
+        "context": 30,
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "after 14 overrides context 30 on that side"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-four-matches-no-auto",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL101: line 101\nL120: line 120\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\nL300: line 300\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 120",
+          "lineNumber": 120
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 300",
+          "lineNumber": 300
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL101: line 101\nL120: line 120\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\nL300: line 300\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "four matches: auto-context does not fire, so a context line has no window"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-names-only",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "names_only": true,
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL160: line 160\nL174- line 174\nL175- @OD57@\nL176- line 176\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "names_only set: no auto-context, and not an admitted key"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-other-header",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: other.md\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: other.md\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "the right line under another file's header (the display attests the doc)"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-other-header-context",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: other.md\nL160: line 160\nL175- @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 160",
+          "lineNumber": 160
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: other.md\nL160: line 160\nL175- @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "a context line under another file's header, the window and attestation met"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-forged-block",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/notes.md",
+          "filePath": "notes.md",
+          "line": "line 175 of another file",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "a block naming the doc with no display entry for it"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-wrong-number",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL176: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 176
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL176: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "`L176: ` and a display lineNumber 176"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-display-other-path",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/notes/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "the display entry's absolutePath is another environment.md"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-dotdot-header",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/x",
+        "pattern": "p"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 1 match for pattern \"p\" in path \"gars/x\":\n---\nFile: ../_references/environment.md\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 1 match for pattern \"p\" in path \"gars/x\":\n---\nFile: ../_references/environment.md\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "a header that climbs out with .."
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-path-key",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "path": "gars/_references",
+        "pattern": "p"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"p\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"p\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "an argument key the rule does not admit (path)"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-alias",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "search_file_content",
+       "id": "call-g1",
+       "name": "search_file_content",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "search_file_content",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "search_file_content",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "the legacy alias search_file_content"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-patch-orphan",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "$patch": {
+      "removeIds": [],
+      "updates": [
+       {
+        "id": "msg-g1",
+        "toolCalls": [
+         {
+          "id": "call-g9",
+          "result": [
+           {
+            "functionResponse": {
+             "id": "call-g9",
+             "name": "grep_search",
+             "response": {
+              "output": "Found 4 matches for pattern \"p\" in path:\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+             }
+            }
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "a $patch response whose id names no gemini call"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-second-key",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 2 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL175: @OD57@\nL176: @SECOND@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@SECOND@",
+          "lineNumber": 176
+         }
+        ],
+        "summary": "Found 2 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 2 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL175: @OD57@\nL176: @SECOND@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "a second key on the record (the probe refuses)"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-pattern-line",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "@OD57@"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"@OD57@\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"@OD57@\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "the model's pattern is the line, so line 0 (the tool's header) carries it too: never admitted text"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-display-in-glob",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "pattern": "*.md"
+       },
+       "description": "",
+       "displayName": "glob",
+       "id": "call-g1",
+       "name": "glob",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "glob",
+          "response": {
+           "output": "found 1 file"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 1 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "the line in another tool's display"
+  },
+  {
+   "admit": [
+    3,
+    4,
+    5
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-read-file",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "read_file",
+       "id": "call-g1",
+       "name": "read_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "read_file",
+          "response": {
+           "output": "line 174\n@OD57@\nline 176\n"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "read_file",
+        "response": {
+         "output": "line 174\n@OD57@\nline 176\n"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "$patch": {
+      "removeIds": [],
+      "updates": [
+       {
+        "id": "msg-g1",
+        "toolCalls": [
+         {
+          "id": "call-g1",
+          "result": [
+           {
+            "functionResponse": {
+             "id": "call-g1",
+             "name": "read_file",
+             "response": {
+              "output": "line 174\n@OD57@\nline 176\n"
+             }
+            }
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   ],
+   "refuse": [],
+   "why": "read_file of the doc"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-shell-cat",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "command": "cat _references/environment.md",
+        "description": "read"
+       },
+       "description": "",
+       "displayName": "run_shell_command",
+       "id": "call-g1",
+       "name": "run_shell_command",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "run_shell_command",
+          "response": {
+           "output": "<untrusted_context>\nOutput: line 174\n@OD57@\nline 176\nProcess Group PGID: 4242\n</untrusted_context>"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "line 174\n@OD57@\nline 176",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "run_shell_command",
+        "response": {
+         "output": "<untrusted_context>\nOutput: line 174\n@OD57@\nline 176\nProcess Group PGID: 4242\n</untrusted_context>"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "a cat of the doc: output (wrapped) and resultDisplay"
+  },
+  {
+   "admit": [
+    3
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "g-shell-grep-output-prefix",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "command": "grep -n pinned _references/environment.md",
+        "description": "r"
+       },
+       "description": "",
+       "displayName": "run_shell_command",
+       "id": "call-g1",
+       "name": "run_shell_command",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "run_shell_command",
+          "response": {
+           "output": "<untrusted_context>\nOutput: 175:@OD57@\nProcess Group PGID: 4242\n</untrusted_context>"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "175:@OD57@",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [],
+   "why": "the line right behind `Output: `, with grep -n's 175:"
+  },
+  {
+   "admit": [
+    3
+   ],
+   "family": "g",
+   "kind": "stream",
+   "name": "g-stream-shell",
+   "records": [
+    {
+     "model": "model-under-test",
+     "session_id": "session-1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "init"
+    },
+    {
+     "parameters": {
+      "command": "cat _references/environment.md",
+      "description": "r"
+     },
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tool_id": "call-g1",
+     "tool_name": "run_shell_command",
+     "type": "tool_use"
+    },
+    {
+     "output": "line 174\n@OD57@\nline 176",
+     "status": "success",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tool_id": "call-g1",
+     "type": "tool_result"
+    }
+   ],
+   "refuse": [],
+   "why": "the stream's tool_result of a cat"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-model-text",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "the doc says:\n@OD57@",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "model text"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-thoughts",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [
+      {
+       "description": "@OD57@",
+       "subject": "s"
+      }
+     ],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "a thought"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "t1-gemini-write-then-read",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g0",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "content": "x",
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "write_file",
+       "id": "call-g0",
+       "name": "write_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g0",
+          "name": "write_file",
+          "response": {
+           "output": "ok"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "read_file",
+       "id": "call-g1",
+       "name": "read_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "read_file",
+          "response": {
+           "output": "line 174\n@OD57@\nline 176\n"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    4
+   ],
+   "why": "write_file of the doc, then read_file"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "t1-gemini-replace-then-grep",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g0",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md",
+        "new_string": "b",
+        "old_string": "a"
+       },
+       "description": "",
+       "displayName": "replace",
+       "id": "call-g0",
+       "name": "replace",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g0",
+          "name": "replace",
+          "response": {
+           "output": "ok"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "gars/_references",
+        "pattern": "pinned|deseq"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned|deseq\" in path \"gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    4,
+    5
+   ],
+   "why": "replace of the doc, then grep_search"
+  },
+  {
+   "admit": [
+    3
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "t1-gemini-read-then-write",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "read_file",
+       "id": "call-g1",
+       "name": "read_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "read_file",
+          "response": {
+           "output": "line 174\n@OD57@\nline 176\n"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": "",
+     "id": "msg-g2",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "content": "x",
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "write_file",
+       "id": "call-g2",
+       "name": "write_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g2",
+          "name": "write_file",
+          "response": {
+           "output": "ok"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [],
+   "why": "the read comes first: admitted"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t1-claude-edit-then-read",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_E",
+        "input": {
+         "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md",
+         "new_string": "b",
+         "old_string": "a"
+        },
+        "name": "Edit",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "ok",
+        "tool_use_id": "toolu_E",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "type": "user"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "/tmp/run-b24c0de5/gars/_references/environment.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    4
+   ],
+   "why": "Edit of the doc, then Read"
+  },
+  {
+   "admit": [],
+   "family": "o",
+   "kind": "stream",
+   "name": "t1-codex-file-change-then-cat",
+   "records": [
+    {
+     "thread_id": "thread-1",
+     "type": "thread.started"
+    },
+    {
+     "item": {
+      "changes": [
+       {
+        "kind": "update",
+        "path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       }
+      ],
+      "id": "item_0",
+      "status": "in_progress",
+      "type": "file_change"
+     },
+     "type": "item.started"
+    },
+    {
+     "type": "turn.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "",
+      "command": "/bin/bash -lc 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "in_progress",
+      "type": "command_execution"
+     },
+     "type": "item.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "line 174\n@OD57@\nline 176\n",
+      "command": "/bin/bash -lc 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "completed",
+      "type": "command_execution"
+     },
+     "type": "item.completed"
+    }
+   ],
+   "refuse": [
+    5
+   ],
+   "why": "a Codex file_change of the doc, then a cat"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-w167-labelled",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cd /tmp/run-b24c0de5/gars && grep -n -i \"deseq\\|sklearn\" _references/environment.md _references/gars-bio.conda.txt 2>/dev/null | head -30"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "_references/environment.md:175:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "_references/environment.md:175:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "W167's shape: several operands, the line labelled with the doc and :175:"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-single-operand",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -n pinned _references/environment.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "175:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "175:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "the doc as the single operand: no label"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-cat-n",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat -n _references/environment.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174\tline 174\n   175\t@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "   174\tline 174\n   175\t@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "cat -n of the doc"
+  },
+  {
+   "admit": [
+    3
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "t2-gemini-several",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "command": "grep pinned _references/environment.md gars-bio.lock.txt"
+       },
+       "description": "",
+       "displayName": "run_shell_command",
+       "id": "call-g1",
+       "name": "run_shell_command",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "run_shell_command",
+          "response": {
+           "output": "<untrusted_context>\nOutput: _references/environment.md:@OD57@\nProcess Group PGID: 4242\n</untrusted_context>"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "_references/environment.md:@OD57@",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [],
+   "why": "Gemini: two operands, labelled"
+  },
+  {
+   "admit": [
+    4
+   ],
+   "family": "o",
+   "kind": "stream",
+   "name": "t2-codex-single",
+   "records": [
+    {
+     "thread_id": "thread-1",
+     "type": "thread.started"
+    },
+    {
+     "type": "turn.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "",
+      "command": "/bin/bash -lc 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "in_progress",
+      "type": "command_execution"
+     },
+     "type": "item.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "line 174\n@OD57@\nline 176\n",
+      "command": "/bin/bash -lc 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "completed",
+      "type": "command_execution"
+     },
+     "type": "item.completed"
+    }
+   ],
+   "refuse": [],
+   "why": "Codex: a cat"
+  },
+  {
+   "admit": [
+    3,
+    4
+   ],
+   "family": "o",
+   "kind": "session",
+   "name": "t2-codex-rollout",
+   "records": [
+    {
+     "ordinal": 0,
+     "payload": {
+      "cli_version": "0.162.1",
+      "cwd": "/tmp/run-b24c0de5",
+      "id": "thread-1"
+     },
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "session_meta"
+    },
+    {
+     "ordinal": 1,
+     "payload": {
+      "call_id": "call-o1",
+      "id": "ctc_1",
+      "input": "const r = await tools.exec_command({cmd: \"x\"});\ntext(r.output);",
+      "name": "exec",
+      "status": "completed",
+      "type": "custom_tool_call"
+     },
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "response_item"
+    },
+    {
+     "ordinal": 2,
+     "payload": {
+      "item": {
+       "aggregated_output": "175:@OD57@\n",
+       "command": [
+        "/bin/bash",
+        "-lc",
+        "grep -n pinned _references/environment.md"
+       ],
+       "cwd": "file:///tmp/run-b24c0de5",
+       "duration": 1,
+       "exit_code": 0,
+       "id": "exec-1",
+       "parsed_cmd": [],
+       "process_id": "1001",
+       "source": "unified_exec_startup",
+       "status": "completed",
+       "type": "CommandExecution"
+      },
+      "thread_id": "thread-1",
+      "turn_id": "turn-1",
+      "type": "item_completed"
+     },
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "event_msg"
+    },
+    {
+     "ordinal": 3,
+     "payload": {
+      "call_id": "call-o1",
+      "id": "ctco_3",
+      "output": [
+       {
+        "text": "175:@OD57@\n",
+        "type": "input_text"
+       }
+      ],
+      "type": "custom_tool_call_output"
+     },
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "response_item"
+    }
+   ],
+   "refuse": [],
+   "why": "Codex rollout: the CommandExecution and the exec output's verbatim copy"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-h-several",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -h pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: grep -h with several operands, no label to bind)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-h-several-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -h pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@~\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@~\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte after the pinned bytes"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-other-label",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "/tmp/notes.md:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "/tmp/notes.md:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "the line labelled with another file"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-label-wrong-number",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -n pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "_references/environment.md:176:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "_references/environment.md:176:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "the doc's label with :176: under -n"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-label-outside-run-tree",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned /home/someone/gars/_references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "/home/someone/gars/_references/environment.md:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "/home/someone/gars/_references/environment.md:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "a label naming an environment.md outside the run tree"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-label-flag",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep --label=_references/environment.md -H pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "_references/environment.md:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "_references/environment.md:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: the doc's label, a whole output line (was: --label rewrites the label)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-label-flag-changed",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep --label=_references/environment.md -H pinned _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "_references/environment.md:176:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "_references/environment.md:176:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one changed byte in the prefix (:176:)"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-unlabelled-other-only",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: a single operand that is not the doc)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-unlabelled-other-only-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@ \n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@ \n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte (a space) after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-cat-two",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: cat of two files, cat labels nothing)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-cat-two-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat _references/environment.md /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@.\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@.\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-then-cat-other",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned _references/environment.md && cat /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: a second command after the read reads another file)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-then-cat-other-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep pinned _references/environment.md && cat /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@x\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@x\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-filter-with-file",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat _references/environment.md | head /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: a whole bare output line (was: a filter that names a file)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-filter-with-file-trailing",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "cat _references/environment.md | head /tmp/notes.md"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@\t\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "@OD57@\t\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one byte (a tab) after the pinned bytes"
+  },
+  {
+   "admit": [
+    4
+   ],
+   "family": "o",
+   "kind": "stream",
+   "name": "t2-codex-c-flag",
+   "records": [
+    {
+     "thread_id": "thread-1",
+     "type": "thread.started"
+    },
+    {
+     "type": "turn.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "",
+      "command": "/bin/bash -c 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "in_progress",
+      "type": "command_execution"
+     },
+     "type": "item.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "line 174\n@OD57@\nline 176\n",
+      "command": "/bin/bash -c 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "completed",
+      "type": "command_execution"
+     },
+     "type": "item.completed"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: a whole bare line of a shell tool's output (was: bash -c, which no committed record uses, F-RS-6)"
+  },
+  {
+   "admit": [],
+   "family": "o",
+   "kind": "stream",
+   "name": "t2-codex-c-flag-trailing",
+   "records": [
+    {
+     "thread_id": "thread-1",
+     "type": "thread.started"
+    },
+    {
+     "type": "turn.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "",
+      "command": "/bin/bash -c 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "in_progress",
+      "type": "command_execution"
+     },
+     "type": "item.started"
+    },
+    {
+     "item": {
+      "aggregated_output": "line 174\n@OD57@~\nline 176\n",
+      "command": "/bin/bash -c 'cat _references/environment.md'",
+      "exit_code": 0,
+      "id": "item_1",
+      "status": "completed",
+      "type": "command_execution"
+     },
+     "type": "item.completed"
+    }
+   ],
+   "refuse": [
+    4
+   ],
+   "why": "od57-line twin: one byte after the pinned bytes"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-read-doc",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "/tmp/run-b24c0de5/gars/_references/environment.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "Read of the doc"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-read-other",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "/tmp/run-b24c0de5/notes.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "/tmp/run-b24c0de5/notes.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Read of another path (F-RS-4)"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-grep-doc",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_G",
+        "input": {
+         "-n": true,
+         "output_mode": "content",
+         "path": "/tmp/run-b24c0de5/gars/_references/environment.md",
+         "pattern": "pinned"
+        },
+        "name": "Grep",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "175:@OD57@",
+        "tool_use_id": "toolu_G",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "content": "175:@OD57@",
+      "filenames": [],
+      "mode": "content",
+      "numFiles": 1,
+      "numLines": 1
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "Grep of the doc, content mode"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-grep-doc-context",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_G",
+        "input": {
+         "-A": 1,
+         "-n": true,
+         "output_mode": "content",
+         "path": "/tmp/run-b24c0de5/gars/_references/environment.md",
+         "pattern": "line 174"
+        },
+        "name": "Grep",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "174:line 174\n175-@OD57@",
+        "tool_use_id": "toolu_G",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "content": "174:line 174\n175-@OD57@",
+      "filenames": [],
+      "mode": "content",
+      "numFiles": 1,
+      "numLines": 2
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "Grep of the doc, a context line"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-grep-dir",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_G",
+        "input": {
+         "output_mode": "content",
+         "path": "/tmp/run-b24c0de5/gars/_references",
+         "pattern": "pinned"
+        },
+        "name": "Grep",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "/tmp/run-b24c0de5/gars/_references/environment.md:@OD57@",
+        "tool_use_id": "toolu_G",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "content": "/tmp/run-b24c0de5/gars/_references/environment.md:@OD57@",
+      "filenames": [],
+      "mode": "content",
+      "numFiles": 1,
+      "numLines": 1
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Grep of a folder"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-grep-other-file",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_G",
+        "input": {
+         "output_mode": "content",
+         "path": "/tmp/run-b24c0de5/notes.md",
+         "pattern": "pinned"
+        },
+        "name": "Grep",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "@OD57@",
+        "tool_use_id": "toolu_G",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "content": "@OD57@",
+      "filenames": [],
+      "mode": "content",
+      "numFiles": 1,
+      "numLines": 1
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Grep of another file"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-read-dotdot",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "/tmp/run-b24c0de5/gars/../../evil/_references/environment.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "/tmp/run-b24c0de5/gars/../../evil/_references/environment.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Read of a path with .. (it names the doc's suffix only)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-read-lookalike-tmp",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "/tmp/evil/_references/environment.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "/tmp/evil/_references/environment.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Read of an environment.md outside the run tree"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-read-relative-lookalike",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "x/_references/environment.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "x/_references/environment.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Read of a relative look-alike"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-grep-dotdot",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_G",
+        "input": {
+         "-n": true,
+         "output_mode": "content",
+         "path": "/tmp/run-b24c0de5/gars/../gars/_references/environment.md",
+         "pattern": "pinned"
+        },
+        "name": "Grep",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "175:@OD57@",
+        "tool_use_id": "toolu_G",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "content": "175:@OD57@",
+      "filenames": [],
+      "mode": "content",
+      "numFiles": 1,
+      "numLines": 1
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "Grep of a path with .."
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-read-file-dotdot",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "file_path": "/tmp/run-b24c0de5/gars/../gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "read_file",
+       "id": "call-g1",
+       "name": "read_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "read_file",
+          "response": {
+           "output": "line 174\n@OD57@\nline 176\n"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "read_file of a path with .."
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "g-grep-lookalike-tree",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "dir_path": "/tmp/evil/gars/_references",
+        "pattern": "pinned"
+       },
+       "description": "",
+       "displayName": "grep_search",
+       "id": "call-g1",
+       "name": "grep_search",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "grep_search",
+          "response": {
+           "output": "Found 4 matches for pattern \"pinned\" in path \"/tmp/evil/gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+          }
+         }
+        }
+       ],
+       "resultDisplay": {
+        "matches": [
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 84",
+          "lineNumber": 84
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 101",
+          "lineNumber": 101
+         },
+         {
+          "absolutePath": "/tmp/run-b24c0de5/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "line 125",
+          "lineNumber": 125
+         },
+         {
+          "absolutePath": "/tmp/evil/gars/_references/environment.md",
+          "filePath": "environment.md",
+          "line": "@OD57@",
+          "lineNumber": 175
+         }
+        ],
+        "summary": "Found 4 matches"
+       },
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": [
+      {
+       "functionResponse": {
+        "id": "call-g1",
+        "name": "grep_search",
+        "response": {
+         "output": "Found 4 matches for pattern \"pinned\" in path \"/tmp/evil/gars/_references\":\n---\nFile: environment.md\nL84: line 84\nL101: line 101\nL125: line 125\nL175: @OD57@\n---"
+        }
+       }
+      }
+     ],
+     "id": "msg-u2",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    3,
+    4
+   ],
+   "why": "grep_search over a look-alike tree outside the run tree, its display naming the same"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-rgrep-newline-filename",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -rn Key gars"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "gars/x\ngars/_references/environment.md:175:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "gars/x\ngars/_references/environment.md:175:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: the doc's label and :175:, a whole output line (was: grep -r over a folder, a filename holding a newline forges the doc's label)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-rgrep-newline-filename-changed",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -rn Key gars"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "gars/x\ngars/_references/environment.md:176:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "gars/x\ngars/_references/environment.md:176:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: one changed byte in the prefix (:176:)"
+  },
+  {
+   "admit": [
+    3
+   ],
+   "family": "g",
+   "kind": "session",
+   "name": "t2-rgrep-newline-filename-gemini",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "command": "grep -rn Key gars",
+        "description": "r"
+       },
+       "description": "",
+       "displayName": "run_shell_command",
+       "id": "call-g1",
+       "name": "run_shell_command",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "run_shell_command",
+          "response": {
+           "output": "<untrusted_context>\nOutput: gars/x\ngars/_references/environment.md:175:@OD57@\nProcess Group PGID: 4242\n</untrusted_context>"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "gars/x\ngars/_references/environment.md:175:@OD57@",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: the same through Gemini's shell"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "t2-rgrep-newline-filename-gemini-changed",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "command": "grep -rn Key gars",
+        "description": "r"
+       },
+       "description": "",
+       "displayName": "run_shell_command",
+       "id": "call-g1",
+       "name": "run_shell_command",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "run_shell_command",
+          "response": {
+           "output": "<untrusted_context>\nOutput: gars/x\ngars/_references/environment.md:176:@OD57@\nProcess Group PGID: 4242\n</untrusted_context>"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "gars/x\ngars/_references/environment.md:176:@OD57@",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    3
+   ],
+   "why": "od57-line twin: the same through Gemini's shell, :176:"
+  },
+  {
+   "admit": [
+    2
+   ],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-glob-operand",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -n Key gars/_references/* /dev/null"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "gars/_references/environment.md:175:@OD57@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "gars/_references/environment.md:175:@OD57@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [],
+   "why": "od57-line: the doc's label and :175:, a whole output line (was: a glob operand, the shell, not the command, names the files)"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t2-glob-operand-second-key",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_B",
+        "input": {
+         "command": "grep -n Key gars/_references/* /dev/null"
+        },
+        "name": "Bash",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "gars/_references/environment.md:175:@OD57@\ngars/_references/notes.md:3:@SECOND@\n",
+        "tool_use_id": "toolu_B",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "interrupted": false,
+      "stderr": "",
+      "stdout": "gars/_references/environment.md:175:@OD57@\ngars/_references/notes.md:3:@SECOND@\n"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    2
+   ],
+   "why": "od57-line twin: another rule on the line (a second key on the record: the probe refuses)"
+  },
+  {
+   "admit": [],
+   "family": "g",
+   "kind": "session",
+   "name": "t1-write-dot-segment",
+   "records": [
+    {
+     "kind": "main",
+     "lastUpdated": "2026-10-21T00:00:00.000Z",
+     "projectHash": "hash-1",
+     "sessionId": "session-1",
+     "startTime": "2026-10-21T00:00:00.000Z"
+    },
+    {
+     "content": [
+      {
+       "text": "read the pinned versions"
+      }
+     ],
+     "id": "msg-u1",
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "type": "user"
+    },
+    {
+     "content": "",
+     "id": "msg-g0",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "content": "x",
+        "file_path": "/tmp/run-b24c0de5/gars/_references/./environment.md"
+       },
+       "description": "",
+       "displayName": "write_file",
+       "id": "call-g0",
+       "name": "write_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g0",
+          "name": "write_file",
+          "response": {
+           "output": "ok"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    },
+    {
+     "content": "",
+     "id": "msg-g1",
+     "model": "model-under-test",
+     "thoughts": [],
+     "timestamp": "2026-10-21T00:00:00.000Z",
+     "tokens": {
+      "input": 10,
+      "output": 2,
+      "total": 12
+     },
+     "toolCalls": [
+      {
+       "args": {
+        "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+       },
+       "description": "",
+       "displayName": "read_file",
+       "id": "call-g1",
+       "name": "read_file",
+       "renderOutputAsMarkdown": true,
+       "result": [
+        {
+         "functionResponse": {
+          "id": "call-g1",
+          "name": "read_file",
+          "response": {
+           "output": "line 174\n@OD57@\nline 176\n"
+          }
+         }
+        }
+       ],
+       "resultDisplay": "",
+       "status": "success",
+       "timestamp": "2026-10-21T00:00:00.000Z"
+      }
+     ],
+     "type": "gemini"
+    }
+   ],
+   "refuse": [
+    4
+   ],
+   "why": "write_file to _references/./environment.md, then read_file of the doc"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "t1-claude-write-doubleslash",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_W",
+        "input": {
+         "content": "x",
+         "file_path": "/tmp/run-b24c0de5/gars/_references//environment.md"
+        },
+        "name": "Write",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "ok",
+        "tool_use_id": "toolu_W",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "type": "user"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "id": "toolu_R",
+        "input": {
+         "file_path": "/tmp/run-b24c0de5/gars/_references/environment.md"
+        },
+        "name": "Read",
+        "type": "tool_use"
+       }
+      ]
+     },
+     "type": "assistant"
+    },
+    {
+     "message": {
+      "content": [
+       {
+        "content": "   174→line 174\n   175→@OD57@\n   176→line 176\n",
+        "tool_use_id": "toolu_R",
+        "type": "tool_result"
+       }
+      ]
+     },
+     "toolUseResult": {
+      "file": {
+       "content": "line 174\n@OD57@\nline 176",
+       "filePath": "/tmp/run-b24c0de5/gars/_references/environment.md"
+      },
+      "type": "text"
+     },
+     "type": "user"
+    }
+   ],
+   "refuse": [
+    4
+   ],
+   "why": "Write to _references//environment.md, then Read of the doc"
+  },
+  {
+   "admit": [],
+   "family": "c",
+   "kind": "transcript",
+   "name": "c-model-text",
+   "records": [
+    {
+     "message": {
+      "content": [
+       {
+        "text": "@OD57@",
+        "type": "text"
+       }
+      ]
+     },
+     "type": "assistant"
+    }
+   ],
+   "refuse": [
+    1
+   ],
+   "why": "model text"
+  }
+ ],
+ "placeholder": "@OD57@",
+ "schema": 1
+}

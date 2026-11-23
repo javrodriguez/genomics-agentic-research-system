@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1bcfa-ef16-7d90-bc90-814b34935f1d"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The treated samples are **B1, B2 and B3**, according to the [project design](/var/tmp/run-14cf0cc9/gars/projects/run-14cf0cc9/01_samplesheets/rnaseq_bulk_design.csv).\n\nThe plan remains DRAFT, awaiting your explicit approval before execution."}}
+{"type":"turn.completed","usage":{"input_tokens":254727,"cached_input_tokens":220800,"cache_write_input_tokens":0,"output_tokens":1723,"reasoning_output_tokens":0}}

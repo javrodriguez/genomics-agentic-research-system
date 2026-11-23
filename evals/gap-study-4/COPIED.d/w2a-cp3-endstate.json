@@ -1,0 +1,35 @@
+{
+  "lane": "w2a-cp3-endstate",
+  "files": [
+    {
+      "path": "graders/endstate.py",
+      "status": "new",
+      "reason": "CP3's end-state reader, which every action-reading v4 grader imports; round 3 had none (it read no snapshots). It defines the sidecar's evidence folder as a closed layout (CP2 builds the sidecar), reads the agent's changes per turn and per stretch, the operator's changes matched to logged events, timestamped accesses per path, turn and stretch, the watcher's health in time order (a turn or access its records do not cover is a watcher gap, never \"no access\"), and re-verifies the operator-diff check; exclusions are git's, the helpers' and the take's own harness's (interface 8). Ownership transfer S7-gap4-1 (glitch-1b, Lane-orchestrator, under Javier's standing delegation, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's rulings S7-D1 (a special STATE), S7-D2 (mode bits a named residual), S7-D3 (watched.json) and S7-D4 (the final stop after post-N); see COPIED.d/w6g-endstate-carries.json. Departure live-box-1 (glitch-06's ruling and narrow ownership extension, 14 Oct 2026, a pre-freeze instrument change under its own review): the optional found.jsonl (the sidecar's new-folder rescan, {at, path, source: 'rescan-after-create'}, closed shape, watched paths only) is admitted in the closed layout and read only through discoveries(); no existing reading changes."
+    },
+    {
+      "path": "harness_bookkeeping.py",
+      "status": "new",
+      "reason": "Interface 8's third seam table: each harness's own bookkeeping paths (home-relative and run-tree-relative), keyed by AgentAdapter.name, refusing an unknown name. Its one real entry, claude-code, is grounded in the identical copy drive.py:241-242 and :170 and round 3's prereg key run_location.excluded_from_the_run_tree; new in round 4. Lane vendor-admission T2 (glitch-b5, 16 Oct 2026) held codex and gemini as VENDOR_CANDIDATES beside TABLE; lane vendor-b21 (glitch-26's B21-2 and B21-7, 20 Oct 2026), an edit without transfer, promoted exactly the four measured and grounded patterns into TABLE after 18 real walks (lane-reports/vendor-b21-DESIGN.md) and removed VENDOR_CANDIDATES: codex home_paths sessions/**/rollout-*.jsonl (codex_adapter.py:41; openai/codex 092d3acd rollout/src/recorder.rs:1739-1762), gemini home_paths .gemini/tmp/*/chats/session-*.jsonl (native_snapshot.py:9, 13, 20; gemini-cli 0.64.0 [C] 286708-286730), run_tree_paths .home/** for both on R4-4's ruling (no measured run-tree furniture beyond COMMON_EXCLUSIONS), .tmp/ named as kept in; a docstring paragraph says so."
+    },
+    {
+      "path": "tests/test_endstate.py",
+      "status": "new",
+      "reason": "Tests for graders/endstate.py (interface 3): the plan's CP3 fixtures and interface 8's seam tests with their mutants. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns this file for S7's tests and whole-file witnesses; see COPIED.d/w6g-endstate-carries.json. Departure live-box-1: class Discoveries (every existing reading byte-identical with and without found.jsonl; closed shape and source; health required; folder round trip and link refusal). Lane vendor-b21 B21-8 (glitch-26, 20 Oct 2026): harness_strings reads a dotted folder attribute-aware (typed_harness's R4-4 rule, so endstate's .home_paths, take.home and self.home are no hits once codex and gemini's .home/** entered TABLE); witness AgentHomeWitness keeps a typed \"/srv/t/.home/x\" red."
+    },
+    {
+      "path": "tests/test_harness_bookkeeping.py",
+      "status": "new",
+      "reason": "Tests for harness_bookkeeping.py (interface 3): grounding, refusal, segment matching and the seam, with their mutants. Lane vendor-admission T2 (glitch-b5, 16 Oct 2026), new tests only (VendorCandidates): the candidates pass check_table, re-derive from their cited lines, and go red when widened, moved, guessed or ungrounded; check_task's check 8 hides no task path under either; the typed_harness grader scan stays clean with them in its table; sorted(TABLE) == ['claude-code'] stays asserted and unchanged."
+    },
+    {
+      "path": "COPIED.d/w2a-cp3-endstate.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w2a-cp3-endstate.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

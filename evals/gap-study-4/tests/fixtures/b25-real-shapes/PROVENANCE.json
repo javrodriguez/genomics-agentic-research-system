@@ -1,0 +1,36 @@
+{
+ "schema": 1,
+ "made_by": "cut_structure.py (lane vendor-b25)",
+ "walks": {
+  "w-o46": "walk/w-kbm1P3ZO ae6bec92",
+  "w-g21": "walk/w-vNjKNXbo e2c30e0c",
+  "w-g31": "walk/w-yQySFDuB"
+ },
+ "files": {
+  "w-g21-native-turn-1.jsonl": {
+   "source": "w-g21/session/native-turn-1.jsonl",
+   "sha256": "97e07f763fedcd6879da1ac53287ed191bf2f5484632f569719f115d3d828aab"
+  },
+  "w-g21-native-turn-2.jsonl": {
+   "source": "w-g21/session/native-turn-2.jsonl",
+   "sha256": "92ca8f1eef4d636380920297b64728f98371acf3a441f80b78a4bb171256edb2"
+  },
+  "w-g31-native-turn-3.jsonl": {
+   "source": "w-g31/session/native-turn-3.jsonl",
+   "sha256": "2c84f272bbabc2fd3b4118c1f206fb650b3da8f66a6e788e5e11a9eb58401265"
+  },
+  "w-g21-turn-1.jsonl": {
+   "source": "w-g21/turn-1.jsonl",
+   "sha256": "e11b4c22a5fb4ee8d7a13fcb97e401838d8f73deb821ec8e3b7e4a3c8c3360fa"
+  },
+  "w-g21-turn-2.jsonl": {
+   "source": "w-g21/turn-2.jsonl",
+   "sha256": "64ec94e36a7e764e63851412b6b46ebe3d9566d06de5b5f0fe85181d1c523c19"
+  },
+  "w-o46-codex-records.json": {
+   "source": "w-o46/session/native-turn-3.jsonl",
+   "sha256": "568705600a468810a42d12ee0665c796053c353a624eea9024655604f73aba2b"
+  }
+ },
+ "synthetic_strings": 734
+}

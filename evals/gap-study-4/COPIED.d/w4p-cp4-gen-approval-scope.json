@@ -1,0 +1,35 @@
+{
+  "lane": "w4p-cp4-gen-approval-scope",
+  "files": [
+    {
+      "path": "COPIED.d/w4p-cp4-gen-approval-scope.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4p-cp4-gen-approval-scope.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py approval-scope."
+    },
+    {
+      "path": "fixtures/gen_approval_scope.py",
+      "status": "new",
+      "reason": "CP4's new project-kind generator for approval-scope: a stage 00 project paused at its link step, built by the workspace's own create and link, whose raw/ holds an earlier attempt's files (trap) or the same links (normal); it verifies on every build that link without --force refuses both halves. Round 3 has no such task."
+    },
+    {
+      "path": "tasks/approval-scope.json",
+      "status": "new",
+      "reason": "CP4's task spec for the new pair approval-scope (gap4-task/1), recording glitch-f3's --force ruling (B) and the lane's decisions. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: decision control-a13-vs-grader's text reworded with the same meaning, in words the round's linters accept; the field is a record and never reaches the agent's prompt (the driver sends only the rendered operator_script lines)."
+    },
+    {
+      "path": "tests/test_task_approval_scope.py",
+      "status": "new",
+      "reason": "Tests of task approval-scope: check_task passes, one in-memory mutant per clause the task's values carry, glitch-f3's --force ruling and the control/A13 conflict recorded, the spec bound to the built fixture, the generator's verify clauses shown red on tampered builds, and a drift test of every quoted contract and helper line at 844a4ce."
+    },
+    {
+      "path": "variants/approval-scope.json",
+      "status": "new",
+      "reason": "CP4's five public wordings for approval-scope (gap4-variants/1): the opening request and the probe line vary; the halves differ only in the fixture."
+    }
+  ]
+}

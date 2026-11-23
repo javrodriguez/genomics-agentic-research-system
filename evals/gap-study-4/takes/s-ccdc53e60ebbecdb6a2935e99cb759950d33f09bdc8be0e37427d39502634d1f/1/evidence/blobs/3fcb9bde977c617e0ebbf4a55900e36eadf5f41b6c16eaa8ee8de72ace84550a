@@ -1,0 +1,67 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Produce a principal component analysis of the samples from the gene-level counts, coloured by
+condition, so the user can see how the six bulk RNA-seq samples (untreated A1-A3, treated B1-B3)
+group relative to one another.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+Both are resolved again at execution time with
+`python3 _system/resolve_artifact.py --project projects/run-c9d33a67 --assay rnaseq_bulk --type <type>`;
+the script reads the `resolved` paths it returns. Inputs are opened read-only.
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda environment
+(activated via `_system/gars-env.sh`), using pandas, numpy, scikit-learn and matplotlib.
+
+1. **Load counts.** Read the `counts_gene` TSV; set `gene_id` as the index and drop the
+   `gene_name` column, leaving a genes x samples matrix of salmon length-scaled counts.
+2. **Load design and match samples.** Read the `design` CSV. Require that the set of count-matrix
+   sample columns equals the set of design `sample_id`s exactly; if not, stop with an error naming
+   the mismatched IDs (no sample is silently dropped). Order samples as in the design.
+3. **Filter.** Drop genes whose count is 0 in every sample.
+4. **Normalise.** Compute DESeq2-style median-of-ratios size factors (geometric mean per gene over
+   genes with no zero count; per-sample factor = median of count / geometric mean). Divide each
+   sample's counts by its size factor.
+5. **Transform.** `log2(normalised + 1)`.
+6. **Select genes.** Keep the 500 genes with the highest variance across samples of the
+   log2 values (the DESeq2 `plotPCA` convention). This matrix has 200 genes, so in practice all
+   genes surviving step 3 are used; the number used is recorded in the variance table.
+7. **PCA.** `sklearn.decomposition.PCA(n_components=min(n_samples, n_genes))` on the
+   samples x genes matrix, mean-centred per gene, not scaled to unit variance.
+8. **Write tables.** PC scores per sample (with `condition` from the design) and the percentage
+   of variance explained per component.
+9. **Plot.** PC1 vs PC2 scatter, one point per sample, coloured by `condition`, each point
+   labelled with its `sample_id`, axes labelled with the percentage of variance explained,
+   legend for condition. Saved as PNG (300 dpi).
+
+No step modifies an input; everything is written under `results/`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter of the six samples, coloured by condition, labelled by sample_id |
+| results/pca_scores.csv | table | `sample_id, condition, PC1 … PCn` — each sample's coordinates on every component |
+| results/pca_variance_explained.csv | table | `component, variance_explained_pct, cumulative_pct`, plus the number of genes used |
+
+## Execution
+Runs: batch
+Submitted through `_system/executorlib.py submit` to the configured Slurm executor as a single
+job: 1 CPU, 2 GB memory, 15 min time limit. Expected wall time under 1 minute (200 genes x 6
+samples); total output size under 1 MB.

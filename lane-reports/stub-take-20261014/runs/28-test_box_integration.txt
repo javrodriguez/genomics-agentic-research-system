@@ -1,0 +1,94 @@
+test_b10_the_driver_ends_the_adapter_by_its_own_flag (__main__.TestBoundChecks.test_b10_the_driver_ends_the_adapter_by_its_own_flag) ... ok
+test_b11_postflight_runs_and_a_credential_file_stops (__main__.TestBoundChecks.test_b11_postflight_runs_and_a_credential_file_stops) ... ok
+test_b12_a_failed_publish_cleanup_refuses_the_next_launch (__main__.TestBoundChecks.test_b12_a_failed_publish_cleanup_refuses_the_next_launch) ... ok
+test_b13_an_outcome_without_its_leak_keys_is_a_typed_refusal (__main__.TestBoundChecks.test_b13_an_outcome_without_its_leak_keys_is_a_typed_refusal) ... ok
+test_b14_the_restart_lists_networks_too (__main__.TestBoundChecks.test_b14_the_restart_lists_networks_too) ... ok
+test_b15_the_operator_save_is_logged_and_explained (__main__.TestBoundChecks.test_b15_the_operator_save_is_logged_and_explained) ... ok
+test_b16_an_operator_write_on_an_excluded_path_is_refused (__main__.TestBoundChecks.test_b16_an_operator_write_on_an_excluded_path_is_refused) ... ok
+test_b17_the_finalize_wait_and_its_abort (__main__.TestBoundChecks.test_b17_the_finalize_wait_and_its_abort) ... ok
+test_b18_the_evidence_ledger_loads (__main__.TestBoundChecks.test_b18_the_evidence_ledger_loads) ... ok
+test_b1_a_refused_commit_restores_the_ledger (__main__.TestBoundChecks.test_b1_a_refused_commit_restores_the_ledger) ... ok
+test_b2_preflight_is_s1s_entry_point_before_any_turn (__main__.TestBoundChecks.test_b2_preflight_is_s1s_entry_point_before_any_turn) ... ok
+test_b3_a_pre_turn_refusal_runs_no_turn_and_rehearses (__main__.TestBoundChecks.test_b3_a_pre_turn_refusal_runs_no_turn_and_rehearses) ... ok
+test_b4_scan_mask_route_commit (__main__.TestBoundChecks.test_b4_scan_mask_route_commit) ... ok
+test_b5_every_road_cleans_up (__main__.TestBoundChecks.test_b5_every_road_cleans_up) ... ok
+test_b6_quiescence_kills_as_the_agent_before_the_snapshot (__main__.TestBoundChecks.test_b6_quiescence_kills_as_the_agent_before_the_snapshot) ... ok
+test_b7_remove_is_by_the_recorded_id (__main__.TestBoundChecks.test_b7_remove_is_by_the_recorded_id) ... ok
+test_b8_the_config_folder_goes_only_after_the_commit (__main__.TestBoundChecks.test_b8_the_config_folder_goes_only_after_the_commit) ... ok
+test_b9_a_leaked_sidecar_or_proxy_refuses_the_restart (__main__.TestBoundChecks.test_b9_a_leaked_sidecar_or_proxy_refuses_the_restart) ... ok
+test_the_design_table_path_is_the_generators_layout (__main__.TestBoundChecks.test_the_design_table_path_is_the_generators_layout)
+W6I-R1-4: gen_confounded_seed2 writes <out>/src/... and <out>/samples.csv, and the task's source is ... ok
+test_a_process_start_outside_scratch_git_trips (__main__.TestGuardArmed.test_a_process_start_outside_scratch_git_trips) ... ok
+test_the_runtime_spellings_are_filled_only_here (__main__.TestGuardArmed.test_the_runtime_spellings_are_filled_only_here) ... ok
+test_the_real_box_half_is_a_named_stub_that_skips (__main__.TestRealBoxStub.test_the_real_box_half_is_a_named_stub_that_skips) ... ok
+test_a_begin_timeout_is_a_pre_turn_refusal (__main__.TestTheTakePath.test_a_begin_timeout_is_a_pre_turn_refusal)
+W6H-R1-1: a TimeoutError of the begin exec rehearses (refusal.json names it), with no turn, a clean box. ... ok
+test_a_checker_email_count_above_the_scans_refuses (__main__.TestTheTakePath.test_a_checker_email_count_above_the_scans_refuses) ... ok
+test_a_checker_record_off_its_shape_refuses (__main__.TestTheTakePath.test_a_checker_record_off_its_shape_refuses) ... ok
+test_a_clean_take_is_graded_committed_and_leaves_nothing (__main__.TestTheTakePath.test_a_clean_take_is_graded_committed_and_leaves_nothing) ... ok
+test_a_leaked_sidecar_keeps_the_route_and_stops_the_loop (__main__.TestTheTakePath.test_a_leaked_sidecar_keeps_the_route_and_stops_the_loop)
+W6H-R1-3: a sidecar that cannot be removed is A LEAK: the take keeps its route, the loop stops. ... ok
+test_a_leaked_take_container_stops_the_loop_and_refuses_the_restart (__main__.TestTheTakePath.test_a_leaked_take_container_stops_the_loop_and_refuses_the_restart) ... ok
+test_a_malformed_begin_is_a_pre_turn_refusal (__main__.TestTheTakePath.test_a_malformed_begin_is_a_pre_turn_refusal) ... ok
+test_a_refused_begin_reaches_preflight_which_judges_it (__main__.TestTheTakePath.test_a_refused_begin_reaches_preflight_which_judges_it)
+A begin that replied ok: false is S1's to judge (preflight's sidecar-begin check); the driver hands it on ... ok
+test_a_watcher_gap_routes_harness_error_and_still_cleans_up (__main__.TestTheTakePath.test_a_watcher_gap_routes_harness_error_and_still_cleans_up) ... ok
+test_an_adapter_that_cannot_start_is_a_pre_turn_refusal (__main__.TestTheTakePath.test_an_adapter_that_cannot_start_is_a_pre_turn_refusal)
+W6H-R1-7: adapter_for or start_take raising before turn 1 rehearses (the plan's row 1). ... ok
+test_an_adapter_that_raises_is_failed_and_the_box_is_clean (__main__.TestTheTakePath.test_an_adapter_that_raises_is_failed_and_the_box_is_clean) ... ok
+test_an_unknown_file_in_the_take_folder_refuses (__main__.TestTheTakePath.test_an_unknown_file_in_the_take_folder_refuses) ... ok
+test_drive_refuses_an_unrecorded_or_second_drive (__main__.TestTheTakePath.test_drive_refuses_an_unrecorded_or_second_drive) ... ok
+test_one_account_email_is_one_event (__main__.TestTheTakePath.test_one_account_email_is_one_event)
+W6H-R1-2: an email the scan masks, which the checker also reports, counts once. ... ok
+test_sidecar_health_reads_a_gap_never_healthy (__main__.TestTheTakePath.test_sidecar_health_reads_a_gap_never_healthy) ... ok
+test_the_refusal_set_is_typed (__main__.TestTheTakePath.test_the_refusal_set_is_typed)
+W6H-R1-8b: a box module's NotReady and a ValueError are refusals; a defect is not. ... ok
+test_two_slots_each_commit_their_own_folder (__main__.TestTheTakePath.test_two_slots_each_commit_their_own_folder) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_adapter_private_state (__main__.TestWitnesses.test_witness_adapter_private_state) ... 
+WITNESS adapter-private-state: red by B10-adapter-end (3 own, 0 collateral, 0 errors) ok
+test_witness_bare_keyerror (__main__.TestWitnesses.test_witness_bare_keyerror) ... 
+WITNESS bare-keyerror: red by B13-history (2 own, 0 collateral, 0 errors) ok
+test_witness_design_unbound (__main__.TestWitnesses.test_witness_design_unbound) ... 
+WITNESS design-unbound: red by B17-finalize (1 own, 0 collateral, 0 errors) ok
+test_witness_failed_preflight_read_as_passed (__main__.TestWitnesses.test_witness_failed_preflight_read_as_passed) ... 
+WITNESS failed-preflight-read-as-passed: red by B3-preturn (3 own, 0 collateral, 0 errors) ok
+test_witness_launch_ignores_publish_problems (__main__.TestWitnesses.test_witness_launch_ignores_publish_problems) ... 
+WITNESS launch-ignores-publish-problems: red by B12-publish (1 own, 0 collateral, 0 errors) ok
+test_witness_leaked_take_id_only (__main__.TestWitnesses.test_witness_leaked_take_id_only) ... 
+WITNESS leaked-take-id-only: red by B9-restart (2 own, 0 collateral, 0 errors) ok
+test_witness_log_excluded_write (__main__.TestWitnesses.test_witness_log_excluded_write) ... 
+WITNESS log-excluded-write: red by B16-excluded (1 own, 0 collateral, 0 errors) ok
+test_witness_no_background_line (__main__.TestWitnesses.test_witness_no_background_line) ... 
+WITNESS no-background-line: red by B18-evidence (1 own, 0 collateral, 0 errors) ok
+test_witness_no_cap_kill (__main__.TestWitnesses.test_witness_no_cap_kill) ... 
+WITNESS no-cap-kill: red by B6-quiesce (3 own, 0 collateral, 0 errors) ok
+test_witness_no_drive_scan (__main__.TestWitnesses.test_witness_no_drive_scan) ... 
+WITNESS no-drive-scan: red by B4-scan (1 own, 0 collateral, 0 errors) ok
+test_witness_no_finalize_wait (__main__.TestWitnesses.test_witness_no_finalize_wait) ... 
+WITNESS no-finalize-wait: red by B17-finalize (2 own, 0 collateral, 0 errors) ok
+test_witness_no_finally_cleanup (__main__.TestWitnesses.test_witness_no_finally_cleanup) ... 
+WITNESS no-finally-cleanup: red by B5-cleanup (26 own, 0 collateral, 0 errors) ok
+test_witness_no_on_published (__main__.TestWitnesses.test_witness_no_on_published) ... 
+WITNESS no-on-published: red by B8-config (1 own, 0 collateral, 0 errors) ok
+test_witness_no_postflight (__main__.TestWitnesses.test_witness_no_postflight) ... 
+WITNESS no-postflight: red by B11-postflight (4 own, 0 collateral, 0 errors) ok
+test_witness_omit_restore (__main__.TestWitnesses.test_witness_omit_restore) ... 
+WITNESS omit-restore: red by B1-rollback (3 own, 0 collateral, 0 errors) ok
+test_witness_remove_checks_the_take_alone (__main__.TestWitnesses.test_witness_remove_checks_the_take_alone) ... 
+WITNESS remove-checks-the-take-alone: red by B7-remove (4 own, 0 collateral, 0 errors) ok
+test_witness_remove_never_removes (__main__.TestWitnesses.test_witness_remove_never_removes) ... 
+WITNESS remove-never-removes: red by B7-remove (7 own, 0 collateral, 0 errors) ok
+test_witness_restart_lists_containers_only (__main__.TestWitnesses.test_witness_restart_lists_containers_only) ... 
+WITNESS restart-lists-containers-only: red by B14-net (2 own, 0 collateral, 0 errors) ok
+test_witness_skip_preflight (__main__.TestWitnesses.test_witness_skip_preflight) ... 
+WITNESS skip-preflight: red by B2-preflight (1 own, 0 collateral, 0 errors) ok
+test_witness_timeout_not_a_refusal (__main__.TestWitnesses.test_witness_timeout_not_a_refusal) ... 
+WITNESS timeout-not-a-refusal: red by B3-preturn (2 own, 0 collateral, 0 errors) ok
+test_witness_unlogged_save (__main__.TestWitnesses.test_witness_unlogged_save) ... 
+WITNESS unlogged-save: red by B15-operator (2 own, 0 collateral, 0 errors) ok
+
+----------------------------------------------------------------------
+Ran 61 tests in 352.692s
+
+OK

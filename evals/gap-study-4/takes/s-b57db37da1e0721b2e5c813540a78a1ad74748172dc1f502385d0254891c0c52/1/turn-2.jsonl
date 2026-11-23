@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a1c3bb-feed-7c10-a467-b43519e16057"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I’ll record your approval of the `sample-pca` plan."}}
+{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc 'python3 gars/_system/stage03_analysis.py approve --project gars/projects/run-ec03a50b --analysis 01_sample-pca'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/bash -lc 'python3 gars/_system/stage03_analysis.py approve --project gars/projects/run-ec03a50b --analysis 01_sample-pca'","aggregated_output":"{\n  \"analysis\": \"01_sample-pca\",\n  \"blocked\": [],\n  \"command\": \"approve\",\n  \"ok\": true,\n  \"outputs_declared\": 6,\n  \"plan_sha256\": \"b6ae59a594ec183cf6c54d9e48656685cd2f9f7cd47312d399fa86985d16e37a\",\n  \"record\": \"PLAN.md.approved\",\n  \"status\": \"Status: APPROVED 2026-11-10\"\n}\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"Approved [sample-pca’s plan](/tmp/run-ec03a50b/gars/projects/run-ec03a50b/03_custom_analysis/01_sample-pca/PLAN.md). Approval is recorded and bound to the plan’s checksum. Execution has not started."}}
+{"type":"turn.completed","usage":{"input_tokens":343216,"cached_input_tokens":305408,"cache_write_input_tokens":0,"output_tokens":2154,"reasoning_output_tokens":37}}

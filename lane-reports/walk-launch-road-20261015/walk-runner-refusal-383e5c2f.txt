@@ -1,0 +1,12 @@
+refused: missing runtime: the DockerRuntime, built at next-slices plan item 4, the real-box bring-up (Q-w7b-3)
+refused: missing config_parent: the folder per-walk config folders are made in, outside every repository: next-slices plan item 4, the real-box bring-up (Q-w7b-3)
+refused: missing sidecar_for: the sidecar launch, its image pinned and sidecar.expect bound to launched.sidecar_id (cp6-readiness:62): next-slices plan item 4, the real-box bring-up (Q-w7b-3)
+refused: missing proxy: the egress proxy launch (box/egress, squid -k parse): next-slices plan item 4, the real-box bring-up (Q-w7b-3)
+refused: missing lock_path: the take lock (box/image.lock, pinned at the bring-up): next-slices plan item 4, the real-box bring-up (Q-w7b-3)
+refused: missing hosts: preflight's hosts mapping: next-slices plan item 4, the real-box bring-up (Q-w7b-3)
+refused: missing agent_version: the Claude Code version the walk runs: prereg-draft.json's version_pins are PENDING until a walk measures them
+refused: missing design_for: the checker's design view: its constants ['budgets.turn_timeout_s', 'harness_delivered_user_records', 'run_location', 'environment_record', 'driver_constants.stripped_env', 'driver_constants.run_tree_tmpdir'] are PENDING until a walk measures them
+refused: missing budgets: the turn budget (check_take.CHECKER_CONSTANTS budgets.turn_timeout_s), the quiescence cap and the poll interval: pre-registered values not yet in the draft
+refused: missing run_tree_exclude: the paths the walk's checkout leaves out: check_take.CHECKER_CONSTANTS run_location is PENDING
+refused: missing machine_gate: the P-2 machine gate: GAP4_ATHENA_SUITE does not name the athena_suite.py of the operator's aegis checkout
+refused: the walk runner's production builders are not all there yet (Q-w7b-3: the DockerRuntime and the other real-box values come at the bring-up, the login file with the walk token, the pins and constants from the walks); each missing one is named above

@@ -1,0 +1,17 @@
+# Lane w6j-claude-adapter: Gap Study round 4, slice S6c, the drive loop's agent side (the Claude Code adapter, the
+# marker / recovery / stop loop, the cost read per call, the records the checker binds), on fakes and synthetic or
+# recorded streams. One command per line, run from the repository root. Each module prints one WITNESS line per guard.
+python3 -B -W ignore evals/gap-study-4/tests/test_checker_body.py
+python3 -B -W ignore evals/gap-study-4/tests/test_drive_loop.py
+python3 -B -W ignore evals/gap-study-4/tests/test_claude_code_adapter.py
+# Round 3's checker stays byte for byte above the round-4 banner except the lines changed in place (S6: 902, 1567,
+# 1604; S6b: 546, 1569, 1571, 1592, 1594, 1611, 1651, 1718, 1733, 1775, and 1567 again): every other line of round 3's
+# file, in order, then the appended sections. Moved from checks.d/w6i-checker-body.txt (ruling S6c-gap4-1). glitch-b5's ruling 2
+# (16 Oct 2026) changes 143 (0-based 142) in place: context_text sweeps an edited file's record without its snippet.
+# Review r7 (16 Oct 2026): check_take's transcript reads split on newline only, never splitlines(), in place at 0-based
+# 107, 136, 200, 333, 424, 455, 605, 662, 704, 748, 774, 793, 928, 949, 980, 1153, 1187.
+# Pre-freeze review 2 MAJOR 3 (glitch-45's ruling; lane fold2/la1, 83185e5b) changes 0-based 1114 in place: an operator
+# turn the frozen script renders to nothing is driver-record-fault, never operator-lines.
+# This line only admits which lines changed; what each may become is pinned by tests/test_walk_runner.py R5
+# (BOOTSTRAP_SUBSTITUTIONS and BOOTSTRAP_SPANS), the real pin (review r8 NIT).
+python3 -B -c "import subprocess,sys; o=subprocess.run(['git','show','e2979b31:evals/gap-study-3/check_take.py'],capture_output=True,check=True).stdout.split(b'\n'); n=open('evals/gap-study-4/check_take.py','rb').read().split(b'\n'); k=[i for i,l in enumerate(o) if l.startswith(b'if __name__')][-1]; keep=[i for i in range(k) if i not in (107,136,142,200,333,424,455,545,605,662,704,748,774,793,901,928,949,976,980,985,1114,1153,1187,1566,1568,1570,1591,1593,1603,1610,1650,1717,1732,1774)]; sys.exit(0 if len(n)>len(o) and all(n[i]==o[i] for i in keep) and n[-3:]==o[k:k+3] and all(n[i]!=o[i] for i in (107,136,142,200,333,424,455,545,605,662,704,748,774,793,901,928,949,976,980,985,1114,1153,1187,1566,1568,1570,1591,1593,1603,1610,1650,1717,1732,1774)) else 1)"

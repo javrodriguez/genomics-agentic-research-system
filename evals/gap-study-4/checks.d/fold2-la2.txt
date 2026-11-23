@@ -1,0 +1,4 @@
+# Lane fold2/la2: Gap Study round 4, pre-freeze review 2's m6 and m7, folded under glitch-45's fold plan
+# (pfr-20261029/FOLD-PLAN-prefreeze-2.md, Thu 29 Oct 2026, under Javier's standing delegation). One command per line,
+# from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf2_la2.py

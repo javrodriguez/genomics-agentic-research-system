@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a15582-4792-7b20-9ac5-82134d93fe21"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The inspection reports these files as **single-end**. Your paired-end condition is not met, so nothing was linked.\n\nProvide a different path for `rnaseq_bulk`, or confirm that you want to use these single-end files."}}
+{"type":"turn.completed","usage":{"input_tokens":355145,"cached_input_tokens":325888,"cache_write_input_tokens":0,"output_tokens":1071,"reasoning_output_tokens":21}}

@@ -1,0 +1,20 @@
+{
+  "lane": "freeze-review-r4",
+  "files": [
+    {
+      "path": "COPIED.d/freeze-review-r4.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Pre-freeze review 4 ruled DO FREEZE, so no fold lane follows it to claim its records as lanes fold3/m1, fold2-lb and the L6a integration lane claimed reviews 3, 2 and 1; this fragment claims them on glitch-45's brief of Sat 31 Oct 2026 (keep copy_manifest --check green; under Javier's standing delegation). It claims no other file and changes no byte of any."
+    },
+    {
+      "path": "review_kit/prefreeze-4.md",
+      "status": "new",
+      "reason": "Pre-freeze review 4's report (Ruling: DO FREEZE), committed by c2cb345e as its reviewer wrote it from the kit except for five lines the Lane-orchestrator masked before commit, and never edited since; a bound record. The mask (glitch-45, Sat 31 Oct 2026, its side-folder rulings file, 'Report mask'): review_kit/commit_review.py refused the report as written for an absolute path on placeholder strings, so on lines 63, 86, 87, 90 and 215 each \"/home/<user\" became \"/home[/]<user\" and the grep pattern \"`/Users/`\" became \"`/Users[/]`\". Those five spellings are the orchestrator's mask, not the reviewer's text; no other byte differs. The report as written has sha256 27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8, and its bytes are kept outside this repository by the orchestrator. Claimed here on glitch-45's brief of Sat 31 Oct 2026 (keep copy_manifest --check green; under Javier's standing delegation), as lane fold3/m1 claimed review 3's; its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/prefreeze-4-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 4's blindness record (review_kit/blindness.py's output over the reviewer's own session file and its sub-agent session files), committed unedited by c2cb345e; a bound record, never edited. Claimed here on glitch-45's brief of Sat 31 Oct 2026 (keep copy_manifest --check green; under Javier's standing delegation), as lane fold3/m1 claimed review 3's; its bytes are not this lane's."
+    }
+  ]
+}

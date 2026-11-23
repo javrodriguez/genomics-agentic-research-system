@@ -1,0 +1,20 @@
+{
+  "lane": "w6e-drive-commit",
+  "files": [
+    {
+      "path": "tests/test_drive_commit.py",
+      "status": "new",
+      "reason": "Tests for drive.py's commit step (lane w6e) on scratch git repositories and fakes only: a process guard admitting only git in its own scratch folder, synthetic prereg readers, six bound checks (re-stage, re-hash, chronological history, restart refusal, stray staged file, preflight entry point), each with a whole-file witness of drive.py compiled in memory that its own check turns red."
+    },
+    {
+      "path": "COPIED.d/w6e-drive-commit.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfer (ruling S6-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026)): drive.py, which this lane edited for CP2's commit step (S5-gap4-1), moved to lane w6h-drive-lifecycle, which edits it further for S6 and claims it in COPIED.d/w6h-drive-lifecycle.json with this lane's reason carried."
+    },
+    {
+      "path": "checks.d/w6e-drive-commit.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

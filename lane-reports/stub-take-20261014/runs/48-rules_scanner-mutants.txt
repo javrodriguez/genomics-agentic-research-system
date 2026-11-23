@@ -1,0 +1,11 @@
+control 0 of 9
+RED   1/9 sha unchecked
+RED   4/9 version unchecked
+RED   1/9 version prefix
+RED   1/9 exit ignored
+RED   1/9 missing report is clean
+RED   1/9 unredacted
+RED   3/9 finding shape unchecked
+RED   7/9 pin version drift
+RED   1/9 used report folder
+ALIVE: none

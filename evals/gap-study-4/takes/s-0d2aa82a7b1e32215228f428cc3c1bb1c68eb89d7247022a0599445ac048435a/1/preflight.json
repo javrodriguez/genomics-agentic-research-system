@@ -1,0 +1,194 @@
+{
+ "checks": [
+  {
+   "detail": "uid 10001, no capability, no new privileges",
+   "id": "agent-non-root",
+   "ok": true
+  },
+  {
+   "detail": "the take's, the sidecar's and the egress proxy's images are their locks', by id and by platform manifest",
+   "id": "image-matches-lock",
+   "ok": true
+  },
+  {
+   "detail": "codex 0.162.1",
+   "id": "harness-version-matches-lock",
+   "ok": true
+  },
+  {
+   "detail": "a read-only root, exactly the two bind mounts and the tmpfs mounts, and every inspected fact equals the spec's",
+   "id": "take-inspect-matches-spec",
+   "ok": true
+  },
+  {
+   "detail": "cpu, memory and pids limits read back as set",
+   "id": "limits-apply",
+   "ok": true
+  },
+  {
+   "detail": "neither the sidecar mount nor the host path lists",
+   "id": "evidence-out-of-reach",
+   "ok": true
+  },
+  {
+   "detail": "only PID 1 (the keep-alive) is visible",
+   "id": "watcher-invisible",
+   "ok": true
+  },
+  {
+   "detail": "no network, its own process space, the run tree read-only, fixed boot-only capability set",
+   "id": "sidecar-isolated",
+   "ok": true
+  },
+  {
+   "detail": "the watcher's start record is the last health record",
+   "id": "watcher-started",
+   "ok": true
+  },
+  {
+   "detail": "the watcher holds exactly CAP_DAC_READ_SEARCH",
+   "id": "watcher-capability",
+   "ok": true
+  },
+  {
+   "detail": "every consequential path is readable",
+   "id": "consequential-paths-readable",
+   "ok": true
+  },
+  {
+   "detail": "no runtime socket, no DOCKER_HOST, no credential name at create",
+   "id": "no-container-socket",
+   "ok": true
+  },
+  {
+   "detail": "CONNECT chatgpt.com:443 answered 200",
+   "id": "egress-allowed-host",
+   "ok": true
+  },
+  {
+   "detail": "CONNECT github.com:443 refused (403)",
+   "id": "egress-other-host-refused",
+   "ok": true
+  },
+  {
+   "detail": "no direct connection",
+   "id": "egress-direct-refused",
+   "ok": true
+  },
+  {
+   "detail": "none of ['github.com', 'huggingface.co', 'api.anthropic.com', 'generativelanguage.googleapis.com'] resolves",
+   "id": "names-do-not-resolve",
+   "ok": true
+  },
+  {
+   "detail": "7 study folders absent",
+   "id": "study-folders-absent",
+   "ok": true
+  },
+  {
+   "detail": "the run tree's path carries no leak word",
+   "id": "run-tree-path-neutral",
+   "ok": true
+  },
+  {
+   "detail": "1.1.1.1:443 refused (OSError); 8.8.8.8:443 refused (OSError)",
+   "id": "egress-raw-ip-refused",
+   "ok": true
+  },
+  {
+   "detail": "169.254.169.254:80 refused (OSError)",
+   "id": "egress-metadata-refused",
+   "ok": true
+  },
+  {
+   "detail": "no connection to ['172.18.0.1'] on [22, 53, 80, 443, 2375, 2376, 3128, 8080]; answered refused (reachable, port closed): ['172.18.0.1:22', '172.18.0.1:2375', '172.18.0.1:2376', '172.18.0.1:3128', '172.18.0.1:443', '172.18.0.1:53', '172.18.0.1:80', '172.18.0.1:8080']",
+   "id": "egress-gateway-refused",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "google_project_tier": "not-applicable",
+  "harness": "codex",
+  "harness_version_output": "codex-cli 0.162.1\n",
+  "take_processes": [
+   {
+    "cap_amb": 0,
+    "cap_bnd": 0,
+    "cap_eff": 0,
+    "cap_inh": 0,
+    "cap_prm": 0,
+    "gids": [
+     10003,
+     10003,
+     10003,
+     10003
+    ],
+    "groups": [
+     10003
+    ],
+    "name": "sleep",
+    "no_new_privs": 1,
+    "pid": 1,
+    "uid": 10003,
+    "uids": [
+     10003,
+     10003,
+     10003,
+     10003
+    ]
+   }
+  ],
+  "token_visible_to_children": "PENDING",
+  "watcher_processes": [
+   {
+    "cap_amb": 4,
+    "cap_bnd": 4,
+    "cap_eff": 4,
+    "cap_inh": 4,
+    "cap_prm": 4,
+    "gids": [
+     10002,
+     10002,
+     10002,
+     10002
+    ],
+    "groups": [],
+    "name": "python3",
+    "no_new_privs": 1,
+    "pid": 1,
+    "uid": 10002,
+    "uids": [
+     10002,
+     10002,
+     10002,
+     10002
+    ]
+   },
+   {
+    "cap_amb": 4,
+    "cap_bnd": 4,
+    "cap_eff": 4,
+    "cap_inh": 4,
+    "cap_prm": 4,
+    "gids": [
+     10002,
+     10002,
+     10002,
+     10002
+    ],
+    "groups": [],
+    "name": "inotifywait",
+    "no_new_privs": 1,
+    "pid": 13,
+    "uid": 10002,
+    "uids": [
+     10002,
+     10002,
+     10002,
+     10002
+    ]
+   }
+  ]
+ }
+}

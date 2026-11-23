@@ -1,0 +1,67 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Produce a principal component analysis (PCA) of the six rnaseq_bulk samples from the gene-level
+count matrix, with samples plotted on the first two principal components and coloured by
+`condition` (untreated vs treated), so the user can see how the samples group. The analysis
+reports the sample coordinates and the variance each component explains; it does not test or
+interpret the separation.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` (native) | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas, numpy, scikit-learn, matplotlib — all present in its lockfile), submitted
+as a single batch job. Inputs are opened read-only; nothing upstream is written.
+
+1. **Resolve inputs.** At run time, resolve `counts_gene` and `design` with
+   `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --type <type>`; fail if
+   either does not resolve.
+2. **Load and align.** Read the count matrix (tab-separated; `gene_id`, `gene_name`, then one
+   column per sample). Drop `gene_name`, index by `gene_id`. Read the design CSV. Check that the
+   matrix's sample columns and the design's `sample_id` values are the same set; stop with an
+   error naming the mismatch if not. Order matrix columns to match the design.
+3. **Filter.** Drop genes with zero counts in every sample.
+4. **Normalise and transform.** Library-size normalise to counts per million (CPM, using each
+   sample's column total of the length-scaled counts), then transform with `log2(CPM + 1)`.
+5. **Select genes.** Keep the 500 genes with the highest variance of log2(CPM + 1) across
+   samples (all remaining genes if fewer than 500 — the matrix currently has 200). Record the
+   number used.
+6. **PCA.** `sklearn.decomposition.PCA(n_components=min(n_samples, n_genes))` on the
+   samples × genes matrix, genes mean-centred and **not** scaled to unit variance
+   (`svd_solver="full"`, deterministic). Record each component's explained-variance ratio.
+7. **Plot.** Scatter of PC1 (x) vs PC2 (y), one point per sample, coloured by `condition`
+   with a legend, each point labelled with its `sample_id`; axis labels give the percentage of
+   variance explained (e.g. `PC1 (xx.x%)`). Title: `sample-pca: log2(CPM+1), top N variable genes`.
+   Save as PNG (300 dpi) and PDF.
+8. **Write tables.** Sample scores (`sample_id`, `condition`, PC1…PCk) and variance explained
+   (`component`, `explained_variance_ratio`, `cumulative`) as CSV.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter, coloured by condition, samples labelled (300 dpi) |
+| results/pca_pc1_pc2.pdf | figure | the same plot as vector PDF |
+| results/pca_scores.csv | table | per-sample PC coordinates with condition |
+| results/pca_variance_explained.csv | table | explained-variance ratio and cumulative ratio per component |
+
+## Execution
+Runs: batch
+One Slurm job via the executor door (`_system/executorlib.py submit`), 1 CPU, 2 GB memory,
+15 minutes wall-time limit; expected run time under one minute. Expected output size under
+1 MB in total.

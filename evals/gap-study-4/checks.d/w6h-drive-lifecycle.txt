@@ -1,0 +1,7 @@
+# Lane w6h-drive-lifecycle: CP2's drive lifecycle, part 2 (drive.py's TakeDriver and the refused-commit restore) and
+# check_take.py's round-4 edits, on fakes and synthetic transcripts. One command per line, run from the repository
+# root. Each module prints one WITNESS line per guard. Python 3.9 or later (Path.is_relative_to).
+python3 -B -W ignore evals/gap-study-4/tests/test_box_integration.py
+python3 -B -W ignore evals/gap-study-4/tests/test_check_take.py
+# The round-3 byte binding of check_take.py moved to checks.d/w6i-checker-body.txt (ruling S6b-gap4-1), re-indexed there,
+# then to checks.d/w6j-claude-adapter.txt (ruling S6c-gap4-1).

@@ -1,0 +1,190 @@
+diff --git a/evals/gap-study-4/check_take.py b/evals/gap-study-4/check_take.py
+index c47675ea..895176e5 100644
+--- a/evals/gap-study-4/check_take.py
++++ b/evals/gap-study-4/check_take.py
+@@ -1970,6 +1970,37 @@ def steer_condition_problems(path: Path) -> list[str]:
+     return problems
+ 
+ 
++# THE ISOLATION DENIALS (glitch-6b's ruling, 15 Oct 2026; box lane run_take.ISOLATION_DISALLOWED_TOOLS, the names the
++# pinned 2.1.296 binary declares). Every claude-code take denies RemoteTrigger (claude.ai Routines: the take's login's
++# one road to the account outside the box), SendMessage and ListAgents, by --disallowedTools and by the inline
++# settings' permissions.deny. The binary drops a denied tool from the model's list by name, so a turn's stream init
++# that still lists one shows the denial did not hold: [harness-condition-violated], on every claude-code take.
++ISOLATION_DENIED_TOOLS = ("RemoteTrigger", "SendMessage", "ListAgents")
++_TURN_STREAM = re.compile(r"turn-([1-9][0-9]*)\.jsonl")
++
++
++def denied_tool_problems(path: Path) -> list[str]:
++    """No turn's stream init offers a denied tool. Read from the raw turn streams beside the transcript."""
++    problems = []
++    streams = sorted((int(m.group(1)), p) for p in path.parent.iterdir() if (m := _TURN_STREAM.fullmatch(p.name)))
++    for n, stream in streams:
++        for line in stream.read_text(errors="replace").splitlines():
++            try:
++                rec = json.loads(line)
++            except json.JSONDecodeError:
++                continue
++            if not (isinstance(rec, dict) and rec.get("type") == "system" and rec.get("subtype") == "init"):
++                continue
++            tools = rec.get("tools")
++            if not isinstance(tools, list):
++                raise CheckRefused(f"{stream.name}: an init record whose tools are not a list")
++            offered = sorted(set(map(str, tools)) & set(ISOLATION_DENIED_TOOLS))
++            if offered:
++                problems.append(f"[{HARNESS_CONDITION_VIOLATED}] turn {n}'s init offers {offered}: the isolation "
++                                f"denials did not hold")
++    return problems
++
++
+ def recorded_mode_problems(path: Path, pre: dict, arm) -> list[str]:
+     """R4C-5: the session recorded exactly the arm's pinned mode, and nothing else."""
+     want = mode_for_arm(pre, arm)
+@@ -2035,6 +2066,7 @@ def check4(path: Path, task_id: str, half_name: str, row_index: int | None, is_w
+     problems += design_tree_problems(path, design)               # W7B (Q-w6i-5)
+     if design.harness == CLAUDE_CODE:
+         problems += steer_condition_problems(path)               # the bash-first steer OFF (glitch-6b, 15 Oct)
++        problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
+     # W6H-R1-5: constant_problems reads the mode for the LEDGER's arm, so the ledger's arm must be the take's.
+     led = _ledger_beside(path)
+     if led is not None and led.get("arm") != arm:
+@@ -2403,6 +2435,7 @@ def check4_walk(path: Path, task_id: str, half_name: str, walk_id: str, *, wordi
+     problems += design_tree_problems(path, design)                     # D1: as for a take
+     if design.harness == CLAUDE_CODE:
+         problems += steer_condition_problems(path)                     # the bash-first steer OFF (glitch-6b, 15 Oct)
++        problems += denied_tool_problems(path)   # the isolation denials (glitch-6b, 15 Oct)
+     beside = _ledger_beside(path)
+     if isinstance(beside, dict) and beside.get("arm") != arm:
+         problems.append(f"[constant-binding] the walk's driver ledger records arm {beside.get('arm')!r}, and the walk is "
+diff --git a/evals/gap-study-4/tests/test_isolation_denials_checker.py b/evals/gap-study-4/tests/test_isolation_denials_checker.py
+new file mode 100644
+index 00000000..7c31f9d1
+--- /dev/null
++++ b/evals/gap-study-4/tests/test_isolation_denials_checker.py
+@@ -0,0 +1,126 @@
++#!/usr/bin/env python3
++"""The isolation denials are a study condition the checker verifies (glitch-6b's ruling, 15 Oct 2026; proposed by the
++box lane for the harness lane to route).
++
++Every claude-code take denies RemoteTrigger, SendMessage and ListAgents (box/run_take.ISOLATION_DISALLOWED_TOOLS, by
++--disallowedTools and the inline settings' permissions.deny). The pinned 2.1.296 binary drops a denied tool from the
++model's list by name, so:
++
++  D-violated   a turn stream whose init lists any of the three yields `[harness-condition-violated]` naming the turn
++               and the tools; one line per such init.
++  D-clean      inits that list none of them: nothing; a take with no turn stream: nothing (other readers own that).
++  D-shape      an init whose tools are not a list raises CheckRefused rather than guess.
++  D-wired      check4 and check4_walk both add these problems.
++  D-witness    each clause dropped in memory turns a check red.
++
++Synthetic fixtures only.
++"""
++
++from __future__ import annotations
++
++import ast
++import json
++import sys
++import tempfile
++import unittest
++from pathlib import Path
++from unittest import mock
++
++sys.dont_write_bytecode = True
++HERE = Path(__file__).resolve().parent.parent
++sys.path.insert(0, str(HERE))
++
++import check_take as ct  # noqa: E402
++
++BASE = ["Task", "Bash", "CronCreate", "Edit", "Read", "ScheduleWakeup", "Skill", "Workflow", "Write"]
++
++
++def init(tools):
++    return {"type": "system", "subtype": "init", "session_id": "s", "tools": tools, "model": "m"}
++
++
++def take(tmp: Path, turns) -> Path:
++    path = tmp / "transcript.jsonl"
++    path.write_text(json.dumps({"type": "user", "message": {"content": "x"}}) + "\n")
++    for n, tools in enumerate(turns, 1):
++        recs = [init(tools)] if tools is not None else []
++        recs.append({"type": "result", "subtype": "success"})
++        (tmp / f"turn-{n}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in recs))
++    return path
++
++
++class Denials(unittest.TestCase):
++    def run_case(self, turns):
++        with tempfile.TemporaryDirectory() as d:
++            return ct.denied_tool_problems(take(Path(d), turns))
++
++    def check_violated(self):
++        out = []
++        for tool in ("RemoteTrigger", "SendMessage", "ListAgents"):
++            got = self.run_case([BASE, BASE + [tool]])
++            if ct.reason_ids(got) != ["harness-condition-violated"] or "turn 2" not in got[0] or tool not in got[0]:
++                out.append(f"D-violated {tool}: {got}")
++        got = self.run_case([BASE + ["RemoteTrigger", "SendMessage", "ListAgents"]] * 2)
++        if len(got) != 2:
++            out.append(f"D-violated: one line per init expected, got {got}")
++        return out
++
++    def check_clean(self):
++        out = []
++        for name, turns in (("clean", [BASE, BASE]), ("no init", [None]), ("no stream", []),
++                            ("a near name", [BASE + ["ListPeers", "SendMessages"]])):
++            got = self.run_case(turns)
++            if got:
++                out.append(f"D-clean {name}: {got}")
++        return out
++
++    def check_shape(self):
++        with tempfile.TemporaryDirectory() as d:
++            path = take(Path(d), [])
++            (Path(d) / "turn-1.jsonl").write_text(json.dumps(init("RemoteTrigger")) + "\n")
++            try:
++                ct.denied_tool_problems(path)
++                return ["D-shape: tools that are not a list were read"]
++            except ct.CheckRefused:
++                return []
++
++    def check_wired(self):
++        tree = ast.parse(Path(ct.__file__).read_text())
++        out = []
++        for fn in ("check4", "check4_walk"):
++            body = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == fn)
++            calls = {c.func.id for c in ast.walk(body) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)}
++            if "denied_tool_problems" not in calls:
++                out.append(f"D-wired: {fn} does not add the isolation denials' problems")
++        return out
++
++    def test_violated(self):
++        self.assertEqual(self.check_violated(), [])
++
++    def test_clean(self):
++        self.assertEqual(self.check_clean(), [])
++
++    def test_shape(self):
++        self.assertEqual(self.check_shape(), [])
++
++    def test_wired(self):
++        self.assertEqual(self.check_wired(), [])
++
++    def test_witnesses(self):
++        all_checks = lambda: self.check_violated() + self.check_clean() + self.check_shape()  # noqa: E731
++        for name, ctx in (
++                ("a tool dropped", lambda: mock.patch.object(ct, "ISOLATION_DENIED_TOOLS", ("RemoteTrigger", "SendMessage"))),
++                ("no tools", lambda: mock.patch.object(ct, "ISOLATION_DENIED_TOOLS", ())),
++                ("another stream name", lambda: mock.patch.object(ct, "_TURN_STREAM",
++                                                                  __import__("re").compile(r"stream-([1-9][0-9]*)\.jsonl")))):
++            with ctx():
++                try:
++                    got = all_checks()
++                except Exception as e:  # noqa: BLE001
++                    got = [f"raised {type(e).__name__}"]
++            print(f"\nWITNESS {name}: {'red' if got else 'NOT KILLED'} ({got[:1]})", end=" ", file=sys.stderr)
++            self.assertTrue(got, name)
++
++
++if __name__ == "__main__":
++    unittest.main(verbosity=2)

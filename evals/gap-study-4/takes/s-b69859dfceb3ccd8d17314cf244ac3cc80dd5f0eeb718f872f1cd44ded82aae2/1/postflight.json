@@ -1,0 +1,36 @@
+{
+ "checks": [
+  {
+   "detail": "no credential file",
+   "id": "no-credential-file",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "admitted_credential": [],
+  "admitted_session_pair": [],
+  "credential_files": [],
+  "listing": [
+   ".claude.json",
+   ".last-cleanup",
+   "backups",
+   "backups/.claude.json.backup.1794305566456",
+   "policy-limits.json",
+   "policy-limits.json.signature.json",
+   "policy-limits.json.stamp.json",
+   "projects",
+   "projects/-tmp-run-d63850c6",
+   "projects/-tmp-run-d63850c6/d63850c6-d13d-575c-86c9-9e51a0933654",
+   "projects/-tmp-run-d63850c6/d63850c6-d13d-575c-86c9-9e51a0933654.jsonl",
+   "projects/-tmp-run-d63850c6/d63850c6-d13d-575c-86c9-9e51a0933654/subagents",
+   "projects/-tmp-run-d63850c6/d63850c6-d13d-575c-86c9-9e51a0933654/subagents/agent-aebde75ab4d617db6.jsonl",
+   "projects/-tmp-run-d63850c6/d63850c6-d13d-575c-86c9-9e51a0933654/subagents/agent-aebde75ab4d617db6.meta.json",
+   "remote-settings.json",
+   "session-env",
+   "session-env/d63850c6-d13d-575c-86c9-9e51a0933654",
+   "sessions",
+   "shell-snapshots"
+  ]
+ }
+}

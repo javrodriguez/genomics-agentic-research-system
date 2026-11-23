@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+See how the six samples (A1-A3 untreated, B1-B3 treated) cluster: a principal component analysis of the gene-level counts, with samples coloured by condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv (`sample_id,condition,group,replicate`) |
+
+## Method
+Environment: `gars-bio` (pandas, numpy, scikit-learn, matplotlib). All steps run in one script, `scripts/sample_pca.py`. Inputs are read-only.
+
+1. Read the counts matrix (columns `gene_id`, `gene_name`, then one column per sample) and the design table; check that the sample columns and design `sample_id` values match exactly, else fail.
+2. Drop genes with zero counts in all samples.
+3. Transform: log2(count + 1).
+4. Keep the 500 genes with the highest variance across the six samples (all genes if fewer than 500 remain).
+5. Centre each gene to mean zero; no per-gene scaling.
+6. PCA with `sklearn.decomposition.PCA(n_components=min(6, n_samples - 1), svd_solver="full")`; write per-sample coordinates and the explained-variance fraction of each component.
+7. Plot PC1 vs PC2, one point per sample labelled with its sample ID, coloured by `condition` (two colours, with legend); axis labels carry the percent variance explained. Save as PNG.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.csv | table | per-sample PC coordinates with `sample_id` and `condition` |
+| results/pca_variance.csv | table | explained-variance fraction per principal component |
+| results/pca_condition.png | figure | PC1 vs PC2 scatter, coloured by condition |
+
+## Execution
+Runs: batch
+Expected wall time under a minute (6 samples; the matrix is small); outputs a few tens of KB in total.

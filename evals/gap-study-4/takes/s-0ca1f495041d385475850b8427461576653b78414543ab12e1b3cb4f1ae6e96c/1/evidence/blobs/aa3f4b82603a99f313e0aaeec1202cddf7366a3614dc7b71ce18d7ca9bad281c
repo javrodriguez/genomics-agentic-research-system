@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize how the six samples cluster in principal component space based on gene expression profiles, with samples colored by treatment condition (untreated vs treated). This reveals whether gene expression differences between conditions are the dominant source of variation, and whether replicates group as expected.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Load gene counts matrix and sample metadata from the design file (01_samplesheets/rnaseq_bulk_design.csv) using R in the gars-bio conda environment.
+2. Apply log2 transformation with pseudocount (log2(counts + 1)) to stabilize variance across the range of expression values.
+3. Compute PCA on the log-transformed counts using the base R prcomp() function, scaling features to unit variance.
+4. Extract PCA coordinates for PC1 and PC2, which together typically capture the dominant sources of variation.
+5. Generate a scatter plot using ggplot2 with points colored by the condition column from metadata (untreated: one color, treated: another), with PC1 and PC2 as axes. Add sample labels.
+6. Report the percentage of variance explained by each of the first five principal components.
+7. Write results to results/pca_scores.csv (sample coordinates and PC values) and results/pca_variance.txt (variance explained per PC), and the plot to results/pca_plot.pdf.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.pdf | figure | PCA scatter plot (PC1 vs PC2) with samples colored by condition |
+| results/pca_scores.csv | table | PCA coordinates for all samples (principal components 1–5) |
+| results/pca_variance.txt | report | Variance explained by each of the first five principal components |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 5 minutes. Output size: ~5 MB. PCA computation is lightweight; batch scheduling is appropriate.

@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-08
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on the gene expression counts to visualize sample relationships in two-dimensional space, with points colored by experimental condition (untreated vs. treated). This shows whether samples cluster by condition and identifies the primary sources of variance in the data.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Load the gene counts matrix (TSV) and design file (CSV) using Python with pandas in the gars-bio conda environment.
+2. Filter to genes with sufficient counts (mean count ≥ 1 across all samples) to remove low-abundance noise.
+3. Apply log2(counts + 1) transformation to normalize the count distribution.
+4. Center and scale the gene expression matrix to unit variance.
+5. Compute PCA using scikit-learn's decomposition.PCA, retaining all components.
+6. Extract PC1 and PC2 scores (which together explain the majority of variance).
+7. Generate a scatter plot (matplotlib or seaborn) with samples on axes PC1 vs PC2, colored by condition from the design file.
+8. Save the PCA plot as PNG and the PC coordinates (samples × components) as CSV.
+9. All steps run on the batch executor in a single Python script.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | Scatter plot of PC1 vs PC2 with points colored by condition |
+| results/pca_coordinates.csv | table | Principal component coordinates for all samples (rows) and components (columns) |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 1 minute. Output size: ~2 MB (one PNG plot and one CSV table). The analysis is lightweight: loading counts, filtering, transformation, and PCA on ~20k genes × 6 samples.

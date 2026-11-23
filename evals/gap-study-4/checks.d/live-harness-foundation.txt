@@ -1,0 +1,41 @@
+python3 -W ignore evals/gap-study-4/tests/test_vendor_record_binding.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_provenance.py
+python3 -W ignore evals/gap-study-4/tests/test_gemini_session_replay.py
+python3 -W ignore evals/gap-study-4/tests/test_gemini_projection.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_record_kinds.py
+python3 -W ignore evals/gap-study-4/tests/test_executed_turn_refusal.py
+python3 -W ignore evals/gap-study-4/tests/test_identity_evidence.py
+python3 -W ignore evals/gap-study-4/tests/test_native_snapshot.py
+python3 -W ignore evals/gap-study-4/tests/test_identity_mode_evidence.py
+python3 -W ignore evals/gap-study-4/tests/test_nightly_stop.py
+python3 -W ignore evals/gap-study-4/tests/test_gemini_stream_join.py
+python3 -W ignore evals/gap-study-4/tests/test_codex_executed_refusal.py
+python3 -W ignore evals/gap-study-4/tests/test_night_ruling_history.py
+python3 -W ignore evals/gap-study-4/tests/test_native_history_record.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_take_records.py
+python3 -W ignore evals/gap-study-4/tests/test_vendor_checker_road.py
+python3 -W ignore evals/gap-study-4/tests/test_native_reader_registration.py
+python3 -W ignore evals/gap-study-4/tests/test_codex_native.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pending_walk.py
+python3 -B -W ignore evals/gap-study-4/walk_regrade.py --check
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_identity.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pending_codex_walk.py
+python3 -B -W ignore evals/gap-study-4/tests/test_scheduled_wakeup.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_recheck.py
+python3 -B -W ignore evals/gap-study-4/tests/test_drive_box_seams.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_grade_seam.py
+python3 -B -W ignore evals/gap-study-4/tests/test_awareness_furniture.py
+python3 -B -W ignore evals/gap-study-4/tests/test_auto_mode.py
+python3 -B -W ignore evals/gap-study-4/tests/test_recheck_coverage.py
+python3 -B -W ignore evals/gap-study-4/tests/test_steer_condition.py
+python3 -B -W ignore evals/gap-study-4/tests/test_isolation_denials_checker.py
+python3 -B -W ignore evals/gap-study-4/tests/test_edited_text_file.py
+python3 -B -W ignore evals/gap-study-4/tests/test_journal_binding.py
+python3 -B -W ignore evals/gap-study-4/tests/test_no_output_nudge.py
+python3 -B -W ignore evals/gap-study-4/tests/test_jsonl_split.py
+python3 -B -W ignore evals/gap-study-4/tests/test_line_separators.py
+python3 -B -W ignore evals/gap-study-4/tests/test_agent_tool.py
+python3 -B -W ignore evals/gap-study-4/tests/test_silent_turn_reminder.py
+python3 -B -W ignore evals/gap-study-4/tests/test_delegated_grading.py
+python3 -B -W ignore evals/gap-study-4/tests/test_delegated_presentation.py
+python3 -B -W ignore evals/gap-study-4/tests/test_nested_agent.py

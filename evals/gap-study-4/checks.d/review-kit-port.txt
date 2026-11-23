@@ -1,0 +1,5 @@
+# Lane review-kit-port: Gap Study round 4, the pre-freeze review kit ported to round 4 (freeze-path plan section 4).
+# One command per line, run from the repository root. No model, network, container or take.
+python3 -B -W ignore evals/gap-study-4/tests/test_review_kit.py
+python3 -B -W ignore evals/gap-study-4/tests/test_review_kit.py --witnesses
+python3 -B -W ignore evals/gap-study-4/review_kit/rounds.py --check

@@ -1,0 +1,811 @@
+test_all_green_every_arm (__main__.TestEvaluate.test_all_green_every_arm) ... ERROR
+test_each_check_catches_its_breaks (__main__.TestEvaluate.test_each_check_catches_its_breaks) ... ERROR
+test_each_check_mutant_red (__main__.TestEvaluate.test_each_check_mutant_red)
+Replacing a check with one that always passes leaves its breaks uncaught: red. ... FAIL
+test_missing_probe_fails (__main__.TestEvaluate.test_missing_probe_fails) ... FAIL
+test_run_records_failures (__main__.TestEvaluate.test_run_records_failures) ... ERROR
+test_run_tree_path_neutral (__main__.TestEvaluate.test_run_tree_path_neutral) ... FAIL
+test_bound_to_create (__main__.TestExpectedInspect.test_bound_to_create) ... FAIL
+test_mismatch_refuses_pending_and_wrong_keys (__main__.TestExpectedInspect.test_mismatch_refuses_pending_and_wrong_keys) ... ERROR
+test_host_temp_root_is_never_read (__main__.TestHostIndependence.test_host_temp_root_is_never_read) ... FAIL
+test_c1_loader_really_used (__main__.TestLockSeam.test_c1_loader_really_used) ... FAIL
+test_c1_no_flattened_lock (__main__.TestLockSeam.test_c1_no_flattened_lock) ... ok
+test_c1_relative_path_to_a_valid_lock_refused (__main__.TestLockSeam.test_c1_relative_path_to_a_valid_lock_refused) ... ok
+test_c2_closed_validation_survives (__main__.TestLockSeam.test_c2_closed_validation_survives) ... ok
+test_c2_pending_refused_before_the_runtime (__main__.TestLockSeam.test_c2_pending_refused_before_the_runtime) ... ok
+test_c3_harness_image_binding (__main__.TestLockSeam.test_c3_harness_image_binding) ... FAIL
+test_c3_no_sidecar_or_egress_lock_for_a_take (__main__.TestLockSeam.test_c3_no_sidecar_or_egress_lock_for_a_take) ... ok
+test_c4_evidence_dir_required (__main__.TestLockSeam.test_c4_evidence_dir_required) ... ERROR
+test_c4_evidence_identity (__main__.TestLockSeam.test_c4_evidence_identity) ... FAIL
+test_c5_positive_composition (__main__.TestLockSeam.test_c5_positive_composition) ... FAIL
+test_c6_incomplete_launch_record (__main__.TestLockSeam.test_c6_incomplete_launch_record) ... ok
+test_c6_launched_spec (__main__.TestLockSeam.test_c6_launched_spec) ... FAIL
+test_c7_sidecar_lock_and_manifest (__main__.TestLockSeam.test_c7_sidecar_lock_and_manifest) ... FAIL
+test_c8_egress_lock_and_manifest (__main__.TestLockSeam.test_c8_egress_lock_and_manifest) ... FAIL
+test_lw7_spelled_names_are_image_locks (__main__.TestLockSeam.test_lw7_spelled_names_are_image_locks)
+LW-7: the names preflight spells (it reads image_lock only through load and require_ready) are w4a's. ... ok
+test_o1_spelled_names_are_image_locks (__main__.TestLockSeam.test_o1_spelled_names_are_image_locks)
+O-1: the egress names preflight spells are w4a's. ... ERROR
+test_the_composition_names_no_lifecycle_or_adapter (__main__.TestLockSeam.test_the_composition_names_no_lifecycle_or_adapter)
+The helper's own source calls no launch, turn, teardown, subprocess or adapter (read by ast). ... /Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py:1709: ResourceWarning: unclosed file <_io.TextIOWrapper name='/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/box/preflight.py' mode='r' encoding='utf-8'>
+  src = open(pf.__file__, encoding="utf-8").read()
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_every_base_break_still_runs (__main__.TestNothingDropped.test_every_base_break_still_runs) ... ok
+test_every_base_test_still_runs (__main__.TestNothingDropped.test_every_base_test_still_runs) ... ok
+test_no_parameter_overrides_a_pending_constant (__main__.TestPending.test_no_parameter_overrides_a_pending_constant) ... ok
+test_pending (__main__.TestPending.test_pending) ... FAIL
+test_guard_is_armed (__main__.TestProcessGuard.test_guard_is_armed) ... ok
+test_module_is_this_rounds (__main__.TestProcessGuard.test_module_is_this_rounds) ... ok
+test_the_guard_starts_no_patch_at_import (__main__.TestProcessGuard.test_the_guard_starts_no_patch_at_import)
+Recorded at the very end of this module's import: no guarded name was patched then. Inside a test every ... ok
+test_literal_refused_names (__main__.TestProcessesProgram.test_literal_refused_names) ... ok
+test_processes_program (__main__.TestProcessesProgram.test_processes_program) ... FAIL
+test_programs (__main__.TestPrograms.test_programs) ... FAIL
+test_postflight (__main__.TestRecordAndPostflight.test_postflight) ... ok
+test_write_beside_evidence (__main__.TestRecordAndPostflight.test_write_beside_evidence) ... ERROR
+test_shape (__main__.TestShape.test_shape) ... ok
+test_the_witnesses_are_named (__main__.TestWitnesses.test_the_witnesses_are_named)
+The readiness note's six, plus W6A-R1-1's absolute-path witness, each bound to its own check; plus the ... ok
+test_witness_drop_mount_source_comparison (__main__.TestWitnesses.test_witness_drop_mount_source_comparison) ... FAIL
+test_witness_lw7_sidecar_lock_not_loaded (__main__.TestWitnesses.test_witness_lw7_sidecar_lock_not_loaded) ... FAIL
+test_witness_lw7_sidecar_manifest_not_compared (__main__.TestWitnesses.test_witness_lw7_sidecar_manifest_not_compared) ... FAIL
+test_witness_lw7_sidecar_readiness_omitted (__main__.TestWitnesses.test_witness_lw7_sidecar_readiness_omitted) ... FAIL
+test_witness_o1_egress_launch_image_not_compared (__main__.TestWitnesses.test_witness_o1_egress_launch_image_not_compared) ... FAIL
+test_witness_o1_egress_manifest_not_compared (__main__.TestWitnesses.test_witness_o1_egress_manifest_not_compared) ... FAIL
+test_witness_o1_egress_readiness_omitted (__main__.TestWitnesses.test_witness_o1_egress_readiness_omitted) ... FAIL
+test_witness_omit_absolute_path_rule (__main__.TestWitnesses.test_witness_omit_absolute_path_rule) ... ok
+test_witness_omit_harness_image_binding (__main__.TestWitnesses.test_witness_omit_harness_image_binding) ... FAIL
+test_witness_omit_load (__main__.TestWitnesses.test_witness_omit_load) ... FAIL
+test_witness_omit_readiness (__main__.TestWitnesses.test_witness_omit_readiness) ... ok
+test_witness_pre_launch_spec (__main__.TestWitnesses.test_witness_pre_launch_spec) ... FAIL
+test_witness_probes_at_another_evidence_path (__main__.TestWitnesses.test_witness_probes_at_another_evidence_path) ... FAIL
+
+======================================================================
+ERROR: test_all_green_every_arm (__main__.TestEvaluate.test_all_green_every_arm)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 571, in test_all_green_every_arm
+    rec = w.evaluate()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 272, in evaluate
+    return pf.evaluate(self.raw() if raw is None else raw, **args)
+                       ~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 260, in raw
+    fake = FakeRuntime(self.script())
+                       ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 254, in script
+    for p in self.probes():
+             ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 248, in probes
+    return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     proxy_image=self.proxy_image)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: probes() got an unexpected keyword argument 'proxy_id'
+
+======================================================================
+ERROR: test_each_check_catches_its_breaks (__main__.TestEvaluate.test_each_check_catches_its_breaks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 594, in test_each_check_catches_its_breaks
+    self.assertEqual(self.undetected(h), [], h)
+                     ~~~~~~~~~~~~~~~^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 582, in undetected
+    raw = w.raw()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 260, in raw
+    fake = FakeRuntime(self.script())
+                       ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 254, in script
+    for p in self.probes():
+             ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 248, in probes
+    return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     proxy_image=self.proxy_image)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: probes() got an unexpected keyword argument 'proxy_id'
+
+======================================================================
+ERROR: test_run_records_failures (__main__.TestEvaluate.test_run_records_failures)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 642, in test_run_records_failures
+    probes = w.probes()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 248, in probes
+    return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     proxy_image=self.proxy_image)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: probes() got an unexpected keyword argument 'proxy_id'
+
+======================================================================
+ERROR: test_mismatch_refuses_pending_and_wrong_keys (__main__.TestExpectedInspect.test_mismatch_refuses_pending_and_wrong_keys)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 782, in test_mismatch_refuses_pending_and_wrong_keys
+    obj = json.loads(w.raw()["take-inspect"]["stdout"])[0]
+                     ~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 260, in raw
+    fake = FakeRuntime(self.script())
+                       ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 254, in script
+    for p in self.probes():
+             ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 248, in probes
+    return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     proxy_image=self.proxy_image)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: probes() got an unexpected keyword argument 'proxy_id'
+
+======================================================================
+ERROR: test_c4_evidence_dir_required (__main__.TestLockSeam.test_c4_evidence_dir_required)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1696, in test_c4_evidence_dir_required
+    self.assertEqual(LockSeam.c4_arg(pf), [])
+                     ~~~~~~~~~~~~~~~^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1539, in c4_arg
+    raw = w.raw()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 260, in raw
+    fake = FakeRuntime(self.script())
+                       ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 254, in script
+    for p in self.probes():
+             ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 248, in probes
+    return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     proxy_image=self.proxy_image)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: probes() got an unexpected keyword argument 'proxy_id'
+
+======================================================================
+ERROR: test_o1_spelled_names_are_image_locks (__main__.TestLockSeam.test_o1_spelled_names_are_image_locks)
+O-1: the egress names preflight spells are w4a's.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1676, in test_o1_spelled_names_are_image_locks
+    self.assertEqual(pf.EGRESS_LOCK_IMAGE, il.EGRESS_IMAGE)
+                     ^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'box.preflight' has no attribute 'EGRESS_LOCK_IMAGE'. Did you mean: 'SIDECAR_LOCK_IMAGE'?
+
+======================================================================
+ERROR: test_write_beside_evidence (__main__.TestRecordAndPostflight.test_write_beside_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 956, in test_write_beside_evidence
+    rec = w.evaluate()
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 272, in evaluate
+    return pf.evaluate(self.raw() if raw is None else raw, **args)
+                       ~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 260, in raw
+    fake = FakeRuntime(self.script())
+                       ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 254, in script
+    for p in self.probes():
+             ~~~~~~~~~~~^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 248, in probes
+    return pf.probes(self.spec, take_id=ID["take"], sidecar_id=ID["side"], harness=self.harness, hosts=HOSTS,
+           ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     evidence_dir=self.ev, sidecar_image=self.sidecar_expect["image"], proxy_id=PROXY_ID,
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     proxy_image=self.proxy_image)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: probes() got an unexpected keyword argument 'proxy_id'
+
+======================================================================
+FAIL: test_each_check_mutant_red (__main__.TestEvaluate.test_each_check_mutant_red)
+Replacing a check with one that always passes leaves its breaks uncaught: red.
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 600, in test_each_check_mutant_red
+    self.assert_green_then_red(lambda: self.undetected(rt.CLAUDE_CODE), muts)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_missing_probe_fails (__main__.TestEvaluate.test_missing_probe_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 634, in test_missing_probe_fails
+    self.assert_green_then_red(self.missing_or_failed, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ("missing-assumed-to-pass", lambda: mock.patch.dict(pf.CHECKS, {
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            k: assume_missing(f) for k, f in pf.CHECKS.items()})),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ("crash-passes", patched(pf, "evaluate", lambda raw, **k: {"ok": True, "checks": [], "recorded": {}})),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_run_tree_path_neutral (__main__.TestEvaluate.test_run_tree_path_neutral)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 677, in test_run_tree_path_neutral
+    self.assert_green_then_red(check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+        ("no-leak-check", lambda: mock.patch.dict(pf.CHECKS, {"run-tree-path-neutral": lambda *a: "ok"})),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ("substring-hits", patched(pf, "leak_hits", lambda t, ws: [w for w in ws if w.lower() in t.lower()])),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_bound_to_create (__main__.TestExpectedInspect.test_bound_to_create)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 773, in test_bound_to_create
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("memory-off", patched(pf, "expected_take_inspect", lambda s: dict(orig(s), memory=s.memory_reservation))),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ("one-mount", patched(pf, "expected_take_inspect", lambda s: dict(orig(s), mounts=orig(s)["mounts"][:1]))),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_host_temp_root_is_never_read (__main__.TestHostIndependence.test_host_temp_root_is_never_read)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 936, in test_host_temp_root_is_never_read
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("tree-under-host-temp", patched(World, "FAKE_TREE", False)),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_c1_loader_really_used (__main__.TestLockSeam.test_c1_loader_really_used)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1654, in test_c1_loader_really_used
+    self.assertEqual(LockSeam.c1_loader(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C1-loader claude-code: TypeError: [236 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C1-loader claude-code: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C1-loader claude-code: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C1-loader codex: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C1-loader gemini: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'"]
+
+======================================================================
+FAIL: test_c3_harness_image_binding (__main__.TestLockSeam.test_c3_harness_image_binding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1687, in test_c3_harness_image_binding
+    self.assertEqual(LockSeam.c3_cross(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C3-cross take-a/claude-code: TypeE[254 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C3-cross take-a/claude-code: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C3-cross take-a/claude-code: TypeError: probes() got an unexpected '
+-  "keyword argument 'proxy_id'",
+-  'ERROR C3-cross take-o/codex: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C3-cross take-g/gemini: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'"]
+
+======================================================================
+FAIL: test_c4_evidence_identity (__main__.TestLockSeam.test_c4_evidence_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1693, in test_c4_evidence_identity
+    self.assertEqual(LockSeam.c4_mount(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C4-mount baseline: TypeError: prob[417 chars]id'"] != []
+
+First list contains 5 additional elements.
+First extra element 0:
+"ERROR C4-mount baseline: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C4-mount baseline: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C4-mount both: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'",
+-  'ERROR C4-mount expect: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C4-mount inspect: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C4-probes judged-b: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'"]
+
+======================================================================
+FAIL: test_c5_positive_composition (__main__.TestLockSeam.test_c5_positive_composition)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1699, in test_c5_positive_composition
+    self.assertEqual(LockSeam.c5_positive(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C5 claude-code: TypeError: probes([215 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C5 claude-code: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C5 claude-code: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'",
+-  'ERROR C5 codex: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'",
+-  'ERROR C5 gemini: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'"]
+
+======================================================================
+FAIL: test_c6_launched_spec (__main__.TestLockSeam.test_c6_launched_spec)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1702, in test_c6_launched_spec
+    self.assertEqual(LockSeam.c6_launched(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C6-launched-spec launched: TypeErr[55 chars]id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR C6-launched-spec launched: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C6-launched-spec launched: TypeError: probes() got an unexpected '
+-  "keyword argument 'proxy_id'"]
+
+======================================================================
+FAIL: test_c7_sidecar_lock_and_manifest (__main__.TestLockSeam.test_c7_sidecar_lock_and_manifest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1669, in test_c7_sidecar_lock_and_manifest
+    self.assertEqual(LockSeam.c7_sidecar(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C7-sidecar matching sidecar lock: [296 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of other content: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of another build: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'"]
+
+======================================================================
+FAIL: test_c8_egress_lock_and_manifest (__main__.TestLockSeam.test_c8_egress_lock_and_manifest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1672, in test_c8_egress_lock_and_manifest
+    self.assertEqual(LockSeam.c8_egress(pf), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['C8-egress pending egress lock: record (d[790 chars]id'"] != []
+
+First list contains 9 additional elements.
+First extra element 0:
+'C8-egress pending egress lock: record (dict), 12 runtime calls'
+
+Diff is 905 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_pending (__main__.TestPending.test_pending)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 711, in test_pending
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("never-pending", patched(rt, "_is_pending", lambda v: False)),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        ("inspect-confirmed", patched(rt, "INSPECT_STATUS", "confirmed")),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_processes_program (__main__.TestProcessesProgram.test_processes_program)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 894, in test_processes_program
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("skips-unreadable", patched(pf, "PROCESSES_PROGRAM", skipping)),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_programs (__main__.TestPrograms.test_programs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 847, in test_programs
+    self.assert_green_then_red(self.check, [
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+        ("py312-feature", patched(pf, "IDENTITY_PROGRAM", "type X = int\n")),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+        ("agent-root", patched(rt, "AGENT_USER", "0:0")),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ])
+    ^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 494, in assert_green_then_red
+    self.assertEqual(got, [], "the guard is red on the real module")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
+- ["raised TypeError: probes() got an unexpected keyword argument 'proxy_id'"]
++ [] : the guard is red on the real module
+
+======================================================================
+FAIL: test_witness_drop_mount_source_comparison (__main__.TestWitnesses.test_witness_drop_mount_source_comparison)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1874, in test_witness_drop_mount_source_comparison
+    self.kill("drop-mount-source-comparison")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C4-mount baseline: TypeError: prob[417 chars]id'"] != []
+
+First list contains 5 additional elements.
+First extra element 0:
+"ERROR C4-mount baseline: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C4-mount baseline: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C4-mount both: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'",
+-  'ERROR C4-mount expect: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C4-mount inspect: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C4-probes judged-b: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'"] : drop-mount-source-comparison: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_lw7_sidecar_lock_not_loaded (__main__.TestWitnesses.test_witness_lw7_sidecar_lock_not_loaded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1889, in test_witness_lw7_sidecar_lock_not_loaded
+    self.kill("lw7-sidecar-lock-not-loaded")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C7-sidecar matching sidecar lock: [296 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of other content: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of another build: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'"] : lw7-sidecar-lock-not-loaded: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_lw7_sidecar_manifest_not_compared (__main__.TestWitnesses.test_witness_lw7_sidecar_manifest_not_compared)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1883, in test_witness_lw7_sidecar_manifest_not_compared
+    self.kill("lw7-sidecar-manifest-not-compared")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C7-sidecar matching sidecar lock: [296 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of other content: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of another build: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'"] : lw7-sidecar-manifest-not-compared: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_lw7_sidecar_readiness_omitted (__main__.TestWitnesses.test_witness_lw7_sidecar_readiness_omitted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1886, in test_witness_lw7_sidecar_readiness_omitted
+    self.kill("lw7-sidecar-readiness-omitted")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C7-sidecar matching sidecar lock: [296 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C7-sidecar matching sidecar lock: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of other content: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'",
+-  'ERROR C7-sidecar sidecar lock of another build: TypeError: probes() got an '
+-  "unexpected keyword argument 'proxy_id'"] : lw7-sidecar-readiness-omitted: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_o1_egress_launch_image_not_compared (__main__.TestWitnesses.test_witness_o1_egress_launch_image_not_compared)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1895, in test_witness_o1_egress_launch_image_not_compared
+    self.kill("o1-egress-launch-image-not-compared")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['C8-egress pending egress lock: record (d[790 chars]id'"] != []
+
+First list contains 9 additional elements.
+First extra element 0:
+'C8-egress pending egress lock: record (dict), 12 runtime calls'
+
+Diff is 905 characters long. Set self.maxDiff to None to see it. : o1-egress-launch-image-not-compared: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_o1_egress_manifest_not_compared (__main__.TestWitnesses.test_witness_o1_egress_manifest_not_compared)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1892, in test_witness_o1_egress_manifest_not_compared
+    self.kill("o1-egress-manifest-not-compared")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['C8-egress pending egress lock: record (d[790 chars]id'"] != []
+
+First list contains 9 additional elements.
+First extra element 0:
+'C8-egress pending egress lock: record (dict), 12 runtime calls'
+
+Diff is 905 characters long. Set self.maxDiff to None to see it. : o1-egress-manifest-not-compared: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_o1_egress_readiness_omitted (__main__.TestWitnesses.test_witness_o1_egress_readiness_omitted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1898, in test_witness_o1_egress_readiness_omitted
+    self.kill("o1-egress-readiness-omitted")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['C8-egress pending egress lock: record (d[790 chars]id'"] != []
+
+First list contains 9 additional elements.
+First extra element 0:
+'C8-egress pending egress lock: record (dict), 12 runtime calls'
+
+Diff is 905 characters long. Set self.maxDiff to None to see it. : o1-egress-readiness-omitted: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_omit_harness_image_binding (__main__.TestWitnesses.test_witness_omit_harness_image_binding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1871, in test_witness_omit_harness_image_binding
+    self.kill("omit-harness-image-binding")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C3-cross take-a/claude-code: TypeE[254 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C3-cross take-a/claude-code: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C3-cross take-a/claude-code: TypeError: probes() got an unexpected '
+-  "keyword argument 'proxy_id'",
+-  'ERROR C3-cross take-o/codex: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C3-cross take-g/gemini: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'"] : omit-harness-image-binding: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_omit_load (__main__.TestWitnesses.test_witness_omit_load)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1862, in test_witness_omit_load
+    self.kill("omit-load")
+    ~~~~~~~~~^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C1-loader claude-code: TypeError: [236 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C1-loader claude-code: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C1-loader claude-code: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C1-loader codex: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'",
+-  'ERROR C1-loader gemini: TypeError: probes() got an unexpected keyword '
+-  "argument 'proxy_id'"] : omit-load: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_pre_launch_spec (__main__.TestWitnesses.test_witness_pre_launch_spec)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1880, in test_witness_pre_launch_spec
+    self.kill("pre-launch-spec")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C6-launched-spec launched: TypeErr[55 chars]id'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"ERROR C6-launched-spec launched: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C6-launched-spec launched: TypeError: probes() got an unexpected '
+-  "keyword argument 'proxy_id'"] : pre-launch-spec: the bound check is not green on box/preflight.py
+
+======================================================================
+FAIL: test_witness_probes_at_another_evidence_path (__main__.TestWitnesses.test_witness_probes_at_another_evidence_path)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1877, in test_witness_probes_at_another_evidence_path
+    self.kill("probes-at-another-evidence-path")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_preflight.py", line 1848, in kill
+    self.assertEqual(check(pf), [], f"{name}: the bound check is not green on box/preflight.py")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["ERROR C5 claude-code: TypeError: probes([215 chars]id'"] != []
+
+First list contains 3 additional elements.
+First extra element 0:
+"ERROR C5 claude-code: TypeError: probes() got an unexpected keyword argument 'proxy_id'"
+
++ []
+- ['ERROR C5 claude-code: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'",
+-  'ERROR C5 codex: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'",
+-  'ERROR C5 gemini: TypeError: probes() got an unexpected keyword argument '
+-  "'proxy_id'"] : probes-at-another-evidence-path: the bound check is not green on box/preflight.py
+
+----------------------------------------------------------------------
+Ran 53 tests in 0.628s
+
+FAILED (failures=26, errors=7)
+  117 breaks over 18 checks, per arm
+  mutant override-parameter: red - box.preflight.evaluate_with(study_paths)
+  mutant other-vendors-dropped: red - claude-code
+  mutant no-names: red - an unsourced credential name is used as a real value
+  mutant no-pattern: red - claude-code: .credentials.json passed
+  mutant check-dropped: red - PREFLIGHT_CHECKS is not the tested ordered tuple
+  mutant check-reordered: red - PREFLIGHT_CHECKS is not the tested ordered tuple
+  mutant watcher-uid: red - WATCHER_UID or the capability bit drifted
+  mutant cap-bit: red - WATCHER_UID or the capability bit drifted
+  mutant lock-keys: red - LOCK_KEYS drifted from w4a's schema paths
+  mutant c3-key: red - the C3 names drifted
+  mutant c3-row: red - the C3 names drifted
+  mutant ev-mount: red - the evidence mount or the blocked names drifted
+  mutant blocked: red - the evidence mount or the blocked names drifted
+  mutant agent-uid: red - the uids drifted
+
+WITNESS omit-absolute-path-rule: red by C1-relative (1 own, 0 collateral, 0 errors) 
+WITNESS omit-readiness: red by C2-pending (4 own, 0 collateral, 0 errors) 

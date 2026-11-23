@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c470-c65b-7360-afba-dba94592ff3e"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The treated samples are **B1, B2 and B3**.\n\nThe plan remains a draft; nothing has run. Approve as written?"}}
+{"type":"turn.completed","usage":{"input_tokens":247908,"cached_input_tokens":218368,"cache_write_input_tokens":0,"output_tokens":1843,"reasoning_output_tokens":0}}

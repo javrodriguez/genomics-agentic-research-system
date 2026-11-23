@@ -1,0 +1,71 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Produce a PCA of the samples from the gene counts, coloured by condition: a principal component
+analysis of the six bulk RNA-seq samples (A1-A3, B1-B3), computed from the gene-level count
+matrix and plotted with each sample coloured by its `condition` from the design table
+(`untreated`, `treated`).
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib 3.11.1),
+submitted as a single batch job. Inputs are read-only; nothing is written outside `results/`.
+
+1. **Resolve inputs.** At run time, resolve both inputs with
+   `python3 _system/resolve_artifact.py --project projects/run-2a304f06 --assay rnaseq_bulk --type counts_gene`
+   and `--type design`; the script takes the resolved paths as arguments. Abort if either fails.
+2. **Load and align.** Read the count matrix (tab-separated; columns `gene_id`, `gene_name`,
+   then one column per sample). Index by `gene_id`; keep `gene_name` aside for reporting only.
+   Read the design CSV. Require the set of sample columns to equal the design's `sample_id`
+   set exactly; abort with the mismatch otherwise. Order sample columns as in the design.
+3. **Prepare counts (in memory).** The matrix is salmon length-scaled counts, which are
+   non-integer; round to the nearest integer (`numpy.rint`, cast to int) as DESeq2 expects.
+   Drop genes with a total count of 0 across all samples. Record the number of genes kept.
+4. **Variance-stabilising transform.** Build a `pydeseq2.dds.DeseqDataSet` with the rounded
+   counts, the design as metadata and `design="~condition"`; call `dds.vst(use_design=False)`
+   (blind VST, DESeq2's `vst(blind=TRUE)` equivalent, so the transform does not see the
+   condition labels it will be coloured by). Use the resulting VST matrix (samples x genes).
+5. **Gene selection.** Rank genes by variance of the VST values across samples and keep the
+   top `n = min(500, number of genes kept)` — DESeq2 `plotPCA`'s default of 500. (The matrix
+   currently holds 200 genes, so all kept genes will be used.)
+6. **PCA.** Centre each gene (no scaling to unit variance, as in `plotPCA`) and run
+   `sklearn.decomposition.PCA(n_components=min(n_samples, n_genes))` — up to 6 components
+   for 6 samples. Record per-component explained-variance ratio.
+7. **Plot.** Scatter PC1 vs PC2 with matplotlib: one point per sample, coloured by
+   `condition` (two-colour categorical palette, legend titled "condition"), each point
+   labelled with its `sample_id`; axis labels give the percentage of variance explained
+   (e.g. `PC1 (xx.x%)`). Title: "Sample PCA — VST, top <n> variable genes". Save as PNG
+   (300 dpi) and PDF.
+8. **Write tables.** Sample scores on every component, joined to the design columns; and the
+   explained-variance ratio per component, with the cumulative sum.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2.png | figure | PC1 vs PC2 scatter, samples coloured by condition and labelled by sample_id, 300 dpi |
+| results/pca_pc1_pc2.pdf | figure | the same plot as vector PDF |
+| results/pca_scores.tsv | table | one row per sample: `sample_id`, `condition`, `group`, `replicate`, `PC1` … `PCk` |
+| results/pca_variance_explained.tsv | table | one row per component: `component`, `variance_explained_ratio`, `cumulative_ratio` |
+
+## Execution
+Runs: batch
+One job through the configured executor, 1 CPU, 4 GB memory, 15 minutes wall-time limit;
+expected run time under 1 minute (6 samples x 200 genes). Expected output size under 1 MB
+in total.

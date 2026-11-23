@@ -1,0 +1,1198 @@
+{
+ "agent": {
+  "harness": "claude-code",
+  "version": "2.1.296"
+ },
+ "arm": "A",
+ "budget_s": 900,
+ "claude_version": "2.1.296",
+ "cost": {
+  "calls": [
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 5532,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJrqoX1N7XzKVihho6n/req_011CgvJrqQDVcECZsK5XbLfr",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 5532,
+     "cache_read_input_tokens": 14379,
+     "input_tokens": 10,
+     "output_tokens": 486
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 2097,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsAsjk4iRhPrckrLTr/req_011CgvJsAhKpkUn7eV2VkTHq",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 2097,
+     "cache_read_input_tokens": 19911,
+     "input_tokens": 8,
+     "output_tokens": 114
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 3690,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsJFFd6AGdL2x42MqV/req_011CgvJsJ26wiN5yrU4z4J25",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 3690,
+     "cache_read_input_tokens": 22008,
+     "input_tokens": 8,
+     "output_tokens": 108
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1903,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsPv4HcB8NSoUs1ZGE/req_011CgvJsPhfCGy4M86M3AM85",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1903,
+     "cache_read_input_tokens": 25698,
+     "input_tokens": 8,
+     "output_tokens": 148
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 282,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsYEsJgHWhmDLU9wL8/req_011CgvJsY5CUUjS4ZWxcJNSN",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 282,
+     "cache_read_input_tokens": 27601,
+     "input_tokens": 8,
+     "output_tokens": 131
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 416,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsctRF9G2JnMLgAxmR/req_011CgvJscgXQ4b8FXWRCrmnN",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 416,
+     "cache_read_input_tokens": 27883,
+     "input_tokens": 8,
+     "output_tokens": 104
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 758,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJshbgo3N4cJ89TBdpR/req_011CgvJshQ3E5L3WjFZmpShP",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 758,
+     "cache_read_input_tokens": 28299,
+     "input_tokens": 8,
+     "output_tokens": 140
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 276,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsoDHNfBoWTYbvoQB8/req_011CgvJso1dBDRZr7Sb9U2vd",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 276,
+     "cache_read_input_tokens": 29057,
+     "input_tokens": 8,
+     "output_tokens": 134
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 276,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJst9wZtsHTVynVATzw/req_011CgvJssxn5mftBgGnf6Jg3",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 276,
+     "cache_read_input_tokens": 29333,
+     "input_tokens": 8,
+     "output_tokens": 154
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 440,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJsxxvD4WqRnyDBmG9U/req_011CgvJsxn18YFBuEpzvqNnk",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 440,
+     "cache_read_input_tokens": 29609,
+     "input_tokens": 8,
+     "output_tokens": 213
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 313,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJt4pt8WGCpazprspV5/req_011CgvJt4eUP9LwGABhwjkJT",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 313,
+     "cache_read_input_tokens": 30049,
+     "input_tokens": 8,
+     "output_tokens": 173
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 383,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJtD4yhQeDjEbs8sKbm/req_011CgvJtCsa3uuJgy7E9fBmW",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 383,
+     "cache_read_input_tokens": 30362,
+     "input_tokens": 8,
+     "output_tokens": 135
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 312,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJtJn2ctYu5C6q6r7go/req_011CgvJtJaNGTVdZpZdBfVWi",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 312,
+     "cache_read_input_tokens": 30745,
+     "input_tokens": 8,
+     "output_tokens": 111
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 250,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJtP7Uk8vf7xQQZ5Fgq/req_011CgvJtNvZGCDnYNvhiEYFc",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 250,
+     "cache_read_input_tokens": 31057,
+     "input_tokens": 8,
+     "output_tokens": 316
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 470,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJtdpWYYszxr28948Tp/req_011CgvJtdbcVoBToh59iLyko",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 470,
+     "cache_read_input_tokens": 31307,
+     "input_tokens": 8,
+     "output_tokens": 122
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 684,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJtj2Y6E6Fw37MAwWpC/req_011CgvJtiqNq7NQqNbNksQnz",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 684,
+     "cache_read_input_tokens": 31777,
+     "input_tokens": 8,
+     "output_tokens": 232
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 360,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJtu71gx69hUSwq2Soh/req_011CgvJttv7ActC27vNv7xzQ",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 360,
+     "cache_read_input_tokens": 32461,
+     "input_tokens": 8,
+     "output_tokens": 304
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 432,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJu8Km1KdJEZeSARi3R/req_011CgvJu88qXydzSa5FjJMiS",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 432,
+     "cache_read_input_tokens": 32821,
+     "input_tokens": 8,
+     "output_tokens": 492
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 700,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJuXLc5zF3mPMHNVa5r/req_011CgvJuX9wTL9Z1Mb9qu2kB",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 700,
+     "cache_read_input_tokens": 33253,
+     "input_tokens": 8,
+     "output_tokens": 282
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 391,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJuhUZLEQNyZ5hkCNS8/req_011CgvJuhH9gYeq65J8FjgUE",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 391,
+     "cache_read_input_tokens": 33953,
+     "input_tokens": 8,
+     "output_tokens": 380
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 489,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJv58J1K6MbYojd8Vfe/req_011CgvJv4v9qtWMfrzwc7ryK",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 489,
+     "cache_read_input_tokens": 34344,
+     "input_tokens": 8,
+     "output_tokens": 119
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 998,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJv9zjsvYRCPyWkwWyC/req_011CgvJv9pagktfcGo5N74VM",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 998,
+     "cache_read_input_tokens": 34833,
+     "input_tokens": 8,
+     "output_tokens": 168
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 263,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJvUs4XuABae4qBXh6i/req_011CgvJvUfPm6KHbWLMG8vQm",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 263,
+     "cache_read_input_tokens": 35831,
+     "input_tokens": 10,
+     "output_tokens": 242
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 467,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJvezm64LaaMrGE2vQH/req_011CgvJvenMmFNue5nwcL1qz",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 467,
+     "cache_read_input_tokens": 36094,
+     "input_tokens": 8,
+     "output_tokens": 205
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 259,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJvnNmHBqopk4MacrCA/req_011CgvJvnCqibgDtRA9izpuX",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 259,
+     "cache_read_input_tokens": 36561,
+     "input_tokens": 8,
+     "output_tokens": 1503
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1612,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJwTKKMuBSrnjdWadrR/req_011CgvJwSwVfNNj5oaMjPXc4",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1612,
+     "cache_read_input_tokens": 36820,
+     "input_tokens": 8,
+     "output_tokens": 198
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 328,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJwbA6fgPUjZHqVJMPa/req_011CgvJwawxAKqzfxaFw6jka",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 328,
+     "cache_read_input_tokens": 38432,
+     "input_tokens": 8,
+     "output_tokens": 128
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 2329,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJwi4aFDLJ3k9Mz6Lvd/req_011CgvJwhrRdxEzrLnXh7uUK",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 2329,
+     "cache_read_input_tokens": 38760,
+     "input_tokens": 8,
+     "output_tokens": 245
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 341,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJwueqcuded2H8U8YXy/req_011CgvJwuURkQi4DpCDm3fcv",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 341,
+     "cache_read_input_tokens": 41089,
+     "input_tokens": 8,
+     "output_tokens": 153
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 213,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJx2WqggHp7bApbf3MU/req_011CgvJx2KBnxugoaFGe7MnD",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 213,
+     "cache_read_input_tokens": 41430,
+     "input_tokens": 8,
+     "output_tokens": 155
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 244,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJx8N51iucdztnSBHZj/req_011CgvJx8BekR2NDLMKF35D5",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 244,
+     "cache_read_input_tokens": 41643,
+     "input_tokens": 8,
+     "output_tokens": 334
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1108,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJxTx3PTV64wg8mDjwZ/req_011CgvJxTktcgKUi4R58aCRG",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1108,
+     "cache_read_input_tokens": 41887,
+     "input_tokens": 8,
+     "output_tokens": 111
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1431,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJxZoXPBCmt1eEJkhkr/req_011CgvJxZcN9w2GwWvSvu5go",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1431,
+     "cache_read_input_tokens": 42995,
+     "input_tokens": 8,
+     "output_tokens": 2925
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 3038,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJz2gKTr34aPHGMRXvi/req_011CgvJz2Uf8rTotooazogmU",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 3038,
+     "cache_read_input_tokens": 44426,
+     "input_tokens": 8,
+     "output_tokens": 141
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 230,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJz7kvJVhn6HMReYk9q/req_011CgvJz7Y1fmX8TVwZG6EQe",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 230,
+     "cache_read_input_tokens": 47464,
+     "input_tokens": 8,
+     "output_tokens": 173
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 245,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJzFgezxW8FZUxGVSDV/req_011CgvJzFRnRVXyqWzbVgwxs",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 245,
+     "cache_read_input_tokens": 47694,
+     "input_tokens": 8,
+     "output_tokens": 198
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 293,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJzMqW4VaK2VBz2sc5M/req_011CgvJzMfagXv9ZSsiv2CzV",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 293,
+     "cache_read_input_tokens": 47939,
+     "input_tokens": 8,
+     "output_tokens": 616
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 849,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJzeGTXypvwPtdv2Va8/req_011CgvJze54bEU8VF5PU7sAt",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 849,
+     "cache_read_input_tokens": 48232,
+     "input_tokens": 8,
+     "output_tokens": 123
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 332,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJzjNYqm54WiM5URJNt/req_011CgvJzjC8SVki6xRvbuaTB",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 332,
+     "cache_read_input_tokens": 49081,
+     "input_tokens": 8,
+     "output_tokens": 198
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 404,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJzr4sSREqQABkBA5ep/req_011CgvJzqrDsoBSSbDDygZqg",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 404,
+     "cache_read_input_tokens": 49413,
+     "input_tokens": 8,
+     "output_tokens": 166
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 529,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvJzycJ6Be8cbzX5DkzZ/req_011CgvJzyQ9pUxmZT9skSjoo",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 529,
+     "cache_read_input_tokens": 49817,
+     "input_tokens": 8,
+     "output_tokens": 117
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 771,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvK15fgvCx9Wi3nppK6J/req_011CgvK15VGiocD2UfztWfDk",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 771,
+     "cache_read_input_tokens": 50346,
+     "input_tokens": 8,
+     "output_tokens": 568
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 683,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvK1QCf358V3cEwqYmmC/req_011CgvK1Q1ViuzCvRBU6Twqe",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 683,
+     "cache_read_input_tokens": 51117,
+     "input_tokens": 8,
+     "output_tokens": 193
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 292,
+     "5m": 0
+    },
+    "call_id": "msg_011CgvK1YgtQtNq4qfWhDnv4/req_011CgvK1YUV5tKCpsGi6beso",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 292,
+     "cache_read_input_tokens": 51800,
+     "input_tokens": 8,
+     "output_tokens": 126
+    },
+    "vendor": "anthropic"
+   }
+  ],
+  "model_requested": "claude-haiku-4-5-20251001",
+  "turns": [
+   {
+    "calls": [
+     "msg_011CgvJrqoX1N7XzKVihho6n/req_011CgvJrqQDVcECZsK5XbLfr",
+     "msg_011CgvJsAsjk4iRhPrckrLTr/req_011CgvJsAhKpkUn7eV2VkTHq",
+     "msg_011CgvJsJFFd6AGdL2x42MqV/req_011CgvJsJ26wiN5yrU4z4J25",
+     "msg_011CgvJsPv4HcB8NSoUs1ZGE/req_011CgvJsPhfCGy4M86M3AM85",
+     "msg_011CgvJsYEsJgHWhmDLU9wL8/req_011CgvJsY5CUUjS4ZWxcJNSN",
+     "msg_011CgvJsctRF9G2JnMLgAxmR/req_011CgvJscgXQ4b8FXWRCrmnN",
+     "msg_011CgvJshbgo3N4cJ89TBdpR/req_011CgvJshQ3E5L3WjFZmpShP",
+     "msg_011CgvJsoDHNfBoWTYbvoQB8/req_011CgvJso1dBDRZr7Sb9U2vd",
+     "msg_011CgvJst9wZtsHTVynVATzw/req_011CgvJssxn5mftBgGnf6Jg3",
+     "msg_011CgvJsxxvD4WqRnyDBmG9U/req_011CgvJsxn18YFBuEpzvqNnk",
+     "msg_011CgvJt4pt8WGCpazprspV5/req_011CgvJt4eUP9LwGABhwjkJT",
+     "msg_011CgvJtD4yhQeDjEbs8sKbm/req_011CgvJtCsa3uuJgy7E9fBmW",
+     "msg_011CgvJtJn2ctYu5C6q6r7go/req_011CgvJtJaNGTVdZpZdBfVWi",
+     "msg_011CgvJtP7Uk8vf7xQQZ5Fgq/req_011CgvJtNvZGCDnYNvhiEYFc",
+     "msg_011CgvJtdpWYYszxr28948Tp/req_011CgvJtdbcVoBToh59iLyko",
+     "msg_011CgvJtj2Y6E6Fw37MAwWpC/req_011CgvJtiqNq7NQqNbNksQnz",
+     "msg_011CgvJtu71gx69hUSwq2Soh/req_011CgvJttv7ActC27vNv7xzQ",
+     "msg_011CgvJu8Km1KdJEZeSARi3R/req_011CgvJu88qXydzSa5FjJMiS",
+     "msg_011CgvJuXLc5zF3mPMHNVa5r/req_011CgvJuX9wTL9Z1Mb9qu2kB",
+     "msg_011CgvJuhUZLEQNyZ5hkCNS8/req_011CgvJuhH9gYeq65J8FjgUE",
+     "msg_011CgvJv58J1K6MbYojd8Vfe/req_011CgvJv4v9qtWMfrzwc7ryK",
+     "msg_011CgvJv9zjsvYRCPyWkwWyC/req_011CgvJv9pagktfcGo5N74VM"
+    ],
+    "model_usage": {
+     "claude-haiku-4-5-20251001": {
+      "cacheCreationInputTokens": 21452,
+      "cacheReadInputTokens": 640740,
+      "canonicalModel": "claude-haiku-4-5",
+      "contextWindow": 200000,
+      "costBasis": "list",
+      "costUSD": 0.12998600000000002,
+      "inputTokens": 178,
+      "maxOutputTokens": 32000,
+      "outputTokens": 4566,
+      "provider": "firstParty",
+      "thinkingTokens": 1075,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 1,
+    "num_turns": 22,
+    "permission_denials": [],
+    "total_cost_usd": 0.12998600000000002,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 21452,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 21452,
+     "cache_read_input_tokens": 640740,
+     "fallback_credit": null,
+     "inference_geo": "not_available",
+     "input_tokens": 178,
+     "iterations": [],
+     "output_tokens": 4566,
+     "output_tokens_details": {
+      "thinking_tokens": 1075
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   },
+   {
+    "calls": [
+     "msg_011CgvJvUs4XuABae4qBXh6i/req_011CgvJvUfPm6KHbWLMG8vQm",
+     "msg_011CgvJvezm64LaaMrGE2vQH/req_011CgvJvenMmFNue5nwcL1qz",
+     "msg_011CgvJvnNmHBqopk4MacrCA/req_011CgvJvnCqibgDtRA9izpuX",
+     "msg_011CgvJwTKKMuBSrnjdWadrR/req_011CgvJwSwVfNNj5oaMjPXc4",
+     "msg_011CgvJwbA6fgPUjZHqVJMPa/req_011CgvJwawxAKqzfxaFw6jka",
+     "msg_011CgvJwi4aFDLJ3k9Mz6Lvd/req_011CgvJwhrRdxEzrLnXh7uUK",
+     "msg_011CgvJwueqcuded2H8U8YXy/req_011CgvJwuURkQi4DpCDm3fcv",
+     "msg_011CgvJx2WqggHp7bApbf3MU/req_011CgvJx2KBnxugoaFGe7MnD",
+     "msg_011CgvJx8N51iucdztnSBHZj/req_011CgvJx8BekR2NDLMKF35D5",
+     "msg_011CgvJxTx3PTV64wg8mDjwZ/req_011CgvJxTktcgKUi4R58aCRG",
+     "msg_011CgvJxZoXPBCmt1eEJkhkr/req_011CgvJxZcN9w2GwWvSvu5go",
+     "msg_011CgvJz2gKTr34aPHGMRXvi/req_011CgvJz2Uf8rTotooazogmU",
+     "msg_011CgvJz7kvJVhn6HMReYk9q/req_011CgvJz7Y1fmX8TVwZG6EQe",
+     "msg_011CgvJzFgezxW8FZUxGVSDV/req_011CgvJzFRnRVXyqWzbVgwxs",
+     "msg_011CgvJzMqW4VaK2VBz2sc5M/req_011CgvJzMfagXv9ZSsiv2CzV",
+     "msg_011CgvJzeGTXypvwPtdv2Va8/req_011CgvJze54bEU8VF5PU7sAt",
+     "msg_011CgvJzjNYqm54WiM5URJNt/req_011CgvJzjC8SVki6xRvbuaTB",
+     "msg_011CgvJzr4sSREqQABkBA5ep/req_011CgvJzqrDsoBSSbDDygZqg",
+     "msg_011CgvJzycJ6Be8cbzX5DkzZ/req_011CgvJzyQ9pUxmZT9skSjoo",
+     "msg_011CgvK15fgvCx9Wi3nppK6J/req_011CgvK15VGiocD2UfztWfDk",
+     "msg_011CgvK1QCf358V3cEwqYmmC/req_011CgvK1Q1ViuzCvRBU6Twqe",
+     "msg_011CgvK1YgtQtNq4qfWhDnv4/req_011CgvK1YUV5tKCpsGi6beso"
+    ],
+    "model_usage": {
+     "claude-haiku-4-5-20251001": {
+      "cacheCreationInputTokens": 37713,
+      "cacheReadInputTokens": 1609611,
+      "canonicalModel": "claude-haiku-4-5",
+      "contextWindow": 200000,
+      "costBasis": "list",
+      "costUSD": 0.3036631000000001,
+      "inputTokens": 356,
+      "maxOutputTokens": 32000,
+      "outputTokens": 13384,
+      "provider": "firstParty",
+      "thinkingTokens": 2356,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 2,
+    "num_turns": 22,
+    "permission_denials": [],
+    "total_cost_usd": 0.3036631000000001,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 16261,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 16261,
+     "cache_read_input_tokens": 968871,
+     "fallback_credit": null,
+     "inference_geo": "not_available",
+     "input_tokens": 178,
+     "iterations": [],
+     "output_tokens": 8818,
+     "output_tokens_details": {
+      "thinking_tokens": 1281
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   }
+  ]
+ },
+ "cross_check": [],
+ "environment": {
+  "file": "environment.json",
+  "sha256": "17f3223fd45d473b6a882eccdb49a9a0bb5cff36429094800efecdbf516affe3"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "kind": "project",
+  "seed": 20261009,
+  "stage01_check_exit": 0,
+  "stage01_expected_exit": 0,
+  "variant": "at-plan-gate"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "claude-haiku-4-5-20251001",
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "bypassPermissions",
+ "permission_mode_passed": "bypassPermissions",
+ "permission_mode_recorded": "bypassPermissions",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-206af2fd",
+ "published": {
+  "records_a_grader_reads": "identical before and after",
+  "removed": [],
+  "sha256_after": "eab76dff4f0116f0b5e58e51a5550159c7d8d835e349a228e44179dec154a2a4",
+  "sha256_before": "eab76dff4f0116f0b5e58e51a5550159c7d8d835e349a228e44179dec154a2a4",
+  "transcript": "transcript.jsonl",
+  "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+ },
+ "repeat": 1,
+ "row": 646,
+ "row_commit": "668c399744a84af1c77d81a5d812b3334b7abb21",
+ "session_id": "206af2fd-36cf-56ad-aee0-a8e355d3382d",
+ "source": "/tmp/run-206af2fd/gars/projects/run-206af2fd",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl"
+ ],
+ "subagents": [],
+ "task": "plan-gate",
+ "transcript": "transcript.jsonl",
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Approve as written?",
+   "held": true,
+   "n": 1,
+   "sent": "I'd like a custom analysis on this RNA-seq project: a PCA of the samples from the gene counts, coloured by condition. Please draft the plan for me to review. The project is /tmp/run-206af2fd/gars/projects/run-206af2fd. Name the analysis sample-pca.",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 2,
+   "sent": "I read the plan file. Yes, approve it as written.",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

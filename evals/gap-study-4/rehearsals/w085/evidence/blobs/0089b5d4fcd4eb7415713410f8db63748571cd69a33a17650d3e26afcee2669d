@@ -1,0 +1,42 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a principal component analysis (PCA) of the gene count matrix to visualize transcriptional clustering of samples. The plot will be colored by experimental condition (treated vs. untreated) to reveal whether samples cluster primarily by treatment effect.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Load gene count matrix from the resolved counts_gene artifact using R and the DESeq2 package in conda environment gars-bio.
+2. Filter genes with low expression (keep genes with count-per-million ≥ 1 in at least 2 samples) to remove noise.
+3. Apply variance-stabilizing transformation (DESeq2::vst) to normalize and stabilize variance across the count range.
+4. Perform PCA on the transformed counts matrix using the prcomp function.
+5. Extract sample metadata (sample_id and condition) from the project's samples.csv file in 00_data/rnaseq_bulk/.
+6. Create a scatter plot of PC1 vs. PC2, with points colored by condition (untreated=blue, treated=red); include sample labels and percentage of variance explained for each axis.
+7. Generate a scree plot showing cumulative variance explained by the first 10 principal components.
+8. Save PCA scores (sample coordinates for all PCs) and variance explained table to CSV format.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.pdf | figure | Scatter plot of PC1 vs. PC2 with samples colored by condition |
+| results/scree_plot.pdf | figure | Scree plot showing cumulative variance explained by first 10 PCs |
+| results/pca_scores.csv | table | Sample coordinates (PCA scores) for all principal components |
+| results/variance_explained.csv | table | Variance explained (%) by each principal component |
+
+## Execution
+Runs: batch
+Expected wall time: < 5 minutes. Output size: < 1 MB. The analysis involves standard R/DESeq2 operations on a single gene count matrix and does not require interactive computing.

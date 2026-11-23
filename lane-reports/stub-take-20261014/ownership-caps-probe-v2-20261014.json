@@ -1,0 +1,74 @@
+{
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "variants": {
+  "committed": {
+   "agent": {
+    "returncode": 0,
+    "stderr": ""
+   },
+   "caps": [
+    "CHOWN",
+    "DAC_READ_SEARCH"
+   ],
+   "grant": {
+    "ok": true,
+    "steps": [
+     {
+      "container_id": "6d25ba0aa889c60d4dfbcfc3e7fc49670e1610e1f801b45ecb8e89ae2c10b7e5",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-run_tree"
+     },
+     {
+      "container_id": "19f956e0201e0249e072c0240acd9a2400c854a3d965f241210191677bdabdcf",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-config_dir"
+     },
+     {
+      "container_id": "7264cd2bfd42db3b617af265b299f3de71e4cf780ffe6d898e703018f7896eba",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-evidence_dir"
+     }
+    ]
+   },
+   "link_uid_after_agent": 110000,
+   "link_uid_after_restore": 1000,
+   "outside_text_after": "host-owned\n",
+   "outside_uid_after": 1000,
+   "outside_uid_before": 1000,
+   "restore": {
+    "ok": true,
+    "problems": [],
+    "steps": [
+     {
+      "container_id": "a790bb0a7ede52cc11fd5d50f004b1fae8213d1f3bfdc28feb297e2c7e9e7eeb",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-run_tree"
+     },
+     {
+      "container_id": "0e0f1622696f18bee5a623f2070336fa02f7ade93567488f88b557a9477e4143",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-config_dir"
+     },
+     {
+      "container_id": "487ed3493996827529a3b7b5415d0aec38223568b1a14350bff64fdd01523665",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-evidence_dir"
+     }
+    ]
+   },
+   "scratch_removed": true
+  }
+ }
+}

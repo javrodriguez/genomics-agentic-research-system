@@ -1,0 +1,5 @@
+{
+  "graded": false,
+  "status": "pending-native-reader",
+  "why": "not graded, because its native cross-check is pending: no reviewed native-session reader for gemini"
+}

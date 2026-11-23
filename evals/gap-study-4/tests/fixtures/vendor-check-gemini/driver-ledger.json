@@ -1,0 +1,33 @@
+{
+  "kind": "take",
+  "agent": {
+    "harness": "gemini",
+    "version": "0.64.0"
+  },
+  "session_id": "5f0c1a2e-0000-5000-8000-0000000000f1",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "sent 1"
+    },
+    {
+      "n": 2,
+      "sent": "sent 2"
+    }
+  ],
+  "streams": [
+    "turn-1.jsonl",
+    "turn-2.jsonl"
+  ],
+  "transcript": "transcript.jsonl",
+  "native_snapshots": [
+    {
+      "file": "native-turn-1.jsonl",
+      "sha256": "c3cb09e5cb55aa2e863e69d728459c70e1b5268c9cdfe2b990fcd72a760ea4b4"
+    },
+    {
+      "file": "native-turn-2.jsonl",
+      "sha256": "da99d6f0af7dae65f2150f870b7e917143df5647a80c58c53fb5fd3c860f4912"
+    }
+  ]
+}

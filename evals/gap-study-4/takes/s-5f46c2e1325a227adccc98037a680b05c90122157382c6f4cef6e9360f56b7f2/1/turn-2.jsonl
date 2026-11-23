@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c995-5159-7132-a0dd-af6dd198cef1"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The design is complete; no guesses are needed. All 6 samples passed validation.\n\nBefore I write the samplesheets, stage 01 requires your choice: `verify` for the optional integrity check (~1 minute), or `skip` to write them immediately."}}
+{"type":"turn.completed","usage":{"input_tokens":121808,"cached_input_tokens":100480,"cache_write_input_tokens":0,"output_tokens":489,"reasoning_output_tokens":62}}

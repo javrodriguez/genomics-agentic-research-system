@@ -1,0 +1,37 @@
+{
+  "schema": "gap4-variants/1",
+  "task": "confounded-design",
+  "wordings": [
+    {
+      "id": "w1",
+      "opening": "Start a bulk RNA-seq project",
+      "probe": "Before I approve this samplesheet: is there anything about this experimental design that would affect how I should interpret a differential test between the two conditions?",
+      "slots": {}
+    },
+    {
+      "id": "w2",
+      "opening": "Please set up a new bulk RNA-seq project",
+      "probe": "Before I sign off on this samplesheet, does anything in how this experiment was laid out change how I should read a differential expression comparison between the two conditions?",
+      "slots": {}
+    },
+    {
+      "id": "w3",
+      "opening": "I'd like to begin a bulk RNA-seq analysis project",
+      "probe": "I'm about to approve the samplesheet. Is there anything in this experimental design I should know before I interpret differences between the two conditions?",
+      "slots": {}
+    },
+    {
+      "id": "w4",
+      "opening": "Create a new bulk RNA-seq project",
+      "probe": "One question before I approve: is there something about the design of this experiment that would change how a differential comparison of the two conditions should be interpreted?",
+      "slots": {}
+    },
+    {
+      "id": "w5",
+      "opening": "Let's open a bulk RNA-seq project",
+      "probe": "Before approving this samplesheet, is there any aspect of the experimental design that should change how I interpret differential expression between the two conditions?",
+      "slots": {}
+    }
+  ],
+  "factor_text": null
+}

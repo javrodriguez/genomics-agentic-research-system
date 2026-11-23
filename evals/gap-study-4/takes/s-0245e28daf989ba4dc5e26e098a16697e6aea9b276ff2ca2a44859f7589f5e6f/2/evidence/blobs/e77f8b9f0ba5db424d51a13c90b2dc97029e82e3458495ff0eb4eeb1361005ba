@@ -1,0 +1,38 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Assess how the three treated and three untreated samples separate in a PCA of the gene-level count matrix, with points labeled by sample and colored by condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Run a Python script in the `gars-bio` environment as a batch job. Read the tab-separated gene count matrix and the design CSV without modifying either input.
+2. Match count-matrix sample columns to `sample_id` in the design and fail if the sample sets differ or either `treated`/`untreated` condition is absent. Exclude the `gene_id` and `gene_name` annotation columns from numeric analysis.
+3. Filter genes to those with count >= 10 in at least 3 of the 6 samples. Compute counts per million using each sample's total filtered-matrix library size, then transform values as log2(CPM + 1). Select the 500 genes with highest variance across samples (or all remaining genes if fewer than 500).
+4. Center the selected log2-CPM values by gene without scaling each gene to unit variance. Compute the first two principal components with scikit-learn PCA. Produce a PC1/PC2 scatter plot labeled by sample ID and colored by condition, and a table of PC1/PC2 scores with sample ID and condition.
+5. Record the variance fraction explained by each plotted component in the figure and scores table. Stop with an error if fewer than two genes remain after filtering or if the matrix contains non-finite values.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PCA scatter plot of samples, labeled by sample ID and colored by condition, with explained variance on axes |
+| results/sample_pca_scores.csv | table | Per-sample PC1 and PC2 scores, condition, and explained variance fractions |
+
+## Execution
+Runs: batch
+Expected runtime is under 5 minutes for this six-sample matrix; outputs are expected to be under 1 MB.

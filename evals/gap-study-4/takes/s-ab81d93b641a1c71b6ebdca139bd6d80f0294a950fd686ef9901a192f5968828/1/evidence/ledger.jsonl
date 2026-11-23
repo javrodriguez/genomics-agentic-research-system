@@ -1,0 +1,8 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-sonnet-5-5", "run_tree": ""}
+{"ended_at": 1794320964.8309448, "kind": "turn", "n": 1, "started_at": 1794320948.3679159}
+{"ended_at": 1794320980.0388205, "kind": "turn", "n": 2, "started_at": 1794320965.7390857}
+{"ended_at": 1794320994.8804395, "kind": "turn", "n": 3, "started_at": 1794320980.9800777}
+{"at": 1794320996.4167871, "id": "wait-for-samples-csv-then-copy-design", "kind": "operator", "writes": [{"after": {"sha256": "4478b6a4605236af39c21164d96296f556240eb0ea4236e9b51b007a52e197a3", "type": "file"}, "path": "gars/projects/run-f50e125a/00_data/rnaseq_bulk/samples.csv"}]}
+{"ended_at": 1794321002.2597523, "kind": "turn", "n": 4, "started_at": 1794320996.616605}
+{"ended_at": 1794321013.6413426, "kind": "turn", "n": 5, "started_at": 1794321003.2448013}
+{"ended_at": 1794321024.8669882, "kind": "turn", "n": 6, "started_at": 1794321014.6102061}

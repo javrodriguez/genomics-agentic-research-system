@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c3eb-079c-72b2-b133-3082b2ef4715"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The registrar identified these as **single-end**, so your condition for confirmation is not met. Nothing was linked.\n\nConfirm registration as single-end, or provide a different path containing the paired-end reads."}}
+{"type":"turn.completed","usage":{"input_tokens":291673,"cached_input_tokens":261504,"cache_write_input_tokens":0,"output_tokens":998,"reasoning_output_tokens":0}}

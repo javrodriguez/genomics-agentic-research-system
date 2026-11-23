@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1cacf-88a3-75d1-ad36-4371cc8668e2"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Yes. The inspection found 12 raw files: 6 R1 and 6 R2, paired into 6 sample-lane units for samples A1–B3. Confirm to create symlinks under `00_data/rnaseq_bulk/raw/`, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":255671,"cached_input_tokens":198656,"cache_write_input_tokens":0,"output_tokens":1325,"reasoning_output_tokens":74}}

@@ -1,0 +1,38 @@
+Thu Oct 15 18:31:23 EDT 2026
+test_each_row_is_the_ruling_s_set (__main__.E1Table.test_each_row_is_the_ruling_s_set) ... ok
+test_the_views_are_derived (__main__.E1Table.test_the_views_are_derived) ... ok
+test_an_old_list_name_is_still_refused (__main__.E2Allowlist.test_an_old_list_name_is_still_refused) ... ok
+test_codex_turn_is_refused_until_its_subscription_binding (__main__.E2Allowlist.test_codex_turn_is_refused_until_its_subscription_binding) ... ok
+test_launcher_refuses_container_ancestors_and_current_home (__main__.E2Allowlist.test_launcher_refuses_container_ancestors_and_current_home) ... ok
+test_take_environment_is_the_row_alone (__main__.E2Allowlist.test_take_environment_is_the_row_alone) ... ok
+test_the_launcher_needs_the_credential (__main__.E2Allowlist.test_the_launcher_needs_the_credential) ... ok
+test_the_turn_hands_the_harness_the_row_alone (__main__.E2Allowlist.test_the_turn_hands_the_harness_the_row_alone) ... ok
+test_a_dangling_link_and_the_shape (__main__.E3EnvFiles.test_a_dangling_link_and_the_shape) ... ok
+test_a_parent_below_the_box_root (__main__.E3EnvFiles.test_a_parent_below_the_box_root) ... ok
+test_home (__main__.E3EnvFiles.test_home) ... ok
+test_launch_refuses_before_any_runtime_call (__main__.E3EnvFiles.test_launch_refuses_before_any_runtime_call) ... ok
+test_no_take_image_writes_an_env_file (__main__.E3EnvFiles.test_no_take_image_writes_an_env_file) ... ok
+test_run_turn_refuses_before_its_exec (__main__.E3EnvFiles.test_run_turn_refuses_before_its_exec) ... ok
+test_the_box_root (__main__.E3EnvFiles.test_the_box_root) ... ok
+test_the_working_folder (__main__.E3EnvFiles.test_the_working_folder) ... ok
+test_a_short_alias_is_refused_by_name (__main__.E4Model.test_a_short_alias_is_refused_by_name) ... ok
+test_all_gemini_exec_spellings_are_checked (__main__.E4Model.test_all_gemini_exec_spellings_are_checked) ... ok
+test_exec_refuses_an_alias (__main__.E4Model.test_exec_refuses_an_alias) ... ok
+test_non_model_options_need_non_flag_values (__main__.E4Model.test_non_model_options_need_non_flag_values) ... ok
+test_the_full_ids_pass_and_others_refuse (__main__.E4Model.test_the_full_ids_pass_and_others_refuse) ... ok
+test_the_table_is_the_pre_registered_one (__main__.E4Model.test_the_table_is_the_pre_registered_one) ... ok
+test_check_model_edges (__main__.E5Units.test_check_model_edges) ... ok
+test_home_must_be_the_config_mount (__main__.E5Units.test_home_must_be_the_config_mount) ... ok
+test_launcher_argv_refusals (__main__.E5Units.test_launcher_argv_refusals) ... ok
+test_take_environment_refusals (__main__.E5Units.test_take_environment_refusals) ... ok
+test_the_fallback_values_are_arm_a_s_alone (__main__.E5Units.test_the_fallback_values_are_arm_a_s_alone) ... ok
+test_the_no_login_launcher_reads_its_values (__main__.E5Units.test_the_no_login_launcher_reads_its_values)
+The merged battery's generated sweep (gap4-merge-66bacad): the no-login launcher's own branches, bound here ... ok
+test_the_equivalent_list_matches_the_generated_mutants (__main__.G1Generated.test_the_equivalent_list_matches_the_generated_mutants) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 4.117s
+
+OK
+test_env_allowlist: 29 run, 0 failures, 0 errors, 0 skipped
+test_env_allowlist outcomes: {"failures": [], "errors": [], "skipped": []}

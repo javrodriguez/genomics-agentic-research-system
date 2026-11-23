@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c449-daab-7590-a47a-a3e8216d34fc"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Yes. The registrar found 12 raw files: 6 R1 and 6 R2, paired into 6 samples (A1–A3 and B1–B3). No symlinks have been created.\n\nConfirm to link them under `00_data/rnaseq_bulk/raw/`, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":293971,"cached_input_tokens":231936,"cache_write_input_tokens":0,"output_tokens":1525,"reasoning_output_tokens":195}}

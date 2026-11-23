@@ -1,0 +1,46 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a principal component analysis (PCA) of the gene count matrix to assess sample relationships and the overall effect of treatment. Visualize the first two principal components with points colored by experimental condition (untreated vs. treated) to evaluate global patterns of gene expression variation across samples.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Read the merged gene counts TSV file (salmon.merged.gene_counts_length_scaled.tsv) into R as a matrix.
+2. Load the design table (condition and sample annotations) from the project's 00_data/rnaseq_bulk/samples.csv.
+3. Filter genes: retain only genes with at least 1 count-per-million (CPM) in at least 3 samples, to remove low-abundance genes. Use edgeR for CPM calculation.
+4. Apply DESeq2's variance-stabilizing transformation (VST) to the filtered counts to stabilize variance across the expression range, a prerequisite for distance-based methods like PCA.
+5. Compute PCA on the VST-transformed counts using prcomp() with scaling.
+6. Extract the variance explained by each principal component and calculate cumulative variance.
+7. Generate a scatterplot of PC1 vs PC2, with points colored by condition (untreated=blue, treated=red) and labeled by sample_id.
+8. Generate a barplot of variance explained by the first 10 PCs and a cumulative variance plot.
+9. Write PC loadings (top 20 most variable genes by their absolute loadings on PC1 and PC2) to a results table.
+
+Environment: gars-bio. All steps run in a single R script submitted as a batch job.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.pdf | figure | Scatterplot of PC1 vs PC2 with samples colored by condition and labeled by sample ID. Axes show variance explained by each PC. |
+| results/variance_explained.pdf | figure | Barplot of variance explained by the first 10 principal components, with a cumulative variance curve overlaid. |
+| results/pca_loadings.csv | table | PC loadings for the top 20 genes most contributing to variance on PC1 and PC2, showing gene names and their contributions to each axis. |
+| results/pca_summary.txt | report | Summary statistics including total variance explained by PC1 and PC2, sample coordinates in PC space, and number of genes retained after filtering. |
+
+## Execution
+Runs: batch
+
+Expected wall time: ~5 minutes. The analysis involves loading a single count matrix, filtering low-abundance genes, applying VST transformation, computing PCA, and generating plots and tables. Output size: ~2 MB (PDFs, CSV loadings table, and summary text file).

@@ -1,0 +1,40 @@
+{
+  "lane": "pf1-l2b-labelling-stats",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-l2b-labelling-stats.json",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. Edits without transfer, recorded here only so the owners' fragments stay untouched: stats.py (w4e-cp5-stats), the take record gains human_sample and human_why after its twelve fields (MAJOR 6), original_records and read_deferred_arms (the original report's tables from the arms that are not deferred, and --check reads them, MAJOR 10), CONTRAST_NAME and table 5 split into a within-harness part and an agent-system part under its own heading, the power table's first two column names (m14); run.py (its owner fragment), human_why and record_for carrying the flag (MAJOR 6), the one grader call table run.call_grader that regrade and probes4.run_grader both call, each road keeping its own delegation seam and nested-agent sample (m16), and the stopped-take end-state counter stopped_counts with forbidden_changes (m13); check_results.py, the ledger identity record's two new fields, original_values_problems in check_publication and two RUNTIME_PATHS (MAJOR 10, MAJOR 6); result.py, the original report from the original records, --publish-original, the follow-up after a committed go, and the stopped-take table (MAJOR 10, m13); labelling/sample.py (w11d-labelling-tools), the flagged_list design field and the FLAGGED_LIST switch, off until Javier answers ask gap-flag-list, with the flagged list drawn only when it is on (MAJOR 6.3); build_draft.py and prereg-draft.json, labelling_design and routed_residuals registered (MAJOR 6.4, 6.5), the draft rebuilt by build_draft.py; probes4.py (w5a-cp5-probes4), run_grader through run.call_grader inside its own seam and sample, routed_residuals, and two committed vendor walks graded beside the table (m16, MAJOR 6.5); lint_language.py, three comparative patterns with the family-label exception, and language-allowlist.json, one excused line in coverage_today.md (m14); tests/test_stats.py, tests/test_pipeline.py and tests/test_labelling.py, their record helpers carry the two fields, test_labelling's design helper the switch, its FL1-flagged check and one EQUIVALENT key moved by the edit; tests/test_ci_job.py, the two ported workflow steps bound (m14). Outside this folder, .github/workflows/ci.yml gains round 3's two publication-language steps for round 4 (m14). No native-reader source (native_reader_registration.READER_SOURCES) is edited. Fold of the lane review at 9241942 (VERDICT CHANGES, lanes/REVIEW-pf1-l2b-9241942.md), the lead's rulings of Sat 24 Oct 2026: labelling/sheet.py (w11d-labelling-tools), the flagged check list, not blind, refused until the blind labels are committed and while the switch is off (sheet.py --flagged); result.py, the flagged and beyond-cap counts only with the switch on; build_draft.py, labelling_rules (the readers rule, the order, what a flag sends a take to) and the W-3b clause and routed_residuals sentence from the switch; lint_language.py --section-of and a fourth ported workflow step; run.py, the grader's own flag beside the others, a non-bool flag refused, a stopped take's folder committed and clean; check_results.py, a published values file that is gone refused by name; stats.py, read_deferred_arms refuses as prereg does; labelling/frame.py, READERS_RULE; tests/test_labelling.py, FL2-flagged-sheet. Fold of the closure check at 242f49e (VERDICT PASS, three MINORs): build_draft.py, the flagged_seen and routed_residuals sentences generated with the cap and the part (OD127); labelling/sheet.py, the order gate also validates the blind labels against the sample; result.py and check_results.py, a missing frame refused by name; result.py, flagged_counts draws under the pre-registration it is handed; one allowlist row for the closure check's run count. Reopened after the merged battery pf1-l6a-battery-01a75ba-20261025T053307Z: regrade keeps its five-argument signature and its own seam and sample (the grader's own flag rides out as grader_flag, kept by grade_committed and dropped by grade_walk_folder), probes4.run_grader keeps its own seam and sample around run.call_grader, and probes4 names the walk root through mode_binding."
+    },
+    {
+      "path": "checks.d/pf1-l2b-labelling-stats.txt",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. This lane's local checks for run_checks.py: its test module, the changed modules' own tests, the labelling frame and the two lints."
+    },
+    {
+      "path": "labelling/frame.py",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. MAJOR 6 item 2: the labelling frame, labelling/frame.json, built from run.produce's records and audit over the committed takes (no code wrote it before), one entry per take with standing, carrying the record's human-sample flag; readers disagree exactly when scope_read's own readers-disagree line is in the record's human_why."
+    },
+    {
+      "path": "tests/test_pf1_l2b.py",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. The lane's tests: H1-H4 (MAJOR 6), G1-G2 (MAJOR 10, the reviewer's synthetic-record probe as the red test), S1 (m13), L1 (m14), D1 (m16)."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2b-9241942.md",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. The lane's fresh independent review at 9241942 (VERDICT CHANGES), committed unedited as its reviewer wrote it, on the lead's word; its quotations of the new comparative patterns are excused line by line in language-allowlist.json."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2b-242f49e.md",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. The lane's fresh closure check at 242f49e (VERDICT PASS, three MINORs), committed unedited as its reviewer wrote it, on the lead's word."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l2b-b1dcf92.md",
+      "status": "new",
+      "reason": "Lane pf1-l2b-labelling-stats (Gap Study round 4, lane L2b of the fold of pre-freeze review 1, aegis-builds/pfr-20261024/FOLD-PLAN-prefreeze-1.md, approved by the lane orchestrator under Javier's standing delegation, Sat 24 Oct 2026) folds MAJOR 6, MAJOR 10, m13, m14 and m16. The lane's fresh closure check at b1dcf92 (VERDICT PASS), committed unedited as its reviewer wrote it, on the lead's word."
+    }
+  ]
+}

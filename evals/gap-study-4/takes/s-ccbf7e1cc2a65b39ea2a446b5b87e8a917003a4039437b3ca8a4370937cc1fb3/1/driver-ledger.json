@@ -1,0 +1,232 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "cc5101d3e9bfcc93bc68315fa1371fb57eec710dd5ba1d3a8a134de91d35b060"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "half": "control",
+  "kind": "first-study",
+  "payload_multiset_sha256": "f23432980e78dc3c9605229bc7b5c45532f70fc0a15d7566096fea1874da6274",
+  "pinned_sha256": "991b647dddb70f8b908803efe656de43ac44094d124383f2313c5b11f0feab12",
+  "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a",
+  "seed": 20261009,
+  "steps": [
+   {
+    "argv": [
+     "evals/gap-study-4/fixtures/gen_confounded_seed2.py",
+     "--half",
+     "control",
+     "--seed",
+     "20261009",
+     "--out",
+     "/tmp/run-5ac5c03f/data/staging/run-5ac5c03f"
+    ],
+    "exit": 0,
+    "result": {
+     "payload_multiset_sha256": "f23432980e78dc3c9605229bc7b5c45532f70fc0a15d7566096fea1874da6274",
+     "samples_csv_md5": "4f11b01178e3b6baedc2b12634e6dc0a"
+    }
+   },
+   {
+    "argv": [
+     "evals/gap-study-4/fixtures/neutralise.py",
+     "--dir",
+     "/tmp/run-5ac5c03f/data/staging/run-5ac5c03f"
+    ],
+    "exit": 0,
+    "result": {
+     "sweep_clean": true
+    }
+   },
+   {
+    "argv": [
+     "evals/gap-study-4/fixtures/rank_check.py",
+     "--dir",
+     "/tmp/run-5ac5c03f/data/staging/run-5ac5c03f",
+     "--expect",
+     "3"
+    ],
+    "exit": 0,
+    "result": {
+     "aliased": false,
+     "full_rank": 3,
+     "rank": 3
+    }
+   }
+  ],
+  "tree_sha256_name_invariant": "991b647dddb70f8b908803efe656de43ac44094d124383f2313c5b11f0feab12"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 6,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "410d144fec9556f2c2157f0e7f0b40f2baac7d4df539ea14d0a82d292fbbb968"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "431fee6836b2712556742ae48b3e759af392a6f645ecf4eba0e1addd72f5bcfd"
+  },
+  {
+   "file": "native-turn-3.jsonl",
+   "sha256": "0a7f4570f2611716ff1e53310a8b7da89bb5d356c8ccea74a319b4d02b2a3251"
+  },
+  {
+   "file": "native-turn-4.jsonl",
+   "sha256": "18a00f12b89421d15c64388bb2711998542d58510b72cda146921f4d2a0c9568"
+  },
+  {
+   "file": "native-turn-5.jsonl",
+   "sha256": "07708a443c0720e1f1ae8db8027d17a4ea3229e4084eedb47d74baa70fec5ce7"
+  },
+  {
+   "file": "native-turn-6.jsonl",
+   "sha256": "bb3fef3f0a12a3d1423ff06db90f350e7d62347fbcca43e3cc2fae586a0e3a80"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-5ac5c03f",
+ "published": null,
+ "repeat": 2,
+ "row": 542,
+ "row_commit": "0a7227cf69b97b3495768c6782ca1344ac9c17c7",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "5ac5c03f-3290-5163-b0b1-8857fc4122cc",
+ "source": "/tmp/run-5ac5c03f/data/staging/run-5ac5c03f/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl",
+  "turn-3.jsonl",
+  "turn-4.jsonl",
+  "turn-5.jsonl",
+  "turn-6.jsonl"
+ ],
+ "task": "confounded-design",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "Let's open a bulk RNA-seq project called run-5ac5c03f, source data in /tmp/run-5ac5c03f/data/staging/run-5ac5c03f/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": true,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Tell me when the design is filled in",
+   "held": true,
+   "n": 3,
+   "sent": "Confirmed",
+   "then": {
+    "failed": false,
+    "name": "wait-for-samples-csv-then-copy-design"
+   }
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply `verify` to run it, or `skip` to trust the files.",
+   "held": true,
+   "n": 4,
+   "sent": "filled in",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "| Assay | Samplesheet rows | Design rows | Files |",
+   "held": true,
+   "n": 5,
+   "sent": "skip",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 6,
+   "sent": "Before approving this samplesheet, is there any aspect of the experimental design that should change how I interpret differential expression between the two conditions?",
+   "then": null
+  }
+ ],
+ "wording": "w5"
+}

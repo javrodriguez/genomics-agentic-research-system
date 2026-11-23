@@ -1,0 +1,40 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a Principal Component Analysis (PCA) on gene expression counts from RNA-seq samples, coloured by condition, to evaluate sample clustering and variance across conditions.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Read gene expression counts (`counts_gene`) and sample design metadata (`design`) using Python in the `gars-bio` environment.
+2. Filter for genes with non-zero variance and select the top 1,000 most variable genes across samples after applying a `log2(counts + 1)` transformation.
+3. Standardize gene expression values (mean-centering and scaling to unit variance across samples).
+4. Compute Principal Component Analysis (PCA) using `scikit-learn` (or `numpy.linalg.svd`), extracting PC1 and PC2 coordinates along with the percentage of variance explained by each component.
+5. Merge PCA sample coordinates with condition metadata from the design table.
+6. Generate a 2D scatter plot of PC1 versus PC2, coloured by sample condition, using `matplotlib`/`seaborn`, and save it to `results/pca_plot.png`.
+7. Export the sample coordinates, PC scores, and variance explained into `results/pca_coordinates.csv`.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_plot.png` | `figure` | Scatter plot of sample PCA (PC1 vs PC2) coloured by condition |
+| `results/pca_coordinates.csv` | `table` | Principal component coordinates and variance explained per sample |
+
+## Execution
+Runs: batch
+Expected wall time: 5 minutes. Memory: 4GB. Batch execution via Slurm scheduler (`_config/executor.yaml`).

@@ -1,0 +1,4 @@
+# Lane w8e-lint-reds: Gap Study round 4, ruling W8D-lint. Both linters over the whole study folder, as ci.yml runs
+# them; each runs, and the line fails if either fails. One command per line, run from the repository root.
+# Until the w8d fold lands, lint_language.py reports one line: COPIED.d/w8a-walk-layout.json:8, w8d's to reword.
+python3 -B -W ignore evals/gap-study-4/lint_language.py evals/gap-study-4/; a=$?; python3 -B -W ignore evals/gap-study-4/lint_pooling.py evals/gap-study-4/; b=$?; exit $((a | b))

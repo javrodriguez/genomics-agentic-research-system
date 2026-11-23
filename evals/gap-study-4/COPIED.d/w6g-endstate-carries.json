@@ -1,0 +1,15 @@
+{
+  "lane": "w6g-endstate-carries",
+  "files": [
+    {
+      "path": "COPIED.d/w6g-endstate-carries.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). It records ownership transfer S7-gap4-1 (glitch-1b, Lane-orchestrator, under Javier's standing delegation, Sun 11 Oct 2026): lane w6g-endstate-carries (Gap Study round 4 slice S7) owns graders/endstate.py and tests/test_endstate.py (w2a-cp3-endstate's), box/sidecar.py (only `_kind` and the special STATE it feeds, and `begin` writing watched.json) and tests/test_sidecar.py (w4c-cp2-sidecar-scan's), and graders/plan_gate.py (only `is_folder`) and tests/test_plan_gate.py (only its \"an unreadable entry read as a folder\" mutant and the closing gate's named code exception) (w3b-cp3-graders-refusal-plangate's), for the rulings S7-D1 = A, S7-D2 = C, S7-D3 = C and S7-D4 = A. Each of those files stays claimed by its first fragment, whose reason names this transfer."
+    },
+    {
+      "path": "checks.d/w6g-endstate-carries.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): the affected test modules and S7's whole-file witnesses (tests/test_endstate.py --witnesses)."
+    }
+  ]
+}

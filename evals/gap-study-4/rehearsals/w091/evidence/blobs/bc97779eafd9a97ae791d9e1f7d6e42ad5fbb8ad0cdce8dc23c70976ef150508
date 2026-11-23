@@ -1,0 +1,50 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a principal component analysis (PCA) on the gene count data to visualize sample relationships and clustering, with samples colored by treatment condition (treated vs. untreated). This will reveal whether the two conditions separate in the dominant variance directions and identify any batch effects or outliers.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_samplesheets | rnaseq_bulk_design.tsv |
+
+## Method
+
+1. **Load inputs**: Read the gene count matrix (columns are samples, rows are genes) and the design table (sample metadata including condition) using pandas in Python.
+
+2. **Filter and normalize**: Keep genes with at least 1 count per million (CPM) in at least 3 samples (to retain meaningful signal). Apply log2(counts + 1) normalization to stabilize variance.
+
+3. **Feature selection**: Calculate the variance of each gene across samples and select the top 2,000 most variable genes (to focus PCA on the most informative features).
+
+4. **PCA computation**: Use scikit-learn's `PCA()` to fit the normalized, variable-gene subset to all 50 principal components. Standardize the data (zero mean, unit variance) before projection.
+
+5. **Visualization**: Generate a scatter plot with PC1 (x-axis) vs PC2 (y-axis), with each sample as a point colored by its condition (treated=red, untreated=blue). Add point labels with sample IDs. Display the variance explained by each PC in the axis labels. Save as `results/pca_plot.png` (300 dpi, 10x8 inches).
+
+6. **Summary output**: Write a TSV table (`results/pca_summary.tsv`) with one row per sample: sample_id, condition, PC1, PC2, and the cumulative variance explained by the first 10 PCs. Also save variance explained per component for the first 10 PCs to a separate file (`results/variance_explained.tsv`).
+
+All computation runs in the batch environment, using Python 3 with pandas, numpy, scikit-learn, and matplotlib from the `gars-bio` conda environment.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | Scatter plot of PC1 vs PC2 with samples colored by treatment condition, point labels with sample IDs, variance explained annotated on axes |
+| results/pca_summary.tsv | table | Per-sample table with sample_id, condition, PC1 score, PC2 score, and cumulative variance explained through PC10 |
+| results/variance_explained.tsv | table | Variance explained (%) per principal component for the first 10 components |
+
+## Execution
+
+Runs: batch
+
+Expected wall time: < 5 minutes. Expected output size: < 10 MB (one PNG plot and two TSV tables). The computation is linear in sample count and the number of variable genes selected; with 6 samples and 2,000 genes, PCA is fast.

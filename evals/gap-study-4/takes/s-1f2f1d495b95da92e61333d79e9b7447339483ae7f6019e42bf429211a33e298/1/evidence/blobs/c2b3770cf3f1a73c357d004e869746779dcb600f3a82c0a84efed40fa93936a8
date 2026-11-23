@@ -1,0 +1,45 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on the normalized gene counts to visualize sample relationships. Generate a 2D PCA plot where each sample is colored by condition (treated vs. untreated) to assess the treatment effect and sample clustering patterns.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | rnaseq_bulk_design.csv |
+
+## Method
+1. Load the gene count matrix (counts_gene) and design table using Python 3 in gars-bio environment.
+2. Filter genes: retain those with mean CPM ≥ 1 across all samples to remove low-abundance noise.
+3. Normalize counts using TMM (trimmed mean of M-values) via edgeR-equivalent approach in Python (scipy).
+4. Log-transform normalized counts as log2(CPM + 1).
+5. Perform PCA using scikit-learn's StandardScaler and decomposition.PCA on the log-transformed counts, retaining components explaining 50% of variance (typically PC1 and PC2).
+6. Create a scatter plot (matplotlib) showing PC1 vs PC2, with points colored by condition (untreated: blue, treated: red).
+7. Add axis labels showing percent variance explained, legend, and title.
+8. Save plot as `results/sample_pca.png` (300 dpi).
+9. Save PCA coordinates and variance components to `results/pca_coords.csv` for reference.
+
+All steps run on login node (computationally lightweight: 6 samples, 22,783 genes; <1 second execution).
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | 2D PCA scatter plot colored by treatment condition (untreated vs treated); PC1 and PC2 shown with variance explained |
+| results/pca_coords.csv | table | Sample names, condition labels, PC1, PC2, and top 10 variable genes driving each PC |
+
+## Execution
+Runs: login-node (user-requested)
+
+Expected: <10 seconds wall time, ~1 MB output. Computationally lightweight analysis on 6 samples across standard gene set.

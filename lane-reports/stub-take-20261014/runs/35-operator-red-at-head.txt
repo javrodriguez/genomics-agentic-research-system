@@ -1,0 +1,1 @@
+OperatorSteps against HEAD's ownership.py: 12 of 5 red

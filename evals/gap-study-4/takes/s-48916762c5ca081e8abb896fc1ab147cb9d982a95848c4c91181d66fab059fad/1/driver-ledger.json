@@ -1,0 +1,451 @@
+{
+ "agent": {
+  "harness": "claude-code",
+  "version": "2.1.296"
+ },
+ "arm": "A",
+ "budget_s": 900,
+ "claude_version": "2.1.296",
+ "cost": {
+  "calls": [
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 5508,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFbn1ZTPTTrQinz79Vp/req_011CgwFbmWJJF6obYTC2KHSP",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 5508,
+     "cache_read_input_tokens": 14379,
+     "input_tokens": 10,
+     "output_tokens": 513
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 2124,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFc67yXtepL2HmpQTPw/req_011CgwFc5w58g3XLc9yV1ac2",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 2124,
+     "cache_read_input_tokens": 19887,
+     "input_tokens": 8,
+     "output_tokens": 223
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 2139,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFcGMNvLbNESdaYRfsm/req_011CgwFcG5WmtzNwMKipXzzU",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 2139,
+     "cache_read_input_tokens": 22011,
+     "input_tokens": 8,
+     "output_tokens": 124
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 7006,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFcPDtPBNBD2mH6GtfS/req_011CgwFcNyFLdddDDB6Z7oCc",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 7006,
+     "cache_read_input_tokens": 24150,
+     "input_tokens": 8,
+     "output_tokens": 878
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1778,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFcxVd6Rpv5ePN2CncN/req_011CgwFcxHDTisTw1bRmUrrM",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1778,
+     "cache_read_input_tokens": 31156,
+     "input_tokens": 8,
+     "output_tokens": 256
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 1360,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFd9Rwmcid6LWxg5yog/req_011CgwFd9EHTGr2hZhYtukVy",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 1360,
+     "cache_read_input_tokens": 32934,
+     "input_tokens": 8,
+     "output_tokens": 157
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 682,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFdGhzhzSpAY4YGdJPN/req_011CgwFdGV74TMrQKKbeFSqb",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 682,
+     "cache_read_input_tokens": 34294,
+     "input_tokens": 8,
+     "output_tokens": 246
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 526,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFdSrw9QawNeEv3PyvM/req_011CgwFdSaZqNbqQ9K6RzHFo",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 526,
+     "cache_read_input_tokens": 34976,
+     "input_tokens": 8,
+     "output_tokens": 270
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 394,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFdbTNJxdokoWtrVPpz/req_011CgwFdbDUDXfiNQzRs9Z3w",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 394,
+     "cache_read_input_tokens": 35502,
+     "input_tokens": 8,
+     "output_tokens": 257
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 412,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFdnnVwoKutGHSjH53x/req_011CgwFdnD1z8cQ8TCvaVfQU",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 412,
+     "cache_read_input_tokens": 35896,
+     "input_tokens": 8,
+     "output_tokens": 187
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 769,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFe7aqbrjQNR2GSStQc/req_011CgwFe7Mhtt9prWscE1V2e",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 769,
+     "cache_read_input_tokens": 36308,
+     "input_tokens": 8,
+     "output_tokens": 166
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 438,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFeEkhCLXTjorqbbtQm/req_011CgwFeEVKFeSPBxRxRRSsw",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 438,
+     "cache_read_input_tokens": 37077,
+     "input_tokens": 8,
+     "output_tokens": 137
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 240,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFeLR1ZnGNZgMCNzwix/req_011CgwFeLCcwvGb7iEbpmTSh",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 240,
+     "cache_read_input_tokens": 37515,
+     "input_tokens": 8,
+     "output_tokens": 173
+    },
+    "vendor": "anthropic"
+   },
+   {
+    "agent": {
+     "harness": "claude-code",
+     "version": "2.1.296"
+    },
+    "cache_write_durations": {
+     "1h": 830,
+     "5m": 0
+    },
+    "call_id": "msg_011CgwFeTa7zGhTAMkrZnqQe/req_011CgwFeTLEocc8KfSiui5KH",
+    "ended_at": null,
+    "model": "claude-haiku-4-5-20251001",
+    "started_at": null,
+    "total_cost_usd": null,
+    "usage": {
+     "cache_creation_input_tokens": 830,
+     "cache_read_input_tokens": 37755,
+     "input_tokens": 8,
+     "output_tokens": 411
+    },
+    "vendor": "anthropic"
+   }
+  ],
+  "model_requested": "claude-haiku-4-5-20251001",
+  "turns": [
+   {
+    "calls": [
+     "msg_011CgwFbn1ZTPTTrQinz79Vp/req_011CgwFbmWJJF6obYTC2KHSP",
+     "msg_011CgwFc67yXtepL2HmpQTPw/req_011CgwFc5w58g3XLc9yV1ac2",
+     "msg_011CgwFcGMNvLbNESdaYRfsm/req_011CgwFcG5WmtzNwMKipXzzU",
+     "msg_011CgwFcPDtPBNBD2mH6GtfS/req_011CgwFcNyFLdddDDB6Z7oCc",
+     "msg_011CgwFcxVd6Rpv5ePN2CncN/req_011CgwFcxHDTisTw1bRmUrrM",
+     "msg_011CgwFd9Rwmcid6LWxg5yog/req_011CgwFd9EHTGr2hZhYtukVy",
+     "msg_011CgwFdGhzhzSpAY4YGdJPN/req_011CgwFdGV74TMrQKKbeFSqb",
+     "msg_011CgwFdSrw9QawNeEv3PyvM/req_011CgwFdSaZqNbqQ9K6RzHFo",
+     "msg_011CgwFdbTNJxdokoWtrVPpz/req_011CgwFdbDUDXfiNQzRs9Z3w",
+     "msg_011CgwFdnnVwoKutGHSjH53x/req_011CgwFdnD1z8cQ8TCvaVfQU",
+     "msg_011CgwFe7aqbrjQNR2GSStQc/req_011CgwFe7Mhtt9prWscE1V2e",
+     "msg_011CgwFeEkhCLXTjorqbbtQm/req_011CgwFeEVKFeSPBxRxRRSsw",
+     "msg_011CgwFeLR1ZnGNZgMCNzwix/req_011CgwFeLCcwvGb7iEbpmTSh",
+     "msg_011CgwFeTa7zGhTAMkrZnqQe/req_011CgwFeTLEocc8KfSiui5KH"
+    ],
+    "model_usage": {
+     "claude-haiku-4-5-20251001": {
+      "cacheCreationInputTokens": 24206,
+      "cacheReadInputTokens": 433840,
+      "canonicalModel": "claude-haiku-4-5",
+      "contextWindow": 200000,
+      "costBasis": "list",
+      "costUSD": 0.11190000000000001,
+      "inputTokens": 114,
+      "maxOutputTokens": 32000,
+      "outputTokens": 3998,
+      "provider": "firstParty",
+      "thinkingTokens": 2103,
+      "webSearchRequests": 0
+     }
+    },
+    "n": 1,
+    "num_turns": 14,
+    "permission_denials": [],
+    "total_cost_usd": 0.11190000000000001,
+    "usage": {
+     "cache_creation": {
+      "ephemeral_1h_input_tokens": 24206,
+      "ephemeral_5m_input_tokens": 0
+     },
+     "cache_creation_input_tokens": 24206,
+     "cache_read_input_tokens": 433840,
+     "fallback_credit": null,
+     "inference_geo": "not_available",
+     "input_tokens": 114,
+     "iterations": [],
+     "output_tokens": 3998,
+     "output_tokens_details": {
+      "thinking_tokens": 2103
+     },
+     "server_tool_use": {
+      "web_fetch_requests": 0,
+      "web_search_requests": 0
+     },
+     "service_tier": "standard",
+     "speed": "standard"
+    }
+   }
+  ]
+ },
+ "cross_check": [],
+ "environment": {
+  "file": "environment.json",
+  "sha256": "a4fded100138ccb689acc95b2e3e12aac286889746d48c81f8f2da7cfe0e58d7"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "claude-haiku-4-5-20251001",
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "bypassPermissions",
+ "permission_mode_passed": "bypassPermissions",
+ "permission_mode_recorded": "bypassPermissions",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-e112f00b",
+ "published": {
+  "records_a_grader_reads": "identical before and after",
+  "removed": [],
+  "sha256_after": "885f59752960996b5c80ae58da6086b62f069a3b513a8f263e510b20a6366441",
+  "sha256_before": "885f59752960996b5c80ae58da6086b62f069a3b513a8f263e510b20a6366441",
+  "transcript": "transcript.jsonl",
+  "why": "Claude Code injects the signed-in account's email address into every session; it is the operator's personal address and says nothing about the agent. See scrub.py and PROTOCOL.md, Ruling 10."
+ },
+ "repeat": 1,
+ "row": 865,
+ "row_commit": "55d0b115e4b87484c267ed8e84e4c565788c6efc",
+ "session_id": "e112f00b-38be-5494-bab2-2d328b2ca06a",
+ "source": "/tmp/run-e112f00b/data/staging/run-e112f00b/src",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "subagents": [],
+ "task": "template-adherence",
+ "transcript": "transcript.jsonl",
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": false,
+   "n": 1,
+   "sent": "Please set up a new bulk RNA-seq project called run-e112f00b, source data in /tmp/run-e112f00b/data/staging/run-e112f00b/src",
+   "then": null
+  }
+ ],
+ "wording": "w2"
+}

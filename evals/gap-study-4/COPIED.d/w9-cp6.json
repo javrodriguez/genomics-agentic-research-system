@@ -1,0 +1,65 @@
+{
+  "lane": "w9-cp6",
+  "files": [
+    {
+      "path": "fixtures/holdout-rehearsal/approval-scope.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/conditional-yes.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/confounded-design.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/explain-not-act.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/number-fidelity.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/plan-gate.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/precondition-refusal.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/scope-read.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "fixtures/holdout-rehearsal/template-adherence.json",
+      "status": "new",
+      "reason": "Lane w9-cp6: the freeze rehearsal's SYNTHETIC holdout fixture for its task, read only by aegis holdout.py --check in a disposable rehearsal (freeze_rehearsal --holdout-tool). Obviously fake wordings (h1-h3, every opening marked 'Synthetic rehearsal opening', placeholder-only probes where the band is one word), never a held-out wording; built to the S9b pack's wording shape and word bands at 9961d0a2."
+    },
+    {
+      "path": "tests/test_cp6_wiring.py",
+      "status": "new",
+      "reason": "Lane w9-cp6 (CP6 wiring): K1 (Q-w8d-1, a take checked against its open registration, the allow-list LAUNCH_FIELDS, the frozen planned row and its folder's attempt before launch, also through a real batch.Batch), W1 (a walk checked against the freeze, the design in force and the register before launch), S1 (W8B-R2-2, check_results re-reads the committed prereg.json for the rehearsal's synthetic digests), R1 (freeze_rehearsal's holdout step runs the aegis tool's --check on the synthetic fixture; the fixture's shape). Seventeen witnesses under rule B; fold w9-Q1: the stuck slot launches into takes/<slot>/<attempt>, an existing folder is refused by name, witnesses launch-folder-counted and launch-folder-exists-admitted replace launch-folder-unchecked, eighteen in all. Fakes only, under test_box_integration's process guard. Fold w9-close-1 (glitch-2f, review round 1 PASS): K1 gains an open attempt 1 under an outcome-closed attempt 2 (W9-R1-1, witness launch-latest-unchecked); R1 binds the holdout step's synthetic-fixture label in the report and stdout (witness tool-label-dropped); twenty witnesses. Edited without transfer by lane w10-walk-runner (departure w10-4, ruling D2): W1 gives its admitted walk the walk's own identity (session id from check_take.walk_session_id, row and row_commit None) under the real prereg.load, so W1's refusals stay the ones it names; no assertion or witness changed."
+    },
+    {
+      "path": "checks.d/w9-cp6.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_cp6_wiring.py and its --witnesses."
+    },
+    {
+      "path": "COPIED.d/w9-cp6.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfer under glitch-2f's wave 9 ruling (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w9, CP6 wiring): drive.py from lane w8d-cp8-prep. Edits without transfer, each recorded in its owner's entry: check_results.py (w5b-cp5-pipeline, departure w9-1) and freeze_rehearsal.py (w8b-holdout-digests, departure w9-2), both bound to their owners by tests/test_pipeline.py's PipelineOwnership; tests/test_walk_wiring.py (w7b-walk-wiring). Transfer out: drive.py to lane w10-walk-runner under glitch-2f's rulings D1, D2 and D3 on lane w10-walk-runner (the Lane-orchestrator, under Javier's standing delegation, Mon 12 Oct 2026; slice w10, the CP6 walk runner)."
+    }
+  ]
+}

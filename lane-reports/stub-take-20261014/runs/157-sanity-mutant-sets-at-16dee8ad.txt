@@ -1,0 +1,34 @@
+== lane-reports/walk-login/verify_mutants.py
+control 0 of 5
+RED   2/5 '=' unchecked
+RED   2/5 double paste unchecked
+RED   2/5 name prefix unchecked
+RED   2/5 quotes unchecked
+RED   1/5 stray non-ASCII unchecked
+RED   1/5 stray named by the character, not its name
+RED   8/5 the Gemini account unknown
+RED   8/5 paste checks ignored in the result
+EQUIVALENT (named, no mutant): the stray non-ASCII line's own result gate, since a non-ASCII byte also fails 'format ok' (bytes 0x21-0x7e only), so dropping that gate alone changes no result
+ALIVE: none
+== lane-reports/stub-take-20261014/mutants/no_login_launcher_mutants.py
+control 0 of 1
+RED   1/1 the launcher copies the reserved name
+RED   1/1 the launcher skips every credential
+RED   1/1 no gate on the reserved name
+RED   1/1 the reserved name for any harness
+RED   1/1 the reserved name not reserved
+ALIVE: none
+== lane-reports/stub-take-20261014/mutants/review_folds_mutants.py
+control 0 of 5
+RED   1/5 harness= optional again
+RED   1/5 any named login admitted
+RED   1/5 another config home admitted
+RED   1/5 any value names admitted
+RED   1/5 a key name in the Codex row loads
+RED   1/5 a longer placement admitted (the review's >)
+RED   1/5 a shorter placement admitted
+RED   1/5 the create is not exclusive
+RED   1/5 the create neither exclusive nor no-follow
+RED   1/5 ISSUERA not refused
+EQUIVALENT (named, no mutant): O_NOFOLLOW dropped alone: the exclusive create (O_EXCL) already refuses a link at the path, so no test can tell it apart; dropping both is the mutant below
+ALIVE: none

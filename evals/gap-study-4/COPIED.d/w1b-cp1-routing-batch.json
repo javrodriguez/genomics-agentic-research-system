@@ -1,0 +1,40 @@
+{
+  "lane": "w1b-cp1-routing-batch",
+  "files": [
+    {
+      "path": "graders/labels4.py",
+      "status": "new",
+      "reason": "Round 4's closed vocabulary (interface 4); round 3 has no such module. Its reserved labels repeat round 3's graders/labels.py strings, imported nowhere from there. It also holds the turn ends (TURN_ENDS, GRADED_ENDS) that agent_adapter.py and routing.json use instead of retyping them (review round 1, W1B-7). It also holds the cell state `incomplete — mechanical` (INCOMPLETE_MECHANICAL, CELL_STATES), round 3's word for a cell at its rehearsal or pause cap, which batch.py commits under glitch-f3's cap ruling (6 Oct 2026, fold 3). It also holds the ruling words (RULING, RULE_RERUN, RULE_ROUTE, RULINGS) a restart reads before it drives a blocked take, or one that failed after its drive started, again (review round 3, W1B3-1, fold 4)."
+    },
+    {
+      "path": "agent_adapter.py",
+      "status": "new",
+      "reason": "The runner's only agent interface (interface 5); new in round 4. TurnResult's init, api_errors (every API error of the turn, in order) and counters are required keywords, and the agent's first turn starts only with completed agent output (review round 2: W1B2-1, W1B2-4, W1B2-7). started_at and ended_at are required keywords too, the host clock as an int or a float (review round 3, W1B3-6, fold 4). Live harness 3a (edit without transfer, under glitch-06's step-3 order, 14 Oct 2026): ExecutedTurnRefused and EXECUTED_FIELDS, an executed turn's own-record refusal carrying the exec kept before the read; bound by tests/test_executed_turn_refusal.py. Live harness 3b: TurnResult.identity (typed identity evidence, IDENTITY_SOURCES, identity_problems), carried by harness_records only when some turn states it. Codex slice 2 (live harness, 14 Oct 2026): IDENTITY_SOURCES gains stream-reroute (a Codex exec reroute item's served model)."
+    },
+    {
+      "path": "tests/test_labels4.py",
+      "status": "new",
+      "reason": "Tests for labels4.py (interface 3)."
+    },
+    {
+      "path": "tests/test_agent_adapter.py",
+      "status": "new",
+      "reason": "Tests for agent_adapter.py (interface 3)."
+    },
+    {
+      "path": "tests/test_batch.py",
+      "status": "new",
+      "reason": "Tests for batch.py (interface 3). Edited without transfer by lane w8c-spend-ruled (ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", Mon 12 Oct 2026 08:52 EDT)): spend_gate_problems reads the real table as ruled (no spend line) and, with its spend status set back to PENDING, refused naming it; the ignore-the-spend-cap mutant also fails that real-table line. Live harness step 4: test_harness_error_two_reruns_per_half_cell reads the two granted re-runs from the committed fates, since the third harness-error of one night now stops the run. Step-4 review nit 4: the cap test restarts after a committed night ruling and drives exactly the granted re-runs, history_problems clean."
+    },
+    {
+      "path": "COPIED.d/w1b-cp1-routing-batch.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfer (ruling W7C-gap4-1 (glitch-1b, under Javier's standing delegation, 12 Oct 2026; wave 7, the spend-guard wiring)): batch.py and routing.py moved on to lane w7c-spend-wiring, which claims them in COPIED.d/w7c-spend-wiring.json; their tests (tests/test_batch.py, tests/test_routing.py) and this lane's checks stay here, unedited. Transfer (ruling W8C-gap4-1 (Javier's own decision \"spend markers: 1A 2A 3A\", typed Mon 12 Oct 2026 08:52 EDT in glitch-1b's window on plans/gap-study-round-4/spend-markers-proposal-2026-10-11.md; lane w8c-spend-ruled, assigned by glitch-1b)): routing.json and tests/test_routing.py moved on to lane w8c-spend-ruled, which claims them in COPIED.d/w8c-spend-ruled.json; this lane's checks (checks.d/w1b-cp1-routing-batch.txt, which still runs tests/test_routing.py) stay here, unedited."
+    },
+    {
+      "path": "checks.d/w1b-cp1-routing-batch.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2). Comment corrected by lane w8c-spend-ruled (ruling W8C-gap4-1, glitch-1b's fold before review): after Javier ruled the spend status the batch line stays green; w8c's two-line check carries the exact expectation."
+    }
+  ]
+}

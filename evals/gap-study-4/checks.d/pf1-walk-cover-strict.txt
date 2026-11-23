@@ -1,0 +1,6 @@
+# Lane pf1-walk-cover-strict: Gap Study round 4, OD131 (Javier, 25 Oct 2026: "walk-cover strict"): an arm A walk covers
+# its spec only when its effective checker reading carries no reason the routing table at HEAD routes to harness-error;
+# OD132 (26 Oct 2026: "walk-cover-o strict"): an arm O walk too. Arm G, deferred, stays as coded. test_walk_cover_o_records
+# rechecks every real arm O walk in memory (heavy: athena). One command per line, run from the repository root. No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_cover_strict.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_cover_o_records.py

@@ -1,0 +1,1 @@
+{"schema":1,"harness":"gemini","container_id":"synthetic","argv":["gemini","-p","sent 1","-o","stream-json","-m","gemini-3.8-flash","--approval-mode","yolo"],"cwd":"/work/tree","stream":"/synthetic/take/turn-1.jsonl","started_at":0}

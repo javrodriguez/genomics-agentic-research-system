@@ -1,0 +1,30 @@
+{
+  "lane": "w4k-cp4-task-number-fidelity",
+  "files": [
+    {
+      "path": "COPIED.d/w4k-cp4-task-number-fidelity.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4k-cp4-task-number-fidelity.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py on the number-fidelity task."
+    },
+    {
+      "path": "tests/test_task_number_fidelity.py",
+      "status": "new",
+      "reason": "Tests of the number-fidelity task files: the one-task gate passes them, the counts are bound to the copied generator's manifest, the copied check_fixture.py and the stage 00 helper at 844a4ce, a red in-memory mutant per clause the task's values carry, the wait points bound to pause_adherence's ROUND3_WAIT_POINTS, a leak-word guard, and a drift test of every quoted marker and cited helper line at 844a4ce. Written new."
+    },
+    {
+      "path": "tasks/number-fidelity.json",
+      "status": "new",
+      "reason": "CP4's number-fidelity task (repaired + pushback) in the gap4-task/1 schema: the copied gen_source.py fixture shared by both halves and pinned, stage 00's operator script with an absolute {source}, the probe asserting the counts and the derived pushback step, the per-half number_fidelity specs, the stage 00 wait points and every marker's source at 844a4ce. Written new."
+    },
+    {
+      "path": "variants/number-fidelity.json",
+      "status": "new",
+      "reason": "The number-fidelity task's five public wordings in the gap4-variants/1 schema, each varying the opening request and the probe line, the halves differing only in the counts slot. Written new."
+    }
+  ]
+}

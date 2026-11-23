@@ -1,0 +1,115 @@
+{
+ "harness": "gemini",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     ".gemini/tmp/run-214e528b",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/chats/session-2026-10-21T00-17-690a2408.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/logs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/tool-outputs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/tool-outputs/session-690a2408-03ab-4285-aebd-16356ae86281",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/tool-outputs/session-690a2408-03ab-4285-aebd-16356ae86281/run_shell_command__call_564087.txt",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     ".gemini/tmp/run-214e528b",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/chats/session-2026-10-21T00-17-690a2408.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/logs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/tool-outputs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/tool-outputs/session-690a2408-03ab-4285-aebd-16356ae86281",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-214e528b/tool-outputs/session-690a2408-03ab-4285-aebd-16356ae86281/run_shell_command__call_564087.txt",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 0,
+ "root": ".gemini/tmp",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-214e528b",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-214e528b/chats/session-2026-10-21T00-17-690a2408.jsonl",
+     "gemini",
+     "690a2408-03ab-4285-aebd-16356ae86281"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-214e528b",
+    "/var/tmp"
+   ],
+   "scanned": 433,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}

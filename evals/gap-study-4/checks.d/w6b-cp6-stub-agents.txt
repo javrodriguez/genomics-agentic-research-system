@@ -1,0 +1,5 @@
+# Lane w6b-cp6-stub-agents: CP6's stub agents (box/stub_agents/) on the ScriptedAdapter seam, fake runtime only.
+# One command per line, run from the repository root. No model, container or network; no take is implied.
+python3 -B -W ignore evals/gap-study-4/tests/test_stub_agents.py
+python3 -B -W ignore evals/gap-study-4/tests/test_stub_agents.py --witnesses
+python3 -B -W ignore evals/gap-study-4/box/stub_agents/take.py --check

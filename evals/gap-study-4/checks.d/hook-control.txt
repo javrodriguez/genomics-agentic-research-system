@@ -1,0 +1,5 @@
+# Lane hook-control (glitch-f1's rulings on lane-reports/hook-control-DESIGN.md, 21 Oct 2026): the D8 hook positive
+# control for arms O and G on fakes: the marker, the twin diff rule and its refused mutant twins, the Codex argv and
+# environment (the walk's exec byte for byte, no login, no lease), the verdict truth table, the pre-run marker check,
+# the dry run, full runs on a fake box, and walk_launch's probe-hooks entry. No container, CLI, model or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_hook_control_probe.py

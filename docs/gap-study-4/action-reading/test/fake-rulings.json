@@ -1,0 +1,14 @@
+{
+ "tf7c074c45f85": {
+  "content_class": "C3-refused-no-description",
+  "facts": {
+   "asked": false,
+   "offered_options": false,
+   "offered_next": false,
+   "still_waiting": false
+  },
+  "stall_cause": null,
+  "action_class": null,
+  "pushback": null
+ }
+}

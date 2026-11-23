@@ -1,0 +1,10 @@
+# Lane fold2-lb: Gap Study round 4, pre-freeze review 2's fold, lane L-B (MAJOR 2, MAJOR 3, m2, m3, m5, option A+ and m1).
+# The lane's test module and the changed test modules owned by other lanes. One command per line, run from the
+# repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_fold2_lb.py
+python3 -B -W ignore evals/gap-study-4/tests/test_review_kit.py
+python3 -B -W ignore evals/gap-study-4/tests/test_ci_job.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_freeze_gates.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_l2b.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pipeline.py
+python3 -B -W ignore evals/gap-study-4/tests/test_cp6_wiring.py

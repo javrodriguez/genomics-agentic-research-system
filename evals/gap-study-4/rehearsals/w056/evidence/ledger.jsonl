@@ -1,0 +1,9 @@
+{"agent": {"harness": "claude-code", "version": "2.1.296"}, "home": null, "kind": "take", "model": "claude-haiku-4-5-20251001", "run_tree": ""}
+{"ended_at": 1792124027.036741, "kind": "turn", "n": 1, "started_at": 1792124005.4198036}
+{"ended_at": 1792124035.1449423, "kind": "turn", "n": 2, "started_at": 1792124027.4524825}
+{"ended_at": 1792124042.3399746, "kind": "turn", "n": 3, "started_at": 1792124035.5641894}
+{"ended_at": 1792124054.7850583, "kind": "turn", "n": 4, "started_at": 1792124042.7552147}
+{"at": 1792124055.6903522, "id": "wait-for-samples-csv-then-copy-design", "kind": "operator", "writes": [{"after": {"sha256": "4478b6a4605236af39c21164d96296f556240eb0ea4236e9b51b007a52e197a3", "type": "file"}, "path": "gars/projects/run-3b1a0653/00_data/rnaseq_bulk/samples.csv"}]}
+{"ended_at": 1792124068.6950645, "kind": "turn", "n": 5, "started_at": 1792124055.882714}
+{"ended_at": 1792124084.9262617, "kind": "turn", "n": 6, "started_at": 1792124069.1157079}
+{"ended_at": 1792124094.072086, "kind": "turn", "n": 7, "started_at": 1792124085.3437269}

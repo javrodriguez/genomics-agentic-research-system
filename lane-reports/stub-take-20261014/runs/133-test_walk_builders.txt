@@ -1,0 +1,56 @@
+.....F................................F.F..
+======================================================================
+FAIL: test_another_name_is_refused_without_its_value (test_walk_builders.B2Login.test_another_name_is_refused_without_its_value)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 294, in must
+    return fn(*args, **kwargs)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/walk_builders.py", line 127, in login_file_by_name
+    name = login_name(harness)
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/walk_builders.py", line 115, in login_name
+    raise BuilderRefused(rt.CODEX_SUBSCRIPTION_NOT_READY)
+walk_builders.BuilderRefused: Codex subscription binding not ready; API-key login is not permitted
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 477, in test_another_name_is_refused_without_its_value
+    self.assertEqual(self.must("B2.login", wb().login_file_by_name, str(codex), "codex"), str(codex),
+                     ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 298, in must
+    self.fail(f"{clause}: {type(e).__name__}: {str(e)[:400]}")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: B2.login: BuilderRefused: Codex subscription binding not ready; API-key login is not permitted
+
+======================================================================
+FAIL: test_a_registered_walk_id_is_refused_at_launch (test_walk_builders.B9Cli.test_a_registered_walk_id_is_refused_at_launch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 1091, in test_a_registered_walk_id_is_refused_at_launch
+    self.assertEqual(self.must("B9.cli", w.main, w.argv())[0], 0, "B9.cli")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : B9.cli
+
+======================================================================
+FAIL: test_one_walk_end_to_end (test_walk_builders.B9Cli.test_one_walk_end_to_end)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_walk_builders.py", line 980, in test_one_walk_end_to_end
+    self.assertEqual(code, 0, f"B9.cli: exit {code}: {err[-800:]} {out[-800:]}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : B9.cli: exit 1:  {"results": [{"config": "the config folder is kept for a human: no clean postflight and teardown record proves the drive clean", "state": "held", "walk": "w-0001", "why": "launch failed: LaunchError: launch failed: sidecar-inspect: the sidecar expectation must name exactly ['user', 'network_mode', 'cap_drop', 'cap_add', 'security_opt', 'privileged', 'pid_mode', 'mounts', 'image', 'cmd', 'entrypoint']"}], "run_tree": "/private/var/folders/pl/wd7yslh56knfhj37w04s6ryc0000gn/T/w6h-5ee1btyd/tmp-zl_3ek9n/run-08aee3ee", "run_tree_kept": null, "walk": "w-0001"}
+
+
+----------------------------------------------------------------------
+Ran 43 tests in 21.071s
+
+FAILED (failures=3)
+    x: stage 01 --check exits 0 (expected 1)
+    x: the line drive.py cannot parse
+    x: exits 1 (expected 1)
+the fixture did not reach its branch, so no take is driven:
+x: exits 1 (expected 1)
+
+    x: exits 1 (expected 1)
+the project fixture was not built in the run tree (gars/projects/run-0000abcd is missing), so no take is driven
+    samplesheet-absent: stage 01 --check exits 1 (expected 1)

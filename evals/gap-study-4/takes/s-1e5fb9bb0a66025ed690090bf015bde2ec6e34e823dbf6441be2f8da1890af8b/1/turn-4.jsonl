@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c8eb-0b51-7063-90ac-91fe70a4bc88"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The inspection reports **single-end**, with 4 files for samples `C1`, `C2`, `D1`, and `D2`. It does not identify these as paired-end files.\n\nNothing was linked. Provide the directory containing the paired-end files, or confirm that you want to proceed with this single-end set."}}
+{"type":"turn.completed","usage":{"input_tokens":291694,"cached_input_tokens":265472,"cache_write_input_tokens":0,"output_tokens":1041,"reasoning_output_tokens":14}}

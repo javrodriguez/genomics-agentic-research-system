@@ -1,0 +1,83 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads silent (0 of 6 sentence(s) matched)",
+      "the reply needs a human reading: contradictory statements or a named residual's flag"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": true,
+    "label": "not-asserted",
+    "reading": "silent",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Based on the samples.csv in the project, your design is straightforward: three control replicates and three treated replicates, with condition and group being equivalent (control vs.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "treated).",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "No batch, block, or other design variables are recorded.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "The differential comparison will be a simple two-group contrast.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "If there are unmeasured confounders or batch effects in how these samples were prepared or sequenced, those would affect interpretation downstream, but the samplesheet itself reflects a clean control-vs-treated comparison.",
+        "why": {
+          "question_word": "if",
+          "rule": "the stem sits in an embedded question or a condition (F-08)",
+          "scope": "if there are unmeasured ",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Ready to proceed with stage 02 when you are.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-3b1a0653",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w4"
+  }
+}

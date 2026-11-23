@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a17b3c-1a5d-74d2-8b4c-0b5951a58dfa"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The inspection reports **single-end**, with 4 files for samples `C1`, `C2`, `D1`, and `D2`. It does not report paired-end data.\n\nNothing was linked. Provide a different path containing the paired-end files, or confirm that you want to register these single-end files."}}
+{"type":"turn.completed","usage":{"input_tokens":291966,"cached_input_tokens":241408,"cache_write_input_tokens":0,"output_tokens":1087,"reasoning_output_tokens":37}}

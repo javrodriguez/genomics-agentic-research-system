@@ -1,0 +1,1109 @@
+{
+  "source_repo": "/Users/javrodher/aegis-builds/gap4-live-box-20261013",
+  "pin": "844a4ce0d89437ca043363981a86096f6383a141",
+  "writer": "walk_builders.build_run_tree / drive.clean_run_tree",
+  "exclusions_source": "e2979b3143081824aadea73523ec41af30c1ddb1:evals/gap-study-3/prereg.json run_location.excluded_from_the_run_tree",
+  "exclude": [
+    "evals",
+    "docs/EVALS.md",
+    ".github",
+    "docs/implementation",
+    "docs/reviews",
+    "docs/specs",
+    "docs/decisions/0041-glitch-produces-the-v1-0-1-gap-assessment.md"
+  ],
+  "files": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "63592e559ec4a1774202520988e0f6308efe702a",
+      "bytes": 2350
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9ed7cb860a1196a1390d484eb67983e28b3cfac0",
+      "bytes": 7659
+    },
+    {
+      "path": "DEVELOPMENT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f63e70b58ad646c313a7d52552bf8ea2a77ae90a",
+      "bytes": 46454
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b06cb1d61c1349bbf2c71c937ff98e3e696117ae",
+      "bytes": 1081
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4e4672e68f74c28e8dc3458fef295b8fbc5ba3c0",
+      "bytes": 21276
+    },
+    {
+      "path": "docs/RESULTS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c8cfec87fd9900b9e4d04617a855d992c6295442",
+      "bytes": 6977
+    },
+    {
+      "path": "docs/architecture.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d121742081c3d927c445c97cf700971e51b6cfb1",
+      "bytes": 12460
+    },
+    {
+      "path": "docs/assay-expansion.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ccded7ad5c7cb60f303933bce848296375400c5c",
+      "bytes": 40782
+    },
+    {
+      "path": "docs/decisions/0001-layered-context-and-stage-ownership.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1374e606e2b70d7a8d461d15fefc45f87c861938",
+      "bytes": 1019
+    },
+    {
+      "path": "docs/decisions/0002-agent-control-negative-scope-and-templates.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bf27b07b4522dcf7233cc4699f3aa9b4226bd77a",
+      "bytes": 1615
+    },
+    {
+      "path": "docs/decisions/0003-data-model-files-and-samples-split.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "02a0b8820cd5ff25818934454d14e1fc283be5a5",
+      "bytes": 2201
+    },
+    {
+      "path": "docs/decisions/0004-environment-installed-not-vendored.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c3ef9de4f64886dfec912b46af408ed8688c9362",
+      "bytes": 1543
+    },
+    {
+      "path": "docs/decisions/0005-execution-failures-and-fixes.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b7c9a366587cd6a4454d8c1f52e2565888d20f52",
+      "bytes": 2442
+    },
+    {
+      "path": "docs/decisions/0006-storage-and-reference-reuse.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e06fdf139fb7c43ef0e96a6a692ce12cfa86809c",
+      "bytes": 2045
+    },
+    {
+      "path": "docs/decisions/0007-artifact-registry-outputs-tsv.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "262f19ad9ba1e7f5c3d7500fd6abc2848a644145",
+      "bytes": 4186
+    },
+    {
+      "path": "docs/decisions/0008-assay-expansion-wrap-nfcore.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "98a586ee44ef4c32a286dc6d9051c63bb8abfe97",
+      "bytes": 3100
+    },
+    {
+      "path": "docs/decisions/0009-derived-reference-cache-verified.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a654b88473567f50178ba0c6dac82c1d0e9aeeb1",
+      "bytes": 1678
+    },
+    {
+      "path": "docs/decisions/0010-skill-chaining-defects-and-adaptation.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "49fbe076fbf730fa1bbf57d1be4e5441a447fe18",
+      "bytes": 2219
+    },
+    {
+      "path": "docs/decisions/0011-deterministic-artifacts-in-stages-00-01.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "424a10e22cb2f0e9bad064c30fb903807de63442",
+      "bytes": 6212
+    },
+    {
+      "path": "docs/decisions/0012-gars-authored-wrappers-live-in-system.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c7b634bb99a13953d583e1e1203fd169b35b7ace",
+      "bytes": 3748
+    },
+    {
+      "path": "docs/decisions/0013-integrity-verification-moves-to-stage-01.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3ad63d9f2ce687ef7b46c170cbc4ed96738e903e",
+      "bytes": 3876
+    },
+    {
+      "path": "docs/decisions/0014-workspace-upgrade-path.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ea3deffbafb7c2a51bd9e8f7aa1a360ebd87daca",
+      "bytes": 4707
+    },
+    {
+      "path": "docs/decisions/0015-workspace-staleness-detection.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b345a227f30417d1d54e0620e33eb031d7ca35d1",
+      "bytes": 3404
+    },
+    {
+      "path": "docs/decisions/0016-workspaces-are-checkouts.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "401e4dcadede078367310b5fab4d08a5187f4ce2",
+      "bytes": 3395
+    },
+    {
+      "path": "docs/decisions/0017-machine-owned-files-are-verified-not-trusted.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7b16e6aad99afc4cdc0c1e3af04ab1fe0e01cdc7",
+      "bytes": 4832
+    },
+    {
+      "path": "docs/decisions/0018-machine-ownership-is-enforced-not-advised.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "001b343a14ec5af988dea58790c510d900a93586",
+      "bytes": 3617
+    },
+    {
+      "path": "docs/decisions/0019-config-is-seeded-not-authored.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a5f913cc1a3bb242f1e783608ab05be076844740",
+      "bytes": 3046
+    },
+    {
+      "path": "docs/decisions/0020-config-decisions-come-from-menus.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7b82278c77c98a9b274bfc83672930602a02de08",
+      "bytes": 3881
+    },
+    {
+      "path": "docs/decisions/0021-the-adaptation-rename-belongs-in-code.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "16b28623b728950388d9cf092fca112eacee2675",
+      "bytes": 3613
+    },
+    {
+      "path": "docs/decisions/0022-scope-boundaries-are-enforced-by-the-harness.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "864d349d3cf5b6c6b1cc58e0d982ad59c22ac945",
+      "bytes": 3401
+    },
+    {
+      "path": "docs/decisions/0023-the-deterministic-core-has-tests.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31dd44b49fda5d9f2166a04e929a625f20138ee6",
+      "bytes": 2986
+    },
+    {
+      "path": "docs/decisions/0024-the-model-is-part-of-provenance.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "05a9d88f64084680862b0c5728393d1321dea955",
+      "bytes": 2223
+    },
+    {
+      "path": "docs/decisions/0025-the-bounded-voice.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "368d0a1f362458b69206caab0152ba822d44d8d8",
+      "bytes": 2600
+    },
+    {
+      "path": "docs/decisions/0026-stage-03-is-plan-gated.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "38240c2e08155879e12384645791aa642aaad4b2",
+      "bytes": 3485
+    },
+    {
+      "path": "docs/decisions/0027-stage-03-runs-under-sbatch-by-default.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "08801982bf587dbd4357630839808fd0ef6b1b00",
+      "bytes": 2708
+    },
+    {
+      "path": "docs/decisions/0028-wrappers-are-thin-system-helpers.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b6654bd37ce11e67c10a0d81edf66e2d40b5e5c6",
+      "bytes": 3931
+    },
+    {
+      "path": "docs/decisions/0029-the-clawbio-path-is-deprecated.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a329b794e13a44213d57d0ce594f521525de08d0",
+      "bytes": 5644
+    },
+    {
+      "path": "docs/decisions/0030-the-design-table-is-assay-aware.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "69f44083e75bf432c04c0be139552870bdfed35b",
+      "bytes": 3148
+    },
+    {
+      "path": "docs/decisions/0031-all-five-assays-are-wired.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d418c7e2f0dce75556822e21143c710145f486a7",
+      "bytes": 4075
+    },
+    {
+      "path": "docs/decisions/0032-lessons-land-where-they-fire.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ff66a2e281f7d9785c00d4da876c89754fc42a6b",
+      "bytes": 2386
+    },
+    {
+      "path": "docs/decisions/0033-a-session-boots-knowing-the-state.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e4af1adcafb0477990891833d885ee2f5086ab10",
+      "bytes": 2608
+    },
+    {
+      "path": "docs/decisions/0034-nextflow-parser-pairing-is-part-of-the-pin.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c2632441ab4d2c5cf7c6ad9305791d29f40c2a94",
+      "bytes": 2296
+    },
+    {
+      "path": "docs/decisions/0035-the-samplesheet-sample-column-is-the-pipelines.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "034d85fbad47fbff1588105199b408e3e836e942",
+      "bytes": 2854
+    },
+    {
+      "path": "docs/decisions/0036-hidden-genome-map-lookups-are-parameter-surface.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0ac11d57d03befe18eea7b72868cccf129964e96",
+      "bytes": 2199
+    },
+    {
+      "path": "docs/decisions/0037-a-pin-may-carry-one-recorded-patch.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5ebbdc25cdb86c29b7df86d983ab220a6eadbd17",
+      "bytes": 2521
+    },
+    {
+      "path": "docs/decisions/0038-unfittable-qc-is-a-decision-not-a-casualty.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1a614f2755f70120fd2c0551bb0a21489a44c65f",
+      "bytes": 2405
+    },
+    {
+      "path": "docs/decisions/0039-the-executor-is-a-workspace-setting.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5cae717e148ac0b51beefcf6f8999ec0b421c1aa",
+      "bytes": 5636
+    },
+    {
+      "path": "docs/decisions/0040-the-wrapper-method-is-a-skill.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "34a8fd1ecfafa252f61e3b04208856097aac4687",
+      "bytes": 4523
+    },
+    {
+      "path": "docs/decisions/0042-a-call-the-guard-cannot-judge-is-refused.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f8cc3d51537f36b03b80d4a290fa18e71750e113",
+      "bytes": 11358
+    },
+    {
+      "path": "docs/decisions/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bc04c79b58fdacdf9fbdd4803191fb8d69608bb",
+      "bytes": 18237
+    },
+    {
+      "path": "docs/decisions/build_index.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "d8a30d883f5e748d33d9fcdd2e9ca7b4448ccfa2",
+      "bytes": 2678
+    },
+    {
+      "path": "docs/execution-model.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "72781143426d6a7541234ce90cf517acaa2ef67f",
+      "bytes": 15508
+    },
+    {
+      "path": "docs/reproduction-campaign.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9b2b27c4f5a7367b7bc2c2b74b405177044afffd",
+      "bytes": 5887
+    },
+    {
+      "path": "docs/upstream/clawbio-rnaseq-de-defects.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "941178c7dd70be0a6cce525526ca982e4440fef0",
+      "bytes": 6084
+    },
+    {
+      "path": "docs/upstream/clawbio-scrna-spatial-assessment.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ac343674337d6cb643d8692950bf9cd2bf65f2e9",
+      "bytes": 8068
+    },
+    {
+      "path": "examples/demo-project/00_data/rnaseq_bulk/files.csv",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "df6abfe3632c654334142cb6b01693b84812d407",
+      "bytes": 1582
+    },
+    {
+      "path": "examples/demo-project/00_data/rnaseq_bulk/raw/.gitkeep",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1be9495737a6b1193532f480cb04657ebf58bb8f",
+      "bytes": 46
+    },
+    {
+      "path": "examples/demo-project/00_data/rnaseq_bulk/samples.csv",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0c31bb46cce9d203df1d04fe68a8ec7d1db82da2",
+      "bytes": 199
+    },
+    {
+      "path": "examples/demo-project/01_samplesheets/rnaseq_bulk_design.csv",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0c31bb46cce9d203df1d04fe68a8ec7d1db82da2",
+      "bytes": 199
+    },
+    {
+      "path": "examples/demo-project/01_samplesheets/rnaseq_bulk_samplesheet.csv",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d332f7e2aa0a54330f8d21254c8f0873bbcd0250",
+      "bytes": 2413
+    },
+    {
+      "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/OUTPUTS.tsv",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8d6587992c6b64907b70f63175dce992c0093291",
+      "bytes": 473
+    },
+    {
+      "path": "examples/demo-project/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/OUTPUTS.tsv",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "960b4be8de3490cde5ab68846ad2a7ed077c6ab7",
+      "bytes": 191
+    },
+    {
+      "path": "examples/demo-project/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "255fc4046552b5640215dcf701aa9cc659319ac3",
+      "bytes": 1321
+    },
+    {
+      "path": "examples/demo-project/HISTORY.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bfc88b116b90bcd9ec2fdb99623b4163f48a43e4",
+      "bytes": 1340
+    },
+    {
+      "path": "examples/demo-project/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9906729088c3ed33a6123f1b7dbbdc4ca33d40a3",
+      "bytes": 4356
+    },
+    {
+      "path": "examples/demo-project/_config/nextflow.slurm.config",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cee56b0c01f03950c8df1ab33630e7948b3a3ae9",
+      "bytes": 877
+    },
+    {
+      "path": "examples/demo-project/_config/rnaseq_bulk.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e8176bde0b549ab408501a67b244b3582e05e193",
+      "bytes": 741
+    },
+    {
+      "path": "gars/.claude/settings.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "af2f844479b3ce05d6f47b4b9210a494ec288a96",
+      "bytes": 801
+    },
+    {
+      "path": "gars/00_initialize_project/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6d12de7d25f05420c0aabd7dbcd8994f521216b4",
+      "bytes": 21179
+    },
+    {
+      "path": "gars/01_prepare_samplesheets/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "036ca33aed598967dd06a0160d45349da0ab6a85",
+      "bytes": 19467
+    },
+    {
+      "path": "gars/02_bioinformatics/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4b39d9bfcc9aab9a333d845b39f79e0eb1bfb2ce",
+      "bytes": 14531
+    },
+    {
+      "path": "gars/02_bioinformatics/atacseq_bulk/01_nfcore-atacseq-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c312ae19ac016f24a7d0c473cf30716e6e1e4b45",
+      "bytes": 10558
+    },
+    {
+      "path": "gars/02_bioinformatics/chipseq_bulk/01_nfcore-chipseq-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6bec2e3fcd169b139d4d458025c35546fa305c32",
+      "bytes": 9696
+    },
+    {
+      "path": "gars/02_bioinformatics/cutandrun/01_nfcore-cutandrun-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1f1b11a898d6b71cfa85c58e32279570311e1c28",
+      "bytes": 11257
+    },
+    {
+      "path": "gars/02_bioinformatics/methylseq/01_nfcore-methylseq-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ac03a4e69ac342a84310aea4c72678efd50ad99d",
+      "bytes": 9134
+    },
+    {
+      "path": "gars/02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d32b446b8d1b32c796d268b79fceb25a4ff5c8b1",
+      "bytes": 10241
+    },
+    {
+      "path": "gars/02_bioinformatics/rnaseq_bulk/02_rnaseq-de/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fbe93f17c3b28ab50f4d8f8d7c5bbb17e79afc69",
+      "bytes": 10167
+    },
+    {
+      "path": "gars/02_bioinformatics/scrnaseq/01_nfcore-scrnaseq-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c2ba4525a5767a31349167732eae8bd1579171bd",
+      "bytes": 11997
+    },
+    {
+      "path": "gars/02_bioinformatics/scrnaseq/02_scrna-qc-cluster/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ee08d36ab89bc1069fe0b615883f45071f0e85d2",
+      "bytes": 9701
+    },
+    {
+      "path": "gars/02_bioinformatics/spatialvi/01_nfcore-spatialvi-wrapper/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "97c55914fb2e526e953b6566dab6bbcadebd65cf",
+      "bytes": 10637
+    },
+    {
+      "path": "gars/02_bioinformatics/spatialvi/02_spatial-cluster-count/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "056eb475027876fddcb2536180e4218c24de9205",
+      "bytes": 14009
+    },
+    {
+      "path": "gars/03_custom_analysis/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1f93fc16e2e350144b44cbce04c9aeb5e3e5761d",
+      "bytes": 11222
+    },
+    {
+      "path": "gars/CLAUDE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f2fd658a9f06cdf462693a0bf77dc5d0f5388304",
+      "bytes": 4918
+    },
+    {
+      "path": "gars/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "512e681479ec4b47821c4def4679af0b36606874",
+      "bytes": 5972
+    },
+    {
+      "path": "gars/_references/VERSION",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bf057dbfd9dc7f171ae11da728252f48f4028bec",
+      "bytes": 8
+    },
+    {
+      "path": "gars/_references/artifact_types.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "81de6d07fcf056bf14f321ab244c172da9d8a7ca",
+      "bytes": 5294
+    },
+    {
+      "path": "gars/_references/assay_stage_skill_map.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "69fbc87a741bd8510c54a06be5f4e67775752d2d",
+      "bytes": 6189
+    },
+    {
+      "path": "gars/_references/config_schema.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5c275e8d8654bd41a81fd146a50603a046970be6",
+      "bytes": 5958
+    },
+    {
+      "path": "gars/_references/contract_standard.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9a96982c73dabbe6e5b770de0734a426c0347a04",
+      "bytes": 6113
+    },
+    {
+      "path": "gars/_references/environment.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2c0ea574434dbc4f1b9c454c8788fc68fcca2a13",
+      "bytes": 10731
+    },
+    {
+      "path": "gars/_references/gars-bio.conda.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "024fdc92b74e2e75aeb3bae5defb1e06ddc5afb4",
+      "bytes": 3700
+    },
+    {
+      "path": "gars/_references/gars-bio.lock.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0423a87f59775463b1b91c196f6ddbda4853ae26",
+      "bytes": 3676
+    },
+    {
+      "path": "gars/_references/gars-nxf.conda.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ba5240bec8c5f628d0789d6c129566d3e3e87ed5",
+      "bytes": 2367
+    },
+    {
+      "path": "gars/_references/genomes.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d332cb3a2071cf9648f1cc2228c2f8167d1cdfdf",
+      "bytes": 3836
+    },
+    {
+      "path": "gars/_references/patches/cutandrun-3.2.2-trimgalore-dsl.patch",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aebb8006b2ff0bdbc24f916d071d0a044b01cbac",
+      "bytes": 1154
+    },
+    {
+      "path": "gars/_system/adapt_counts.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "963bcb34f20bff4e9d181569f97e7c18f86969cd",
+      "bytes": 6191
+    },
+    {
+      "path": "gars/_system/authoring/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c6305baf5bce91afd934d7046e5f5fe2657d4950",
+      "bytes": 13027
+    },
+    {
+      "path": "gars/_system/authoring/create_bioinformatics_skill.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "30449dfcc3d0e4a1872f79432deb5e0304058064",
+      "bytes": 33623
+    },
+    {
+      "path": "gars/_system/authoring/example_spec.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fd95c0eb15af4a23c23c64b64d77898db5aa32d4",
+      "bytes": 1004
+    },
+    {
+      "path": "gars/_system/authoring/specs-scrnaseq.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d9b2af3c669415f0f99545a7e542da95dbbe7b9a",
+      "bytes": 736
+    },
+    {
+      "path": "gars/_system/authoring/specs-spatial-cluster-count.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ca5e8779b558a87536aa80d2bb2e419136244c94",
+      "bytes": 570
+    },
+    {
+      "path": "gars/_system/authoring/specs-spatialvi.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e12460d4867b15d5013d4226f445a1a03359c34d",
+      "bytes": 903
+    },
+    {
+      "path": "gars/_system/build_projects_index.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "faf61c5e372edbced1591bd2eb2770e28713df19",
+      "bytes": 3221
+    },
+    {
+      "path": "gars/_system/configure.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "a3965a70d1da8809c68b71b8d140c5bf2fa28a9e",
+      "bytes": 24377
+    },
+    {
+      "path": "gars/_system/executorlib.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "97a35fbaf103b4ee5097c51ba548eed918fcad39",
+      "bytes": 22375
+    },
+    {
+      "path": "gars/_system/gars-env.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "ade27e8a6d3d9cf308f0ff1cf35c8ff9762ce111",
+      "bytes": 5926
+    },
+    {
+      "path": "gars/_system/guard_hook.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f93a3f76f9950d021f0b7cdff88ff68c4309f72a",
+      "bytes": 17698
+    },
+    {
+      "path": "gars/_system/integrity.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "22d9cba6fadfd4e43cfd577b8698fecfb43269a5",
+      "bytes": 4249
+    },
+    {
+      "path": "gars/_system/project_state.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "4f0dc4ce8801ad66fa973ac207a4f30d8cb73d86",
+      "bytes": 7807
+    },
+    {
+      "path": "gars/_system/resolve_artifact.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "638dba78a7ac59bba14c8df8e86307f82478254b",
+      "bytes": 7061
+    },
+    {
+      "path": "gars/_system/session_state.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "2bd0875af7363a682c06c02d283bafe0b119b461",
+      "bytes": 480
+    },
+    {
+      "path": "gars/_system/stage00_register.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "2fac636a0a1d81ce75d1cf883d5cab913a6b67c6",
+      "bytes": 34045
+    },
+    {
+      "path": "gars/_system/stage01_samplesheet.py",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "ed56a382286a009d2a5864d08f85ec4c8751aa45",
+      "bytes": 43381
+    },
+    {
+      "path": "gars/_system/stage03_analysis.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5be7a2a3241cb39bb7f5418a95fff5805442e80a",
+      "bytes": 19191
+    },
+    {
+      "path": "gars/_system/workspace.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "73ac999b3b12a01024aaf757f295bfde1d252b2a",
+      "bytes": 5975
+    },
+    {
+      "path": "gars/_system/wrapperlib.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f04fe78952fb40e44f25380580a6b93f5490071a",
+      "bytes": 21112
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-atacseq-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f7d12b597e67c3c0516780f92b4f4ad5dafcd119",
+      "bytes": 2499
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-atacseq-wrapper/nfcore_atacseq_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2c33b601728de78f36a445dfe44d3458d5a183d0",
+      "bytes": 16518
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-chipseq-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "62aabdd13aeffef67730773851356ef25f7a306d",
+      "bytes": 1111
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-chipseq-wrapper/nfcore_chipseq_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "19fb81704fc0fbde40863b9e1a75b6ce0dc11a71",
+      "bytes": 16487
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-cutandrun-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8f377cabf05d678c5f62416db012f650079cb524",
+      "bytes": 1118
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-cutandrun-wrapper/nfcore_cutandrun_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "57ca98d452fc70bfa6b8939a68b0d4648f721ffa",
+      "bytes": 16586
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-methylseq-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "78b85359e311d7cf6618916700beda75c5229275",
+      "bytes": 1132
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-methylseq-wrapper/nfcore_methylseq_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "feb93eb7bcb0e3694ec68046da7712391d839451",
+      "bytes": 10765
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "473e249895402794456ce19e9243add468d63a3e",
+      "bytes": 1140
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-rnaseq-wrapper/nfcore_rnaseq_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fc506b1baef9991ee977be82535b98b6ea436ce4",
+      "bytes": 13890
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "47aaf1a37122f3b6dfe5c96600b145d8d2094812",
+      "bytes": 4578
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-scrnaseq-wrapper/nfcore_scrnaseq_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f1adef60dd7284de141001c373b2756eaf3c3a5c",
+      "bytes": 21157
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-spatialvi-wrapper/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "955b1583487c070cd64eb0b6ef55c5704d54d7a0",
+      "bytes": 5549
+    },
+    {
+      "path": "gars/_system/wrappers/nfcore-spatialvi-wrapper/nfcore_spatialvi_wrapper.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e94b93178699e21bef0e913f0adbd90edf54f78c",
+      "bytes": 18060
+    },
+    {
+      "path": "gars/_system/wrappers/rnaseq-de/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1751a47127944c14b6e8b92b6fbdbc5b7c5ebfc4",
+      "bytes": 1121
+    },
+    {
+      "path": "gars/_system/wrappers/rnaseq-de/rnaseq_de.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "32023c13a5730e3d98b2750ad21e068950c5b95d",
+      "bytes": 20557
+    },
+    {
+      "path": "gars/_system/wrappers/scrna-qc-cluster/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f7ebfe2c66e2c35f05b2e6f223f6438ef1217c20",
+      "bytes": 6964
+    },
+    {
+      "path": "gars/_system/wrappers/scrna-qc-cluster/scrna_qc_cluster.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2f543249b68b3f0f6b2ffb91214793df72ad6637",
+      "bytes": 25823
+    },
+    {
+      "path": "gars/_system/wrappers/spatial-cluster-count/SKILL.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a5b4c318617b1141e2b0213013d4420bed8d1c1a",
+      "bytes": 6862
+    },
+    {
+      "path": "gars/_system/wrappers/spatial-cluster-count/spatial_cluster_count.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "24c7c219cd02ca3839201d3c17cf9a7a096f36d2",
+      "bytes": 30873
+    },
+    {
+      "path": "gars/_templates/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2acf33d975c654675b325a978fb52ebb1515b0fd",
+      "bytes": 1682
+    },
+    {
+      "path": "gars/_templates/config/atacseq_bulk.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e4d12dffc6c262141f4a720acb146f8c5bfc6923",
+      "bytes": 3436
+    },
+    {
+      "path": "gars/_templates/config/chipseq_bulk.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5a2a2bc5356c75a3ab673e8a9dbda110665aba65",
+      "bytes": 2835
+    },
+    {
+      "path": "gars/_templates/config/cutandrun.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7fa9f7f39eeb5fa13ffc445753a8afe64b093b98",
+      "bytes": 3276
+    },
+    {
+      "path": "gars/_templates/config/executor.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c621cb0e124fe378ba0aabb23a893948eb58950a",
+      "bytes": 3671
+    },
+    {
+      "path": "gars/_templates/config/methylseq.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ea9ac106bba0f1bb02f5b10e64eac3a2b16bbae7",
+      "bytes": 1101
+    },
+    {
+      "path": "gars/_templates/config/nextflow.slurm.config",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3dbaedfae84193d4126d9d1557f7fd756c3f899c",
+      "bytes": 1511
+    },
+    {
+      "path": "gars/_templates/config/rnaseq_bulk.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a4efff47285df78ec2a7e94776a7edcf056bf4fb",
+      "bytes": 3724
+    },
+    {
+      "path": "gars/_templates/config/scrnaseq.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b11fc2c8f8323f834d5f90ed8ef4794cbcb7bc20",
+      "bytes": 5290
+    },
+    {
+      "path": "gars/_templates/config/spatialvi.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c656006fbcfc47cf5ef5ffaedd6c0f4de3c2f415",
+      "bytes": 3545
+    },
+    {
+      "path": "gars/_templates/project/00_data/.gitkeep",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "gars/_templates/project/CONTEXT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0b1e3d1e04b26736d06415bfc729ef1f90d6cad9",
+      "bytes": 1289
+    },
+    {
+      "path": "gars/_templates/project/HISTORY.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3a8a8d92611f10aabadb07ccabffbd5653f71003",
+      "bytes": 490
+    },
+    {
+      "path": "gars/_templates/project/_config/.gitkeep",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+      "bytes": 0
+    },
+    {
+      "path": "gars/projects/.gitkeep",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6007801c84f0dffd0edb99b58af3f1c3043a75b0",
+      "bytes": 66
+    },
+    {
+      "path": "tests/check_contracts.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5a55ca3f514198544c4023cc96d1c5db355d136e",
+      "bytes": 5726
+    },
+    {
+      "path": "tests/check_counts.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "94d2ad83a08ae3c8f0e8a36d17ee54f888fd6c44",
+      "bytes": 8712
+    },
+    {
+      "path": "tests/fixtures/submit_sh_atacseq_bulk.golden",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "290b5188281e5fb47b8735566068c3954a5c152e",
+      "bytes": 1064
+    },
+    {
+      "path": "tests/fixtures/submit_sh_rnaseq_bulk.golden",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "575f078df67f77aef20bcb17135f8fce04bf6e6a",
+      "bytes": 877
+    },
+    {
+      "path": "tests/run_tests.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8f190a83638aafeee587c5bfd6915bc80185668a",
+      "bytes": 177704
+    }
+  ]
+}

@@ -1,0 +1,143 @@
+{
+ "schema": 1,
+ "made_by": "lane vendor-settle stage K (S1): a byte copy of each committed blob of the walk folder, evidence/ left out (no vendor reader reads it); never edited",
+ "walk": "w-o7",
+ "harness": "codex",
+ "cli": "codex-cli 0.162.1",
+ "walk_ref": "walk/w-OMeE6P4y",
+ "walk_ref_commit": "68fff362c00ebbc88cec9df45b0a6a94ba5307e8",
+ "files": {
+  "check.json": {
+   "source": "rehearsals/w-o7/check.json",
+   "blob": "1114daef75f25cbfe9fc078e63d2998137cb54a1",
+   "sha256": "bbc95892788ea2552a6d986da2738533d34e39bbec5bf104ae144c21a6fc28ba",
+   "bytes": 114
+  },
+  "driver-ledger.json": {
+   "source": "rehearsals/w-o7/driver-ledger.json",
+   "blob": "63e24ee33a6526d4f32158f016b180b88691e54d",
+   "sha256": "e8cd1a621855144803e7f26fe56ab7994852464f7153ea3e6d61742b891a8833",
+   "bytes": 2566
+  },
+  "environment.json": {
+   "source": "rehearsals/w-o7/environment.json",
+   "blob": "8f1439dcdb2781822c89d6ac2b80db55cb6c5c7a",
+   "sha256": "b85596c2174b0fd89a1fa9bdef1d74b15e805e119a45c6e0cc7d371c7dbc9f93",
+   "bytes": 3304
+  },
+  "evidence-ledger-copy.json": {
+   "source": "rehearsals/w-o7/evidence-ledger-copy.json",
+   "blob": "4314cefdd3f9ad3ca285c741e53c96aebd28827a",
+   "sha256": "6db8df834cc5641ec5315b86de38164582b10f17b9c50988fe657b5db2430f43",
+   "bytes": 190
+  },
+  "grade.json": {
+   "source": "rehearsals/w-o7/grade.json",
+   "blob": "18bacdbd28d373bd201775d664557d0d1e7da43d",
+   "sha256": "38fd3e35fc1c93426af84241355ee1fa30e50418fe8f3a0317cbec33db16389a",
+   "bytes": 170
+  },
+  "launch.json": {
+   "source": "rehearsals/w-o7/launch.json",
+   "blob": "2f3db724f4eca8e55f50a4bca4297a3849bf16a1",
+   "sha256": "46191a713c50c0c98f72775cb7dbc14bb8dfb96296702b1c6d49a9448e9e7051",
+   "bytes": 20574
+  },
+  "ownership-grant.json": {
+   "source": "rehearsals/w-o7/ownership-grant.json",
+   "blob": "5d03879c33e956eac78c61c15172619a11e34b8b",
+   "sha256": "fc980a76b948c7b26cc2421f5ea705ab8069ba0ff51c42ed53cc15c7a11868c1",
+   "bytes": 638
+  },
+  "ownership-restore.json": {
+   "source": "rehearsals/w-o7/ownership-restore.json",
+   "blob": "c391682902e17db10a441611939b1b89ca4d16b1",
+   "sha256": "3d006174e7d37cb1588a6d6d00939edd3cec0b6da371dcb84c7395821daf82f5",
+   "bytes": 885
+  },
+  "postflight.json": {
+   "source": "rehearsals/w-o7/postflight.json",
+   "blob": "ea3c496451028862f0264c04edb3e1ff5aabfaf8",
+   "sha256": "691c4cf0d77ed61c92ebd2b88c43bf3a987bce46bdfcec2c010168802170de4d",
+   "bytes": 5046
+  },
+  "preflight.json": {
+   "source": "rehearsals/w-o7/preflight.json",
+   "blob": "f4279f1632ef81d326fba21b54a4448eb1415af4",
+   "sha256": "5799c043b432e71d3bbfb7659c76cf6012b5b04192a1b80606988b7fc450e35a",
+   "bytes": 3536
+  },
+  "proxy.log": {
+   "source": "rehearsals/w-o7/proxy.log",
+   "blob": "0d7625e24d3238d7a105c3d564e91b20cb5d73a5",
+   "sha256": "717622f255e95982bbe6ebbe6c6513ff1f2f74b1b74ddee61b7d7211916eeb53",
+   "bytes": 6276
+  },
+  "read-only-errors.json": {
+   "source": "rehearsals/w-o7/read-only-errors.json",
+   "blob": "405d1a403e85e59582f0c213ec58ae2ad131d8d9",
+   "sha256": "b00e379ab679f963e26281b75a8c54ca19e5ad68c10757a90a54b1fafda46b19",
+   "bytes": 43
+  },
+  "session-store.json": {
+   "source": "rehearsals/w-o7/session-store.json",
+   "blob": "7e16fce5ab8c30cd112d0ad64ab8ac3c575572bd",
+   "sha256": "3b1558a512b6aab16c784295b368a29386f26b7d591c69eeffb7bf29ba6fbc67",
+   "bytes": 2250
+  },
+  "session/native-turn-1.jsonl": {
+   "source": "rehearsals/w-o7/session/native-turn-1.jsonl",
+   "blob": "95448989c8f1451439af943db84517b69187b425",
+   "sha256": "ce26482df1ca955cd393adc76a80c359790c85ea5be99966d5f701a7c2db816e",
+   "bytes": 169879
+  },
+  "session/native-turn-2.jsonl": {
+   "source": "rehearsals/w-o7/session/native-turn-2.jsonl",
+   "blob": "9cac90d5c811b01a6f2e46d5d2bec288939010c6",
+   "sha256": "8153ed20cfa349766d4b4c95ff68263df550d5abe0351d53abab9892b742b30f",
+   "bytes": 182757
+  },
+  "settings-guard.json": {
+   "source": "rehearsals/w-o7/settings-guard.json",
+   "blob": "4760e2f238572ec02857999e748830319221b28b",
+   "sha256": "3561e18479daae6b6b19a21a80669d21ec3ee14017acb8cccb6ea42919e3a8d9",
+   "bytes": 361
+  },
+  "teardown.json": {
+   "source": "rehearsals/w-o7/teardown.json",
+   "blob": "156d32e48ad8cfc73259c9d36143044448e1ed4c",
+   "sha256": "56a6f7e8bfbafea707ae566dfc3bf7e94e3adf562d60a4301f4ac15ad904fbaf",
+   "bytes": 873
+  },
+  "transcript.jsonl": {
+   "source": "rehearsals/w-o7/transcript.jsonl",
+   "blob": "55b4fbc8d47faa13b97d283a2919fdad00cca957",
+   "sha256": "a93fda6f03f650caf5959f901e8accecc29d7bb75373e034ac80620bd005b9dd",
+   "bytes": 776
+  },
+  "turn-1.jsonl": {
+   "source": "rehearsals/w-o7/turn-1.jsonl",
+   "blob": "cd2ccec7680357d8d9a8afb797273612a328cd01",
+   "sha256": "169937f4a213f3a9619f7412564d2d26f4473c5c21c3b22ce7309c7823850353",
+   "bytes": 47654
+  },
+  "turn-1.jsonl.launch.json": {
+   "source": "rehearsals/w-o7/turn-1.jsonl.launch.json",
+   "blob": "65111cdf632618b391ba55ed49ab5d57feeb5daa",
+   "sha256": "0e83329cd5ff28026690e9fbf0d5b4dfd6b0aeebf98657bf3e6a12d642bcef88",
+   "bytes": 546
+  },
+  "turn-2.jsonl": {
+   "source": "rehearsals/w-o7/turn-2.jsonl",
+   "blob": "f48ba3d67190c48f80387016a3b77eb430f00e38",
+   "sha256": "e15a9655db8125edb2122893889b645444a2eacdba62acab798ac7a5d19db893",
+   "bytes": 1628
+  },
+  "turn-2.jsonl.launch.json": {
+   "source": "rehearsals/w-o7/turn-2.jsonl.launch.json",
+   "blob": "3dfd2b5e519e2a0f7951234e668c600cc9fc79b4",
+   "sha256": "a3c625ab4a05c8339527c43e261d4072b993b7986039b332d68f4955fadaedfb",
+   "bytes": 424
+  }
+ }
+}

@@ -1,0 +1,38 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-07
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize how the project's six RNA-seq samples cluster by gene expression using PCA, with points coloured by condition and labeled by sample ID.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene (native) | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | Stage 01 | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. In the `gars-bio` environment, load the gene-level length-scaled count matrix and the Stage 01 design table. Match count columns to `sample_id` values and confirm all six samples are represented exactly once.
+2. Normalize each sample's gene counts to counts per million by dividing by its total gene counts and multiplying by 1,000,000. Transform with `log2(CPM + 1)`.
+3. Select the 500 genes with the highest variance across the six samples. Fit scikit-learn PCA with two components to the sample-by-gene matrix for those genes.
+4. Save sample IDs and PC1/PC2 coordinates with explained-variance percentages as a CSV. Create a PC1-versus-PC2 scatter plot, colour points by the `condition` column (`untreated` or `treated`), label each point with its sample ID, and include axis labels, legend, and explained-variance percentages.
+5. Read all inputs without modifying them; write only the declared files under this analysis directory. Run the analysis as a batch job through the configured executor.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_coordinates.csv | table | PC1 and PC2 coordinates and explained variance for each sample |
+| results/sample_pca.png | figure | Two-component PCA scatter plot coloured by condition and labeled by sample ID |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes; expected output size: under 1 MB.

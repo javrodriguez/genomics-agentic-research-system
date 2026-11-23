@@ -1,0 +1,38 @@
+{
+ "checks": [
+  {
+   "detail": "no credential file",
+   "id": "no-credential-file",
+   "ok": true
+  }
+ ],
+ "ok": true,
+ "recorded": {
+  "admitted_credential": [],
+  "admitted_session_pair": [],
+  "credential_files": [],
+  "listing": [
+   ".claude.json",
+   ".last-cleanup",
+   "backups",
+   "backups/.claude.json.backup.1794315227797",
+   "policy-limits.json",
+   "policy-limits.json.signature.json",
+   "policy-limits.json.stamp.json",
+   "projects",
+   "projects/-tmp-run-3e8a3df2",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9.jsonl",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9/subagents",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9/subagents/agent-a5d586335174ad819.jsonl",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9/subagents/agent-a5d586335174ad819.meta.json",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9/subagents/agent-a7039e3f9c44608f4.jsonl",
+   "projects/-tmp-run-3e8a3df2/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9/subagents/agent-a7039e3f9c44608f4.meta.json",
+   "remote-settings.json",
+   "session-env",
+   "session-env/3e8a3df2-4ee6-5f3e-9068-a89785a0cfa9",
+   "sessions",
+   "shell-snapshots"
+  ]
+ }
+}

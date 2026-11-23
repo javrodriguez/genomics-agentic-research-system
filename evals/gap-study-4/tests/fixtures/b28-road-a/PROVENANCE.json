@@ -1,0 +1,152 @@
+{
+ "b27_head_note": "The probe folder below was produced by the B27 head 82da1830 (RUNLOG 'full 1. ship'). 49c350a9, the head merged into this lane (ae63e925), differs from 82da1830 only in the A1-fake split (box/stub_model_probe.py, tests, lane file; REVIEW-vendor-b27-49c350a section 1); no fixture here is A1-fake. The test-5 rerun at 49c350a9 (stub-probe-full2, A1 and A1-fake, fetch tar sha256 55d3382298bdb8cd3a539741f733f296127860bff44d520f21ff80f16be3c99d) matched full1's A1 record for record (RUNLOG 'Rerun (stage 8): the reading').",
+ "b27_merged_head": "49c350a9b008e3ea15f83f3873fe62b3766722fe",
+ "child": "/home/javier/w-ZJvHzvGU",
+ "leak_checks": "before commit (lane file, stage 2): 0 hits for OD57's ruled-line sha256 (box/od57_rule.py RULED_LINES) on any string, any line of a string or any file line; no dummy-key string; every string an id, timestamp, call id, probe path, the CLI's session context or output wrapper, a tool or enum name, or the stub's synthetic text; gitleaks 8.30.0 dir: no leaks, 7346796 bytes scanned (the folder's byte total)",
+ "made_by": "make_fixtures.py (lane vendor-b28, glitch-f1's ruling O5: raw probe records)",
+ "probe": {
+  "b27_head": "82da1830fa7dab843287ee0bd1efd91fd7946497",
+  "fetch_tar_sha256": "e9face6efee5ce1da501f6cb8be4196bbb15c5bc2cc96ca96d32354a48ad8966",
+  "manifest_sha256": "4628db56ec706bbf1c833e1450a9b7f42ec9a1541f0f87657da2c7071a3a7318",
+  "probe_folder": "/Users/javrodher/aegis-builds/b27-smoke-20261021/stub-probe-full1",
+  "scenarios": {
+   "A1": {
+    "file": "A1-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 1112639,
+      "sha256": "64a7f272942b966a23e47dc093ce9e9d2fbc1f53584bf95491c8427730715af0",
+      "source": "A1/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 1512727,
+      "sha256": "bc108a887096d5f041b21295ea095d4394cc1bf159ed1b7dd2af5714e95ee78d",
+      "source": "A1/session/native-turn-2.jsonl"
+     },
+     {
+      "bytes": 1515699,
+      "sha256": "b2e00e4f2541285a912144df239d1e3c912e36f294a157cb32ee32c73562d5f1",
+      "source": "A1/session/native-turn-3.jsonl"
+     }
+    ]
+   },
+   "A2": {
+    "file": "A2-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 4517,
+      "sha256": "a9971c2c9e5aa0fa6f4f183344de885e2ebdcc82aaba1e213cfba8e2d77bed1b",
+      "source": "A2/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 1122940,
+      "sha256": "9bf685d8b1341b777c3a1e0a01792a317db09d1efd08efa0a9893ae674acf618",
+      "source": "A2/session/native-turn-2.jsonl"
+     },
+     {
+      "bytes": 1525305,
+      "sha256": "208e4e927403d22fb90cd7bd0c4774b5ce43f6ef76755cb24625ba8a1b9cc63c",
+      "source": "A2/session/native-turn-3.jsonl"
+     }
+    ]
+   },
+   "A3": {
+    "file": "A3-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 651419,
+      "sha256": "a47d0440e027adb5711168d70fc3bd01eb683c5071fc146c75579aecde17e683",
+      "source": "A3/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 1511743,
+      "sha256": "6488180c884a429dec28e1b3e4a17eeb7777dcec0949f6faed166bb9ca4095b1",
+      "source": "A3/session/native-turn-2.jsonl"
+     },
+     {
+      "bytes": 1914963,
+      "sha256": "8b1ba98b94b67c8c1ce5cde8d9f8715901293b6d940855caa995ea88ab4d3bd1",
+      "source": "A3/session/native-turn-3.jsonl"
+     }
+    ]
+   },
+   "B1": {
+    "file": "B1-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 6853,
+      "sha256": "71fddcaaa6db74b3161f6b9cf7e383d4cf89ec88a26c5dd4215c2cec198f06ce",
+      "source": "B1/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 16316,
+      "sha256": "975bc854ed09a9fc362f71e6ca0cc7cd3653660f58568e7bec0d2fcdcbd69ce2",
+      "source": "B1/session/native-turn-2.jsonl"
+     },
+     {
+      "bytes": 18205,
+      "sha256": "da0f7fc403bab16cd90ba6b5e3347b24d90b4522521eb5dbd9043a11a7b3f591",
+      "source": "B1/session/native-turn-3.jsonl"
+     }
+    ]
+   },
+   "B2": {
+    "file": "B2-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 1112685,
+      "sha256": "fe702377460d0202468df7f6312d8bcd1110a391f10729978b628cbcfdad068f",
+      "source": "B2/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 1518462,
+      "sha256": "689f8a85e2b61269955c1ccc9e7c81295f305c64ee805ea7e121b69309d60ab8",
+      "source": "B2/session/native-turn-2.jsonl"
+     },
+     {
+      "bytes": 1520687,
+      "sha256": "6298eca3988703daab72c29b0a75486c01526c2b8b345daf63baab0195d2c51b",
+      "source": "B2/session/native-turn-3.jsonl"
+     }
+    ]
+   },
+   "C1": {
+    "file": "C1-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 4435,
+      "sha256": "0c59b5e01e82e16d3c6b25d65025fa389dc4ee5ae52ff96c71b4c4c8cd5a87e2",
+      "source": "C1/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 814529,
+      "sha256": "de69ce7c42a045e114c18e54fd02683c677fd104a539cf60932dd79d341b2987",
+      "source": "C1/session/native-turn-2.jsonl"
+     },
+     {
+      "bytes": 817342,
+      "sha256": "15fdbe2366ba9e8903d15fa9188aaeb1c982d5d860ee24c38b54670d7af6d09e",
+      "source": "C1/session/native-turn-3.jsonl"
+     }
+    ]
+   },
+   "C2": {
+    "file": "C2-native-last.jsonl",
+    "snapshots": [
+     {
+      "bytes": 4435,
+      "sha256": "3b4fbe2bced8e1cf991ab9a61e261fd7f386d041d9aba5f46d13077fa5643b6f",
+      "source": "C2/session/native-turn-1.jsonl"
+     },
+     {
+      "bytes": 31250,
+      "sha256": "7d169e5ba4805dd19634478ae2cf84987c9f9b84a1db2c05b8571d8de6cd18cb",
+      "source": "C2/session/native-turn-2.jsonl"
+     }
+    ]
+   }
+  }
+ },
+ "schema": 1,
+ "what": "synthetic CLI output: the pinned gemini-cli 0.64.0 (locked take-g image sha256:d10aa00b5958b00d1c719be1f0572967c04f30bfe381a427107c9e9a3f16b013) against lane vendor-b27's scripted stub model on synthetic files; never a study take, never a model's words"
+}

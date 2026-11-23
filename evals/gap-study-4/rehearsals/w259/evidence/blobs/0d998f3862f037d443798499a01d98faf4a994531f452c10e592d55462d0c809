@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform unsupervised dimensionality reduction via principal component analysis (PCA) on gene-level counts to visualise the six samples' relationships and clustering patterns, coloured by treatment condition (untreated vs treated). This reveals whether samples cluster by condition and identifies any outliers.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+
+1. Load the gene count matrix (salmon.merged.gene_counts_length_scaled.tsv) and design table (rnaseq_bulk_design.csv) using Python in the `gars-bio` conda environment.
+2. Log2-transform raw counts (adding 1 pseudocount) to stabilize variance.
+3. Z-score normalise each gene across all samples.
+4. Run PCA (scikit-learn, n_components=2) on the normalised matrix to compute the first two principal components.
+5. Generate a scatter plot with samples as points, axes as PC1 and PC2, and colours assigned by condition: untreated (blue), treated (red).
+6. Add sample labels to each point and legend identifying colours by condition.
+7. Save the PCA plot as `results/pca_plot.png` (300 dpi).
+8. Save PCA coordinates and variance explained as `results/pca_coordinates.tsv` (tab-separated: sample_id, condition, PC1, PC2, pct_var_PC1, pct_var_PC2).
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | Scatter plot of the first two principal components, with samples coloured by condition |
+| results/pca_coordinates.tsv | table | PCA coordinates (PC1, PC2) for each sample with condition labels and variance explained |
+
+## Execution
+Runs: login-node (user-requested)
+
+Expected wall time: < 1 minute. The analysis is a single Python script performing PCA on 6 samples across ~20k genes — a lightweight computation. Login-node execution is appropriate.

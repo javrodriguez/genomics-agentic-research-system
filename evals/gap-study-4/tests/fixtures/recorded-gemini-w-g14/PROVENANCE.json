@@ -1,0 +1,179 @@
+{
+ "schema": 1,
+ "made_by": "lane vendor-settle stage K (S1): a byte copy of each committed blob of the walk folder, evidence/ left out (no vendor reader reads it); never edited",
+ "walk": "w-g14",
+ "harness": "gemini",
+ "cli": "gemini-cli 0.64.0",
+ "walk_ref": "walk/w-GDVAbBBf",
+ "walk_ref_commit": "ef903febc5edb976e8bc5c5d70df1b0239751c96",
+ "files": {
+  "check.json": {
+   "source": "rehearsals/w-g14/check.json",
+   "blob": "7eca36b349be8c69aafe7751f1c64974e2b00674",
+   "sha256": "e68140d2f426af3361e7135f00da2871f20bb85ad492fc78f5ece6fedb817760",
+   "bytes": 116
+  },
+  "driver-ledger.json": {
+   "source": "rehearsals/w-g14/driver-ledger.json",
+   "blob": "9689f7d665ea7b196238bc3e49d905f1af9c326a",
+   "sha256": "963264523f5011de478643afcddf69582983eaecf3fc007a88f5bfe946aede93",
+   "bytes": 3012
+  },
+  "environment.json": {
+   "source": "rehearsals/w-g14/environment.json",
+   "blob": "0b35637268204a99d63f1df42adfc9a6189f6ef7",
+   "sha256": "6545d541035a683f312eeaa111fa9decf3cbc2df0ecf79addd27aaff9e89baea",
+   "bytes": 3605
+  },
+  "evidence-ledger-copy.json": {
+   "source": "rehearsals/w-g14/evidence-ledger-copy.json",
+   "blob": "8f6f0b0431ad17f2a781e4c92b7ae6bada1d9a96",
+   "sha256": "0bc5d0fb91f55a19057255b52b6e0f6cf17f5d8010d453fde55c7b4c3e71c77b",
+   "bytes": 190
+  },
+  "grade.json": {
+   "source": "rehearsals/w-g14/grade.json",
+   "blob": "d318e8dc105505ff4f4493db04bb7fe8bb173e49",
+   "sha256": "b384588808bcaf68172569e891dfaf8bc2fd4fa9ba9ec1f36e8a99f2136d386c",
+   "bytes": 171
+  },
+  "launch.json": {
+   "source": "rehearsals/w-g14/launch.json",
+   "blob": "1ba34354e436b604e19fc45a2c0e6250325b00a8",
+   "sha256": "44c80533e0688eb6270bc6d5ffe2b333bf8dbd507f4dbb5f663ca1729c5c7894",
+   "bytes": 19357
+  },
+  "ownership-grant.json": {
+   "source": "rehearsals/w-g14/ownership-grant.json",
+   "blob": "b56dfe2bdeb651d61991837406546b709ad629a3",
+   "sha256": "e4ee19b5c0535bba37f82ea04f44bae370616b46ff52b02337bf96f939ec4e9f",
+   "bytes": 638
+  },
+  "ownership-restore.json": {
+   "source": "rehearsals/w-g14/ownership-restore.json",
+   "blob": "fbcc0be3579f3eafc02df4d48cc7e9180d0259cc",
+   "sha256": "8057f4a5c49a1e222f99243821576b3d86c7044c27dcd5010f415531843b32a5",
+   "bytes": 885
+  },
+  "postflight.json": {
+   "source": "rehearsals/w-g14/postflight.json",
+   "blob": "0a2dfc73bcd1decfc3146ea2c62fac52811b07bb",
+   "sha256": "edf27872fbbcde59c0722da8ce63be8b8c422bda72995af7428a4e769d28e186",
+   "bytes": 9339
+  },
+  "preflight.json": {
+   "source": "rehearsals/w-g14/preflight.json",
+   "blob": "9a9a8221dca4dba94738e9948eecd731f2473068",
+   "sha256": "46ddd12640142f1f30aa2155ef19b2cb67b3dd968f1d2a18d956e0cc68dd0aa3",
+   "bytes": 3519
+  },
+  "proxy.log": {
+   "source": "rehearsals/w-g14/proxy.log",
+   "blob": "8e86d4c53826ad1153245e07a1b27c23944039cf",
+   "sha256": "34f117c9f956bb0ae79d69ea5dca2a1de805fa14ca814a82cc90d5f2de024ada",
+   "bytes": 3076
+  },
+  "read-only-errors.json": {
+   "source": "rehearsals/w-g14/read-only-errors.json",
+   "blob": "405d1a403e85e59582f0c213ec58ae2ad131d8d9",
+   "sha256": "b00e379ab679f963e26281b75a8c54ca19e5ad68c10757a90a54b1fafda46b19",
+   "bytes": 43
+  },
+  "session-store.json": {
+   "source": "rehearsals/w-g14/session-store.json",
+   "blob": "f32d86e5464f8b0302aa2381036d20a7365e0b95",
+   "sha256": "27fe2863830ecb70bbd0ed864cbbd4757d1e9662e0c21cc0b0d4afdfcbabf3d8",
+   "bytes": 25169
+  },
+  "session/native-turn-1.jsonl": {
+   "source": "rehearsals/w-g14/session/native-turn-1.jsonl",
+   "blob": "0f374847bd51c1224b65922db95302751949927c",
+   "sha256": "216727870609701046bfd394b5c07232b18ad24a04eec9e1f6538c52c30df35c",
+   "bytes": 225530
+  },
+  "session/native-turn-2.jsonl": {
+   "source": "rehearsals/w-g14/session/native-turn-2.jsonl",
+   "blob": "348313bd5cbf3c6fe669cc4d9c089df37578e976",
+   "sha256": "401f5e4c241226864578d5bf2aa9508bb2b864e91b33d9bd9b7718f721456aee",
+   "bytes": 540628
+  },
+  "session/native-turn-3.jsonl": {
+   "source": "rehearsals/w-g14/session/native-turn-3.jsonl",
+   "blob": "4069f04b8bd8d74e080e2b408eddd576a9519e24",
+   "sha256": "aecfa746765e75bc0fb77f5caa44cf2604d67d74f1573e855555f7a0eb8ce883",
+   "bytes": 741481
+  },
+  "session/native-turn-4.jsonl": {
+   "source": "rehearsals/w-g14/session/native-turn-4.jsonl",
+   "blob": "e5696268054bd55b00c42e2c137ebec081acd7ab",
+   "sha256": "662db13e8264b0f97e52e824e05bfc19d8ec2d3f043afc32052925953eed0226",
+   "bytes": 1576050
+  },
+  "settings-guard.json": {
+   "source": "rehearsals/w-g14/settings-guard.json",
+   "blob": "07fdd162f9ce961a00edfd82c2cecd4e1b712c93",
+   "sha256": "2747e98935b00c2754756098dd74d1a0d3151d44111ee21ef1545aa4ffc6c35d",
+   "bytes": 567
+  },
+  "teardown.json": {
+   "source": "rehearsals/w-g14/teardown.json",
+   "blob": "156d32e48ad8cfc73259c9d36143044448e1ed4c",
+   "sha256": "56a6f7e8bfbafea707ae566dfc3bf7e94e3adf562d60a4301f4ac15ad904fbaf",
+   "bytes": 873
+  },
+  "transcript.jsonl": {
+   "source": "rehearsals/w-g14/transcript.jsonl",
+   "blob": "0dacaaecb27e2410945d395876d5e18140d43f19",
+   "sha256": "bd8e0433ff3084a791ad4eacf8e1a793ccc701e00259966aab861e182d6a9d12",
+   "bytes": 1301
+  },
+  "turn-1.jsonl": {
+   "source": "rehearsals/w-g14/turn-1.jsonl",
+   "blob": "8520878b20f5030f1d009c0e63f4e45211a5e20e",
+   "sha256": "7758588a7653e846b02a47d61a1bf90477a9027d53ea6f6759160362765893a5",
+   "bytes": 42571
+  },
+  "turn-1.jsonl.launch.json": {
+   "source": "rehearsals/w-g14/turn-1.jsonl.launch.json",
+   "blob": "d7a1cdd6f66fae7eef0fffc7ff6b3a7b367794c6",
+   "sha256": "dcb4c0c24e48b7dc68d762d4b1fcf3e91ea12f575066c6c87e2f77d4b3114240",
+   "bytes": 419
+  },
+  "turn-2.jsonl": {
+   "source": "rehearsals/w-g14/turn-2.jsonl",
+   "blob": "8b261e673d9b122960b1e03e76233ad7cdcc2f1a",
+   "sha256": "78801f94253a6fede23f8783cc9ef7b03f57fdc0cd825b8157d3148e877693ea",
+   "bytes": 29633
+  },
+  "turn-2.jsonl.launch.json": {
+   "source": "rehearsals/w-g14/turn-2.jsonl.launch.json",
+   "blob": "75a6865a49cfe53d310a8def4839b54285bb2715",
+   "sha256": "d5c52201e3d3628164b639409070d45fcaec2d12a3c768c5737e28f04c96fcd8",
+   "bytes": 399
+  },
+  "turn-3.jsonl": {
+   "source": "rehearsals/w-g14/turn-3.jsonl",
+   "blob": "8d58a580c1801f77b8ce32eb6419935430e162b6",
+   "sha256": "040dea846d9af9d1d2c24c43d0b9aa535b0430386b5860f597da19050d720432",
+   "bytes": 6507
+  },
+  "turn-3.jsonl.launch.json": {
+   "source": "rehearsals/w-g14/turn-3.jsonl.launch.json",
+   "blob": "eafacd2635341a35f9dbbb9956a73f2b8fc2eb66",
+   "sha256": "5bbe81e4813a81a366ca67efb20ca6e17724848578f9eaebb0c96babaeef4737",
+   "bytes": 445
+  },
+  "turn-4.jsonl": {
+   "source": "rehearsals/w-g14/turn-4.jsonl",
+   "blob": "386a6de7083cb0fec12143429aadf739e37dc1ec",
+   "sha256": "006e7f917aa2ee271bd3715586348cf566f5bee9b84f18d7bb8e31f53a241a18",
+   "bytes": 37822
+  },
+  "turn-4.jsonl.launch.json": {
+   "source": "rehearsals/w-g14/turn-4.jsonl.launch.json",
+   "blob": "5d74110d3f7d2fa203c9fa424d5651bf6506ff9c",
+   "sha256": "e7b41a3bcf246357b1556821a958b7784d641c078ca484e82b10a88195ae1194",
+   "bytes": 443
+  }
+ }
+}

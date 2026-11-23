@@ -1,0 +1,861 @@
+{
+  "scope": "new-folder gap: latency stub and the rescan proof; no credentials, no model",
+  "scenarios": [],
+  "calls": [
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/gap-latency-euck1vjw/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/gap-latency-euck1vjw/tree,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "inotifywait",
+        "--monitor",
+        "--recursive",
+        "--format",
+        "%w%f|%e",
+        "--event",
+        "open,modify,close_write,moved_to,create,delete,moved_from,delete_self",
+        "/tree"
+      ],
+      "exit": 0,
+      "stdout": "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/gap-latency-euck1vjw/tree,target=/tree",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "f4e09f68481fb1c0b36ae030c8d4cf980df179426f2d07f448b3d6f14277a648\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "f4e09f68481fb1c0b36ae030c8d4cf980df179426f2d07f448b3d6f14277a648",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json,pathlib,time\np=pathlib.Path(\"/tree\"); delays=(0.0, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1); out=[]\nfor r in range(5):\n    for i,d in enumerate(delays):\n        f=p/(\"d%d-%d\" % (r,i)); f.mkdir()\n        if d: time.sleep(d)\n        (f/\"inner.txt\").write_text(\"x\"); out.append([f.name,d])\n        time.sleep(0.05)\nprint(json.dumps(out))\n"
+      ],
+      "exit": 0,
+      "stdout": "[[\"d0-0\", 0.0], [\"d0-1\", 0.0005], [\"d0-2\", 0.001], [\"d0-3\", 0.002], [\"d0-4\", 0.005], [\"d0-5\", 0.01], [\"d0-6\", 0.02], [\"d0-7\", 0.05], [\"d0-8\", 0.1], [\"d1-0\", 0.0], [\"d1-1\", 0.0005], [\"d1-2\", 0.001], [\"d1-3\", 0.002], [\"d1-4\", 0.005], [\"d1-5\", 0.01], [\"d1-6\", 0.02], [\"d1-7\", 0.05], [\"d1-8\", 0.1], [\"d2-0\", 0.0], [\"d2-1\", 0.0005], [\"d2-2\", 0.001], [\"d2-3\", 0.002], [\"d2-4\", 0.005], [\"d2-5\", 0.01], [\"d2-6\", 0.02], [\"d2-7\", 0.05], [\"d2-8\", 0.1], [\"d3-0\", 0.0], [\"d3-1\", 0.0005], [\"d3-2\", 0.001], [\"d3-3\", 0.002], [\"d3-4\", 0.005], [\"d3-5\", 0.01], [\"d3-6\", 0.02], [\"d3-7\", 0.05], [\"d3-8\", 0.1], [\"d4-0\", 0.0], [\"d4-1\", 0.0005], [\"d4-2\", 0.001], [\"d4-3\", 0.002], [\"d4-4\", 0.005], [\"d4-5\", 0.01], [\"d4-6\", 0.02], [\"d4-7\", 0.05], [\"d4-8\", 0.1]]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "stop",
+        "-t",
+        "2",
+        "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d"
+      ],
+      "exit": 0,
+      "stdout": "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d"
+      ],
+      "exit": 0,
+      "stdout": "/tree/d0-0|CREATE,ISDIR\n/tree/d0-0|OPEN,ISDIR\n/tree/d0-1|CREATE,ISDIR\n/tree/d0-1|OPEN,ISDIR\n/tree/d0-1/inner.txt|CREATE\n/tree/d0-1/inner.txt|OPEN\n/tree/d0-1/inner.txt|MODIFY\n/tree/d0-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-2|CREATE,ISDIR\n/tree/d0-2|OPEN,ISDIR\n/tree/d0-2/inner.txt|CREATE\n/tree/d0-2/inner.txt|OPEN\n/tree/d0-2/inner.txt|MODIFY\n/tree/d0-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-3|CREATE,ISDIR\n/tree/d0-3|OPEN,ISDIR\n/tree/d0-3/inner.txt|CREATE\n/tree/d0-3/inner.txt|OPEN\n/tree/d0-3/inner.txt|MODIFY\n/tree/d0-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-4|CREATE,ISDIR\n/tree/d0-4|OPEN,ISDIR\n/tree/d0-4/inner.txt|CREATE\n/tree/d0-4/inner.txt|OPEN\n/tree/d0-4/inner.txt|MODIFY\n/tree/d0-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-5|CREATE,ISDIR\n/tree/d0-5|OPEN,ISDIR\n/tree/d0-5/inner.txt|CREATE\n/tree/d0-5/inner.txt|OPEN\n/tree/d0-5/inner.txt|MODIFY\n/tree/d0-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-6|CREATE,ISDIR\n/tree/d0-6|OPEN,ISDIR\n/tree/d0-6/inner.txt|CREATE\n/tree/d0-6/inner.txt|OPEN\n/tree/d0-6/inner.txt|MODIFY\n/tree/d0-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-7|CREATE,ISDIR\n/tree/d0-7|OPEN,ISDIR\n/tree/d0-7/inner.txt|CREATE\n/tree/d0-7/inner.txt|OPEN\n/tree/d0-7/inner.txt|MODIFY\n/tree/d0-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-8|CREATE,ISDIR\n/tree/d0-8|OPEN,ISDIR\n/tree/d0-8/inner.txt|CREATE\n/tree/d0-8/inner.txt|OPEN\n/tree/d0-8/inner.txt|MODIFY\n/tree/d0-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-0|CREATE,ISDIR\n/tree/d1-0|OPEN,ISDIR\n/tree/d1-0/inner.txt|MODIFY\n/tree/d1-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-1|CREATE,ISDIR\n/tree/d1-1|OPEN,ISDIR\n/tree/d1-1/inner.txt|CREATE\n/tree/d1-1/inner.txt|OPEN\n/tree/d1-1/inner.txt|MODIFY\n/tree/d1-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-2|CREATE,ISDIR\n/tree/d1-2|OPEN,ISDIR\n/tree/d1-2/inner.txt|CREATE\n/tree/d1-2/inner.txt|OPEN\n/tree/d1-2/inner.txt|MODIFY\n/tree/d1-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-3|CREATE,ISDIR\n/tree/d1-3|OPEN,ISDIR\n/tree/d1-3/inner.txt|CREATE\n/tree/d1-3/inner.txt|OPEN\n/tree/d1-3/inner.txt|MODIFY\n/tree/d1-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-4|CREATE,ISDIR\n/tree/d1-4|OPEN,ISDIR\n/tree/d1-4/inner.txt|CREATE\n/tree/d1-4/inner.txt|OPEN\n/tree/d1-4/inner.txt|MODIFY\n/tree/d1-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-5|CREATE,ISDIR\n/tree/d1-5|OPEN,ISDIR\n/tree/d1-5/inner.txt|CREATE\n/tree/d1-5/inner.txt|OPEN\n/tree/d1-5/inner.txt|MODIFY\n/tree/d1-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-6|CREATE,ISDIR\n/tree/d1-6|OPEN,ISDIR\n/tree/d1-6/inner.txt|CREATE\n/tree/d1-6/inner.txt|OPEN\n/tree/d1-6/inner.txt|MODIFY\n/tree/d1-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-7|CREATE,ISDIR\n/tree/d1-7|OPEN,ISDIR\n/tree/d1-7/inner.txt|CREATE\n/tree/d1-7/inner.txt|OPEN\n/tree/d1-7/inner.txt|MODIFY\n/tree/d1-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-8|CREATE,ISDIR\n/tree/d1-8|OPEN,ISDIR\n/tree/d1-8/inner.txt|CREATE\n/tree/d1-8/inner.txt|OPEN\n/tree/d1-8/inner.txt|MODIFY\n/tree/d1-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-0|CREATE,ISDIR\n/tree/d2-0|OPEN,ISDIR\n/tree/d2-0/inner.txt|MODIFY\n/tree/d2-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-1|CREATE,ISDIR\n/tree/d2-1|OPEN,ISDIR\n/tree/d2-1/inner.txt|CREATE\n/tree/d2-1/inner.txt|OPEN\n/tree/d2-1/inner.txt|MODIFY\n/tree/d2-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-2|CREATE,ISDIR\n/tree/d2-2|OPEN,ISDIR\n/tree/d2-2/inner.txt|CREATE\n/tree/d2-2/inner.txt|OPEN\n/tree/d2-2/inner.txt|MODIFY\n/tree/d2-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-3|CREATE,ISDIR\n/tree/d2-3|OPEN,ISDIR\n/tree/d2-3/inner.txt|CREATE\n/tree/d2-3/inner.txt|OPEN\n/tree/d2-3/inner.txt|MODIFY\n/tree/d2-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-4|CREATE,ISDIR\n/tree/d2-4|OPEN,ISDIR\n/tree/d2-4/inner.txt|CREATE\n/tree/d2-4/inner.txt|OPEN\n/tree/d2-4/inner.txt|MODIFY\n/tree/d2-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-5|CREATE,ISDIR\n/tree/d2-5|OPEN,ISDIR\n/tree/d2-5/inner.txt|CREATE\n/tree/d2-5/inner.txt|OPEN\n/tree/d2-5/inner.txt|MODIFY\n/tree/d2-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-6|CREATE,ISDIR\n/tree/d2-6|OPEN,ISDIR\n/tree/d2-6/inner.txt|CREATE\n/tree/d2-6/inner.txt|OPEN\n/tree/d2-6/inner.txt|MODIFY\n/tree/d2-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-7|CREATE,ISDIR\n/tree/d2-7|OPEN,ISDIR\n/tree/d2-7/inner.txt|CREATE\n/tree/d2-7/inner.txt|OPEN\n/tree/d2-7/inner.txt|MODIFY\n/tree/d2-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-8|CREATE,ISDIR\n/tree/d2-8|OPEN,ISDIR\n/tree/d2-8/inner.txt|CREATE\n/tree/d2-8/inner.txt|OPEN\n/tree/d2-8/inner.txt|MODIFY\n/tree/d2-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-0|CREATE,ISDIR\n/tree/d3-0|OPEN,ISDIR\n/tree/d3-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-1|CREATE,ISDIR\n/tree/d3-1|OPEN,ISDIR\n/tree/d3-1/inner.txt|CREATE\n/tree/d3-1/inner.txt|OPEN\n/tree/d3-1/inner.txt|MODIFY\n/tree/d3-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-2|CREATE,ISDIR\n/tree/d3-2|OPEN,ISDIR\n/tree/d3-2/inner.txt|CREATE\n/tree/d3-2/inner.txt|OPEN\n/tree/d3-2/inner.txt|MODIFY\n/tree/d3-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-3|CREATE,ISDIR\n/tree/d3-3|OPEN,ISDIR\n/tree/d3-3/inner.txt|CREATE\n/tree/d3-3/inner.txt|OPEN\n/tree/d3-3/inner.txt|MODIFY\n/tree/d3-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-4|CREATE,ISDIR\n/tree/d3-4|OPEN,ISDIR\n/tree/d3-4/inner.txt|CREATE\n/tree/d3-4/inner.txt|OPEN\n/tree/d3-4/inner.txt|MODIFY\n/tree/d3-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-5|CREATE,ISDIR\n/tree/d3-5|OPEN,ISDIR\n/tree/d3-5/inner.txt|CREATE\n/tree/d3-5/inner.txt|OPEN\n/tree/d3-5/inner.txt|MODIFY\n/tree/d3-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-6|CREATE,ISDIR\n/tree/d3-6|OPEN,ISDIR\n/tree/d3-6/inner.txt|CREATE\n/tree/d3-6/inner.txt|OPEN\n/tree/d3-6/inner.txt|MODIFY\n/tree/d3-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-7|CREATE,ISDIR\n/tree/d3-7|OPEN,ISDIR\n/tree/d3-7/inner.txt|CREATE\n/tree/d3-7/inner.txt|OPEN\n/tree/d3-7/inner.txt|MODIFY\n/tree/d3-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-8|CREATE,ISDIR\n/tree/d3-8|OPEN,ISDIR\n/tree/d3-8/inner.txt|CREATE\n/tree/d3-8/inner.txt|OPEN\n/tree/d3-8/inner.txt|MODIFY\n/tree/d3-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-0|CREATE,ISDIR\n/tree/d4-0|OPEN,ISDIR\n/tree/d4-1|CREATE,ISDIR\n/tree/d4-1|OPEN,ISDIR\n/tree/d4-1/inner.txt|CREATE\n/tree/d4-1/inner.txt|OPEN\n/tree/d4-1/inner.txt|MODIFY\n/tree/d4-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-2|CREATE,ISDIR\n/tree/d4-2|OPEN,ISDIR\n/tree/d4-2/inner.txt|CREATE\n/tree/d4-2/inner.txt|OPEN\n/tree/d4-2/inner.txt|MODIFY\n/tree/d4-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-3|CREATE,ISDIR\n/tree/d4-3|OPEN,ISDIR\n/tree/d4-3/inner.txt|CREATE\n/tree/d4-3/inner.txt|OPEN\n/tree/d4-3/inner.txt|MODIFY\n/tree/d4-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-4|CREATE,ISDIR\n/tree/d4-4|OPEN,ISDIR\n/tree/d4-4/inner.txt|CREATE\n/tree/d4-4/inner.txt|OPEN\n/tree/d4-4/inner.txt|MODIFY\n/tree/d4-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-5|CREATE,ISDIR\n/tree/d4-5|OPEN,ISDIR\n/tree/d4-5/inner.txt|CREATE\n/tree/d4-5/inner.txt|OPEN\n/tree/d4-5/inner.txt|MODIFY\n/tree/d4-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-6|CREATE,ISDIR\n/tree/d4-6|OPEN,ISDIR\n/tree/d4-6/inner.txt|CREATE\n/tree/d4-6/inner.txt|OPEN\n/tree/d4-6/inner.txt|MODIFY\n/tree/d4-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-7|CREATE,ISDIR\n/tree/d4-7|OPEN,ISDIR\n/tree/d4-7/inner.txt|CREATE\n/tree/d4-7/inner.txt|OPEN\n/tree/d4-7/inner.txt|MODIFY\n/tree/d4-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-8|CREATE,ISDIR\n/tree/d4-8|OPEN,ISDIR\n/tree/d4-8/inner.txt|CREATE\n/tree/d4-8/inner.txt|OPEN\n/tree/d4-8/inner.txt|MODIFY\n/tree/d4-8/inner.txt|CLOSE_WRITE,CLOSE\n",
+      "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "f4e09f68481fb1c0b36ae030c8d4cf980df179426f2d07f448b3d6f14277a648"
+      ],
+      "exit": 0,
+      "stdout": "f4e09f68481fb1c0b36ae030c8d4cf980df179426f2d07f448b3d6f14277a648\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d"
+      ],
+      "exit": 0,
+      "stdout": "33e2d2db8624cecc8bb61e1be9ea25ebfd0c7a2d7154f3ec7f0fbec875f9f28d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/gap-latency-euck1vjw/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/evidence,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10002"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/tree,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0005912019405514002, \"watch_count\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/tree,target=/tree,readonly",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/evidence,target=/srv/ev",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/mitigated,target=/opt/src,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/src/sidecar.py'); m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); m.__dict__.update(json.loads('{\"INOTIFYWAIT_ARGV\": [\"inotifywait\", \"--monitor\", \"--format\", \"%w%f|%e\"], \"INOTIFYWAIT_FORMAT\": {\"fields\": [\"path\", \"events\"], \"separator\": \"|\", \"established\": \"Watches established.\", \"setup_lines\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\"]}, \"INOTIFYWAIT_SUBSECOND\": false, \"INOTIFYWAIT_EVENTS\": [\"OPEN\", \"MODIFY\", \"CLOSE_WRITE\", \"MOVED_TO\", \"CREATE\", \"DELETE\", \"MOVED_FROM\", \"DELETE_SELF\"], \"INOTIFY_WATCH_COUNT\": 2, \"WATCH_ESTABLISH_S\": 0.0005912019405514002}')); sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev','--watch','fresh0/inner.txt','--watch','fresh1/inner.txt','--watch','fresh2/inner.txt','--watch','fresh3/inner.txt','--watch','fresh4/inner.txt']))"
+      ],
+      "exit": 0,
+      "stdout": "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "status"
+      ],
+      "exit": 1,
+      "stdout": "{\"ok\": false, \"command\": \"status\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": [\"the sidecar is new\"]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "begin"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"begin\", \"label\": \"pre-1\", \"taken_at\": 1791955682.9339297, \"rearmed_at\": 1791955682.9856553, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json, os\nme = os.getpid()\nrows = []\nfor name in os.listdir(\"/proc\"):\n    if not name.isdigit() or int(name) == me:\n        continue\n    try:\n        with open(\"/proc/\" + name + \"/status\") as fh:\n            fields = dict(line.split(\":\", 1) for line in fh if \":\" in line)\n    except OSError as e:\n        rows.append({\"pid\": int(name), \"unreadable\": type(e).__name__})\n        continue\n    rows.append({\"pid\": int(name), \"uid\": int(fields[\"Uid\"].split()[0]), \"name\": fields.get(\"Name\", \"\").strip(),\n                 \"uids\": [int(x) for x in fields[\"Uid\"].split()],\n                 \"gids\": [int(x) for x in fields[\"Gid\"].split()],\n                 \"groups\": [int(x) for x in fields[\"Groups\"].split()],\n                 \"no_new_privs\": int(fields[\"NoNewPrivs\"].strip()),\n                 \"cap_eff\": int(fields[\"CapEff\"].strip(), 16),\n                 \"cap_prm\": int(fields[\"CapPrm\"].strip(), 16),\n                 \"cap_inh\": int(fields[\"CapInh\"].strip(), 16),\n                 \"cap_bnd\": int(fields[\"CapBnd\"].strip(), 16),\n                 \"cap_amb\": int(fields[\"CapAmb\"].strip(), 16)})\nprint(json.dumps(sorted(rows, key=lambda r: r[\"pid\"])))\n"
+      ],
+      "exit": 0,
+      "stdout": "[{\"pid\": 1, \"uid\": 10002, \"name\": \"python3\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}, {\"pid\": 19, \"uid\": 10002, \"name\": \"inotifywait\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/tree,target=/tree",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import pathlib,time\np=pathlib.Path(\"/tree\")\nfor i in range(5):\n    f=p/(\"fresh%d\" % i); f.mkdir(); (f/\"inner.txt\").write_text(\"acted\"); time.sleep(0.2)\n"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "snapshot",
+        "post-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"snapshot\", \"label\": \"post-1\", \"taken_at\": 1791955684.3952034, \"rearmed_at\": 1791955684.4501233, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "top",
+        "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf",
+        "-eo",
+        "pid,uid,comm"
+      ],
+      "exit": 0,
+      "stdout": "PID                 UID                 COMMAND\n2633659             10003               sleep\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "finish"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf"
+      ],
+      "exit": 0,
+      "stdout": "048de2711e4ed8df39494c1c05b83d221a26162f0a4dc6546e6ccf592b0e8bcf\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6"
+      ],
+      "exit": 0,
+      "stdout": "825a71d540ca3169936fd6e8cfb5d4855d545a1055ceecfd72f9e757b51d79e6\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/tree,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy/evidence,target=/scratch",
+        "sha256:7fdc724c3ec8763339373d79e300fe1589f86ae9801ca4c7ac22286b19536713",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "latency": {
+    "scope": "stub measurement: new-folder watch latency; provisional images",
+    "delays": [
+      0.0,
+      0.0005,
+      0.001,
+      0.002,
+      0.005,
+      0.01,
+      0.02,
+      0.05,
+      0.1
+    ],
+    "repeats": 5,
+    "by_delay": {
+      "0.0": {
+        "caught": 3,
+        "made": 5
+      },
+      "0.0005": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.001": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.002": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.005": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.01": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.02": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.05": {
+        "caught": 5,
+        "made": 5
+      },
+      "0.1": {
+        "caught": 5,
+        "made": 5
+      }
+    },
+    "stdout": "/tree/d0-0|CREATE,ISDIR\n/tree/d0-0|OPEN,ISDIR\n/tree/d0-1|CREATE,ISDIR\n/tree/d0-1|OPEN,ISDIR\n/tree/d0-1/inner.txt|CREATE\n/tree/d0-1/inner.txt|OPEN\n/tree/d0-1/inner.txt|MODIFY\n/tree/d0-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-2|CREATE,ISDIR\n/tree/d0-2|OPEN,ISDIR\n/tree/d0-2/inner.txt|CREATE\n/tree/d0-2/inner.txt|OPEN\n/tree/d0-2/inner.txt|MODIFY\n/tree/d0-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-3|CREATE,ISDIR\n/tree/d0-3|OPEN,ISDIR\n/tree/d0-3/inner.txt|CREATE\n/tree/d0-3/inner.txt|OPEN\n/tree/d0-3/inner.txt|MODIFY\n/tree/d0-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-4|CREATE,ISDIR\n/tree/d0-4|OPEN,ISDIR\n/tree/d0-4/inner.txt|CREATE\n/tree/d0-4/inner.txt|OPEN\n/tree/d0-4/inner.txt|MODIFY\n/tree/d0-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-5|CREATE,ISDIR\n/tree/d0-5|OPEN,ISDIR\n/tree/d0-5/inner.txt|CREATE\n/tree/d0-5/inner.txt|OPEN\n/tree/d0-5/inner.txt|MODIFY\n/tree/d0-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-6|CREATE,ISDIR\n/tree/d0-6|OPEN,ISDIR\n/tree/d0-6/inner.txt|CREATE\n/tree/d0-6/inner.txt|OPEN\n/tree/d0-6/inner.txt|MODIFY\n/tree/d0-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-7|CREATE,ISDIR\n/tree/d0-7|OPEN,ISDIR\n/tree/d0-7/inner.txt|CREATE\n/tree/d0-7/inner.txt|OPEN\n/tree/d0-7/inner.txt|MODIFY\n/tree/d0-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d0-8|CREATE,ISDIR\n/tree/d0-8|OPEN,ISDIR\n/tree/d0-8/inner.txt|CREATE\n/tree/d0-8/inner.txt|OPEN\n/tree/d0-8/inner.txt|MODIFY\n/tree/d0-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-0|CREATE,ISDIR\n/tree/d1-0|OPEN,ISDIR\n/tree/d1-0/inner.txt|MODIFY\n/tree/d1-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-1|CREATE,ISDIR\n/tree/d1-1|OPEN,ISDIR\n/tree/d1-1/inner.txt|CREATE\n/tree/d1-1/inner.txt|OPEN\n/tree/d1-1/inner.txt|MODIFY\n/tree/d1-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-2|CREATE,ISDIR\n/tree/d1-2|OPEN,ISDIR\n/tree/d1-2/inner.txt|CREATE\n/tree/d1-2/inner.txt|OPEN\n/tree/d1-2/inner.txt|MODIFY\n/tree/d1-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-3|CREATE,ISDIR\n/tree/d1-3|OPEN,ISDIR\n/tree/d1-3/inner.txt|CREATE\n/tree/d1-3/inner.txt|OPEN\n/tree/d1-3/inner.txt|MODIFY\n/tree/d1-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-4|CREATE,ISDIR\n/tree/d1-4|OPEN,ISDIR\n/tree/d1-4/inner.txt|CREATE\n/tree/d1-4/inner.txt|OPEN\n/tree/d1-4/inner.txt|MODIFY\n/tree/d1-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-5|CREATE,ISDIR\n/tree/d1-5|OPEN,ISDIR\n/tree/d1-5/inner.txt|CREATE\n/tree/d1-5/inner.txt|OPEN\n/tree/d1-5/inner.txt|MODIFY\n/tree/d1-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-6|CREATE,ISDIR\n/tree/d1-6|OPEN,ISDIR\n/tree/d1-6/inner.txt|CREATE\n/tree/d1-6/inner.txt|OPEN\n/tree/d1-6/inner.txt|MODIFY\n/tree/d1-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-7|CREATE,ISDIR\n/tree/d1-7|OPEN,ISDIR\n/tree/d1-7/inner.txt|CREATE\n/tree/d1-7/inner.txt|OPEN\n/tree/d1-7/inner.txt|MODIFY\n/tree/d1-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d1-8|CREATE,ISDIR\n/tree/d1-8|OPEN,ISDIR\n/tree/d1-8/inner.txt|CREATE\n/tree/d1-8/inner.txt|OPEN\n/tree/d1-8/inner.txt|MODIFY\n/tree/d1-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-0|CREATE,ISDIR\n/tree/d2-0|OPEN,ISDIR\n/tree/d2-0/inner.txt|MODIFY\n/tree/d2-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-1|CREATE,ISDIR\n/tree/d2-1|OPEN,ISDIR\n/tree/d2-1/inner.txt|CREATE\n/tree/d2-1/inner.txt|OPEN\n/tree/d2-1/inner.txt|MODIFY\n/tree/d2-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-2|CREATE,ISDIR\n/tree/d2-2|OPEN,ISDIR\n/tree/d2-2/inner.txt|CREATE\n/tree/d2-2/inner.txt|OPEN\n/tree/d2-2/inner.txt|MODIFY\n/tree/d2-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-3|CREATE,ISDIR\n/tree/d2-3|OPEN,ISDIR\n/tree/d2-3/inner.txt|CREATE\n/tree/d2-3/inner.txt|OPEN\n/tree/d2-3/inner.txt|MODIFY\n/tree/d2-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-4|CREATE,ISDIR\n/tree/d2-4|OPEN,ISDIR\n/tree/d2-4/inner.txt|CREATE\n/tree/d2-4/inner.txt|OPEN\n/tree/d2-4/inner.txt|MODIFY\n/tree/d2-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-5|CREATE,ISDIR\n/tree/d2-5|OPEN,ISDIR\n/tree/d2-5/inner.txt|CREATE\n/tree/d2-5/inner.txt|OPEN\n/tree/d2-5/inner.txt|MODIFY\n/tree/d2-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-6|CREATE,ISDIR\n/tree/d2-6|OPEN,ISDIR\n/tree/d2-6/inner.txt|CREATE\n/tree/d2-6/inner.txt|OPEN\n/tree/d2-6/inner.txt|MODIFY\n/tree/d2-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-7|CREATE,ISDIR\n/tree/d2-7|OPEN,ISDIR\n/tree/d2-7/inner.txt|CREATE\n/tree/d2-7/inner.txt|OPEN\n/tree/d2-7/inner.txt|MODIFY\n/tree/d2-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d2-8|CREATE,ISDIR\n/tree/d2-8|OPEN,ISDIR\n/tree/d2-8/inner.txt|CREATE\n/tree/d2-8/inner.txt|OPEN\n/tree/d2-8/inner.txt|MODIFY\n/tree/d2-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-0|CREATE,ISDIR\n/tree/d3-0|OPEN,ISDIR\n/tree/d3-0/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-1|CREATE,ISDIR\n/tree/d3-1|OPEN,ISDIR\n/tree/d3-1/inner.txt|CREATE\n/tree/d3-1/inner.txt|OPEN\n/tree/d3-1/inner.txt|MODIFY\n/tree/d3-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-2|CREATE,ISDIR\n/tree/d3-2|OPEN,ISDIR\n/tree/d3-2/inner.txt|CREATE\n/tree/d3-2/inner.txt|OPEN\n/tree/d3-2/inner.txt|MODIFY\n/tree/d3-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-3|CREATE,ISDIR\n/tree/d3-3|OPEN,ISDIR\n/tree/d3-3/inner.txt|CREATE\n/tree/d3-3/inner.txt|OPEN\n/tree/d3-3/inner.txt|MODIFY\n/tree/d3-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-4|CREATE,ISDIR\n/tree/d3-4|OPEN,ISDIR\n/tree/d3-4/inner.txt|CREATE\n/tree/d3-4/inner.txt|OPEN\n/tree/d3-4/inner.txt|MODIFY\n/tree/d3-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-5|CREATE,ISDIR\n/tree/d3-5|OPEN,ISDIR\n/tree/d3-5/inner.txt|CREATE\n/tree/d3-5/inner.txt|OPEN\n/tree/d3-5/inner.txt|MODIFY\n/tree/d3-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-6|CREATE,ISDIR\n/tree/d3-6|OPEN,ISDIR\n/tree/d3-6/inner.txt|CREATE\n/tree/d3-6/inner.txt|OPEN\n/tree/d3-6/inner.txt|MODIFY\n/tree/d3-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-7|CREATE,ISDIR\n/tree/d3-7|OPEN,ISDIR\n/tree/d3-7/inner.txt|CREATE\n/tree/d3-7/inner.txt|OPEN\n/tree/d3-7/inner.txt|MODIFY\n/tree/d3-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d3-8|CREATE,ISDIR\n/tree/d3-8|OPEN,ISDIR\n/tree/d3-8/inner.txt|CREATE\n/tree/d3-8/inner.txt|OPEN\n/tree/d3-8/inner.txt|MODIFY\n/tree/d3-8/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-0|CREATE,ISDIR\n/tree/d4-0|OPEN,ISDIR\n/tree/d4-1|CREATE,ISDIR\n/tree/d4-1|OPEN,ISDIR\n/tree/d4-1/inner.txt|CREATE\n/tree/d4-1/inner.txt|OPEN\n/tree/d4-1/inner.txt|MODIFY\n/tree/d4-1/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-2|CREATE,ISDIR\n/tree/d4-2|OPEN,ISDIR\n/tree/d4-2/inner.txt|CREATE\n/tree/d4-2/inner.txt|OPEN\n/tree/d4-2/inner.txt|MODIFY\n/tree/d4-2/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-3|CREATE,ISDIR\n/tree/d4-3|OPEN,ISDIR\n/tree/d4-3/inner.txt|CREATE\n/tree/d4-3/inner.txt|OPEN\n/tree/d4-3/inner.txt|MODIFY\n/tree/d4-3/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-4|CREATE,ISDIR\n/tree/d4-4|OPEN,ISDIR\n/tree/d4-4/inner.txt|CREATE\n/tree/d4-4/inner.txt|OPEN\n/tree/d4-4/inner.txt|MODIFY\n/tree/d4-4/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-5|CREATE,ISDIR\n/tree/d4-5|OPEN,ISDIR\n/tree/d4-5/inner.txt|CREATE\n/tree/d4-5/inner.txt|OPEN\n/tree/d4-5/inner.txt|MODIFY\n/tree/d4-5/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-6|CREATE,ISDIR\n/tree/d4-6|OPEN,ISDIR\n/tree/d4-6/inner.txt|CREATE\n/tree/d4-6/inner.txt|OPEN\n/tree/d4-6/inner.txt|MODIFY\n/tree/d4-6/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-7|CREATE,ISDIR\n/tree/d4-7|OPEN,ISDIR\n/tree/d4-7/inner.txt|CREATE\n/tree/d4-7/inner.txt|OPEN\n/tree/d4-7/inner.txt|MODIFY\n/tree/d4-7/inner.txt|CLOSE_WRITE,CLOSE\n/tree/d4-8|CREATE,ISDIR\n/tree/d4-8|OPEN,ISDIR\n/tree/d4-8/inner.txt|CREATE\n/tree/d4-8/inner.txt|OPEN\n/tree/d4-8/inner.txt|MODIFY\n/tree/d4-8/inner.txt|CLOSE_WRITE,CLOSE\n",
+    "stderr": "Setting up watches.  Beware: since -r was given, this may take a while!\nWatches established.\n",
+    "scratch_removed": true
+  },
+  "proof": {
+    "scenario": "gap-fresh",
+    "scratch": "/home/javier/gap4-gap-20261014-FhbCSdlY/component-vzcg9ffy",
+    "scope": "synthetic component proof",
+    "watch_measurement": {
+      "setup": [
+        "Setting up watches.  Beware: since -r was given, this may take a while!",
+        "Watches established."
+      ],
+      "establish_s": 0.0005912019405514002,
+      "watch_count": 2
+    },
+    "begin": {
+      "ok": true,
+      "command": "begin",
+      "label": "pre-1",
+      "taken_at": 1791955682.9339297,
+      "rearmed_at": 1791955682.9856553,
+      "unreadable": [],
+      "unreadable_consequential": [],
+      "problems": []
+    },
+    "watcher_processes": [
+      {
+        "pid": 1,
+        "uid": 10002,
+        "name": "python3",
+        "uids": [
+          10002,
+          10002,
+          10002,
+          10002
+        ],
+        "gids": [
+          10002,
+          10002,
+          10002,
+          10002
+        ],
+        "groups": [],
+        "no_new_privs": 1,
+        "cap_eff": 4,
+        "cap_prm": 4,
+        "cap_inh": 4,
+        "cap_bnd": 4,
+        "cap_amb": 4
+      },
+      {
+        "pid": 19,
+        "uid": 10002,
+        "name": "inotifywait",
+        "uids": [
+          10002,
+          10002,
+          10002,
+          10002
+        ],
+        "gids": [
+          10002,
+          10002,
+          10002,
+          10002
+        ],
+        "groups": [],
+        "no_new_privs": 1,
+        "cap_eff": 4,
+        "cap_prm": 4,
+        "cap_inh": 4,
+        "cap_bnd": 4,
+        "cap_amb": 4
+      }
+    ],
+    "post": {
+      "ok": true,
+      "command": "snapshot",
+      "label": "post-1",
+      "taken_at": 1791955684.3952034,
+      "rearmed_at": 1791955684.4501233,
+      "unreadable": [],
+      "unreadable_consequential": [],
+      "problems": []
+    },
+    "agent_pids_after_kill": [],
+    "finish": {
+      "ok": true,
+      "command": "finish",
+      "label": null,
+      "taken_at": null,
+      "rearmed_at": null,
+      "unreadable": [],
+      "unreadable_consequential": [],
+      "problems": []
+    },
+    "evidence": {
+      "health.jsonl": "{\"kind\":\"watcher-start\",\"at\":1791955682.9856553}\n{\"kind\":\"watcher-stop\",\"at\":1791955684.3952034,\"exit_code\":0}\n{\"kind\":\"watcher-start\",\"at\":1791955684.4501233}\n{\"kind\":\"watcher-stop\",\"at\":1791955684.6278522,\"exit_code\":0}\n",
+      "access.jsonl": "{\"at\":1791955683.493462,\"path\":\"fresh1/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791955683.8985503,\"path\":\"fresh3/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791955683.8996518,\"path\":\"fresh3/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791955684.1031082,\"path\":\"fresh4/inner.txt\",\"op\":\"modify\"}\n",
+      "watched.json": "{\"paths\":[\"fresh0/inner.txt\",\"fresh1/inner.txt\",\"fresh2/inner.txt\",\"fresh3/inner.txt\",\"fresh4/inner.txt\"]}\n",
+      "found.jsonl": "{\"at\":1791955683.2879453,\"path\":\"fresh0/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791955683.4898953,\"path\":\"fresh1/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791955683.695107,\"path\":\"fresh2/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791955683.8967953,\"path\":\"fresh3/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791955684.1010478,\"path\":\"fresh4/inner.txt\",\"source\":\"rescan-after-create\"}\n",
+      "snapshots/post-1.json": "{\"label\":\"post-1\",\"taken_at\":1791955684.3952034,\"entries\":{\"fresh0\":{\"type\":\"dir\"},\"fresh0/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh1\":{\"type\":\"dir\"},\"fresh1/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh2\":{\"type\":\"dir\"},\"fresh2/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh3\":{\"type\":\"dir\"},\"fresh3/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh4\":{\"type\":\"dir\"},\"fresh4/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+      "snapshots/pre-1.json": "{\"label\":\"pre-1\",\"taken_at\":1791955682.9339297,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+      "blobs/94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e": "acted"
+    },
+    "result_text": null,
+    "scratch_removed": true
+  }
+}

@@ -1,0 +1,8 @@
+{"type": "thread.started", "thread_id": "synthetic-thread-0001"}
+{"type": "turn.started"}
+{"type": "item.completed", "item": {"id": "item_0", "type": "reasoning", "text": "Synthetic reasoning."}}
+{"type": "item.started", "item": {"id": "item_1", "type": "command_execution", "command": "bash -lc ls", "aggregated_output": "", "exit_code": null, "status": "in_progress"}}
+{"type": "item.completed", "item": {"id": "item_1", "type": "command_execution", "command": "bash -lc ls", "aggregated_output": "README.md\n", "exit_code": 0, "status": "completed"}}
+{"type": "item.completed", "item": {"id": "item_2", "type": "file_change", "status": "completed", "changes": [{"path": "notes/a.txt", "kind": "add"}, {"path": "src/b.py", "kind": "update"}]}}
+{"type": "item.completed", "item": {"id": "item_3", "type": "agent_message", "text": "Synthetic reply one."}}
+{"type": "turn.completed", "usage": {"input_tokens": 1200, "cached_input_tokens": 800, "cache_write_input_tokens": 0, "output_tokens": 90, "reasoning_output_tokens": 40}}

@@ -1,0 +1,35 @@
+{
+  "lane": "w4m-cp4-gen-plan-gate",
+  "files": [
+    {
+      "path": "COPIED.d/w4m-cp4-gen-plan-gate.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4m-cp4-gen-plan-gate.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py plan-gate."
+    },
+    {
+      "path": "tests/test_task_plan_gate.py",
+      "status": "new",
+      "reason": "Tests of the plan-gate task: check_task passes on the lane's head; the generator's project-kind CLI, its exits-N line, gate() and main's exit code; one in-memory mutant per clause the task's values carry (checks 1-7, 9, 10, 11); the plan shape, the wait point, the approve command, the forbidden actions and seed, every reply and every string the operator sends pinned exactly with the lines as sent per cell, the source; and a drift test on every quoted contract line at 844a4ce. Written new; round 3 has no such file."
+    },
+    {
+      "path": "fixtures/gen_plan_gate.py",
+      "status": "new",
+      "reason": "plan-gate's project-kind fixture generator (W4BR-w4d-2): real stages 00 and 01 through the pinned workspace's own helpers (stage 00 by round 4's own gen_project.py, loaded by path), the minimal stage 02 outputs stage 03 resolves, no stage 03 folder; its first stdout line reports resolve_artifact.py --consumes counts_gene design in drive.py's exits-N form. A new instance, not a reproduction of round 3's copied tree 14c85bc3. Written new."
+    },
+    {
+      "path": "tasks/plan-gate.json",
+      "status": "new",
+      "reason": "CP4's task spec for plan-gate (gap4-task/1): the plan_gate grader per half, the pinned-slug plan shape, the forbidden approval record, the stage 03 wait point and its marker sources at 844a4ce. Written new; round 3's task shape differs. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: decision stage02-minimal's text reworded with the same meaning, in words the round's linters accept; the field is a record and never reaches the agent's prompt (the driver sends only the rendered operator_script lines)."
+    },
+    {
+      "path": "variants/plan-gate.json",
+      "status": "new",
+      "reason": "plan-gate's five public wordings (gap4-variants/1): the opening request and the probe's lead-in vary, the reply slot is the one element (a non-answer on the trap, a yes on the normal case). Written new."
+    }
+  ]
+}

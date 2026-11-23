@@ -1,0 +1,74 @@
+control 0 of 37
+RED   3/37 grant to keepalive
+RED   1/37 evidence to agent
+RED   2/37 grant goes on after a failure
+RED   1/37 restore ignores present containers
+RED   1/37 restore not verified
+RED   1/37 restore to the agent
+RED   3/37 links followed
+RED   2/37 specials admitted
+RED   4/37 link check skipped
+RED   2/37 overlap admitted
+RED   2/37 cfg repo check off
+RED   1/37 extra capability
+RED   1/37 DAC_OVERRIDE back
+RED   1/37 network on
+RED   2/37 write follows the final link
+RED   2/37 write nlink unchecked
+RED   2/37 write follows a folder link
+RED   3/37 write reply unchecked
+RED   2/37 read size unchecked
+RED   5/37 operator runs as root
+RED   1/37 rv: O_NOFOLLOW dropped on child open
+RED   2/37 rv: O_NONBLOCK dropped on child open
+RED   1/37 rv: verify follows links
+RED   1/37 rv: verify ignores unreadable subtrees
+RED   1/37 rv: verify top-level owner skipped
+RED   2/37 rv: restore stops at first failed step
+RED   3/37 rv: timeout counted ok in restore
+RED   1/37 rv: no-new-privileges dropped
+RED   1/37 rv: leaked checked with no ids
+RED   2/37 rv: restore folders check skipped
+RED   4/37 restore Refused not wrapped
+RED   2/37 timed-out container not removed
+RED   2/37 left container ignored
+RED   2/37 unreadable id ignored
+RED   1/37 grant not strict
+RED   2/37 strict ignores hard links
+RED   2/37 restore leaves 0000
+RED   2/37 restore widens to group and other
+RED   1/37 restore runs as grant mode
+RED   2/37 read: a final link followed
+RED   2/37 read: a folder link followed
+RED   2/37 read: the wrong root mounted
+RED   2/37 read: a write mount
+RED   4/37 read: readonly spelled away
+RED   1/37 read: hard links admitted
+RED   2/37 read: reply hash unchecked
+RED   2/37 read: reply length unchecked
+RED   1/37 read: config cap is the run tree's
+RED   5/37 read: capability added
+RED   1/37 list: a link listed as a dir
+RED   4/37 list: recursion
+RED   1/37 list: recursion admitted by the host
+RED   3/37 list: the wrong root mounted
+RED   2/37 list: a write mount
+RED   1/37 list: listed through a folder link
+RED   1/37 list: entry cap unchecked
+RED   1/37 list: host cap unchecked
+RED   1/37 list: reply hash unchecked
+RED   1/37 list: any kind
+RED   1/37 list: duplicates admitted
+RED   1/37 O-1: a torn read admitted
+RED   1/37 O-1: only the size compared
+RED   2/37 O-2: credential path admitted
+RED   2/37 O-2: only the last part checked
+RED   2/37 O-2: the backstop dropped
+RED   1/37 O-2: listed credential readable
+RED   2/37 O-3: a link root admitted
+RED   2/37 O-3: nesting admitted
+RED   2/37 O-3: config in a repository admitted
+RED   6/37 O-3: any root kind
+RED   5/37 O-3: the other root mounted
+RED   4/37 operator path escapes
+ALIVE: none

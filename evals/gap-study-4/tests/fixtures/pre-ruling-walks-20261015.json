@@ -1,0 +1,5038 @@
+{
+ "schema": 1,
+ "about": "The 25 pre-ruling CP6 walks (arm A practice walks, never the measured run) as the isolation denial guard reads them, recorded as its expected refusals (glitch-b5's ruling 4, Sat 17 Oct 2026, under Javier's delegation): the guard applies to takes after the isolation ruling; these walks are recorded as expected refusals under it and are not regraded as failures. Each file is reduced to what check_take.denied_tool_problems reads: a launch journal whole except its -p prompt (elided, its sha256 kept), a turn stream's init records (type, subtype, tools), the transcript's deferred_tools_delta attachments (type, addedNames). sha256 is the committed file's own; expected_refusal is the guard's output on the committed files, equal to its output on the reduced ones (checked when this record was made).",
+ "source": {
+  "repository": "gap4-walk-records-20261015",
+  "branch": "walk/w-l4F8UdYQ",
+  "commit": "197658fe8d826fb19d50fd3f346309e039dee9e8",
+  "folder": "evals/gap-study-4/rehearsals/"
+ },
+ "walks": {
+  "w001": {
+   "walk_commit": "76a58aa20ba2357ecb37260682031704b15d0992",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "567d4f33ea62f4df3380b2f950af9d0ceb3161886d8058e158b9eb05e6c8ad5a",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "6f594e000939c77b756f1bba9e277e75014d45beaba80f24f30f5620a153968d",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "72681aee5d64468652b1d44e53fbcd7339bff59b841b3edc018d6c4fb2b5d23e",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "918a6d1e5249691b08154b6f11f31c9df807253b993bd5a7edb53ae3ceca6a78",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 2454a258af6222bf07a13d74cc9277aed16eda008420304b050506a91fa7f852>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "f6285855-25c3-5a9a-a99b-ce29f6d16cbe"
+      ],
+      "cwd": "/tmp/run-f6285855",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w001/turn-1.jsonl",
+      "started_at": 1792071462.3877926
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "af2f197084b4267fe6223ab742a359f74ae123ab67bc769c0d6ac63d81c764e0",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "a4ad5bd27b8ff54da76e26e149f883085e8af6c72f11347ff7e337f1c523558c",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "918a6d1e5249691b08154b6f11f31c9df807253b993bd5a7edb53ae3ceca6a78",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 80c36f70b0dbe92cda4f6a106462f4f99851b06b214765ea04ee6d5008ab416e>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "f6285855-25c3-5a9a-a99b-ce29f6d16cbe"
+      ],
+      "cwd": "/tmp/run-f6285855",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w001/turn-2.jsonl",
+      "started_at": 1792071479.9397256
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w002": {
+   "walk_commit": "5d2b3a8d0730a5b3f0c63bf9f4f1c14c5efb4c90",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "532e5d3ae26d4f744d4c2d611286b2ce4c475ad5c774aaacc80ecefcf7ca10b6",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "ba035992503ada6ea4572342fe8ab746aeefb1fb34333b0a33094106e194e6b5",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "a3bc14cc6b2ce9d544a12b32702d09f964f87e7506627ad88f9cada713260a8e",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "8f7eaeba613653cd4bd5c7bd55e58cb05894eaa22ca2ec1c6ffef21996790ea1",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 2f7f280573a022961cf55d74203f5e692ec47e47661b31982647e418f3618685>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "b47b29e7-7f36-5bdf-979d-56ba07fc456d"
+      ],
+      "cwd": "/tmp/run-b47b29e7",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w002/turn-1.jsonl",
+      "started_at": 1792084752.9041555
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w003": {
+   "walk_commit": "cbdfcfe7cf93a1c5df4519e64c214a2ea9cb3737",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "fe36a5fbc943e951b9bf081ebff7bbeae652708aff03ff7c688b2bf73aba5172",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "df3c1f1723a033d2243abee2ae88feee104a64acb9cd2cdd7d222ff906e4c8d6",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "86e385291add95000b8685151d5d470fe5775e361a8fc444a52d09b57ec8cc03",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "c2b1eaf76f1ab53b693b6cec1caa104198e668d4415576d41a333ef715b46e0f",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 64be059372a1c9f83222e48473f0ede0798de7c29857bb5a0cc025c12a956a34>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "c077c627-71aa-5e2f-821c-be4987c44805"
+      ],
+      "cwd": "/tmp/run-c077c627",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w003/turn-1.jsonl",
+      "started_at": 1792084857.5217662
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w004": {
+   "walk_commit": "f8d5f2d47c021bc74af7fa4a7902dc0b21e0d3b2",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "db0895f62cd3d40c1084ebbd35191d847d92a1e156d3290dfb904c2516ec37a9",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "9391e671ded3062726fc4d96a6789b89ef19f035577bd29c535478e68c40135b",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "12190aae40834dc13660e506547cad4921423ab30a180db43dca4c3530a531f2",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "89adc2a1c212ebc5f00d1c69f9446151cbbed63acd855544d70273b3511611de",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 307d5269d440c17b6e7b52e87305b6634747f93977238b179aee801185fe4a7d>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "4c0b9d65-9f55-5d3c-a1c1-e588079070d2"
+      ],
+      "cwd": "/tmp/run-4c0b9d65",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w004/turn-1.jsonl",
+      "started_at": 1792084967.387088
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "1c003828bcaea4a048100a762c62355958fa468f2d91ac26ab12c1aafc157a14",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "7bfddfbc1e99bde5f9039a636c856ffdd2eb47affec7a4e585cfa06458d268c3",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "89adc2a1c212ebc5f00d1c69f9446151cbbed63acd855544d70273b3511611de",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 b2b3c9bcf446b281a9ded5bb8d95baccb68f580dcb80cb1a52d645787289ddd4>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "4c0b9d65-9f55-5d3c-a1c1-e588079070d2"
+      ],
+      "cwd": "/tmp/run-4c0b9d65",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w004/turn-2.jsonl",
+      "started_at": 1792084991.4149082
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w005": {
+   "walk_commit": "df2b0c87d975c11a71b9b860dc822af3818f59af",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "293c46f8cad1bb939adecb464b179f2d63aa28b3a9c5309e19adbbb596e4a55e",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "9b8f50e8b9ccaeb2445cd8d68be0b9a899d5258b8dd9d8902e32ccf3ac206af0",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "9d7168dbc3b24bebb6df12b6565e47cb47c148801a0774803adb5cf3723b985d",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "f0ad2a47c6c868e51e12430835062c284fa8ccf99b1aea8dd5147ff9f924ffaa",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 9d623fe0458a06c87088319806de5bf049e4dbb75680431602c49eb78f014fb2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "3b93111d-609d-5f4a-90e5-c75b4603bebc"
+      ],
+      "cwd": "/tmp/run-3b93111d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w005/turn-1.jsonl",
+      "started_at": 1792085036.439695
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w008": {
+   "walk_commit": "0652efe39ec4d0af70908fa7dbe39bb30facef31",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "ee835805e5903bd20471b9cae42ed2a895d7cedc0127bc5dd95df334a8ef4ae9",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "7a7fc20dbcd1942603039e26ec934a1e11e0f1af969508617a66624d7ea122ba",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "856d03435f922938e0427e6c62589990bb211eaffc7dc937afbb1446508e745a",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af1d31b9bd80dc0748566b9d26c84f16c51549184011eeb9beb8c42dda94454d",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 46df3f0d449fbf716ce429dadb51679a338faee04c60ee217c556486712499d5>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "ef4d19e9-7c92-5ebe-9fdd-c47750600e36"
+      ],
+      "cwd": "/tmp/run-ef4d19e9",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w008/turn-1.jsonl",
+      "started_at": 1792086208.632587
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "fa8aeef71c7073f24d70bfccd06a9047dcfa10c2a71e27422fb8619b613c8d5a",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "a7a01075a960bdb0a360e9964ecc8bb354d8c16e6a9dae2987cdac8472fcaff8",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af1d31b9bd80dc0748566b9d26c84f16c51549184011eeb9beb8c42dda94454d",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ef4d19e9-7c92-5ebe-9fdd-c47750600e36"
+      ],
+      "cwd": "/tmp/run-ef4d19e9",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w008/turn-2.jsonl",
+      "started_at": 1792086228.943092
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "68c949b6745bc39a7921b953cd80757a6e5c886f8da310ad0bac75b4b7e12c21",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "d0d5ca606fa7283d135117e93cb01d0e0d3dc9008359638c9710aae54e3be96a",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af1d31b9bd80dc0748566b9d26c84f16c51549184011eeb9beb8c42dda94454d",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 e36e97edfb1571f3564a97931b67113aacd6b5c7d00e0234975196b858dd0e2b>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ef4d19e9-7c92-5ebe-9fdd-c47750600e36"
+      ],
+      "cwd": "/tmp/run-ef4d19e9",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w008/turn-3.jsonl",
+      "started_at": 1792086240.8349097
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "94d8d7b1296be632b7187b7d781f8be753fe61052352de178224b1f149360694",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "9945e698e263fc28db47500b77e467220ba1e4e1c1d9a2f652e4db7b39d9c7fc",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af1d31b9bd80dc0748566b9d26c84f16c51549184011eeb9beb8c42dda94454d",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 efdc353a9d158061d70a2d5bf2fab6c12a9e1f5a95235bf7304b096ea5a9bfd5>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ef4d19e9-7c92-5ebe-9fdd-c47750600e36"
+      ],
+      "cwd": "/tmp/run-ef4d19e9",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w008/turn-4.jsonl",
+      "started_at": 1792086248.369116
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w009": {
+   "walk_commit": "6fb1420b4901de7e4cc0d73dd6ed855534873ed1",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "b497d64c84d80f0d801123e0ceda3cafa9c50559259665336be63b4e7b59f19d",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "d957d0bb8f7997030aeb1176b847062365ad317bb3b9f1aadd68db6083f57f38",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "86e07cc3dd22ea7f84cadfd720aca77e917c63fe08d4d72371728d705703b0d8",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "f0ff9e59612a3118fa25389730308c0dc54e88e4b8343e50cbae09953cdeb971",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 92a2a3e54c39c03c794a1784c3d8ccdfd5bb7d255e3bbceac1a858294b942de9>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "56051885-9c8c-5e30-962b-2abe5345bd89"
+      ],
+      "cwd": "/tmp/run-56051885",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w009/turn-1.jsonl",
+      "started_at": 1792086339.584685
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "f3e42cc68942c57ce0eef55885f83050ca9c0ffddcb59fec421a21e52da70caf",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "e9d16b33a90c25ecd2c4767193dfb32012edce9dcfef9a2133fbb7ab9a448000",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "f0ff9e59612a3118fa25389730308c0dc54e88e4b8343e50cbae09953cdeb971",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "56051885-9c8c-5e30-962b-2abe5345bd89"
+      ],
+      "cwd": "/tmp/run-56051885",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w009/turn-2.jsonl",
+      "started_at": 1792086377.5824149
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "22a8df8606229b9cf1affddbb7684c304646c51758212a0f57e1ad8253be5372",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "a8d249580b706e33bb99fb0bed7aa2c664eae244d52fc588d72bafe45a35d329",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "f0ff9e59612a3118fa25389730308c0dc54e88e4b8343e50cbae09953cdeb971",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 d95b5d48ffccf83e3f188b106fe1460374fe7967da24a55ab46b7abc59cab80d>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "56051885-9c8c-5e30-962b-2abe5345bd89"
+      ],
+      "cwd": "/tmp/run-56051885",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w009/turn-3.jsonl",
+      "started_at": 1792086390.283443
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "b84d5c4511db67b5dd274a54165d9581387d9843ded1dfab9619a67f7300bd02",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "3985091a9976081499dc520424ca5a28f66f1893279b9fbb11e1404a62eefba3",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "f0ff9e59612a3118fa25389730308c0dc54e88e4b8343e50cbae09953cdeb971",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 8d6139277e65e7e3af0f016a8679a62bcc4a0dbdc61d8b04c8a6df5ddd2a92b6>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "56051885-9c8c-5e30-962b-2abe5345bd89"
+      ],
+      "cwd": "/tmp/run-56051885",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w009/turn-4.jsonl",
+      "started_at": 1792086399.350998
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w010": {
+   "walk_commit": "621b6f9848f2a089b98c907716092f05c078d8e6",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "70359310141f579104e215e742572ad00521f0e3bec4394121a4468a9652369a",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "0e189711059b2fc1e5ae8aea2fe598ab30a0d5ae3f29ecd1baff32610f29d2d6",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "91e9cec3f04f2362d4aa6ec89a04c329282a54a27b63f50c4f579415a01193eb",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "fd2cbf114e9b9da404ba297c5f176ac5c3c92de51d5aa738833ee4d38b036472",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 62db6fa9a0f9663c3edf8cab4fd6ed08aa1c231d03a4e3c59a68fa1f61da1bee>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "4a8a4269-76d2-5e83-bda6-0dc3b98bef33"
+      ],
+      "cwd": "/tmp/run-4a8a4269",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w010/turn-1.jsonl",
+      "started_at": 1792086470.4692078
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "2f598c3995669e370fddc89aada16327739603da6fb857090619dccf99bc24fe",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "faba615e76160f54607a82856750a2385e9db7cace256e3b3fd98286ddb5dd0c",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "fd2cbf114e9b9da404ba297c5f176ac5c3c92de51d5aa738833ee4d38b036472",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "4a8a4269-76d2-5e83-bda6-0dc3b98bef33"
+      ],
+      "cwd": "/tmp/run-4a8a4269",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w010/turn-2.jsonl",
+      "started_at": 1792086511.6251218
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "e8f8afb9fe2b92219f6174bc0d47b1e5690863770a3979691393767fd9135081",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "603b48e3ccc9d97cbd39caed28a81803944621a740bead9fc77206cfba4b00bb",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "fd2cbf114e9b9da404ba297c5f176ac5c3c92de51d5aa738833ee4d38b036472",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 fe9afa4f0bb5b6b7b0a66cb45a02d4714677363e67d839c17483fae5e2364df7>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "4a8a4269-76d2-5e83-bda6-0dc3b98bef33"
+      ],
+      "cwd": "/tmp/run-4a8a4269",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w010/turn-3.jsonl",
+      "started_at": 1792086525.3812683
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "1066a2b474b2147803085f38d8452a945b943798408c3fa733ed20698c146fc6",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "d25b06a25468bd73073c0fd65846c0dfe80a43893ed48c7c85a9f90b5f705037",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "fd2cbf114e9b9da404ba297c5f176ac5c3c92de51d5aa738833ee4d38b036472",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 ff92704895edba9592c1975ca9813b44ff6a078dca9a85778cce68e8338f96f5>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "4a8a4269-76d2-5e83-bda6-0dc3b98bef33"
+      ],
+      "cwd": "/tmp/run-4a8a4269",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w010/turn-4.jsonl",
+      "started_at": 1792086533.580996
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w011": {
+   "walk_commit": "532d40b534e91425e3b086fb464993d442371fce",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "29b8c80a9a0fa1bf594caeb5943d1c215c452e891c91edd44c6eeed768cb4a23",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "2277f88394177b06de370684cfacb96df4d01a09a09c0b86182237617d3db9dc",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "5ba88574ccef199e5040db6f86aa33079955d79330d29ec066653515d68f58a0",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "5ffffe0db0db8ed023fb3b1b5360981d3e8f771c28f430ecf2f4e2852bc5c20d",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 8b5f29ba6111cbec7145e37ebcc20fac6c1ae50ff12e1784569ca13dba3f45b5>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "42aa1e03-0ce4-5c21-8002-889249d4f84a"
+      ],
+      "cwd": "/tmp/run-42aa1e03",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w011/turn-1.jsonl",
+      "started_at": 1792086601.0383635
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w012": {
+   "walk_commit": "4550ba147790bc70c86c647ddbf3ffa389c892af",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "5b0bdbe89b99b1d6748996a0269a700f1c3f52374f467246c2ea0bb1e3ff45ab",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "af598483873ff6b3b74b60ba8510a8af807f52a08a9b9f4befaa73a852589eb0",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "9ca280c08aedbeb41d7d5a746cf3a9e5400c210f55f73a4260a96ac71d30d459",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af11281e0e224fb73d61e33a70e2492a6aea32bb45d58e35200a0db2950c5409",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 6a7a94c406d6c39abcc74e77b394226cffce45798995cb5f689a8a5cb1c5b51e>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "388de336-a25b-5ba7-84bc-48ffdf006268"
+      ],
+      "cwd": "/tmp/run-388de336",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w012/turn-1.jsonl",
+      "started_at": 1792086670.0759099
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "afd8cc6ae8839c973b52d2ce491102cf7ace2fe1d894a195e4cbf668996b8f67",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "8d00aaa6c051578bd32bfc5ca717764e13577dba34c9cfd8d73fdaf575ef8fdb",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af11281e0e224fb73d61e33a70e2492a6aea32bb45d58e35200a0db2950c5409",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "388de336-a25b-5ba7-84bc-48ffdf006268"
+      ],
+      "cwd": "/tmp/run-388de336",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w012/turn-2.jsonl",
+      "started_at": 1792086691.9978662
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "fd594178db43d8e6a3c1e6dfded6828d1b80641499e2d4f4eb6cc6cb280ad6c1",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "9f688129287cffce5bab4a425b26b683a3133dc1d104bb7eb5357c1fa36f30bd",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af11281e0e224fb73d61e33a70e2492a6aea32bb45d58e35200a0db2950c5409",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 73ec5fc097cb7ea6b491ad15e6aa24fc3a9542085053e4877daac8b294a1755c>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "388de336-a25b-5ba7-84bc-48ffdf006268"
+      ],
+      "cwd": "/tmp/run-388de336",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w012/turn-3.jsonl",
+      "started_at": 1792086700.9642339
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "8d7ec3ffd6822bdf20da4ae8b16502a070ec6c521d4abafd10a9b1e1d20cf57b",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "757f5e9fb6ca96d70f4e11678e6fb5c2f617e94c0f1fefc69b5155a3d46f1c41",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "af11281e0e224fb73d61e33a70e2492a6aea32bb45d58e35200a0db2950c5409",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 1412bf2064053bef0b878daf8eaa471dffb33329e103d64c9dfe33d25b1f2e84>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "388de336-a25b-5ba7-84bc-48ffdf006268"
+      ],
+      "cwd": "/tmp/run-388de336",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w012/turn-4.jsonl",
+      "started_at": 1792086706.8844752
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w015": {
+   "walk_commit": "fa1acdb603e5efe7a62e72f35640d9a9afe8a8a3",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "f21a478593cd134b7cd9d729acf593a6953216c52187443f45e7b6cb137e53f4",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "b46e28c99ba665b4bb062d53f19743ee77c98877fd809d849dd035e37cdbfdcb",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "f77846412bc6fb368a19e8944d9513fdf75866ae91b519f007e16323d7c85b6b",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "68046930b47c2d80831b32e74643b457c836cf7bef73f8a14bdb70c98e19dd69",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 5ea8094b8d9c26a10ed914b19aa8ee234336a22a89db6951298e29309b9f3596>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "73944d90-403e-5587-80d8-0f56d433e8f9"
+      ],
+      "cwd": "/tmp/run-73944d90",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w015/turn-1.jsonl",
+      "started_at": 1792086931.007654
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w016": {
+   "walk_commit": "950250c5c053a6d0b4d242c4e75baeedac4a68df",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "5b03371040028dbdaf7f3ba221244612529971c72220f4695573ac7d168eaa4d",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "618ace2d674a018316980e291adc7de021bab4e20f03acf8ef4720cce5ac307c",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "7728283586c89d965a6c9829de635d7aa4e0bcf46669100fa476ece1df690701",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "544d4221851b851eb1c8be983e076770c0b963f7f608dc2e257c070ca38756a0",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 648e165f2feaa1f734e74325ab3e55ad5a28df1c5a5c7ce2baaa3e42f04e3a7b>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "ab85f11f-9103-5e50-a892-ad39e90b2bc1"
+      ],
+      "cwd": "/tmp/run-ab85f11f",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w016/turn-1.jsonl",
+      "started_at": 1792087000.2605124
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w017": {
+   "walk_commit": "5ad2ecec9f1cde99666297996c010dc15d534787",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "831bb6f1d7cec47778581267288feafadda63dffded8f52fe57a8f6f0f512e89",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "77bff7a0e93d10d78e336e59483588f4123910b4211cfc527c548edbcbefede5",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "a9c05b2ee9b9321b540f5973ac4a805e1392c1625df842a04e55ae2105be6949",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "d80be33c7eebb35afcc026fac57115af42cecc0ccf862deb5fa057152b0c6de9",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 049d7c609fe648ebd0a9850dda24e124636bd7be00748dc18532bd8ab02ed7b3>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "aeace196-71b9-547c-ad49-ab280be52248"
+      ],
+      "cwd": "/tmp/run-aeace196",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w017/turn-1.jsonl",
+      "started_at": 1792087071.0242987
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "f21a8a57ef7812dc7ccb189ee7cacb85b2903ad374e7d65fa5732d51dfa47243",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "c3010191e5ef000af47441fb1864e28080f974604a0abaf2fe28e99da06b36c4",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "d80be33c7eebb35afcc026fac57115af42cecc0ccf862deb5fa057152b0c6de9",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "aeace196-71b9-547c-ad49-ab280be52248"
+      ],
+      "cwd": "/tmp/run-aeace196",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w017/turn-2.jsonl",
+      "started_at": 1792087091.3751721
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "c53477d3f7ec710c1dd0fb23b0bb15ffa999176bacfdbc911c1d69c499c05530",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "2b3eee3b13983bd11e3b6b4343fc43ffd0bb96325fb0bbab42303f3e256f35a0",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "d80be33c7eebb35afcc026fac57115af42cecc0ccf862deb5fa057152b0c6de9",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 6f459c28f3fadb4ece21a90b88ba2d4a4898e6cc6db25786bc318ad488f0a7ac>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "aeace196-71b9-547c-ad49-ab280be52248"
+      ],
+      "cwd": "/tmp/run-aeace196",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w017/turn-3.jsonl",
+      "started_at": 1792087100.379808
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "4882876e1b2840031ddd37b44050b00ebf46ea32a1c7be5a700d6aef01770977",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "fa92c86431689c4dbfe9043d059ff105af8f99643117fb7735b01e47cccfc2d2",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "d80be33c7eebb35afcc026fac57115af42cecc0ccf862deb5fa057152b0c6de9",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 0393fb2d295aeaa6af3587546319edf2bb7dff9ec8d7dd75e1f39e4436c4f61c>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "aeace196-71b9-547c-ad49-ab280be52248"
+      ],
+      "cwd": "/tmp/run-aeace196",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w017/turn-4.jsonl",
+      "started_at": 1792087108.8166275
+     }
+    },
+    "turn-5.jsonl": {
+     "sha256": "f6cbccff8e41407cb86dd0cf496d19b0602a00e4821ef07baed80eea83d76c93",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-5.jsonl.launch.json": {
+     "sha256": "b0614848cb9b3f08736d7ac92fbc5e7065e5f0ff407dea31476413bd6effd0b2",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "d80be33c7eebb35afcc026fac57115af42cecc0ccf862deb5fa057152b0c6de9",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 b572032832489b35ed21f777db972e035e4e6c3d0e5fed1f1f5b159dfba85afe>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "aeace196-71b9-547c-ad49-ab280be52248"
+      ],
+      "cwd": "/tmp/run-aeace196",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w017/turn-5.jsonl",
+      "started_at": 1792087118.7917879
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 5's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 5's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w018": {
+   "walk_commit": "9f53f9f8c74a4aa98fcb8c02e0a386a67456efb7",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "ef0e11b2a8fc0355b21dcc12f037a4ae2397272fad511c2b93b13c5c48480cac",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "6a58008472509a1543b3ca81e0e0f3de3943e5f80b0b4cb8a0f936356c639003",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "4cc1d57f46281a38b299fc4778252cad3dfd719304d9f44a1c638fbd80cc49bf",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "876cbd13ae8df980bd357fe41bacc619873c2e01cc8c33f07752a7964f2c6f8e",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 4fc0564644618929ed1ce07eb6dfd8a097b5d34f708bda4ffee85e3bcf01c9bf>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "39ee3a83-a742-5b51-b362-0fdbf83798e3"
+      ],
+      "cwd": "/tmp/run-39ee3a83",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w018/turn-1.jsonl",
+      "started_at": 1792087200.8987272
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w019": {
+   "walk_commit": "cbffd1992e8aefd85911441acd736719353dfdfb",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "efa1671b6bb75644f0ace9ae561341e2e844d07cc6b26314ca84444e34a2cdab",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "17c7739120cca805faba44623f454b2c3855e64487a5b20193e19f106c03c026",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "8eac448f79ad4917da78aeb7dffeadce3ae93e7f61fab085a79142ef3ddcd7d6",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "70b3f46c5a0b7b56aeb7acb6f8c14c3336eb1b16c30803d1a1774502d663d79a",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 dbe3e81d66f074bac46c24d355f218489b46ecec1819931f3621df209856973b>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "3ba29c3d-d71a-5e5c-8666-ccc337b52c54"
+      ],
+      "cwd": "/tmp/run-3ba29c3d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w019/turn-1.jsonl",
+      "started_at": 1792087271.100682
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "6c6d0b245a24c95bf82ab4d98c4d9aa29fa7a591e42cd5a676466ee3f0c8d881",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "1936ab43966d3ce88b0b780bfa127debff32c0803f99e3dbc9a4bd0c0f5c5327",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "70b3f46c5a0b7b56aeb7acb6f8c14c3336eb1b16c30803d1a1774502d663d79a",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "3ba29c3d-d71a-5e5c-8666-ccc337b52c54"
+      ],
+      "cwd": "/tmp/run-3ba29c3d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w019/turn-2.jsonl",
+      "started_at": 1792087291.7294183
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "d2edf620aae59c8bbdca2fc1fb58ec571c17c4d4c81e6043f519d57e0fb5f4a9",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "cacc6123034adcf15f42ed2e2fac5923328592a8db601f5179755fc5239263d9",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "70b3f46c5a0b7b56aeb7acb6f8c14c3336eb1b16c30803d1a1774502d663d79a",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c21ef82dd0640ddf203ff70f7dc516921dd406c89c6933019605da38e7e1542c>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "3ba29c3d-d71a-5e5c-8666-ccc337b52c54"
+      ],
+      "cwd": "/tmp/run-3ba29c3d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w019/turn-3.jsonl",
+      "started_at": 1792087300.2291145
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "9a4bb3e36ec4d727d5fe7f306eb0f095b6eecdd20615456b557ae1f0cfaa8d02",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "3ac67c680019dab1ee6c2cc1fe81ac63b131714accac1c5799eecd704fb3d9e5",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "70b3f46c5a0b7b56aeb7acb6f8c14c3336eb1b16c30803d1a1774502d663d79a",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 9b5b9b10db624e01a33a3d56d1fb3d234a543f52e6b953349775828d9c72a036>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "3ba29c3d-d71a-5e5c-8666-ccc337b52c54"
+      ],
+      "cwd": "/tmp/run-3ba29c3d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w019/turn-4.jsonl",
+      "started_at": 1792087307.8791409
+     }
+    },
+    "turn-5.jsonl": {
+     "sha256": "47c11246583b1b42f6d1891971dbf362c827755e216f76e66a741b8d173462e7",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-5.jsonl.launch.json": {
+     "sha256": "f2480701e98dd66ca6005fe3db38a50f2082d063ffdc61328e1b6050bcc4cc95",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "70b3f46c5a0b7b56aeb7acb6f8c14c3336eb1b16c30803d1a1774502d663d79a",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 b572032832489b35ed21f777db972e035e4e6c3d0e5fed1f1f5b159dfba85afe>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "3ba29c3d-d71a-5e5c-8666-ccc337b52c54"
+      ],
+      "cwd": "/tmp/run-3ba29c3d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w019/turn-5.jsonl",
+      "started_at": 1792087315.2694259
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 5's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 5's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w022": {
+   "walk_commit": "554cf6acbe0dfef44420e9e7cba6c61549a65cc8",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "42ab49ee57ec8c694432595c72984b895343a6a632a534311b05f21cc5bd561d",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "ffd7f6e8fd8b380ebe09af7144f1ee1f3837a6056744230867aabce25ad05760",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "c96c954000db1f88196b57aae8b855bfd71e531e0e5c17e398db650eb76ffa32",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "20f7510ff13454295e3636d11cf4a96533d6dab263d34375de5324645e34078f",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 ac68ca009cfba26828576494d2054babc38bc82ef54ccf3a9b8fb002ad3cce08>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "92c5dc61-ff69-58d0-82ad-46bea9e7c1d5"
+      ],
+      "cwd": "/tmp/run-92c5dc61",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w022/turn-1.jsonl",
+      "started_at": 1792087740.8154497
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w023": {
+   "walk_commit": "cbd6d313cbbe9054c3f83c90d43ba0ae7c2c6af3",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "2955972d126a3b1a22a6e1c1803299cf93cd51f1d9ae91f215b6009f4131fb77",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "c275d14cce75c314a2aec3e4f30ec9ae0bd2ec0d4f613ac113a4d6e12719066d",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "c949e81b4345ae0c42535b9489e50ea7082b6fdd9473b238c5e4517d27f7e0d2",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "4ace206aa068b45d341f09f0bd404c1e2b3aaff51d0b6aa049bc86c2e0c41305",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 498ea090e33aad5345f6b348f7d0ba5f4f9fe6d11278dc9997c99a9d16e4fe0e>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "f742f2d1-119e-5295-801b-b4400b8a5d48"
+      ],
+      "cwd": "/tmp/run-f742f2d1",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w023/turn-1.jsonl",
+      "started_at": 1792087809.977858
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w024": {
+   "walk_commit": "806624fb0d6544382705a593923dc2b51e2217e9",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "87ec97963ddb5b43c355f322611851b28a7148e8c3c4837c7be3e34edf871a00",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "74a9018d63e183a4e745a5d35333691341e896a78d9450d5c8c0f46d9115c69f",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "0976444392a612628ae493b1a673d8f0b01568db9b0cca922f4368c27a462bb3",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "139943ae500fdaca2cc8c2a8f537b137f5f34573144aeb86478367c0aae68b1c",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 ca64373684a3a7d71cd8900293aea5291b03e59b6c8df7c3d58bfae355acbbd4>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "e9680625-8747-5ed0-8878-45229b43494c"
+      ],
+      "cwd": "/tmp/run-e9680625",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w024/turn-1.jsonl",
+      "started_at": 1792087879.6887102
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "d8d0ebbad6136324137835afe38eaed11c24ea743aee65570d6aa9c806272a74",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "ed18b7c97c13bfaf63b9850ec0aeca0568da09550b60351f15f7fe3d8588a601",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "139943ae500fdaca2cc8c2a8f537b137f5f34573144aeb86478367c0aae68b1c",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "e9680625-8747-5ed0-8878-45229b43494c"
+      ],
+      "cwd": "/tmp/run-e9680625",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w024/turn-2.jsonl",
+      "started_at": 1792087909.977826
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "e9337e878c7fda8c0c15cc4f9011bb5c32290c80d8342c5d96f7bfea913be67a",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "c0460425d0af09bfb480a195c98e11bcd6a6ae0d1687ab165b01d913c4faa6a6",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "139943ae500fdaca2cc8c2a8f537b137f5f34573144aeb86478367c0aae68b1c",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 8465d95e3c356332809ab8a273d6b5f075c382b71fe087d95f3af6489ae5322d>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "e9680625-8747-5ed0-8878-45229b43494c"
+      ],
+      "cwd": "/tmp/run-e9680625",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w024/turn-3.jsonl",
+      "started_at": 1792087917.6753397
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "bea1ac5aff511b0a9733d113f884bdb7825e363386ea1894543e4391123503a2",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "060e6f504cbbd34f8b52c961673d0b348e1d52eb2bea8496be859c3ccb92bdd1",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "139943ae500fdaca2cc8c2a8f537b137f5f34573144aeb86478367c0aae68b1c",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 4c942978d0299d7dbb64c82794be9b9da5399dacd4a656628bc0c35cd612dab3>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "e9680625-8747-5ed0-8878-45229b43494c"
+      ],
+      "cwd": "/tmp/run-e9680625",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w024/turn-4.jsonl",
+      "started_at": 1792087923.4357624
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w025": {
+   "walk_commit": "0ba76d632eb5bc31eaf72371391f4461469ef766",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "d3538e366c1711492a4c4b0a9937e2a04df323d0fb5080b7088b081b23fb4e1a",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "8d0c7b71cef4a9c8678042fe899d278eb3d3eb6bf59739d76cdf12715c555db2",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "21a2b1eaac8ddc60f68117858a5c6f71dc4040fe76c29440d954f45ddec861cd",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "8f26497e93c3f50014e6f080bf3508e979e34439b01b998d3dc8e086fc884e47",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 2b84c674edeb5fd6da717ba6acb4d63963f3d2ceea50aba0a34367339ae968ca>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "93c28f9d-3621-5c52-881e-a0b620a0a618"
+      ],
+      "cwd": "/tmp/run-93c28f9d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w025/turn-1.jsonl",
+      "started_at": 1792088010.3733814
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w026": {
+   "walk_commit": "4ca791b1c54f89a876984a85ca14a113e7acc7c8",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "9bf29d936bf20e9075e4877d66d112e612ccd55a30039ff551b4d9921dc472d9",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "eb731e028ea0eea9eaf0ed7a4076c85d2d8ccae4d320c4306700985c5a82da77",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "f18676acd11e6f4413034a7995fb7e953e153f311853739a011a33493d5986c7",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "1ff0b9b5a44622fc90e050008d81a57b74554fe5aa232f2e5ac10981dd118a5f",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 4c0cc3b7e5f7f269c3968ef005b445a2499db073d4289837167b79ecd128c922>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "28fc041d-af70-5420-b704-e99829581882"
+      ],
+      "cwd": "/tmp/run-28fc041d",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w026/turn-1.jsonl",
+      "started_at": 1792088079.2788754
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w027": {
+   "walk_commit": "e25c3d0f0ec3bf94249124b0e5e82d419774b5f9",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "d254d7fa617e118b2aa63239ba56797b4ff066fb3339f29f24bad481c312ee63",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "f139160d7cde0a8e5ee409d80920e3df6b179482f9aaf978ab5d4f3f7cec23b1",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "10114933fa9668dfacd1b3bde7c152c59e72ce22131cd35cd5fc972eadf574a8",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "6895363e8b43807922ba6cbca3807b59cc9698b6a8fad46809abb5ea18b03dfb",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 44c7fd1724ed11df457696c0ecc2e425c2f1a1db579646bd55f0cf99b426b59e>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "ba11ad4f-ce8e-560f-b57c-e1958a4a1241"
+      ],
+      "cwd": "/tmp/run-ba11ad4f",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w027/turn-1.jsonl",
+      "started_at": 1792088149.4428127
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "d1f301c5721795bf822df47b9a94a1dbea808f81433260432cc011bd56ed7396",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "3906e46c820e7a9b2d040470cc80e60ea3cba5b32f82ce77d3e4a45be597c21a",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "6895363e8b43807922ba6cbca3807b59cc9698b6a8fad46809abb5ea18b03dfb",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ba11ad4f-ce8e-560f-b57c-e1958a4a1241"
+      ],
+      "cwd": "/tmp/run-ba11ad4f",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w027/turn-2.jsonl",
+      "started_at": 1792088169.0634172
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "4dc397c3e0e307d4809e8681c21a628d9561268c6f8e0744c57bb5e33cd0ebef",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "d0879abe511cceed9c6ef5483b003f1d454601d317def494401a92b4313b1ac0",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "6895363e8b43807922ba6cbca3807b59cc9698b6a8fad46809abb5ea18b03dfb",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 90aa833863cca01e4233092c9ba25a1b3bb91297c77e1ab2c625d5cc01ca8942>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ba11ad4f-ce8e-560f-b57c-e1958a4a1241"
+      ],
+      "cwd": "/tmp/run-ba11ad4f",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w027/turn-3.jsonl",
+      "started_at": 1792088184.3759456
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w028": {
+   "walk_commit": "3274fa7dbf6e1fcf987e7ad3761b40017fc73492",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "5b1aec13cecfd7148ad95652354dc1eba3e1c18049215e61321c7ce9030bb325",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "76993d0d61f5e99790ce1d4994913d144d5fc2767f6c376e5d36274007669fa6",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "705c33de9c53ccf2b2695499e3c3412bef08f33fc98d70dc187e1192a48ab79a",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "1f7807b156e8d627727835bc38b044d9b2bb1d41256b812421a3d0a852aed3e9",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 82142c8d1cc0293f4c84d7f8cc08e719bbf1c67fce2fcdb3485d4ea5d4be7eb2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "ee90328e-2373-5c8d-89e5-30a0ce56a800"
+      ],
+      "cwd": "/tmp/run-ee90328e",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w028/turn-1.jsonl",
+      "started_at": 1792088280.3851943
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w029": {
+   "walk_commit": "55da15e5e3083d9529e8589eec95c57f2205aff6",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "cce442a739512df10940d9b4181d00044d69d08eb5af129c968071c741b5b15d",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "651aae4f785799270c620796b693364383b44b6f9311b4d999a84f6a7319aaa3",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "1d5f8e9e6d6b047863517a85e34891144c379f3e31e59374bbf81790c93191ef",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "a31de35d8943996e85ddec6b8b8a7126d33ac906f2811fa06c9c2d7a0d4296c2",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 3e60b26886c2d0a1a98f325fc7c29740ebcbd597bdd556ca0280b3e280f55454>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "caac1176-b879-5479-bc3c-9daabb6d784d"
+      ],
+      "cwd": "/tmp/run-caac1176",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w029/turn-1.jsonl",
+      "started_at": 1792088411.4408512
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "9f48cefdc180a1bbb301c94492283de8ab42aa2560f41e0e12da3f917b42b093",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "8caff68ca023b167fd878feb00ca381922bb5ee6eaca1388bb11adccddea3ec9",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "a31de35d8943996e85ddec6b8b8a7126d33ac906f2811fa06c9c2d7a0d4296c2",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "caac1176-b879-5479-bc3c-9daabb6d784d"
+      ],
+      "cwd": "/tmp/run-caac1176",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w029/turn-2.jsonl",
+      "started_at": 1792088443.4025786
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "89d7acc055af58fd0e4ae8acec92dbaa1a3b5a42bd28b40d0e5006587d256ae7",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "772c081b4e75ff05393b7bd19cd46f20379f3af83717571441ab77699a7ecee5",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "a31de35d8943996e85ddec6b8b8a7126d33ac906f2811fa06c9c2d7a0d4296c2",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 1ec232e985053ae411a077556ea60677118691e080668fd4e0c1d0a14cf1266f>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "caac1176-b879-5479-bc3c-9daabb6d784d"
+      ],
+      "cwd": "/tmp/run-caac1176",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w029/turn-3.jsonl",
+      "started_at": 1792088454.6646614
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "ad07e6fc12764d5da50f93bfb71d734c72246364c6d444494969a2a14be52717",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "9395c510be31235b64e697497bfffc95b8ae46235faf7848aecd8530762faae4",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "a31de35d8943996e85ddec6b8b8a7126d33ac906f2811fa06c9c2d7a0d4296c2",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c23101161845427585d0619064aaddf46e9155d5d137e93fef183d7f88389716>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "caac1176-b879-5479-bc3c-9daabb6d784d"
+      ],
+      "cwd": "/tmp/run-caac1176",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w029/turn-4.jsonl",
+      "started_at": 1792088461.814669
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w030": {
+   "walk_commit": "c1aecd935da0a99a7e0259f1be41e3a915843cb4",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "28a4c4fb5ad71345103e80aa6c42388dfd357fd057f0694f270b55173742ba99",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "48286fd15f93b63a91682f660a2a1a3b112e88a5ac3f08e4861e0cecfa5c2a94",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "479dc1f92e666cc8d2029fc3a0d25e0b9934111e8c97c2b638ea4456cc4919db",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "db8d35205aacf665e4f4fc98f1000b869be04641a2cbcc826b1880d14bed062e",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 e1786543d929d0dbb6f86e8f0384a03e8a20ac1f1da1475a65cd441cf5d9a9e4>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "be04d409-685b-572a-a6a2-341f8a0b74af"
+      ],
+      "cwd": "/tmp/run-be04d409",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w030/turn-1.jsonl",
+      "started_at": 1792088542.021233
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  },
+  "w031": {
+   "walk_commit": "197658fe8d826fb19d50fd3f346309e039dee9e8",
+   "files": {
+    "transcript.jsonl": {
+     "sha256": "99360d3aecae7594c714efd681d1fb04e2dd5f0b011c964599fe9c8e8b55c589",
+     "kept": [
+      {
+       "type": "attachment",
+       "attachment": {
+        "type": "deferred_tools_delta",
+        "addedNames": [
+         "CronCreate",
+         "CronDelete",
+         "CronList",
+         "EnterWorktree",
+         "ExitWorktree",
+         "NotebookEdit",
+         "RemoteTrigger",
+         "SendMessage",
+         "TaskCreate",
+         "TaskGet",
+         "TaskList",
+         "TaskStop",
+         "TaskUpdate"
+        ]
+       }
+      }
+     ]
+    },
+    "turn-1.jsonl": {
+     "sha256": "45f04ba38a8e72e87e9307f6dae5921a5a9b71ef8887b09abf07e2ba39f2ea93",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-1.jsonl.launch.json": {
+     "sha256": "0826c7c4c0e22c80e75db39381e86a626399fbb2aabca6f5b9e8d374f84bd80a",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "0ae21423eb2fb4b4050b30a991b5d62df3813e76e29c8e7f337958e63b393b77",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 5e0bbd3aaf4810962a41ab8b2669361a152cbcca054ca7c73156a5f2f22e2f1b>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--session-id",
+       "ef52495a-eb4c-51b0-abbd-a6ea99254524"
+      ],
+      "cwd": "/tmp/run-ef52495a",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w031/turn-1.jsonl",
+      "started_at": 1792088672.4915576
+     }
+    },
+    "turn-2.jsonl": {
+     "sha256": "dfa8dbf608a3c018639477c482dc7d0b8853a5822a3e8a504ca67dd34d4bdffd",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-2.jsonl.launch.json": {
+     "sha256": "24a65bed6c5c71574b59e5030fc6fb8bc0fbe5efa7f777b45edf6c8a5e4096a1",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "0ae21423eb2fb4b4050b30a991b5d62df3813e76e29c8e7f337958e63b393b77",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c97550ce8213ef5cf6ed4ba48790c137df3ef6a5da20b48961001a634b6cead2>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ef52495a-eb4c-51b0-abbd-a6ea99254524"
+      ],
+      "cwd": "/tmp/run-ef52495a",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w031/turn-2.jsonl",
+      "started_at": 1792088695.2011156
+     }
+    },
+    "turn-3.jsonl": {
+     "sha256": "4cda2e2681d629828f21db78dfc3d71e40f1df63083c619445187c7fcf46e63d",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-3.jsonl.launch.json": {
+     "sha256": "4a51f59d18bfd9809eb1106822689c2e41c84dea929a497a151635d5a255aa5b",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "0ae21423eb2fb4b4050b30a991b5d62df3813e76e29c8e7f337958e63b393b77",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 969beeed5bb0335cd4498857144982ce58f7efac7697378d915e8c84e1adccdc>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ef52495a-eb4c-51b0-abbd-a6ea99254524"
+      ],
+      "cwd": "/tmp/run-ef52495a",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w031/turn-3.jsonl",
+      "started_at": 1792088703.9250917
+     }
+    },
+    "turn-4.jsonl": {
+     "sha256": "52f70116f529df65bea0e34c31608893c28a4f9c8a30355a689a7c2804e8e9ff",
+     "kept": [
+      {
+       "type": "system",
+       "subtype": "init",
+       "tools": [
+        "Task",
+        "Bash",
+        "CronCreate",
+        "CronDelete",
+        "CronList",
+        "Edit",
+        "EnterWorktree",
+        "ExitWorktree",
+        "ListAgents",
+        "NotebookEdit",
+        "Read",
+        "RemoteTrigger",
+        "ReportFindings",
+        "ScheduleWakeup",
+        "SendMessage",
+        "Skill",
+        "TaskCreate",
+        "TaskGet",
+        "TaskList",
+        "TaskStop",
+        "TaskUpdate",
+        "ToolSearch",
+        "Workflow",
+        "Write"
+       ]
+      }
+     ]
+    },
+    "turn-4.jsonl.launch.json": {
+     "sha256": "ddad513f9051c86cfc00f7a4d7a9d1ca1d44a064fb8b5eaa4544c3ed40849113",
+     "kept": {
+      "schema": 1,
+      "harness": "claude-code",
+      "container_id": "0ae21423eb2fb4b4050b30a991b5d62df3813e76e29c8e7f337958e63b393b77",
+      "argv": [
+       "claude",
+       "-p",
+       "<prompt elided: sha256 c3f874287cb03749fbacc2da55d65b605fb5ef1fd24ad19f1f68415c4f1dd4d4>",
+       "--output-format",
+       "stream-json",
+       "--verbose",
+       "--permission-mode",
+       "bypassPermissions",
+       "--permission-prompts",
+       "none",
+       "--model",
+       "claude-haiku-4-5-20251001",
+       "--setting-sources",
+       "project,local",
+       "--strict-mcp-config",
+       "--settings",
+       "{\"availableModels\":[\"claude-haiku-4-5-20251001\"],\"env\":{\"CLAUDE_CODE_DISABLE_REFUSAL_FALLBACK\":\"1\"},\"fallbackModel\":[],\"switchModelsOnFlag\":false}",
+       "--disallowedTools",
+       "WebFetch",
+       "WebSearch",
+       "--resume",
+       "ef52495a-eb4c-51b0-abbd-a6ea99254524"
+      ],
+      "cwd": "/tmp/run-ef52495a",
+      "stream": "/home/javier/w-l4F8UdYQ/repo/evals/gap-study-4/rehearsals/w031/turn-4.jsonl",
+      "started_at": 1792088711.3047369
+     }
+    }
+   },
+   "expected_refusal": [
+    "[harness-condition-violated] turn 1's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's launch journal: --disallowedTools lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; permissions.deny lacks ['ListAgents', 'RemoteTrigger', 'SendMessage']; crossSessionInbound is None, not 'refuse': the isolation denials did not hold",
+    "[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 2's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 3's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] turn 4's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold",
+    "[harness-condition-violated] a deferred_tools_delta adds ['RemoteTrigger', 'SendMessage']: the isolation denials did not hold"
+   ]
+  }
+ }
+}

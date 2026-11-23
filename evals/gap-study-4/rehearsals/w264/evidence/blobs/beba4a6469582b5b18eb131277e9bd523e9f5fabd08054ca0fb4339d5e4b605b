@@ -1,0 +1,42 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-10-27
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform PCA on gene-level counts to visualize sample clustering and examine the separation between treated and untreated conditions. The PCA plot will reveal the primary sources of variation across the six samples and show whether biological replicates within each condition cluster together.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_samplesheets | rnaseq_bulk_design.csv |
+
+## Method
+1. Load gene count matrix (salmon.merged.gene_counts_length_scaled.tsv) and design table (rnaseq_bulk_design.csv) using R; load within gars-bio conda environment.
+2. Filter genes: retain genes with mean count ≥ 1 across all samples to reduce noise.
+3. Apply variance-stabilizing transformation using DESeq2's varianceStabilizingTransformation() function to stabilize variance across expression levels.
+4. Extract normalized counts and run PCA on the transformed data, using the top 500 variable genes identified by variance.
+5. Generate a scatter plot of PC1 vs PC2 (the first two principal components), coloring points by the condition column from the design table.
+6. Write PCA coordinates (PC1, PC2, PC3) for each sample to a results table.
+7. Create a summary report documenting variance explained by each of the first 5 PCs.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | PCA scatter plot: PC1 vs PC2, colored by condition (untreated/treated) |
+| results/pca_coordinates.csv | table | Sample PCA coordinates: sample_id, condition, PC1, PC2, PC3 |
+| results/pca_summary.html | report | Summary report with variance explained by each PC and interpretation |
+
+## Execution
+Runs: batch
+
+Expected wall time: ~2 minutes. Expected output size: ~100 KB (PNG plot, small CSV table, HTML report). The analysis is lightweight: only 6 samples, straightforward filtering and PCA computation.

@@ -1,0 +1,32 @@
+{
+ "base": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+ "config_digest": "sha256:da2067d3ee9f1eeea61afc39cdeddadfed2bd9d339382f8b1ccd8cbd1b9d33a6",
+ "dockerfile": "Dockerfile",
+ "harness": {
+  "package": "@anthropic-ai/claude-code",
+  "version": "2.1.296"
+ },
+ "image": "take-a",
+ "image_id": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "manifest_digest": "sha256:c8d50caa6de74e8c1761aaf572e2ef8f6d2d573a69bb851af02395f6106366e8",
+ "pending": {},
+ "python": "3.11.2",
+ "schema": 2,
+ "source_commit": "ad766f016693b60e94a2819368a206fa580176d2",
+ "users": {
+  "agent": {
+   "gid": 10001,
+   "name": "dana",
+   "uid": 10001
+  },
+  "keepalive": {
+   "gid": 10003,
+   "uid": 10003
+  },
+  "watcher": {
+   "gid": 10002,
+   "name": "eli",
+   "uid": 10002
+  }
+ }
+}

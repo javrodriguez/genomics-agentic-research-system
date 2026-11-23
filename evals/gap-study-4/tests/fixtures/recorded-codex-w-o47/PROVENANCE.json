@@ -1,0 +1,125 @@
+{
+ "schema": 1,
+ "made_by": "lane vendor-settle stage K (S1): a byte copy of each committed blob of the walk folder, evidence/ left out (no vendor reader reads it); never edited",
+ "walk": "w-o47",
+ "harness": "codex",
+ "cli": "codex-cli 0.162.1",
+ "walk_ref": "walk/w-PhMO8vDv",
+ "walk_ref_commit": "61a4179234bb74ee689baa61a8f7d2dfb82a3734",
+ "files": {
+  "check.json": {
+   "source": "rehearsals/w-o47/check.json",
+   "blob": "31462176fd1a7ce05f1dd37279158feaf3c25e24",
+   "sha256": "7497ba719bed713f3842ee801ad58ade9cb5f6a92eac313dcb9ac18f07abdf5b",
+   "bytes": 115
+  },
+  "driver-ledger.json": {
+   "source": "rehearsals/w-o47/driver-ledger.json",
+   "blob": "e9f7e74e531cefea6d8461c98e80cc2c1b98f7de",
+   "sha256": "745bfaa7d55a4a5f4a8add08c0fc7f806677bcc2d123e5e30604affde0cc9e72",
+   "bytes": 2323
+  },
+  "environment.json": {
+   "source": "rehearsals/w-o47/environment.json",
+   "blob": "b7a9d0699f9fb57e0aa98b26ae0755c68c444687",
+   "sha256": "8443a1be5b33d15e1152cffd782bfe6fb6348588dbf7f66972a76711c8814788",
+   "bytes": 3193
+  },
+  "evidence-ledger-copy.json": {
+   "source": "rehearsals/w-o47/evidence-ledger-copy.json",
+   "blob": "47c9cbf8f0ed7a6b634b703ea836b9e27dd31b8d",
+   "sha256": "8e8cb899eb08340cc5cef0bd52f850538937941c38250222ec26a25fa1dd3dac",
+   "bytes": 190
+  },
+  "grade.json": {
+   "source": "rehearsals/w-o47/grade.json",
+   "blob": "18bacdbd28d373bd201775d664557d0d1e7da43d",
+   "sha256": "38fd3e35fc1c93426af84241355ee1fa30e50418fe8f3a0317cbec33db16389a",
+   "bytes": 170
+  },
+  "launch.json": {
+   "source": "rehearsals/w-o47/launch.json",
+   "blob": "544b28264f631d0c13eae7c9fac8a9f0cb12d3b0",
+   "sha256": "beed87f86957f9491a4c22eaf6f30aa0f1da51a4e506fa479b0f7744c826d662",
+   "bytes": 17480
+  },
+  "ownership-grant.json": {
+   "source": "rehearsals/w-o47/ownership-grant.json",
+   "blob": "d989b6595ad877654f63b37af0577512ef6164a8",
+   "sha256": "fea34e83f33a1785e8bc713c4bbbec12fc84546cf31d1ba6d3d8d68504b8ab32",
+   "bytes": 638
+  },
+  "ownership-restore.json": {
+   "source": "rehearsals/w-o47/ownership-restore.json",
+   "blob": "71b42770b9f97fac6e0355fc97ef33258acff236",
+   "sha256": "9f563e28702c82a12d0c049d81ffeed3917895ccca0c6663691930fbd1b89887",
+   "bytes": 885
+  },
+  "postflight.json": {
+   "source": "rehearsals/w-o47/postflight.json",
+   "blob": "cd034014e32a71fd01f81a7b1189ef364fe40cb4",
+   "sha256": "e27ba31981460b0b4e2d2adf91fc6c4798c9a178dec695f563211993e912668c",
+   "bytes": 5204
+  },
+  "preflight.json": {
+   "source": "rehearsals/w-o47/preflight.json",
+   "blob": "f4279f1632ef81d326fba21b54a4448eb1415af4",
+   "sha256": "5799c043b432e71d3bbfb7659c76cf6012b5b04192a1b80606988b7fc450e35a",
+   "bytes": 3536
+  },
+  "proxy.log": {
+   "source": "rehearsals/w-o47/proxy.log",
+   "blob": "ab08bbf5da5b4553c2e3aaad7189f1dad44dd95e",
+   "sha256": "3e721f3711a132a4d064eca9e1f1884905ecfd031f52f044798d09e4275bc950",
+   "bytes": 1834
+  },
+  "read-only-errors.json": {
+   "source": "rehearsals/w-o47/read-only-errors.json",
+   "blob": "405d1a403e85e59582f0c213ec58ae2ad131d8d9",
+   "sha256": "b00e379ab679f963e26281b75a8c54ca19e5ad68c10757a90a54b1fafda46b19",
+   "bytes": 43
+  },
+  "session-store.json": {
+   "source": "rehearsals/w-o47/session-store.json",
+   "blob": "82f17723c0cf930739fbfae5e672c8efbbbfa7ea",
+   "sha256": "a7289df4696f98a8a576a6b94b57e675a1889292580cb90413d74a5f69bd43f4",
+   "bytes": 1350
+  },
+  "session/native-turn-1.jsonl": {
+   "source": "rehearsals/w-o47/session/native-turn-1.jsonl",
+   "blob": "6c1a10f0eb257542be662f16b02d9bf4a2b97394",
+   "sha256": "c96869244a67585857650e18c23909864c2df94ef15933e4831947a95fd8fad7",
+   "bytes": 314605
+  },
+  "settings-guard.json": {
+   "source": "rehearsals/w-o47/settings-guard.json",
+   "blob": "b530a156b05468d9920ab8691663c3a332ea9393",
+   "sha256": "47af6fcfb8a892b6ac16498dc59c7897de2d49a5441a67aa479e8941b9648ba7",
+   "bytes": 258
+  },
+  "teardown.json": {
+   "source": "rehearsals/w-o47/teardown.json",
+   "blob": "156d32e48ad8cfc73259c9d36143044448e1ed4c",
+   "sha256": "56a6f7e8bfbafea707ae566dfc3bf7e94e3adf562d60a4301f4ac15ad904fbaf",
+   "bytes": 873
+  },
+  "transcript.jsonl": {
+   "source": "rehearsals/w-o47/transcript.jsonl",
+   "blob": "05acb13e74a94f337585fcff2230854821544452",
+   "sha256": "4d8ddd0d77b2ac524c795105fead051decb2974620844c99ba520f8d447661a5",
+   "bytes": 532
+  },
+  "turn-1.jsonl": {
+   "source": "rehearsals/w-o47/turn-1.jsonl",
+   "blob": "583abbd1b3aefcc45428cf29a804771863dcde03",
+   "sha256": "6fd17bcd2e5b8d2111f15d9d46b91395a2749996609dc38f115beb109d8e6ed2",
+   "bytes": 132891
+  },
+  "turn-1.jsonl.launch.json": {
+   "source": "rehearsals/w-o47/turn-1.jsonl.launch.json",
+   "blob": "40aa809039145f3a86d2f4306f4358902636008f",
+   "sha256": "8635fdd11f0e63a427bb2b4ed1b93c94291e21cb7d9720f518aaf17e32e95fa5",
+   "bytes": 606
+  }
+ }
+}

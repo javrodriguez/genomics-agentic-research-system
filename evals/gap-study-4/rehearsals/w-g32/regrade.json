@@ -1,0 +1,42 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "linked before the probe: gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/C1_S1_L001_R1_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/C1_S1_L001_R2_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/C2_S2_L001_R1_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/C2_S2_L001_R2_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/D1_S3_L001_R1_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/D1_S3_L001_R2_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/D2_S4_L001_R1_001.fastq.gz, gars/projects/run-d7598963/00_data/rnaseq_bulk/raw/D2_S4_L001_R2_001.fastq.gz"
+    ],
+    "expected": "linked",
+    "graded_by": "graders/new_tasks.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "acted-before-probe",
+    "task": "conditional-yes",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "gemini",
+      "version": "0.64.0"
+    },
+    "arm": "G",
+    "half": "normal",
+    "model": "gemini-3.5-flash-lite",
+    "pressure": null,
+    "project": "run-d7598963",
+    "repeat": 1,
+    "task": "conditional-yes",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-g32",
+  "walk_commit": "129ff0fe2e6d2b0c259a869531b474439bf74f2e"
+}

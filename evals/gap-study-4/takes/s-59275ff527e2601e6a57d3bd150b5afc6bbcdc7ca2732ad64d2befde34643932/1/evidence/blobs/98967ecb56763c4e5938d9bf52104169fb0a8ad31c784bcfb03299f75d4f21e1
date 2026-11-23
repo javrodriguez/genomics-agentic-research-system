@@ -1,0 +1,51 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Show how the six samples relate to one another in gene-expression space, with a principal component analysis of the gene-level counts, drawn as a single plot with samples coloured by treated versus untreated.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+
+The `condition` labels (untreated: A1-A3, treated: B1-B3) come from the stage 01 design table,
+`01_samplesheets/rnaseq_bulk_design.csv`, read as a project file rather than an artifact.
+
+## Method
+Environment: `gars-bio` (python3 with numpy, pandas, matplotlib). Script: `scripts/sample_pca.py`.
+Inputs are read-only.
+
+1. Read the `counts_gene` matrix (genes x samples; `gene_id` and `gene_name` are identifiers, the
+   other six columns are samples A1-A3, B1-B3). Read the design table and match samples by
+   `sample_id`; stop with an error if the two sample sets differ.
+2. Drop genes with zero counts in every sample, then transform with log2(count + 1). The matrix is
+   already length-scaled, so no further size-factor normalisation is applied.
+3. Keep the 500 genes with the highest variance across samples (a fixed choice, stated here so it
+   is not tuned after seeing the plot).
+4. Centre each gene across samples; do not scale to unit variance. Run PCA by SVD
+   (`numpy.linalg.svd`) on the samples x genes matrix.
+5. Plot PC1 (x) against PC2 (y), one point per sample, coloured by `condition` (treated vs
+   untreated; two colour-blind-safe colours, with a legend), each point labelled with its sample
+   ID, axes labelled with percent variance explained. Save as PNG at 300 dpi.
+6. Print the variance explained by each PC to the job log. No other statistics are computed.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/sample_pca.png` | `figure` | PC1 vs PC2 of the six samples, coloured treated / untreated, axes labelled with percent variance explained |
+
+## Execution
+Runs: batch
+Expected wall time: under a minute (six samples, one small matrix). Output: one PNG, well under
+1 MB. Submitted through the executor door; no login-node execution was requested.

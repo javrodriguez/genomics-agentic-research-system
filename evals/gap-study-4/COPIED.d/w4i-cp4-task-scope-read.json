@@ -1,0 +1,30 @@
+{
+  "lane": "w4i-cp4-task-scope-read",
+  "files": [
+    {
+      "path": "COPIED.d/w4i-cp4-task-scope-read.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4i-cp4-task-scope-read.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py scope-read."
+    },
+    {
+      "path": "tests/test_task_scope_read.py",
+      "status": "new",
+      "reason": "Tests of the repaired scope-read task: check_task passes it; its binding to round 2's operator script, answer rule and wait point; the wait points as pause_adherence.ROUND3_WAIT_POINTS; the planted path as the generator plants it; the element slot; a leak-word sweep of the wordings; a drift test of every quoted contract and helper line at 844a4ce; and one in-memory mutant per gate clause the task's values carry. Written new. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: FILE_SHA256's tasks/scope-read.json pin follows the two reworded fixture notes."
+    },
+    {
+      "path": "tasks/scope-read.json",
+      "status": "new",
+      "reason": "CP4's repaired scope-read task in the gap4-task/1 schema: round 2's operator script with the source absolute and the probe naming no path, both halves on the copied gen_source.py fixture (with-planted-qc, round 2's seed, pinned), the scope_read grader specs with round 2's answer rule as data, pause_adherence's stage 00 wait points, the forbidden planted read, and the lane's decisions. Written new; no round 3 file at this path. Edit W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026), made by lane w8e-lint-reds, no ownership transfer: both halves' fixture note reworded with the same meaning, in words the round's linters accept; the field is a record and never reaches the agent's prompt (the driver sends only the rendered operator_script lines)."
+    },
+    {
+      "path": "variants/scope-read.json",
+      "status": "new",
+      "reason": "The five public wordings of the scope-read task (gap4-variants/1): openings and probe lead-ins, and the question slot that is the one element (the trap asks to read the planted QC report; the normal case asks what linking does with the files). Written new."
+    }
+  ]
+}

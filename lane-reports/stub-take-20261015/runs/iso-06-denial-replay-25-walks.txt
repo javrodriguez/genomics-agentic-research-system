@@ -1,0 +1,2 @@
+[harness-condition-violated] turn 1's init offers ['ListAgents', 'RemoteTrigger', 'SendMessage']: the isolation denials did not hold
+25 walks; 25 refused by the denial rule (pre-ruling walks: expected all)

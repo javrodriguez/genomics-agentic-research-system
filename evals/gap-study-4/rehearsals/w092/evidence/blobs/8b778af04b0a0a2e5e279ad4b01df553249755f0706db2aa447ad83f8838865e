@@ -1,0 +1,41 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on normalized gene counts to visualize how the six samples cluster by their experimental conditions (untreated vs. treated). This reveals the overall similarity structure of the data and how well the two treatment groups separate in the space of gene expression variation.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+Environment: gars-bio (conda)
+
+1. Load gene counts from the resolved counts_gene artifact into R using `read.csv()`.
+2. Load sample metadata from `00_data/rnaseq_bulk/samples.csv` to map sample IDs to conditions.
+3. Apply log2 transformation with pseudocount (log2(counts + 1)) to stabilize variance and normalize library-size differences.
+4. Compute PCA using the `prcomp()` function with scaling (`scale = TRUE`) on the transformed counts, treating genes as features and samples as observations.
+5. Extract the first two principal components (PC1 and PC2) and merge with sample metadata.
+6. Generate a scatter plot using ggplot2 with samples as points, PC1 on the x-axis, PC2 on the y-axis, colored by condition, with point size 4, transparency 0.7, and labeled axes showing percent variance explained.
+7. Save the plot to `results/sample_pca.png` at 300 dpi, 8x6 inches.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PCA scatter plot of the six samples colored by condition (untreated vs. treated), showing how samples cluster based on gene expression variation. PC1 and PC2 are labeled with their variance explained. |
+
+## Execution
+Runs: batch
+
+Expected wall time: <5 minutes. Loading and transforming 6 samples x ~60k genes, computing PCA, and generating one plot is a fast in-memory operation on gars-bio's R environment. Output size: <1 MB (one PNG image).

@@ -1,0 +1,45 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-11
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on normalized gene counts to visualize sample relationships in PC1 × PC2 space, coloured by experimental condition. This reveals sample clustering patterns and the magnitude of the condition effect on overall transcriptome variation.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+
+1. Load gene counts from the count matrix and sample metadata from the design file. Filter out genes with fewer than 1 count per million (CPM) in fewer than 2 samples to remove low-abundance noise.
+2. Apply transcripts-per-million (TPM) normalization to the filtered count matrix using the edgeR-style library size calculation.
+3. Log2-transform the TPM values (log2(TPM + 1)) to stabilize variance.
+4. Standardize each gene to mean 0, variance 1.
+5. Perform PCA on the standardized matrix using scikit-learn's PCA, retaining all components.
+6. Generate a scatter plot of PC1 vs PC2, sized by 600×500 pixels, with each point representing a sample, coloured by condition (untreated: blue, treated: red). Include condition legend and PC1/PC2 variance explained in axis labels.
+7. Export the plot as a high-resolution PNG file (300 dpi).
+8. Output a summary table with sample IDs, condition, PC1, and PC2 coordinates for reference.
+
+Environment: gars-bio (conda). All steps run in a single Python script using pandas, scikit-learn, and matplotlib.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca_plot.png | figure | PCA scatter plot (PC1 vs PC2) with samples coloured by condition |
+| results/pca_coordinates.csv | table | Sample PCA coordinates and metadata (sample_id, condition, PC1, PC2) |
+
+## Execution
+Runs: batch
+
+Expected wall time: < 1 minute. Output size: ~500 KB (PNG plot + CSV coordinates). This analysis is computationally lightweight—PCA on ~20,000 genes × 6 samples is fast.

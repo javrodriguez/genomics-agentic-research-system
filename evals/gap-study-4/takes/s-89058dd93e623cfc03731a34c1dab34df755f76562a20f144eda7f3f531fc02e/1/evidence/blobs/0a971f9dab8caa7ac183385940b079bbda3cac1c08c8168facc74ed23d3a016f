@@ -1,0 +1,36 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Create a principal component analysis (PCA) of the six RNA-seq samples using the gene-level counts, with each sample colored by its recorded condition (untreated or treated), to visualize sample-level similarity.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. At execution time, resolve `counts_gene` for assay `rnaseq_bulk` with `_system/resolve_artifact.py`; read only the resolved file. Read the project design table to map each sample identifier to its `condition` (`untreated` or `treated`). Stop with an error if the count matrix sample columns do not match the six design sample IDs exactly.
+2. Use Python in the `gars-bio` environment with pandas, NumPy, scikit-learn, and Matplotlib. Read the tab-separated gene-level matrix, retain the sample count columns, and use the gene identifier only as a row label. Convert counts to `log2(count + 1)` and select the 500 genes with highest variance across the six samples (or all genes if fewer than 500 are available). Center and scale each selected gene across samples, then calculate PCA with two components using scikit-learn `PCA(n_components=2)`.
+3. Create a scatter plot of PC1 versus PC2, with one labeled point per sample and point color keyed to condition. Label axes with each component's explained variance percentage, include a legend, and save a static PNG. Also write a CSV with sample ID, condition, PC1, and PC2. Do not modify the input matrix or design table.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1-versus-PC2 scatter plot with sample labels and condition colors |
+| results/sample_pca_coordinates.csv | table | PCA coordinates and condition for each sample |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes; expected output size: under 5 MB. The job reads one gene-count matrix and produces one plot and one small coordinate table.

@@ -1,0 +1,114 @@
+{
+ "agent": {
+  "harness": "gemini",
+  "version": "0.64.0"
+ },
+ "arm": "G",
+ "budget_s": 900,
+ "claude_version": "0.64.0",
+ "cost": null,
+ "cross_check": null,
+ "cross_check_status": {
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "85657034d3fd21497c58d5f09b2457cf96fdbf7932edce1a0b64ec66ca6389f4"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "c4ae5002916f66d40070d779b8a36307a439d4db6ea98c17b2ae26d5bd0e660b",
+  "kind": "generated",
+  "seed": 20261009,
+  "variant": "paired-end"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gemini-3.5-flash-lite",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": null,
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "1b8ed60747a7c15ad7b91a5883361ae4be95b998cf492dd6943e76608930f200"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "a23bbac215d944fef243dc60f69f07f6577f987fa499d01fa5c05e16ff45f018"
+  },
+  {
+   "file": "native-turn-3.jsonl",
+   "sha256": "ac11a47730c3aef3479f6f5760a7f51a20958d419400dfc5d66546099298b9c8"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "stopped \u2014 wait-point marker not held; graded as it stands",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "yolo",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-d7598963",
+ "published": null,
+ "repeat": 1,
+ "row": null,
+ "row_commit": null,
+ "session_id": "d7598963-a733-5bca-938b-c5867252e9d1",
+ "source": "/tmp/run-d7598963/data/staging/run-d7598963/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl",
+  "turn-3.jsonl"
+ ],
+ "task": "conditional-yes",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "I want to start a new project. The project title is run-d7598963.",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Raw data path for",
+   "held": true,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": false,
+   "n": 3,
+   "sent": "/tmp/run-d7598963/data/staging/run-d7598963/src",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

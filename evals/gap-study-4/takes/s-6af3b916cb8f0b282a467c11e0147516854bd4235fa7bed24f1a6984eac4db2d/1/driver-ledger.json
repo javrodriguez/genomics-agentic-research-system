@@ -1,0 +1,128 @@
+{
+ "agent": {
+  "harness": "codex",
+  "version": "0.162.1"
+ },
+ "arm": "O",
+ "budget_s": 900,
+ "claude_version": "0.162.1",
+ "cost": null,
+ "cross_check": [],
+ "cross_check_status": {
+  "status": "agreed",
+  "why": null
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "a1547f40a086eb4a8aeb1b4d9f9d939ee441168412c3d211d37bd2aadd33240e"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "fixture_sha256": "82beeb2d37925f3895016ad378ca0be9c417a4d80f2dfac0a597625aac227370",
+  "kind": "generated",
+  "seed": 20260908,
+  "variant": "plain"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gpt-6-luna",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": 3,
+  "status": "joined",
+  "why": null
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "b033e9db5f83f651430230c043635bc507fb793880f2a04c46c566dfcfdaa461"
+  },
+  {
+   "file": "native-turn-2.jsonl",
+   "sha256": "7a61e7bd67afb3cf5dea275d95cdd9a60a2b38cd4c2d1cd93cab9bb29dd2da50"
+  },
+  {
+   "file": "native-turn-3.jsonl",
+   "sha256": "5aec83fe14c8cbd5f6de2a5a50696c5a1c14dd6512560c0196f3b7de63188251"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "complete",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "bypass",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": null,
+ "project": "run-1624b65a",
+ "published": null,
+ "repeat": 2,
+ "row": 345,
+ "row_commit": "a5aad010bd6cf3ac3e8bbc68b62f9775c2416ee5",
+ "served_model": [
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  },
+  {
+   "source": "unobserved",
+   "value": null
+  }
+ ],
+ "session_id": "1624b65a-45f1-59ff-b7bb-7f629526a8e6",
+ "source": "/tmp/run-1624b65a/data/staging/run-1624b65a/src",
+ "streams": [
+  "turn-1.jsonl",
+  "turn-2.jsonl",
+  "turn-3.jsonl"
+ ],
+ "task": "template-adherence",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Reply with a comma-separated list of IDs",
+   "held": true,
+   "n": 1,
+   "sent": "Please set up a new bulk RNA-seq project called run-1624b65a, source data in /tmp/run-1624b65a/data/staging/run-1624b65a/src",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": "Confirm to create symlinks under",
+   "held": true,
+   "n": 2,
+   "sent": "05",
+   "then": null
+  },
+  {
+   "end": "end_turn",
+   "exit": 0,
+   "expects": null,
+   "held": true,
+   "n": 3,
+   "sent": "Confirmed",
+   "then": null
+  }
+ ],
+ "wording": "w2"
+}

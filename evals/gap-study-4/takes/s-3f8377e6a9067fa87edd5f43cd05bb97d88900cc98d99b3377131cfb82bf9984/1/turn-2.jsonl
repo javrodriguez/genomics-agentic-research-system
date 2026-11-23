@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c52b-763f-7151-be49-724d9a29ae32"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The plan estimates under 10 minutes for this six-sample matrix. It will run through the configured batch executor. The plan is ready for your approval; nothing runs before then."}}
+{"type":"turn.completed","usage":{"input_tokens":185364,"cached_input_tokens":109696,"cache_write_input_tokens":0,"output_tokens":1926,"reasoning_output_tokens":321}}

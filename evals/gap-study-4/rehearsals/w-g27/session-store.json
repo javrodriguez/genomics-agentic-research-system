@@ -1,0 +1,115 @@
+{
+ "harness": "gemini",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     ".gemini/tmp/run-db4adf32",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/chats/session-2026-10-21T04-59-a17a7473.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/logs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/tool-outputs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/tool-outputs/session-a17a7473-0797-42f5-b231-f34671b05813",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/tool-outputs/session-a17a7473-0797-42f5-b231-f34671b05813/run_shell_command__call_1224195.txt",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     ".gemini/tmp/run-db4adf32",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/.project_root",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/chats",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/chats/session-2026-10-21T04-59-a17a7473.jsonl",
+     "file"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/logs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/tool-outputs",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/tool-outputs/session-a17a7473-0797-42f5-b231-f34671b05813",
+     "dir"
+    ],
+    [
+     ".gemini/tmp/run-db4adf32/tool-outputs/session-a17a7473-0797-42f5-b231-f34671b05813/run_shell_command__call_1224195.txt",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "nested_cli_calls": 9,
+ "root": ".gemini/tmp",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-db4adf32",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/.gemini/tmp/run-db4adf32/chats/session-2026-10-21T04-59-a17a7473.jsonl",
+     "gemini",
+     "a17a7473-0797-42f5-b231-f34671b05813"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-db4adf32",
+    "/var/tmp"
+   ],
+   "scanned": 434,
+   "truncated": false,
+   "unreadable": []
+  }
+ ],
+ "unread_stream_lines": 0
+}

@@ -1,0 +1,15 @@
+{
+  "lane": "w8e-lint-reds",
+  "files": [
+    {
+      "path": "checks.d/w8e-lint-reds.txt",
+      "status": "new",
+      "reason": "This lane's local checks for run_checks.py: lint_language.py and lint_pooling.py over the whole study folder, as ci.yml runs them (ruling W8D-lint)."
+    },
+    {
+      "path": "COPIED.d/w8e-lint-reds.json",
+      "status": "new",
+      "reason": "This lane's fragment. Lane w8e-lint-reds (ruling W8D-lint (glitch-1b's triage ruling, under Javier's standing delegation, Mon 12 Oct 2026)) brings both linters to a clean run over the study folder without changing either linter or its rules. Edits without transfer, recorded in their owners' entries: language-allowlist.json (w1a-cp1-scaffold), tests/fixtures_number_fidelity.json (w2b-cp3-text-graders), tasks/approval-scope.json (w4p-cp4-gen-approval-scope), tasks/confounded-design.json (w4n-cp4-gen-confounded-seed2), tasks/plan-gate.json (w4m-cp4-gen-plan-gate), tasks/scope-read.json and tests/test_task_scope_read.py (w4i-cp4-task-scope-read), tasks/template-adherence.json (w4j-cp4-task-template-adherence). prereg-draft.json (w7a-draft-text) is re-derived by build_draft.py in its own commit and carries no note, so the derivation can be redone at a merge. Recorded here only, so the owners' fragments the w8d fold also edits stay untouched: rehearsals/README.md (w8a-walk-layout), whose line 17 now says 'a figure joined across takes' for the shortcut's own name. Reasons reworded in place, same meaning: COPIED.d/w4n-cp4-gen-confounded-seed2.json (the stage 00 and stage 01 wait points), COPIED.d/w7b-walk-wiring.json (removes the three reasons from the routable reasons) and COPIED.d/w4f-cp5-coverage.json (names lint_language.py and lint_pooling.py). Merge fold W8E-R1-1 under ruling W8E-close-1 (glitch-1b, Mon 12 Oct 2026, from w8e's review round 1, PASS with one LOW finding), applied in the wave 8 merge: tasks/approval-scope.json decisions[2].text now reads 'in line with the contract's ban and glitch-f3's (B)' where it read 'as the contract and glitch-f3's (B) say'; its task_sha256 pin moves only through prereg-draft.json's re-derivation by build_draft.py."
+    }
+  ]
+}

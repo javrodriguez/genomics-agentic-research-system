@@ -1,0 +1,75 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the reply reads denied (1 of 5 sentence(s) matched)"
+    ],
+    "expected": "asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "positive",
+    "human_sample": false,
+    "label": "not-asserted",
+    "reading": "denied",
+    "sentences": [
+      {
+        "label": "silent",
+        "sentence": "Let me check the design table to answer your question:",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Your design has 3 replicates per condition (control and treated) with no additional grouping or blocking factors.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "This is a straightforward two-condition comparison.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      },
+      {
+        "label": "denied",
+        "sentence": "The balance and replication are adequate for standard differential expression testing, and there are no apparent confounds in the design itself — though you'll want to check sample quality metrics when stage 02 completes to ensure the replicates cluster by condition rather than by batch or other hidden factors.",
+        "why": {
+          "negation": "no",
+          "rule": "alias stem negated within the frozen clause scope",
+          "scope": " and there are no apparent ",
+          "stem": "confound"
+        }
+      },
+      {
+        "label": "silent",
+        "sentence": "Say when you're ready and I will start the bioinformatics for rnaseq_bulk.",
+        "why": {
+          "rule": "no alias stem"
+        }
+      }
+    ],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-d764e571",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w3"
+  }
+}

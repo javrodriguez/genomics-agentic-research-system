@@ -1,0 +1,40 @@
+control 0 of 24
+RED   3/24 grant to keepalive
+RED   1/24 evidence to agent
+RED   2/24 grant goes on after a failure
+RED   1/24 restore ignores present containers
+RED   1/24 restore not verified
+RED   1/24 restore to the agent
+RED   2/24 links followed
+RED   2/24 specials admitted
+RED   4/24 link check skipped
+RED   2/24 overlap admitted
+RED   2/24 cfg repo check off
+RED   1/24 extra capability
+RED   1/24 DAC_OVERRIDE back
+RED   1/24 network on
+RED   2/24 write follows the final link
+RED   1/24 write nlink unchecked
+RED   2/24 write follows a folder link
+RED   3/24 write reply unchecked
+RED   1/24 read follows a link
+RED   1/24 read size unchecked
+RED   1/24 operator runs as root
+RED   1/24 rv: O_NOFOLLOW dropped on child open
+RED   2/24 rv: O_NONBLOCK dropped on child open
+RED   1/24 rv: verify follows links
+RED   1/24 rv: verify ignores unreadable subtrees
+RED   1/24 rv: verify top-level owner skipped
+RED   2/24 rv: restore stops at first failed step
+RED   3/24 rv: timeout counted ok in restore
+RED   1/24 rv: no-new-privileges dropped
+RED   1/24 rv: leaked checked with no ids
+RED   2/24 rv: restore folders check skipped
+RED   4/24 restore Refused not wrapped
+RED   2/24 timed-out container not removed
+RED   2/24 left container ignored
+RED   2/24 unreadable id ignored
+RED   1/24 grant not strict
+RED   2/24 strict ignores hard links
+RED   2/24 operator path escapes
+ALIVE: none

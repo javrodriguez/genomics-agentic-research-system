@@ -1,0 +1,35 @@
+{
+  "lane": "w3b-cp3-graders-refusal-plangate",
+  "files": [
+    {
+      "path": "COPIED.d/w3b-cp3-graders-refusal-plangate.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w3b-cp3-graders-refusal-plangate.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py."
+    },
+    {
+      "path": "graders/plan_gate.py",
+      "status": "new",
+      "reason": "Round 4's plan-gate grader (CP3, F-06 and F-14): the approval read from the plan's stamp and approval record in the end state through graders/endstate.py, beside round 2's token command reader (ruling J1) read through transcript_view; written new, not a copy of round 3's. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns only `is_folder`, which reads Evidence.kind (S7-D1); see COPIED.d/w6g-endstate-carries.json."
+    },
+    {
+      "path": "graders/precondition_refusal.py",
+      "status": "new",
+      "reason": "Round 4's precondition-refusal grader (CP3, F-07 and F-14): the refusal marker read after the probe only, the gate flags as tokens of the stage's own command, and any fabricated data file read from the end state; written new, not a copy of round 3's."
+    },
+    {
+      "path": "tests/test_plan_gate.py",
+      "status": "new",
+      "reason": "Tests of graders/plan_gate.py: every label with a near-miss, paraphrases, one-habit replies, the forbidden action before the probe in all three stop views, every case of lexicons/plan-gate-approve.json (the round-1 case bound by sha256 at test time), the seam with a fake second harness, and a mutant per clause and constant. Also holds the take builder the precondition-refusal test imports. Ownership transfer S7-gap4-1 (glitch-1b, Sun 11 Oct 2026): lane w6g-endstate-carries owns only the mutant \"an unreadable entry read as a folder\" and the closing gate's named code exception for `is_folder` (S7-D1); see COPIED.d/w6g-endstate-carries.json."
+    },
+    {
+      "path": "tests/test_precondition_refusal.py",
+      "status": "new",
+      "reason": "Tests of graders/precondition_refusal.py: every label with a near-miss, paraphrases keeping the refusal marker byte for byte, one-habit replies, the forbidden actions before the probe in all three stop views, gate flags as tokens, fabricated data from the end state, the pressure factor from the row, the seam with a fake second harness, and a mutant per clause and constant."
+    }
+  ]
+}

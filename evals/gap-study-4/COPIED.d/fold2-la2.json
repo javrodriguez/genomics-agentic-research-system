@@ -1,0 +1,20 @@
+{
+  "lane": "fold2-la2",
+  "files": [
+    {
+      "path": "COPIED.d/fold2-la2.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane fold2/la2 folds pre-freeze review 2's m6 and m7 (review pfr-20261029/round2/prefreeze-2.md, the fold plan FOLD-PLAN-prefreeze-2.md section 3, approved by glitch-45 on Thu 29 Oct 2026 under Javier's standing delegation), on branch fold2/la2 from freeze/r4-20261021 at 0f634fc3. Edits without transfer, in files other fragments claim. m6: batch.py (lane w7c-spend-wiring's entry) adds END_STATE_UNREAD_CITE and THE RULING RULE's criterion between graded and aborted after the first turn, with its enforcing functions and source; check_results.py (lane w5b-cp5-pipeline's entry) adds FINAL_RULED_ROUTES and ruled_route_problems (after the first turn a ruling routes graded when the take's own grader reads its committed end state, aborted only when it cannot, its cite carrying that reading); takes.py (lane w5b-cp5-pipeline's entry) runs it at the ruling door and hands the door the registered rows for a graded or aborted ruling; run.py (lane w8a-walk-layout's entry) runs it in produce and counts a take by its effective route in stopped_counts, so a ruled pause or abort's forbidden change is counted. m7: codex_adapter.py (lane w11a-codex-adapter's entry) reads an item.started of a started tool item as agent output; tests/test_codex_adapter.py (the same entry) binds the new rule in b7_blank. The fold of the lane's fresh review (fold2-la2-REVIEW.md, CHANGES; glitch-45's rulings of 29 Oct 2026): takes.py's commit_ruling loads the registered rows only when the door reads one (_ruling_reads_row: a re-running ruling, or a graded or aborted one after the first turn); check_results.py's unread_cite and unread_cite_holds require an aborted ruling's cite to open with the phrase and the reading's exception type, and a missing registered row is its own refusal; batch.py's RULING_RULE text says so; agent_adapter.py (lane w1b-cp1-routing-batch's entry) names the Codex started tool item in its agent_output docstring. prereg-draft.json is not regenerated here: the ruling_rule text changed, so tests/test_pf1_routing_rulings.py P8 (the draft registers batch.RULING_RULE) stays red until the plan's single regeneration after every lane's merge."
+    },
+    {
+      "path": "tests/test_pf2_la2.py",
+      "status": "new",
+      "reason": "Lane fold2/la2: the red-first tests of pre-freeze review 2's m6 (the ruling criterion, the door, the publication, the rule text and the stopped-take count of a ruled abort) and m7 (the reviewer's started-then-timeout Codex stream, each started tool item type, reasoning alone still no output). Synthetic records only."
+    },
+    {
+      "path": "checks.d/fold2-la2.txt",
+      "status": "new",
+      "reason": "Lane fold2/la2's listed checks: tests/test_pf2_la2.py."
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize whether the treated and untreated samples separate in a PCA of the project’s gene-level RNA-seq counts.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+The grouping labels are read from the project’s user-maintained design table, `01_samplesheets/rnaseq_bulk_design.csv`, which assigns A1–A3 to untreated and B1–B3 to treated.
+
+## Method
+1. At execution time, resolve `counts_gene` using `_system/resolve_artifact.py` for assay `rnaseq_bulk`; use only the returned path. Read the design table to annotate samples by condition and confirm that the count-matrix sample columns match its six sample IDs.
+2. In the `gars-bio` environment, use Python with pandas, NumPy, and scikit-learn. Treat the supplied length-scaled gene counts as counts: filter genes with total count zero, apply a per-sample library-size normalization to counts per million, transform as `log2(CPM + 1)`, and center each gene across samples. Compute PCA with scikit-learn `PCA(n_components=2)` on the transposed matrix (samples as observations). Do not scale genes to unit variance. Report variance explained by each component.
+3. Save a scatter plot of PC1 versus PC2 with points labeled by sample ID and colored by condition, plus a per-sample coordinates table containing sample ID, condition, PC1, and PC2. Inputs remain read-only.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PCA scatter plot of the six samples, labeled and colored by treatment condition |
+| results/sample_pca_coordinates.csv | table | Sample coordinates on PC1 and PC2 with condition labels |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes; expected output size: under 5 MB. Computation uses the `gars-bio` environment and the workspace’s configured batch executor.

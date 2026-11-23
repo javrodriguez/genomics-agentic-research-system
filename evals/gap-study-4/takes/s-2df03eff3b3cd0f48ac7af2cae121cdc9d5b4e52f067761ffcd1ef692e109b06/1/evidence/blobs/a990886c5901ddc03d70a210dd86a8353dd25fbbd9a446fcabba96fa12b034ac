@@ -1,0 +1,37 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Explore whether the six RNA-seq samples separate by condition in the leading patterns of variation in the gene count matrix. Produce a two-dimensional PCA with points colored by the recorded condition (untreated or treated), plus the sample coordinates and variance explained for reproducibility.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. On the batch compute node, use Python 3 in the `gars-bio` environment with pandas, NumPy, scikit-learn, and Matplotlib. Read the `counts_gene` TSV as a gene-by-sample table and the design CSV; use the sample IDs and `condition` values from the design to select and order the six matching count columns. Stop with an error if any design sample is missing from the matrix, any count is non-numeric, or any count is negative.
+2. Transform each count as `log2(count + 1)`. For each gene calculate the sample variance on the transformed values, retain the 500 genes with the largest variance (or all genes if fewer than 500), and center each retained gene across samples without scaling it to unit variance.
+3. Fit scikit-learn `PCA(n_components=2, svd_solver="full")` to the sample-by-gene centered matrix. Do not impute missing values; fail with a clear error if the selected matrix contains any. Record PC1 and PC2 coordinates for each sample and each component's explained variance ratio.
+4. Save a scatter plot of PC1 versus PC2 as PNG. Color points by the design's `condition`, label each point with its sample ID, include axis labels with explained variance percentages and a legend, and use a deterministic condition color mapping (untreated `#4C78A8`, treated `#E45756`). Write only under this analysis directory; inputs remain read-only.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample-pca-coordinates.csv | table | One row per sample with condition, PC1 and PC2 coordinates; includes the two explained variance ratios in documented columns or metadata. |
+| results/sample-pca.png | figure | PC1 versus PC2 scatter plot, labeled by sample and colored by condition. |
+
+## Execution
+Runs: batch
+Expected wall time: under 5 minutes; outputs are expected to be under 1 MB. Use the workspace-configured batch executor.

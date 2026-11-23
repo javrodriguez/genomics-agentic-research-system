@@ -1,0 +1,20 @@
+{
+  "lane": "pf1-codex-turnitem",
+  "files": [
+    {
+      "path": "COPIED.d/pf1-codex-turnitem.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane pf1-codex-turnitem (glitch-45's brief of Tue 27 Oct 2026, under Javier's standing delegation; arm O walk w-o69, gpt-6-luna, held on \"the rollout reader refuses it: line 144: an item belongs to turn '01...\"): the pinned Codex (openai/codex 092d3acd, rust-v0.162.1) keeps a unified-exec process alive past its turn and its exit watcher writes the command's item_completed under the starting turn, after that turn's task_complete when exec's shutdown terminates it (core/src/unified_exec/async_watcher.rs 158-224, process_manager.rs 596-597, tools/events.rs 561-588, tasks/mod.rs 847-861, session/handlers.rs 290-312, tests/suite/unified_exec.rs 2835-2928). codex_native.read_rollout admits exactly that shape (directly after the turn's task_complete, same turn and thread, a CommandExecution with source unified_exec_startup and a process_id, an id not already completed, started inside the turn) into the turn's after_complete, never its output; read_exec counts the stream's unfinished command starts and join refuses more late commands than that; check_take._codex_command_problems pairs each late command by argv with an unfinished start of its own turn's stream. Every other out-of-order shape still refuses by name. codex_native.py is a Codex reader source (native_reader_registration.CODEX_SOURCES): the committed Codex acceptance no longer re-derives until a new one is committed."
+    },
+    {
+      "path": "checks.d/pf1-codex-turnitem.txt",
+      "status": "new",
+      "reason": "Lane pf1-codex-turnitem (glitch-45's brief of Tue 27 Oct 2026): this lane's listed checks."
+    },
+    {
+      "path": "tests/test_codex_turnitem.py",
+      "status": "new",
+      "reason": "Lane pf1-codex-turnitem: w-o69's late command read (red at 5f5aa9fb with the recorded reason), the reach reading its line, the join pairing it with an unfinished stream start, check_take's argv comparison of it, seventeen still-refused shapes each by name, and sixteen mutants (codex_native and check_take compiled in memory) each failing its bound witness. The late item line and the stream's unfinished start are w-o69's recorded lines byte for byte (no model reply, prompt or tool output in them); the task_complete is ordinal 142's structure with its last_agent_message replaced by synthetic text."
+    }
+  ]
+}

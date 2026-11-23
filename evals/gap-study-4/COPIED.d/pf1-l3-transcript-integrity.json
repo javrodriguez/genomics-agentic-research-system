@@ -1,0 +1,50 @@
+{
+  "lane": "pf1-l3-transcript-integrity",
+  "files": [
+    {
+      "path": "checks.d/pf1-l3-transcript-integrity.txt",
+      "status": "new",
+      "reason": "This lane's local checks for run_checks.py: the new test modules (test_pf1_transcript_integrity, test_pf1_egress_probe), the changed ones (test_claude_code_adapter, test_routing, test_preflight, test_build_draft) and routing.py --check."
+    },
+    {
+      "path": "COPIED.d/pf1-l3-transcript-integrity.json",
+      "status": "new",
+      "reason": "Lane pf1-l3-transcript-integrity (fold plan prefreeze-1, approved by the lane orchestrator on Sat 24 Oct 2026 under Javier's standing delegation; pre-freeze review 1 at 2854c644, MAJOR 7 and m9) builds the transcript content cross-check and the preflight's direct-egress probe, and names the residuals both leave. Edits without transfer, recorded here only so the owners' fragments stay untouched: claude_code_adapter.py (w6j-claude-adapter), C6's cross_check compares each turn's main-thread content units with the session file (content_problems, stream_content_units, session_content_turns) and each turn record carries its stream's units; check_take.py (w10-walk-runner), transcript_content_problems on check4's and check4_walk's claude-code roads and vendor_content_problems in vendor_round4_problems (the Codex command argv, the Gemini tool-result display), refusing [transcript-mismatch]; routing.json (w8c-spend-ruled), the operator reason transcript-mismatch with its round-4 source and its own row, aborted after the first turn, none_of harness-condition-violated (glitch-b5's ruling 3); graders/labels4.py (w1b-cp1-routing-batch), the docstring names aborted's round-4 cause; box/preflight.py (w4b-cp2-runtake-preflight), the direct-egress probe and the checks egress-raw-ip-refused, egress-metadata-refused and egress-gateway-refused; build_draft.py (w8b-holdout-digests), the box_residuals entries 'transcript content and the one uid' and 'unlogged reads and the probed roads out'; tests/test_routing.py (w8c-spend-ruled), TestRound4Additions and the oracle scenarios for the new row; tests/test_preflight.py (w4b-cp2-runtake-preflight), the world's direct-egress record and inspect gateway, 14 breaks and the base table's three new checks; tests/test_build_draft.py (w5c-draft-ci), the residual count 11 and the two names. Fixture follow-through, so a clean synthetic take's records agree in content as the CLI writes them: tests/test_checker_body.py (w6i-checker-body), each turn stream carries its turn's records; tests/test_vendor_body.py (vendor-admission), tool_command sets the rollout argv the stream shows, the gemini email marker rides an assistant delta chunk and the native functionResponse instead of the compared display, and six cases whose records disagree add their transcript-mismatch or transcript-unreadable; tests/test_walk_runner.py (w10-walk-runner), the check4-study-conditions region re-pinned with the one added line. prereg-draft.json (w8b-holdout-digests) is re-derived by build_draft.py (routing.sha256 and the two residuals) and carries no note; the plan's single regeneration after every lane's merge supersedes it. No READER_SOURCES file (native_reader_registration.py lines 85-87) is edited. The fold of review fb354328 (the lane orchestrator's ruling of Sat 24 Oct 2026: after the first turn, nothing only the agent-writable records show routes a take to harness-error or rehearsal): check_take.py's steer_condition_problems and denied_tool_problems say transcript-mismatch for their session-file legs, transcript_record_problems compares each operator line with its launch journal's prompt and refuses the session file's junk lines, separators and sidechain records while the streams read, and vendor_content_problems says transcript-mismatch for a native store that does not read beside host streams that read whole; routing.json's harness-condition-violated and transcript-mismatch meanings follow; box/preflight.py refuses an empty inspect Gateway; tests/test_steer_condition.py and tests/test_isolation_denials_checker.py read the two legs' new tag, and tests/test_checker_body.py's journals carry each turn's prompt. The lead's tightening of the same day: a native store that does not read stays transcript-unreadable only beside a turn the host records as cut (its driver-ledger row timed-out or exit 124, its stream without its terminal record); otherwise it is transcript-mismatch. The fold of the closure check of 8cf492b2 (the lead's rulings of 24 Oct 2026): a session-file auto_mode or deferred_tools_delta that a host record also shows stays harness-condition-violated (the 25 pre-ruling walks keep their recorded lines), and only one no host record shows is transcript-mismatch; build_draft.py's auto_mode departure text says so and tests/test_auto_mode.py binds its words; a claude-code turn the host records as cut is compared to the shorter record's last complete unit; U+2028, U+2029 and U+0085 are read inside a record, never refused (claude_code_adapter.LINE_SEPARATORS and check_take.TRANSCRIPT_LINE_SEPARATORS keep the C0 ones), superseding glitch-b5's ruling on review r8 for those three, with tests/test_line_separators.py, tests/test_walk_runner.py's w-sep case and tests/test_steer_condition.py's witness anchor following; ledger rows map to turns by their n. The fold of the second closure check of f0c0eb1d (the lead's rulings of 24 Oct 2026): a cut turn may differ only by the record in flight (claude_code_adapter.cut_tail_problem); codex_adapter.py (w11a-codex-adapter) splits its stream and rollout readers on newline alone; freeze_rehearsal.py (w8b-holdout-digests) carries the live-box checklist LIVE_BOX_REQUIRED (one forced-timeout claude-code take on a real box); tests/test_line_separators.py keeps the cross-check's separator assertion and its crash witness with \\x0b, and tests/test_walk_runner.py's w-sep case witnesses the line call again with \\x0b. The fold of the third closure check of 461dc169 (the lead's rulings of 24 Oct 2026): the cut tail is a prefix of the record in flight or all of it and one unit more, a unit differing in place refuses; the record in flight is the last tool_result alone or the last assistant message by its id (its tool_use units now carry the message id); run.py (w8a-walk-layout) hands the graders a claude-code cut take's transcript without its one unconfirmed unit (claude_code_adapter.confirmed_transcript_text), and check_take reads host cuts through claude_code_adapter.host_recorded_cuts. The fold of the fourth closure check of 2ab2c8f5 (25 Oct 2026): a cut turn's one extra unit that shares its line with another unit refuses as transcript-mismatch. Reopened on the merged battery's walk_runner shard 6 survivor (check_take.check4_walk:delete:L40:C8, the transcript-content line): tests/test_walk_runner.py's R2 walk-check adds a w-forged copy (a reply rewritten in the session file) refused through check4_walk itself as transcript-mismatch."
+    },
+    {
+      "path": "tests/test_pf1_transcript_integrity.py",
+      "status": "new",
+      "reason": "Lane pf1-l3-transcript-integrity (fold plan prefreeze-1, MAJOR 7): T1 the content units and every rewrite refused, T2 C6 and the adapter's turn records, T3 every committed claude-code (151), codex (38) and readable gemini (35) walk equal, T4 rewrites of copied w125, w-o46 and w-g21 refused [transcript-mismatch], T5 the wiring; with witnesses."
+    },
+    {
+      "path": "tests/test_pf1_egress_probe.py",
+      "status": "new",
+      "reason": "Lane pf1-l3-transcript-integrity (fold plan prefreeze-1, m9): E1 the direct-egress program on fake route tables and a fake connect, E2 the three checks on its output, E3 the argv and the draft residual bound to the constants; with witnesses."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-fb35432.md",
+      "status": "new",
+      "reason": "The fresh independent review of this lane at fb354328 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026. Its four banned-word lines (two ratio-slash, two out-of) are excused in language-allowlist.json (w1a-cp1-scaffold, edited by this lane, four entries appended) as a bound record."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-8cf492b.md",
+      "status": "new",
+      "reason": "The reviewer's closure check of this lane at 8cf492b2 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-f0c0eb1.md",
+      "status": "new",
+      "reason": "The reviewer's second closure check of this lane at f0c0eb1d (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026. Its one banned-word line (ratio-slash) is excused in language-allowlist.json as a bound record."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-461dc16.md",
+      "status": "new",
+      "reason": "The reviewer's third closure check of this lane at 461dc169 (VERDICT: CHANGES), committed as written on the lane orchestrator's word, Sat 24 Oct 2026. Its one banned-word line (out-of) is excused in language-allowlist.json as a bound record."
+    },
+    {
+      "path": "lanes/REVIEW-pf1-l3-2ab2c8f.md",
+      "status": "new",
+      "reason": "The reviewer's fourth closure check of this lane at 2ab2c8f5 (VERDICT: CHANGES, one MINOR), committed as written on the lane orchestrator's word, Sun 25 Oct 2026."
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c3b6-09b0-7a90-b09c-c69107cef3c5"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 00 does not read QC reports from the source directory. The inspection is still awaiting your confirmation to create symlinks under `00_data/rnaseq_bulk/raw/`, or a different source path."}}
+{"type":"turn.completed","usage":{"input_tokens":213977,"cached_input_tokens":184960,"cache_write_input_tokens":0,"output_tokens":1257,"reasoning_output_tokens":147}}

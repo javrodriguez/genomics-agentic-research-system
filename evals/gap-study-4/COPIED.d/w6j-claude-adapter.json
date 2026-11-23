@@ -1,0 +1,30 @@
+{
+  "lane": "w6j-claude-adapter",
+  "files": [
+    {
+      "path": "claude_code_adapter.py",
+      "status": "new",
+      "reason": "Lane w6j (slice S6c, C15): the Claude Code adapter for the box, agent_adapter's interface for claude-code: one docker exec per turn through box/run_take.run_turn (round 3's one_turn argv with the plan's named changes for arms A and C: the routing pin's permission mode, no --allowedTools, --disallowedTools WebFetch WebSearch; --session-id then --resume of the imposed id), the version from `claude --version`, and readers of the recorded stream-json and session-file shapes (harness 2.1.267): read_stream (init, credential source, agent text and output kept apart from the harness's API-error record, calls, tool ids, the result record), session_calls (one call per (message.id, requestId)), cross_check (C6) and cost_record (C14). C14: a call whose usage lacks a class is unmeasured (None), never 0, so costs.py accounts it as unmeasured. Review fold W6J-close-1: a non-string sessionId is a cross-check problem (R1-2); the error-result branch is named unevidenced until CP6 (R1-4)."
+    },
+    {
+      "path": "tests/test_claude_code_adapter.py",
+      "status": "new",
+      "reason": "Lane w6j (slice S6c): the Claude Code adapter on the recorded haiku-prestudy stream probes, the recorded API-error probe's fields, the recorded env-smoke session file and synthetic streams over a fake runtime: A1 recorded reads, A2 the API-error record never the agent's, A3 the argv, A4 a turn's TurnResult; whole-file witnesses of claude_code_adapter.py compiled in memory. C14: A5 tokens once per call from the session file, the turn's printed total_cost_usd, costs.py's account of the calls; witnesses count-records, missing-class-as-zero, zero-dollars-per-call. Review fold: A6 a null session id; witness null-id-unreported."
+    },
+    {
+      "path": "tests/test_drive_loop.py",
+      "status": "new",
+      "reason": "Lane w6j (slice S6c): the drive loop's agent side on test_box_integration's fake runtime and rig (imported, never copied): the design-table copy writes its hashed bytes (W6I-R2-2), each guard with a whole-file witness of drive.py compiled in memory. C13: D2 the stop at an unheld marker, D3 the recovery, D4 the exact marker, D5 the outcome vocabulary, D6 the stop classified by pause_adherence from the driver's rows, each with a whole-file witness of drive.py. C6-C8 and the production checker: D7 through the real Claude Code adapter on a fake box that writes a session file; D8 take_checker with the real check4 on test_checker_body's clean take; witnesses no-cross-check, session-raw, env-per-turn-dropped, cross-check-unrouted, missing-transcript-graded. Stage 6: D10 an adapter whose start raised is ended once (witness open-after-start). Review fold: D7 cases for a call written twice with different usage and a usage record with no requestId; D11 the script numbering and the strict flag; witnesses cost-refusal-raises, any-numbering, strict-ignored. Departure w12a-3 (lane w12a-env-allowlist; no transfer): the fake session box reads the container id as the exec's first full 64-hex id, since run_take's launcher now stands between the id and claude. No assertion changed."
+    },
+    {
+      "path": "COPIED.d/w6j-claude-adapter.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfers under ruling S6c-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026): drive.py, check_take.py and tests/test_checker_body.py from lane w6i-checker-body. Transfer (ruling W7B-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026; wave 7 piece P2, the CP6 walk wiring)): drive.py, check_take.py, tests/test_checker_body.py, tests/test_box_integration.py moved on to lane w7b-walk-wiring, which claims them in COPIED.d/w7b-walk-wiring.json."
+    },
+    {
+      "path": "checks.d/w6j-claude-adapter.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2), including the round-3 byte-binding line for check_take.py, moved here from checks.d/w6i-checker-body.txt with the file (ruling S6c-gap4-1)."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "lane": "w4d-cp4-variants",
+  "files": [
+    {
+      "path": "COPIED.d/w4d-cp4-variants.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4d-cp4-variants.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and the empty-gate line of check_task.py --all."
+    },
+    {
+      "path": "tests/test_variants.py",
+      "status": "new",
+      "reason": "Tests of variants.py and tasks/check_task.py on toy specs only (synthetic wordings, toy generators written to a temporary folder outside the repository): the interface 10 API, every toy passing the twelve checks, a near-miss per clause and an in-memory mutant per guard, and a drift test binding the step and fixture field names to drive.py and check_take.py at 48f10056."
+    },
+    {
+      "path": "variants.py",
+      "status": "new",
+      "reason": "CP4's task-spec schema (gap4-task/1, gap4-variants/1) and the variants API of interface 10: the closed shapes, cells crossed with the pressure factor, the rendered operator steps, probe line and grader spec, row fields, render_source, GRADED_PATH_FIELDS and graded_paths; written new, round 3 has no such module."
+    },
+    {
+      "path": "tasks/check_task.py",
+      "status": "new",
+      "reason": "CP4's one-task gate: checks 1-12 of the lane brief (schema, absolute source, one element, act and hold, factors, fixture determinism by seed, forbidden actions, exclusions under every harness, the graders' own spec checks, markers in the pinned contract, the empty plan-gate store, run_tree_abs), each its own function; --all over no task is an empty gate (exit 1). Written new."
+    }
+  ]
+}

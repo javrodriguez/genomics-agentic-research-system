@@ -1,0 +1,6 @@
+Checking the PRE-FIX fixtures:
+  FAIL  R1 extraction: 44 recovery tries; reply to the question differs from the raw take on 44; stream files listed None / read None; conditional-yes graded linked but scripted as linking nothing: 3
+  FAIL  R2 approval-scope key: C3-refused-no-description with asked, registered trap: wrong (example t82bef55389f3)
+  FAIL  R3 conditional-yes key: C3-linked-layout-unstated, registered normal: wrong (example ted65b63e013c)
+  FAIL  R4 merge aborted: 3 aborted tries; counted right on some outcome: 3
+  FAIL  R5 template-adherence T4b key: registered: C2 without T4b right, with T4b right; contract: C2 without T4b right, with T4b right

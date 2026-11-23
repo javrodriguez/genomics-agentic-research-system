@@ -1,0 +1,74 @@
+{
+  "buildx.build.provenance": {
+    "builder": {
+      "id": ""
+    },
+    "buildType": "https://mobyproject.org/buildkit@v1",
+    "materials": [
+      {
+        "uri": "pkg:docker/node?digest=sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562\u0026platform=linux%2Famd64",
+        "digest": {
+          "sha256": "efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562"
+        }
+      }
+    ],
+    "invocation": {
+      "configSource": {
+        "entryPoint": "Dockerfile"
+      },
+      "parameters": {
+        "frontend": "dockerfile.v0",
+        "args": {
+          "build-arg:BASE": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+          "build-arg:BASE_DIGEST": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+          "build-arg:BASE_NAME": "docker.io/library/node",
+          "build-arg:PYTHON_VERSION": "3.11.2",
+          "label:app.python.version": "3.11.2",
+          "label:org.opencontainers.image.base.digest": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+          "label:org.opencontainers.image.base.name": "docker.io/library/node"
+        },
+        "locals": [
+          {
+            "name": "context"
+          },
+          {
+            "name": "dockerfile"
+          }
+        ],
+        "root": {
+          "configSource": {
+            "path": "Dockerfile"
+          },
+          "request": {
+            "args": {
+              "build-arg:BASE": "docker.io/library/node@sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+              "build-arg:BASE_DIGEST": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+              "build-arg:BASE_NAME": "docker.io/library/node",
+              "build-arg:PYTHON_VERSION": "3.11.2",
+              "label:app.python.version": "3.11.2",
+              "label:org.opencontainers.image.base.digest": "sha256:efd0ab5780c2d9ab1f0f869571a00d5edb17793bff4cce4a2792e3eb0ffc7562",
+              "label:org.opencontainers.image.base.name": "docker.io/library/node",
+              "vcs:localdir:context": "evals/gap-study-4/box",
+              "vcs:localdir:dockerfile": "evals/gap-study-4/box/sidecar",
+              "vcs:revision": "ad766f016693b60e94a2819368a206fa580176d2",
+              "vcs:source": "/nonexistent-promisor-never-fetched"
+            }
+          }
+        },
+        "compatibilityVersion": 30
+      },
+      "environment": {
+        "dockerfileVersion": "1.27.0",
+        "platform": "linux/amd64"
+      }
+    }
+  },
+  "buildx.build.ref": "default/default/r2rwea8y1xhzoqmzbq0thr8hl",
+  "containerimage.descriptor": {
+    "mediaType": "application/vnd.oci.image.index.v1+json",
+    "digest": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+    "size": 856
+  },
+  "containerimage.digest": "sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d",
+  "image.name": "moby-dangling@sha256:13d0597e231ca7f9176f77e8bc4b9f263bcdafd24e375f27145a7dc79e91069d"
+}

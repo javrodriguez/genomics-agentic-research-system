@@ -1,0 +1,37 @@
+{
+ "athena_child": "/home/javier/gap4-build-c2-20261014-Mf8xh1ZM",
+ "athena_suite_list_checked_before": "no solo run in progress (gap4-merge-a1f7405 ended 07:29Z; none running)",
+ "exit": 0,
+ "files_sha256": {
+  "build-record.json": "c55c75cc7bffea5c202a19bc25e1a9f8490e4c22975e6248486008b96bd65914",
+  "egress.build.log": "f1716227ea99e4a19014f2252525856aa466fa5cb1cf4c0f4425540c43e67834",
+  "egress.iid": "87a7483b53713f8d374f48e36dec908492a2e88836e4d208040999c4dbfdaf23",
+  "egress.metadata.json": "07d8175bf52dfcaaff07cfe71567eef6b9b4364593380bab50535031e88388c7",
+  "sidecar.build.log": "68bebafa06abe8dfb6053f1f17b71a8b539204ae0392bad29326414e658ea55f",
+  "sidecar.iid": "47763f41ccc7604ab88cdce65efda974a1eeada29eb742e31af04352dc64997d",
+  "sidecar.metadata.json": "47f09a4454af0fea3967021cadf20dc1364a27c77513e2426cc8603b4d09299a",
+  "take-a.build.log": "ef7a48ac3d1f90b2e6e09cf473e03b208b863139e91daab23daa75bf44f2fe12",
+  "take-a.iid": "247acaa2bcf8a3265cfc0e0e969445eedb2f2ab04c968c4db9aa1baa2c1276cc",
+  "take-a.metadata.json": "70153b96ae623d3c6d80e2f586395e461226c68559501e03f4f0d5b589907683",
+  "take-g.build.log": "73158786157938d3707c9b63e9389964b399fc08658bbf6274486c0ee1c1eea0",
+  "take-g.iid": "c5ca3c7565417ec9351d9475fa82c1af003bceb0212848e9174db69c37b84583",
+  "take-g.metadata.json": "735ba2d6a308befc25a405fb3b614b92cf4849985abd048ac8c1a6c7d3b7157c",
+  "take-o.build.log": "a312f26c096d1d610b7a2d068b30358cbcd1a2d412029f6b470aa514a4bc793b",
+  "take-o.iid": "ee269d75c24bf0e6964fa1ad61838e497e069e956cb5db40dc24dbc4c8ee30b1",
+  "take-o.metadata.json": "0555936b9626b3d855cf77fced20eb3542151948ad26140549a62d8cbe047cd6"
+ },
+ "invocation": "/usr/bin/python3 -B -I <child>/clone/lane-reports/build-20261014c/build_candidate_images.py <child>/clone <child>/out lane-reports/provisional-image-locks-20261014.json box/image.lock,box/codex/image.lock,box/gemini/image.lock,box/sidecar/image.lock,box/egress/image.lock",
+ "run_log": "empty (no PROBLEM line)",
+ "shipped": {
+  "form": "git clone --depth 1 --filter=blob:none, sparse (box/, harness_bookkeeping.py, script c, the provisional-locks file, every .gitignore and .gitattributes); promisor URL set to a nonexistent path so no lazy fetch can reach the Mac; git status made no fetch on athena; gitleaks dir clean before shipping",
+  "head": "ad766f016693b60e94a2819368a206fa580176d2",
+  "tar_sha256": "0aeb2dbee068398c56a3f0c3abad178b241f7392b7f08cd1c43ce5c91d5f7170"
+ },
+ "superseded_first_run": {
+  "child": "/home/javier/gap4-build-c-20261014-pMith0QY",
+  "head": "fea61b23b370082478210c131f1259e65204fe47",
+  "why": "its metadata files carry no containerimage.config.digest, so config_digest was recorded null and script c (a defect) reported no problem; not committed, never fed to the writer"
+ },
+ "what": "script c (lane-reports/build-20261014c/build_candidate_images.py) run on athena from a clean sparse checkout of ad766f016693b60e94a2819368a206fa580176d2; its out/ copied back byte for byte (sha256 equal to athena's sha256sum list)",
+ "written_at": "2026-10-14 03:40 EDT (clock read first)"
+}

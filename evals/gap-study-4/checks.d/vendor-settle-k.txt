@@ -1,0 +1,9 @@
+# Lane vendor-settle stage K (glitch-f1's settle-design rulings, Wed 21 Oct 2026, under Javier's standing delegation):
+# the shared skeleton for the parallel Codex (stage C) and Gemini (stage G) settlement builders: the per-harness site
+# statements and READER-item lines in check_take.py, the two marked reader spans, the per-harness case tables, the
+# plant helper, and the five RECORDED take folders with their provenance (VP-settle, VP-provenance, VP-plant in
+# test_vendor_check.py). Behaviour-neutral: every row PENDING, both shapes sources "documented". One command per line,
+# run from the repository root; no take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_check.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py lint_language.py test_round4.py tests/test_vendor_check.py tests/vendor_plant.py tests/vendor_settle_codex.py tests/vendor_settle_gemini.py
+python3 -B -W ignore evals/gap-study-4/lint_language.py evals/gap-study-4/tests/fixtures/recorded-codex-w-o46 evals/gap-study-4/tests/fixtures/recorded-codex-w-o47 evals/gap-study-4/tests/fixtures/recorded-codex-w-o7 evals/gap-study-4/tests/fixtures/recorded-gemini-w-g14 evals/gap-study-4/tests/fixtures/recorded-gemini-w-g21

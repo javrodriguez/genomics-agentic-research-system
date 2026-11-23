@@ -1,0 +1,254 @@
+....FFF.F...FF.....F.........
+WITNESS agent-text-as-error: red by A2-error (1 own, 0 collateral, 0 errors) .
+WITNESS delete-as-write: red by P1-view (1 own, 0 collateral, 0 errors) .FFFF
+WITNESS reasoning-as-text: red by P1-view (1 own, 0 collateral, 0 errors) .FF
+WITNESS unknown-event-accepted: red by S1-event (4 own, 0 collateral, 0 errors) .
+WITNESS unknown-item-accepted: red by S2-item (2 own, 0 collateral, 0 errors) .
+WITNESS unknown-key-accepted: red by S3-key (4 own, 0 collateral, 0 errors) .
+WITNESS usage-zero: red by A3-usage (1 own, 0 collateral, 0 errors) .
+======================================================================
+FAIL: test_a4_the_turn_argv (test_codex_adapter.TestTheAdapter.test_a4_the_turn_argv)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 990, in test_a4_the_turn_argv
+    self.assertEqual(a4_argv(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A4-argv: the take's turns were refused: [99 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A4-argv: the take's turns were refused: Codex subscription binding not ready; API-key login is not permitted"
+
++ []
+- ["A4-argv: the take's turns were refused: Codex subscription binding not "
+-  'ready; API-key login is not permitted',
+-  'A4-argv: 0 turn exec(s), not 3']
+
+======================================================================
+FAIL: test_a5_the_model_is_the_rollouts (test_codex_adapter.TestTheAdapter.test_a5_the_model_is_the_rollouts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 993, in test_a5_the_model_is_the_rollouts
+    self.assertEqual(a5_model(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Codex subscrip[51 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A5-model: NotReady: Codex subscription binding not ready; API-key '
+-  'login is not permitted']
+
+======================================================================
+FAIL: test_a6_a_turn_on_the_fake_runtime (test_codex_adapter.TestTheAdapter.test_a6_a_turn_on_the_fake_runtime)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 996, in test_a6_a_turn_on_the_fake_runtime
+    self.assertEqual(a6_turn(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A6-turn: NotReady: Codex subscript[50 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A6-turn: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A6-turn: NotReady: Codex subscription binding not ready; API-key login '
+-  'is not permitted']
+
+======================================================================
+FAIL: test_a7_the_shapes_source_is_documented (test_codex_adapter.TestTheAdapter.test_a7_the_shapes_source_is_documented)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 999, in test_a7_the_shapes_source_is_documented
+    self.assertEqual(a7_source(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-source: NotReady: Codex subscri[52 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-source: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A7-source: NotReady: Codex subscription binding not ready; API-key '
+-  'login is not permitted']
+
+======================================================================
+FAIL: test_b1_each_end_reason_condition (test_codex_adapter.TestTheAdapter.test_b1_each_end_reason_condition)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1002, in test_b1_each_end_reason_condition
+    self.assertEqual(b1_end(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR B1-end: NotReady: Codex subscripti[49 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR B1-end: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR B1-end: NotReady: Codex subscription binding not ready; API-key login '
+-  'is not permitted']
+
+======================================================================
+FAIL: test_b2_the_thread_id_at_every_seat (test_codex_adapter.TestTheAdapter.test_b2_the_thread_id_at_every_seat)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1005, in test_b2_the_thread_id_at_every_seat
+    self.assertEqual(b2_thread(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR B2-thread: NotReady: Codex subscri[52 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR B2-thread: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR B2-thread: NotReady: Codex subscription binding not ready; API-key '
+-  'login is not permitted']
+
+======================================================================
+FAIL: test_b9_the_turn_record_field_by_field (test_codex_adapter.TestTheAdapter.test_b9_the_turn_record_field_by_field)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1023, in test_b9_the_turn_record_field_by_field
+    self.assertEqual(b9_record(ca), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR B9-record: NotReady: Codex subscri[52 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR B9-record: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR B9-record: NotReady: Codex subscription binding not ready; API-key '
+-  'login is not permitted']
+
+======================================================================
+FAIL: test_witness_failed_as_end_turn (test_codex_adapter.TestWitnesses.test_witness_failed_as_end_turn)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1165, in test_witness_failed_as_end_turn
+    self.kill("failed-as-end-turn")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1122, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A6-turn: NotReady: Codex subscript[50 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A6-turn: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A6-turn: NotReady: Codex subscription binding not ready; API-key login '
+-  'is not permitted'] : failed-as-end-turn: the bound check is not green on codex_adapter.py
+
+======================================================================
+FAIL: test_witness_model_defaulted (test_codex_adapter.TestWitnesses.test_witness_model_defaulted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1162, in test_witness_model_defaulted
+    self.kill("model-defaulted")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1122, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A5-model: NotReady: Codex subscrip[51 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A5-model: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A5-model: NotReady: Codex subscription binding not ready; API-key '
+-  'login is not permitted'] : model-defaulted: the bound check is not green on codex_adapter.py
+
+======================================================================
+FAIL: test_witness_model_first_only (test_codex_adapter.TestWitnesses.test_witness_model_first_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1159, in test_witness_model_first_only
+    self.kill("model-first-only")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1122, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A4-argv: the take's turns were refused: [99 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A4-argv: the take's turns were refused: Codex subscription binding not ready; API-key login is not permitted"
+
++ []
+- ["A4-argv: the take's turns were refused: Codex subscription binding not "
+-  'ready; API-key login is not permitted',
+-  'A4-argv: 0 turn exec(s), not 3'] : model-first-only: the bound check is not green on codex_adapter.py
+
+======================================================================
+FAIL: test_witness_other_thread_resumed (test_codex_adapter.TestWitnesses.test_witness_other_thread_resumed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1168, in test_witness_other_thread_resumed
+    self.kill("other-thread-resumed")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1122, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A6-turn: NotReady: Codex subscript[50 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A6-turn: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A6-turn: NotReady: Codex subscription binding not ready; API-key login '
+-  'is not permitted'] : other-thread-resumed: the bound check is not green on codex_adapter.py
+
+======================================================================
+FAIL: test_witness_resume_first (test_codex_adapter.TestWitnesses.test_witness_resume_first)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1156, in test_witness_resume_first
+    self.kill("resume-first")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1122, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["A4-argv: the take's turns were refused: [99 chars]t 3'] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"A4-argv: the take's turns were refused: Codex subscription binding not ready; API-key login is not permitted"
+
++ []
+- ["A4-argv: the take's turns were refused: Codex subscription binding not "
+-  'ready; API-key login is not permitted',
+-  'A4-argv: 0 turn exec(s), not 3'] : resume-first: the bound check is not green on codex_adapter.py
+
+======================================================================
+FAIL: test_witness_shapes_recorded (test_codex_adapter.TestWitnesses.test_witness_shapes_recorded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1171, in test_witness_shapes_recorded
+    self.kill("shapes-recorded")
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/evals/gap-study-4/tests/test_codex_adapter.py", line 1122, in kill
+    self.assertEqual(check(mod), [], f"{name}: the bound check is not green on {Path(mod.__file__).name}")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['ERROR A7-source: NotReady: Codex subscri[52 chars]ted'] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+'ERROR A7-source: NotReady: Codex subscription binding not ready; API-key login is not permitted'
+
++ []
+- ['ERROR A7-source: NotReady: Codex subscription binding not ready; API-key '
+-  'login is not permitted'] : shapes-recorded: the bound check is not green on codex_adapter.py
+
+----------------------------------------------------------------------
+Ran 42 tests in 1.269s
+
+FAILED (failures=13)

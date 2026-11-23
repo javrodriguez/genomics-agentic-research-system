@@ -1,0 +1,1 @@
+{"type": "harness-turn", "harness": "gemini", "session_id": "0c20adf8-3c63-5006-9e43-ae832dcdc6ad", "vendor_session_id": "7e2862a0-a8ab-4139-b61f-e5bfd314ef2f", "n": 1, "sent": "Please prepare the samplesheets for my RNA-seq project. The project is run-0c20adf8.", "stream": "turn-1.jsonl", "sha256": "9dbb3e0df21f6a557c7b9eb03f10e328dd93c7b5b0bb3ffa141228d203bc71d5"}

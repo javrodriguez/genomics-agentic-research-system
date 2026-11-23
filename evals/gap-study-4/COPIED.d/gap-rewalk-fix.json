@@ -1,0 +1,20 @@
+{
+  "lane": "gap-rewalk-fix",
+  "files": [
+    {
+      "path": "COPIED.d/gap-rewalk-fix.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Lane gap-rewalk-fix (glitch-45, the Lane-orchestrator, Tue 27 Oct 2026, under Javier's standing delegation): the battery reds of the rewalk merge 13e8301f that are instruments pinned to the 225 walks, fixed on the merge's line before it joins the freeze line; no checker-digest file, no leak_words or leak_context_excusals. Edits without transfer, in files other lanes' fragments claim: fixture_walk.py (lane w8a-walk-layout's entry) gains five RECORDED_EXCEPTIONS, w172 /tmp/run-e680031a-finalize.json (lines 86, 93, 94) and w194 /tmp/s01.json (line 69) in w023's class (the agent's own temp file), w179 (11, 57), w180 (11, 86) and w198 (11, 41) /home/<user in w142/w158's class (the fixture's quoted placeholder), each line bound by its sha256, as the Lane-orchestrator ruled; tests/test_freeze_gates_fix.py (lane freeze-gates-fix's entry) names the eight committed exceptions; box/harness_furniture.py (lane d8-furniture's entry) lists claude-code's stream kinds system/task_progress and tool_progress (w255, w260) by the CLI's keys only, never task_progress's description (the sub-agent's command) or subagent_type (the model's Agent argument). tests/test_walk_cover_o_records.py (lane pf1-walk-cover-strict's entry) reads an arm O walk graded at walk time (grade.json graded true, no regrade.json: the rewalk's 36, w-o49..w-o90) by the recheck road alone (walk_road, read_one), as coverage reads it, and any other arm O shape refuses by name; R6.walk-time (two walks, light) with the old road as its witness (regrade first refuses w-o49: the battery's R0). Count pins re-derived from the walks, never typed from the diagnosis: tests/test_pf1_transcript_integrity.py (lane pf1-l3-transcript-integrity's entry) 277 Claude and 74 Codex walks; tests/test_pf1_cost_vendors.py (lane pf1-cost-vendors' entry) V2 74 arm O walks, V11 589 records (549 cached), V12's 0 of 589; tests/test_build_draft.py (lane w5c-draft-ci's entry) effort walks per model (opus 36, sonnet 36, haiku 205) and 640 launch journals, the arm A layer note recounted over all 277 Claude walks (640 launches), the informed-by 387 and the stage-8 anchors; build_draft.py (lane w5c-draft-ci's entry) restates its prose over the 387 walks, the new walks' commits (3d278db9, 21300568) said where a sentence was scoped to d5c0f798, and the Codex content rule's 470 of 470 commands on 74 walks; prereg-draft.json regenerated once, last, by build_draft.py."
+    },
+    {
+      "path": "tests/test_gap_rewalk_fix.py",
+      "status": "new",
+      "reason": "Lane gap-rewalk-fix: RW1-exceptions (the five recorded exceptions, each red without its entry and not excusing a sixth line or another walk) and RW2-furniture (the Agent walks' progress kinds complete and red with the rows cut; no listed position holds the model's words, and listing task_progress's description goes red; no scanner module loads the table, each imported alone, with drive, which does, as the probe's witness)."
+    },
+    {
+      "path": "checks.d/gap-rewalk-fix.txt",
+      "status": "new",
+      "reason": "Lane gap-rewalk-fix's listed checks."
+    }
+  ]
+}

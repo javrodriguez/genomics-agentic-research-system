@@ -1,0 +1,30 @@
+{
+  "lane": "w4e-cp5-stats",
+  "files": [
+    {
+      "path": "intervals.py",
+      "status": "identical",
+      "source": "evals/gap-study-intervals/intervals.py"
+    },
+    {
+      "path": "stats.py",
+      "status": "new",
+      "reason": "CP5's statistical tables (interface 11): the closed take record and design, exact Clopper-Pearson bounds per half-cell and stop view from the copied intervals.py, holds beside the chance of holding, the paired and per-wording tables, the pre-registered comparison families on glitch-f3's test unit (ruling 3) with Holm over the tasks that run, the nested bootstrap across tasks, the seeded power simulation, and the --check CLI. New."
+    },
+    {
+      "path": "tests/test_stats.py",
+      "status": "new",
+      "reason": "Tests for stats.py (interface 3), driven by synthetic take records only: the drift test against lane E1's original intervals.py read from git at 68ec902f, the closed take record and design, every table with its mutant, the CLI's named problems. New."
+    },
+    {
+      "path": "COPIED.d/w4e-cp5-stats.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1)."
+    },
+    {
+      "path": "checks.d/w4e-cp5-stats.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

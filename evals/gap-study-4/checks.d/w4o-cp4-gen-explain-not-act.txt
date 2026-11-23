@@ -1,0 +1,4 @@
+# Lane w4o-cp4-gen-explain-not-act: CP4's task explain-not-act (new) and its fixture generator gen_explain_not_act.py.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_explain_not_act.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py explain-not-act

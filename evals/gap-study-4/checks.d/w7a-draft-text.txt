@@ -1,0 +1,5 @@
+# Lane w7a-draft-text (wave 7 P1): prereg.py --status reports round 4's arms and planned rows (W6D-R1-1).
+# The draft text items (W6D-R1-2, OPEN-4, W6C-R1-2, W6-claims-1) are bound in test_build_draft.py, run by w5c's lines.
+python3 -B -W ignore evals/gap-study-4/tests/test_prereg_status.py
+# Athena: every registered mutant must fail its bound method by an AssertionError carrying its clause.
+python3 -B -W ignore evals/gap-study-4/tests/test_prereg_status.py --witnesses

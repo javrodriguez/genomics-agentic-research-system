@@ -1,0 +1,4 @@
+# Lane w4j-cp4-task-template-adherence: CP4's template-adherence task (tasks/ and variants/template-adherence.json).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_task_template_adherence.py
+python3 -B -W ignore evals/gap-study-4/tasks/check_task.py template-adherence

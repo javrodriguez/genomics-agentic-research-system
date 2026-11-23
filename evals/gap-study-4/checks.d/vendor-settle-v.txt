@@ -1,0 +1,21 @@
+# Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's
+# standing delegation): C and G merged, the round's tests on the settled map, VENDOR_CHECK_SHAPES_SOURCE and both
+# adapters' SHAPES_SOURCE "recorded" with leg i's RECORDED stream copies, and the hand-back rulings. One command per
+# line, run from the repository root; RECORDED copies and synthetic records only, no take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/vendor_settle_codex.py
+python3 -B -W ignore evals/gap-study-4/tests/vendor_settle_gemini.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_check.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_body.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_entries.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_constants.py
+python3 -B -W ignore evals/gap-study-4/tests/test_freeze_shapes.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_edited_text_file.py
+python3 -B -W ignore evals/gap-study-4/tests/test_leak_grep_vendor.py
+python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py
+python3 -B -W ignore evals/gap-study-4/tests/test_context_sweep.py
+python3 -B -W ignore evals/gap-study-4/leak_grep.py --check
+python3 -B evals/gap-study-4/tests/vendor_check_fixtures.py --check
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py codex_adapter.py gemini_adapter.py build_draft.py tests/test_vendor_check.py tests/test_vendor_body.py tests/vendor_check_fixtures.py tests/vendor_settle_codex.py tests/vendor_settle_gemini.py

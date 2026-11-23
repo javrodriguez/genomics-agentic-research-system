@@ -1,0 +1,6 @@
+RED   1/3 sidecar uncapped
+RED   2/3 sidecar cap 1 GiB
+RED   1/3 flag not in the closed list
+RED   1/3 proxy uncapped
+RED   1/3 proxy cap after the image
+ALIVE: none

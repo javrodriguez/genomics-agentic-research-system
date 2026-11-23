@@ -1,0 +1,46 @@
+light ok: load1 5.03 < 16.00, memory pressure normal
+RED   stopped at BuildLW2.test_L2_a_manifest_digest_edited_in_a_later_commit after 1 tests | pre-fold writer (0f7cdbfd): red-first
+RED   stopped at BuildLW2.test_a_metadata_file_or_log_not_committed (key='metadata_file') after 6 tests | committed check off
+RED   stopped at Refusals.test_a_commit_not_an_ancestor after 29 tests | ancestor check off
+RED   stopped at Refusals.test_each_row_condition (key='exit', value=1) after 34 tests | exit check off
+RED   stopped at Refusals.test_each_row_condition (key='label_problems', value=['x']) after 34 tests | label check off
+RED   stopped at Refusals.test_each_row_condition (key='manifest_digest', value='cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc') after 34 tests | digest check off
+RED   stopped at Refusals.test_a_filled_or_other_lock after 30 tests | one row not required
+RED   stopped at Refusals.test_an_unresolved_or_changed_input (pattern='does not resolve python') after 33 tests | unresolved input allowed
+RED   stopped at Refusals.test_an_unresolved_or_changed_input (pattern='users differs') after 33 tests | changed input allowed
+RED   stopped at Refusals.test_a_filled_or_other_lock after 30 tests | schema-1 lock not required
+RED   stopped at WriteLW6.test_a_lock_changed_after_reading_is_not_overwritten after 38 tests | changed-since-read not checked
+RED   stopped at Refusals.test_a_record_of_another_schema (schema=1) after 31 tests | record schema not checked
+RED   stopped at InputsLW1.test_L1_the_dockerfile_changed_after_the_build after 12 tests | LW-1 input shas not compared with HEAD
+RED   stopped at InputsLW1.test_a_copy_added_at_head after 15 tests | LW-1 recorded input set not compared
+RED   stopped at InputsLW1.test_L1_the_dockerfile_changed_after_the_build after 12 tests | LW-1 inputs check not called
+RED   stopped at InputsLW1.test_a_baked_sidecar_program_that_differs after 13 tests | LW-1 COPY sources not read
+RED   stopped at InputsLW1.test_a_context_read_the_writer_does_not_bind (line='ADD sidecar.py /opt/x\n') after 14 tests | LW-1 unbound context reads allowed
+RED   stopped at InputsLW1.test_no_inputs_recorded after 20 tests | LW-1 empty inputs allowed
+RED   stopped at InputsLW1.test_a_recorded_sha_that_is_not_hex after 17 tests | LW-1 sha shape not checked
+RED   stopped at InputsLW1.test_the_lock_inputs_file_changed after 22 tests | LW-1 lock-inputs file sha not compared
+RED   stopped at InputsLW1.test_no_lock_inputs_file after 21 tests | LW-1 lock-inputs source not required
+RED   stopped at InputsLW1.test_lock_inputs_not_the_files after 18 tests | LW-1 lock_inputs not the file's
+RED   stopped at InputsLW1.test_lock_inputs_sha_not_theirs after 19 tests | LW-1 lock_inputs sha not checked
+RED   stopped at InputsLW1.test_the_row_of_another_lock after 23 tests | LW-1 row lock path not checked
+RED   stopped at InputsLW1.test_a_baked_sidecar_program_that_differs after 13 tests | LW-3 baked sidecar not checked
+RED   stopped at BuildLW2.test_L2_a_manifest_digest_edited_in_a_later_commit after 1 tests | LW-2 build check not called
+RED   stopped at BuildLW2.test_a_config_digest_edited_in_a_later_commit after 4 tests | LW-2 metadata config not compared
+RED   stopped at BuildLW2.test_L2_a_manifest_digest_edited_in_a_later_commit after 1 tests | LW-2 log manifest not compared
+RED   stopped at BuildLW2.test_a_metadata_file_or_log_not_committed (key='metadata_file') after 6 tests | LW-2 side files not committed
+RED   stopped at BuildLW2.test_a_side_file_not_named_for_the_image (key='metadata_file', name='../x.metadata.json') after 7 tests | LW-2 side file names not checked
+RED   stopped at BuildLW2.test_L3_an_argv_that_is_not_build_argv (label='other Dockerfile') after 2 tests | LW-2 argv not compared
+RED   stopped at BuildLW2.test_L3_an_argv_that_is_not_build_argv (label='other context') after 2 tests | LW-2 argv context not compared
+RED   stopped at BuildLW2.test_an_argv_whose_metadata_file_is_another after 8 tests | LW-2 metadata path not the committed file
+RED   stopped at BuildLW2.test_a_box_folder_that_is_not_the_checkouts after 3 tests | LW-2 box folder not the checkout's
+RED   stopped at CheckoutLW3StoreLW4.test_a_checkout_not_shown_clean_after (value=False) after 9 tests | LW-3 clean_after not required
+RED   stopped at CheckoutLW3StoreLW4.test_no_store_named (store=None) after 11 tests | LW-4 store not required
+RED   stopped at CheckoutLW3StoreLW4.test_a_manifest_digest_equal_to_the_config_digest after 10 tests | LW-4 manifest == config allowed
+RED   stopped at WriteLW6.test_another_writer_holding_the_folder_refuses after 39 tests | LW-6 no flock
+ok    0 control: image_lock unmutated []
+ALIVE 0 LW-5 pending() ignores base
+ALIVE 0 LW-5 pending() ignores python
+ALIVE 0 LW-5 pending() ignores harness.version
+ALIVE: ['LW-5 pending() ignores base', 'LW-5 pending() ignores python', 'LW-5 pending() ignores harness.version']
+
+[exited with code 0]

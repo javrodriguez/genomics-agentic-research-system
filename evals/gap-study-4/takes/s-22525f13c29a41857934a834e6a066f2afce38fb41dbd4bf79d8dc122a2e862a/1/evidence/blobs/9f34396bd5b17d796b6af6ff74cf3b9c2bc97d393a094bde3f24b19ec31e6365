@@ -1,0 +1,86 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+See how the six samples in this project cluster: a principal component analysis (PCA) on the
+gene-level counts, with each sample coloured by its `condition` (untreated: A1, A2, A3;
+treated: B1, B2, B3). The analysis produces the plot and the numbers behind it. It does not
+test for differential expression or decide whether the samples separate by condition.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, scikit-learn 1.9.0, matplotlib 3.11.1, all pinned in
+`_references/gars-bio.lock.txt`). Nothing is installed. Inputs are only read, never changed.
+
+1. **Resolve inputs.** Run `python3 _system/resolve_artifact.py --project projects/run-5d881cc9
+   --assay rnaseq_bulk --consumes counts_gene design` at execution time, and use the paths it
+   returns. If the resolver fails, stop.
+2. **Load.** Read the count matrix (tab-separated; columns `gene_id`, `gene_name`, then one per
+   sample). Index the rows by `gene_id` and drop `gene_name`. Read the design table. Check that
+   the count columns and the design's `sample_id` values are exactly the same set of six
+   samples. If they differ, stop with an error rather than dropping or adding samples.
+   Reorder the count columns to match the design's row order.
+3. **Filter.** Drop genes whose count is 0 in all six samples. Record how many genes were kept.
+4. **Normalise.** Compute DESeq2-style median-of-ratios size factors in numpy:
+   - Take the geometric mean of each gene across samples, using only genes with a count above 0
+     in every sample.
+   - Each sample's size factor is the median of its counts divided by those geometric means.
+   - Divide each sample's counts by its size factor.
+
+   Then transform as `log2(normalised + 1)`. The counts are salmon's length-scaled estimates,
+   which are not integers. They are used as they are, without rounding, because nothing here
+   fits a count model.
+5. **Select genes.** Keep the 500 genes with the highest variance of the log values across
+   samples. This is the `ntop = 500` default of DESeq2's `plotPCA`. If fewer than 500 genes
+   are left after filtering, keep all of them. The matrix has 200 genes today, so all are
+   used. Record the number used.
+6. **PCA.** Centre each gene on its mean across samples. Do not scale to unit variance, which
+   matches `plotPCA`. Run `sklearn.decomposition.PCA(n_components=5, svd_solver="full")`;
+   with six samples there are at most five informative components. Take the per-sample scores
+   and each component's explained-variance ratio.
+7. **Plot.** Draw a scatter of PC1 against PC2 with matplotlib:
+   - one point per sample, coloured by `condition` (two colours, explained in a legend), with
+     the `sample_id` labelled next to each point;
+   - axis titles `PC1 (xx.x% variance)` and `PC2 (xx.x% variance)`;
+   - the title notes that this is log2 median-of-ratios normalised counts using the top-N
+     variable genes.
+
+   Save the plot as PNG (300 dpi) and as PDF.
+8. **Write tables.**
+   - One table of per-sample scores on PC1 to PC5, with `sample_id` and `condition`.
+   - One table of each component's variance explained, as a fraction and as a running total.
+   - A short Markdown report listing the input paths, the number of genes after filtering, the
+     number used for PCA, the size factors, and the variance-explained table. It describes the
+     results and does not interpret them.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2_by_condition.png | figure | PC1 vs PC2 scatter, one point per sample, coloured by condition, labelled by sample_id |
+| results/pca_pc1_pc2_by_condition.pdf | figure | The same plot as a vector PDF |
+| results/pca_scores.tsv | table | Per-sample PC1–PC5 scores, with sample_id and condition |
+| results/pca_variance_explained.tsv | table | Each component's variance-explained ratio and the running total |
+| results/pca_report.md | report | Inputs, gene counts at each step, size factors, variance explained |
+
+## Execution
+Runs: batch
+Submitted through `_system/executorlib.py submit` to the workspace's configured executor
+(Slurm, per `_config/executor.yaml`) as one single-CPU job that activates `gars-bio` through
+`_system/gars-env.sh`. Expected wall time is under 2 minutes, mostly spent starting Python.
+Memory needed is under 1 GB. Outputs will total under 1 MB.

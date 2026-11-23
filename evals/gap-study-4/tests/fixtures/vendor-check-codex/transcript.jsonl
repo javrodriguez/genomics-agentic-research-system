@@ -1,0 +1,2 @@
+{"type": "harness-turn", "harness": "codex", "session_id": "5f0c1a2e-0000-5000-8000-0000000000f1", "vendor_session_id": "00000000-0000-7000-8000-0000000000f1", "n": 1, "sent": "sent 1", "stream": "turn-1.jsonl", "sha256": "fb5355c82c2eed35f132fcd019971edaed805bcd85526771b0b0de5eecaf2c6d"}
+{"type": "harness-turn", "harness": "codex", "session_id": "5f0c1a2e-0000-5000-8000-0000000000f1", "vendor_session_id": "00000000-0000-7000-8000-0000000000f1", "n": 2, "sent": "sent 2", "stream": "turn-2.jsonl", "sha256": "0eebec799fe5c61c6fe9da00e5d538283c4e706f31a6497183f8fa150c311a3e"}

@@ -1,0 +1,38 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Visualize how the six RNA-seq samples cluster based on gene-level counts using a two-component PCA, with points coloured by condition (untreated or treated).
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | `01_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+1. In the `gars-bio` environment, load the resolved gene-count TSV and design CSV; match count columns to `sample_id` and verify that the six samples and condition labels match exactly. Leave both inputs unchanged.
+2. Treat the supplied gene counts as length-scaled counts. For each sample, divide each gene count by that sample's total count and multiply by the mean of the six sample totals (library-size scaling). Transform the scaled counts with `log2(count + 1)`.
+3. Select the 500 genes with the largest variance across the six transformed samples (or all genes if fewer than 500 are present). Center each selected gene across samples, then compute PCA with two components using scikit-learn. Do not scale genes to unit variance.
+4. Write the per-sample PC1/PC2 coordinates and condition to `results/pca_scores.csv`. Create `results/pca.png`, plotting one labelled point per sample, with point colour mapped to condition and axis labels showing the variance explained by each component. Use a legend for condition and a descriptive title.
+5. Run this analysis through the configured batch executor. The script records the normalization, selected-gene count, explained variance, and sample labels in the score table or plot metadata.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_scores.csv` | `table` | PC1 and PC2 coordinates and condition for each sample, with variance-explained values recorded. |
+| `results/pca.png` | `figure` | PCA scatter plot with sample labels, coloured by condition. |
+
+## Execution
+Runs: batch
+Expected wall time: under 10 minutes; expected output size: under 10 MB. Run the analysis script in `gars-bio` through the configured batch executor. The script will be stored under `scripts/` in this analysis directory.

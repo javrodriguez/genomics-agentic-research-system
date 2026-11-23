@@ -1,0 +1,36 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 746B done
+#1 WARN: InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 5)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/2] FROM docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91
+#4 resolve docker.io/library/debian@sha256:a4672c0cb26fbdde88e38fa2dfb6c681942306680e41e4378b28770b6e79ee91 done
+#4 DONE 0.0s
+
+#5 [2/2] RUN apt-get update  && apt-get install -y --no-install-recommends "squid=5.7-2+deb12u6"  && rm -rf /var/lib/apt/lists/*
+#5 CACHED
+
+#6 exporting to image
+#6 exporting layers done
+#6 exporting manifest sha256:24c9fbdf938114d2ff412a70f5b2f2d08f2c4f7735ab7c229c8ad254dc02a89d done
+#6 exporting config sha256:388fbbc4d0cc6ea5ad8a942a779643d7842e2da4eeb96f5fd2930a888ec8161f done
+#6 exporting attestation manifest sha256:09bdc9063d6ac52d11ec52a882e164e1f745b5e8ba74d6311f79f2ea5c0c726a 0.0s done
+#6 exporting manifest list sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674 done
+#6 naming to moby-dangling@sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674 done
+#6 unpacking to moby-dangling@sha256:5055a840860667f02f7425f855f27ac3ef3c6b16da19afb794863a66f8147674 done
+#6 DONE 0.0s
+
+#7 resolving provenance for metadata file
+#7 DONE 0.0s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - InvalidDefaultArgInFrom: Default value for ARG ${BASE} results in empty or invalid base image name (line 5)

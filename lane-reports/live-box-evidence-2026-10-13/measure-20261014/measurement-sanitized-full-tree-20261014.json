@@ -1,0 +1,72 @@
+{
+  "admitted_scan_exit": 1,
+  "byte_bound_admission_sha256": "73f389ff000e3714bbca5bb44566c544892ec8f3334b81fe8f3d3acbe73840a5",
+  "calls": [
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-measure-20261014-boSnPQbA/admitted-20261014,target=/tree,readonly",
+        "sha256:f4cfbfa2fbfe004c9f5377b9de14438c0fa90e72076f583fb150a8b20f159de3",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stderr": "",
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0016319931019097567, \"watch_count\": 62}\n"
+    }
+  ],
+  "directory_count": 62,
+  "files_verified": 156,
+  "measurement": {
+    "establish_s": 0.0016319931019097567,
+    "setup": [
+      "Setting up watches.  Beware: since -r was given, this may take a while!",
+      "Watches established."
+    ],
+    "watch_count": 62
+  },
+  "scope": "sanitized admitted-tree (no .git) watch measurement; no fixture or production admission",
+  "source_manifest_sha256": "1e2de9235276ab6c18835517e405600a957e6e014c894c647c45e6bb0b1e5a21",
+  "source_pin": "844a4ce0d89437ca043363981a86096f6383a141",
+  "superseded_manifest_scan_exit": null,
+  "tree_inventory_sha256": "c0d09755cc5d25d6d63d89dc60c9d1cb7c8ca16891d644f35674ca788b797577",
+  "verified": true
+}

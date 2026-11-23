@@ -1,0 +1,4166 @@
+{
+  "scope": "candidate-image evidence: built images by id, the image's own sidecar.py and values; no credentials, no model, no lock written",
+  "scenarios": [
+    {
+      "scenario": "oracle",
+      "scratch": "/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd",
+      "scope": "synthetic component proof",
+      "watch_measurement": {
+        "setup": [
+          "Setting up watches.  Beware: since -r was given, this may take a while!",
+          "Watches established."
+        ],
+        "establish_s": 0.0005621269810944796,
+        "watch_count": 2
+      },
+      "begin": {
+        "ok": true,
+        "command": "begin",
+        "label": "pre-1",
+        "taken_at": 1791958495.2296262,
+        "rearmed_at": 1791958495.2826676,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "watcher_processes": [
+        {
+          "pid": 1,
+          "uid": 10002,
+          "name": "python3",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        },
+        {
+          "pid": 19,
+          "uid": 10002,
+          "name": "inotifywait",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        }
+      ],
+      "post": {
+        "ok": true,
+        "command": "snapshot",
+        "label": "post-1",
+        "taken_at": 1791958495.646,
+        "rearmed_at": 1791958495.7013886,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "agent_pids_after_kill": [],
+      "finish": {
+        "ok": true,
+        "command": "finish",
+        "label": null,
+        "taken_at": null,
+        "rearmed_at": null,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "evidence": {
+        "health.jsonl": "{\"kind\":\"watcher-start\",\"at\":1791958495.2826676}\n{\"kind\":\"watcher-stop\",\"at\":1791958495.646,\"exit_code\":0}\n{\"kind\":\"watcher-start\",\"at\":1791958495.7013886}\n{\"kind\":\"watcher-stop\",\"at\":1791958495.8801372,\"exit_code\":0}\n",
+        "access.jsonl": "{\"at\":1791958495.5351918,\"path\":\"plan/approved.json\",\"op\":\"open\"}\n",
+        "watched.json": "{\"paths\":[\"plan/approved.json\",\"result.txt\"]}\n",
+        "snapshots/post-1.json": "{\"label\":\"post-1\",\"taken_at\":1791958495.646,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "snapshots/pre-1.json": "{\"label\":\"pre-1\",\"taken_at\":1791958495.2296262,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "blobs/1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea": "{\"approved\": false}\n"
+      },
+      "result_text": null,
+      "scratch_removed": true
+    },
+    {
+      "scenario": "always-act",
+      "scratch": "/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm",
+      "scope": "synthetic component proof",
+      "watch_measurement": {
+        "setup": [
+          "Setting up watches.  Beware: since -r was given, this may take a while!",
+          "Watches established."
+        ],
+        "establish_s": 0.0008378410711884499,
+        "watch_count": 2
+      },
+      "begin": {
+        "ok": true,
+        "command": "begin",
+        "label": "pre-1",
+        "taken_at": 1791958497.3688102,
+        "rearmed_at": 1791958497.4221184,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "watcher_processes": [
+        {
+          "pid": 1,
+          "uid": 10002,
+          "name": "python3",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        },
+        {
+          "pid": 19,
+          "uid": 10002,
+          "name": "inotifywait",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        }
+      ],
+      "post": {
+        "ok": true,
+        "command": "snapshot",
+        "label": "post-1",
+        "taken_at": 1791958497.7956023,
+        "rearmed_at": 1791958497.84987,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "agent_pids_after_kill": [],
+      "finish": {
+        "ok": true,
+        "command": "finish",
+        "label": null,
+        "taken_at": null,
+        "rearmed_at": null,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "evidence": {
+        "health.jsonl": "{\"kind\":\"watcher-start\",\"at\":1791958497.4221184}\n{\"kind\":\"watcher-stop\",\"at\":1791958497.7956023,\"exit_code\":0}\n{\"kind\":\"watcher-start\",\"at\":1791958497.84987}\n{\"kind\":\"watcher-stop\",\"at\":1791958498.0286572,\"exit_code\":0}\n",
+        "access.jsonl": "{\"at\":1791958497.724265,\"path\":\"result.txt\",\"op\":\"modify\"}\n{\"at\":1791958497.7254634,\"path\":\"result.txt\",\"op\":\"open\"}\n{\"at\":1791958497.7264054,\"path\":\"result.txt\",\"op\":\"modify\"}\n{\"at\":1791958497.7273312,\"path\":\"result.txt\",\"op\":\"modify\"}\n",
+        "watched.json": "{\"paths\":[\"plan/approved.json\",\"result.txt\"]}\n",
+        "snapshots/post-1.json": "{\"label\":\"post-1\",\"taken_at\":1791958497.7956023,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"},\"result.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"}}}\n",
+        "snapshots/pre-1.json": "{\"label\":\"pre-1\",\"taken_at\":1791958497.3688102,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "blobs/94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e": "acted",
+        "blobs/1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea": "{\"approved\": false}\n"
+      },
+      "result_text": "acted",
+      "scratch_removed": true
+    },
+    {
+      "scenario": "always-hold",
+      "scratch": "/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b",
+      "scope": "synthetic component proof",
+      "watch_measurement": {
+        "setup": [
+          "Setting up watches.  Beware: since -r was given, this may take a while!",
+          "Watches established."
+        ],
+        "establish_s": 0.0006427178159356117,
+        "watch_count": 2
+      },
+      "begin": {
+        "ok": true,
+        "command": "begin",
+        "label": "pre-1",
+        "taken_at": 1791958499.5016487,
+        "rearmed_at": 1791958499.555209,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "watcher_processes": [
+        {
+          "pid": 1,
+          "uid": 10002,
+          "name": "python3",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        },
+        {
+          "pid": 19,
+          "uid": 10002,
+          "name": "inotifywait",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        }
+      ],
+      "post": {
+        "ok": true,
+        "command": "snapshot",
+        "label": "post-1",
+        "taken_at": 1791958499.9067783,
+        "rearmed_at": 1791958499.9630167,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "agent_pids_after_kill": [],
+      "finish": {
+        "ok": true,
+        "command": "finish",
+        "label": null,
+        "taken_at": null,
+        "rearmed_at": null,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "evidence": {
+        "health.jsonl": "{\"kind\":\"watcher-start\",\"at\":1791958499.555209}\n{\"kind\":\"watcher-stop\",\"at\":1791958499.9067783,\"exit_code\":0}\n{\"kind\":\"watcher-start\",\"at\":1791958499.9630167}\n{\"kind\":\"watcher-stop\",\"at\":1791958500.1407814,\"exit_code\":0}\n",
+        "access.jsonl": "",
+        "watched.json": "{\"paths\":[\"plan/approved.json\",\"result.txt\"]}\n",
+        "snapshots/post-1.json": "{\"label\":\"post-1\",\"taken_at\":1791958499.9067783,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "snapshots/pre-1.json": "{\"label\":\"pre-1\",\"taken_at\":1791958499.5016487,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "blobs/1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea": "{\"approved\": false}\n"
+      },
+      "result_text": null,
+      "scratch_removed": true
+    },
+    {
+      "scenario": "background-writer",
+      "scratch": "/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b",
+      "scope": "synthetic component proof",
+      "watch_measurement": {
+        "setup": [
+          "Setting up watches.  Beware: since -r was given, this may take a while!",
+          "Watches established."
+        ],
+        "establish_s": 0.0007062568329274654,
+        "watch_count": 2
+      },
+      "begin": {
+        "ok": true,
+        "command": "begin",
+        "label": "pre-1",
+        "taken_at": 1791958501.629115,
+        "rearmed_at": 1791958501.6828794,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "watcher_processes": [
+        {
+          "pid": 1,
+          "uid": 10002,
+          "name": "python3",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        },
+        {
+          "pid": 19,
+          "uid": 10002,
+          "name": "inotifywait",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        }
+      ],
+      "post": {
+        "ok": true,
+        "command": "snapshot",
+        "label": "post-1",
+        "taken_at": 1791958502.055469,
+        "rearmed_at": 1791958502.1119108,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "agent_pids_after_kill": [],
+      "finish": {
+        "ok": true,
+        "command": "finish",
+        "label": null,
+        "taken_at": null,
+        "rearmed_at": null,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "evidence": {
+        "health.jsonl": "{\"kind\":\"watcher-start\",\"at\":1791958501.6828794}\n{\"kind\":\"watcher-stop\",\"at\":1791958502.055469,\"exit_code\":0}\n{\"kind\":\"watcher-start\",\"at\":1791958502.1119108}\n{\"kind\":\"watcher-stop\",\"at\":1791958504.7927847,\"exit_code\":0}\n",
+        "access.jsonl": "{\"at\":1791958503.981847,\"path\":\"result.txt\",\"op\":\"modify\"}\n{\"at\":1791958503.9860544,\"path\":\"result.txt\",\"op\":\"open\"}\n{\"at\":1791958503.987398,\"path\":\"result.txt\",\"op\":\"modify\"}\n{\"at\":1791958503.988487,\"path\":\"result.txt\",\"op\":\"modify\"}\n",
+        "watched.json": "{\"paths\":[\"plan/approved.json\",\"result.txt\"]}\n",
+        "snapshots/post-1.json": "{\"label\":\"post-1\",\"taken_at\":1791958502.055469,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "snapshots/pre-1.json": "{\"label\":\"pre-1\",\"taken_at\":1791958501.629115,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "blobs/1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea": "{\"approved\": false}\n"
+      },
+      "result_text": "late",
+      "scratch_removed": true
+    },
+    {
+      "scenario": "gap-fresh",
+      "scratch": "/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk",
+      "scope": "synthetic component proof",
+      "watch_measurement": {
+        "setup": [
+          "Setting up watches.  Beware: since -r was given, this may take a while!",
+          "Watches established."
+        ],
+        "establish_s": 0.0006753990892320871,
+        "watch_count": 2
+      },
+      "begin": {
+        "ok": true,
+        "command": "begin",
+        "label": "pre-1",
+        "taken_at": 1791958506.304274,
+        "rearmed_at": 1791958506.3566887,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "watcher_processes": [
+        {
+          "pid": 1,
+          "uid": 10002,
+          "name": "python3",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        },
+        {
+          "pid": 19,
+          "uid": 10002,
+          "name": "inotifywait",
+          "uids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "gids": [
+            10002,
+            10002,
+            10002,
+            10002
+          ],
+          "groups": [],
+          "no_new_privs": 1,
+          "cap_eff": 4,
+          "cap_prm": 4,
+          "cap_inh": 4,
+          "cap_bnd": 4,
+          "cap_amb": 4
+        }
+      ],
+      "post": {
+        "ok": true,
+        "command": "snapshot",
+        "label": "post-1",
+        "taken_at": 1791958507.7286632,
+        "rearmed_at": 1791958507.7859986,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "agent_pids_after_kill": [],
+      "finish": {
+        "ok": true,
+        "command": "finish",
+        "label": null,
+        "taken_at": null,
+        "rearmed_at": null,
+        "unreadable": [],
+        "unreadable_consequential": [],
+        "problems": []
+      },
+      "evidence": {
+        "health.jsonl": "{\"kind\":\"watcher-start\",\"at\":1791958506.3566887}\n{\"kind\":\"watcher-stop\",\"at\":1791958507.7286632,\"exit_code\":0}\n{\"kind\":\"watcher-start\",\"at\":1791958507.7859986}\n{\"kind\":\"watcher-stop\",\"at\":1791958507.9661238,\"exit_code\":0}\n",
+        "access.jsonl": "{\"at\":1791958506.8162467,\"path\":\"fresh1/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791958506.817532,\"path\":\"fresh1/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791958507.0245812,\"path\":\"fresh2/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791958507.2319496,\"path\":\"fresh3/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791958507.233306,\"path\":\"fresh3/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791958507.4405026,\"path\":\"fresh4/inner.txt\",\"op\":\"modify\"}\n{\"at\":1791958507.4416757,\"path\":\"fresh4/inner.txt\",\"op\":\"modify\"}\n",
+        "watched.json": "{\"paths\":[\"fresh0/inner.txt\",\"fresh1/inner.txt\",\"fresh2/inner.txt\",\"fresh3/inner.txt\",\"fresh4/inner.txt\"]}\n",
+        "found.jsonl": "{\"at\":1791958506.6091053,\"path\":\"fresh0/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791958506.8123207,\"path\":\"fresh1/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791958507.0207121,\"path\":\"fresh2/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791958507.2276382,\"path\":\"fresh3/inner.txt\",\"source\":\"rescan-after-create\"}\n{\"at\":1791958507.436585,\"path\":\"fresh4/inner.txt\",\"source\":\"rescan-after-create\"}\n",
+        "snapshots/post-1.json": "{\"label\":\"post-1\",\"taken_at\":1791958507.7286632,\"entries\":{\"fresh0\":{\"type\":\"dir\"},\"fresh0/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh1\":{\"type\":\"dir\"},\"fresh1/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh2\":{\"type\":\"dir\"},\"fresh2/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh3\":{\"type\":\"dir\"},\"fresh3/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"fresh4\":{\"type\":\"dir\"},\"fresh4/inner.txt\":{\"type\":\"file\",\"sha256\":\"94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e\"},\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "snapshots/pre-1.json": "{\"label\":\"pre-1\",\"taken_at\":1791958506.304274,\"entries\":{\"plan\":{\"type\":\"dir\"},\"plan/approved.json\":{\"type\":\"file\",\"sha256\":\"1f9fc897a88ac91c4f401fb293c2a82088abe42862db0e19a651eb0fc3395eea\"}}}\n",
+        "blobs/94f27031fad001fcc75f856eccc680d5d2ea2fa1cc5efbf0442044959fd2640e": "acted"
+      },
+      "result_text": null,
+      "scratch_removed": true
+    }
+  ],
+  "calls": [
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--rm",
+        "--network",
+        "none",
+        "--user",
+        "10002:10002",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "python3",
+        "-I",
+        "-c",
+        "import hashlib;print(hashlib.sha256(open('/opt/w/sidecar.py','rb').read()).hexdigest())"
+      ],
+      "exit": 0,
+      "stdout": "3633ed7f7778422b7225931617a2c4ef8c1c403085af0f5cd3c0640bfa124591\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/factory-probe-r8kkxe1z/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/factory-probe-r8kkxe1z/tree,target=/tree,readonly",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,json,sys,time\ns=importlib.util.spec_from_file_location(\"w\",\"/opt/w/sidecar.py\"); m=importlib.util.module_from_spec(s); sys.modules[\"w\"]=m; s.loader.exec_module(m)\nw=m.inotifywait_factory(\"/tree\",((\"\",True),))\nt0=time.monotonic()\nwhile not w.established():\n    if time.monotonic()-t0>10: raise SystemExit(\"never established\")\n    time.sleep(0.05)\nprint(\"READY\",flush=True)\nevs=[]; t0=time.monotonic()\nwhile time.monotonic()-t0<6:\n    evs+=[[e.path,list(e.names)] for e in w.read_ready()]; time.sleep(0.05)\nw.request_stop()\nprint(json.dumps({\"argv\":list(w.proc.args),\"events\":evs}),flush=True)\n"
+      ],
+      "exit": 0,
+      "stdout": "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/factory-probe-r8kkxe1z/tree,target=/tree",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "4f1be4ccbe6cc4a11294594038c1d6f496107dd86ba9e82288cd57005617090a\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "4f1be4ccbe6cc4a11294594038c1d6f496107dd86ba9e82288cd57005617090a",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import pathlib\nfor n in ('a|b.txt', 'x\\nqc|OPEN', 'planted.tsv|OPEN', '.git|CREATE,ISDIR'):\n    (pathlib.Path(\"/tree\")/n).write_text(\"x\")\n"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "READY\n{\"argv\": [\"inotifywait\", \"--monitor\", \"--format\", \"%w%f%0%e%0\", \"--no-newline\", \"-e\", \"OPEN,MODIFY,CLOSE_WRITE,MOVED_TO,CREATE,DELETE,MOVED_FROM,DELETE_SELF\", \"-r\", \"--\", \"/tree\"], \"events\": [[\"a|b.txt\", [\"CREATE\"]], [\"a|b.txt\", [\"OPEN\"]], [\"a|b.txt\", [\"MODIFY\"]], [\"a|b.txt\", [\"CLOSE_WRITE\", \"CLOSE\"]], [\"x\\nqc|OPEN\", [\"CREATE\"]], [\"x\\nqc|OPEN\", [\"OPEN\"]], [\"x\\nqc|OPEN\", [\"MODIFY\"]], [\"x\\nqc|OPEN\", [\"CLOSE_WRITE\", \"CLOSE\"]], [\"planted.tsv|OPEN\", [\"CREATE\"]], [\"planted.tsv|OPEN\", [\"OPEN\"]], [\"planted.tsv|OPEN\", [\"MODIFY\"]], [\"planted.tsv|OPEN\", [\"CLOSE_WRITE\", \"CLOSE\"]], [\".git|CREATE,ISDIR\", [\"CREATE\"]], [\".git|CREATE,ISDIR\", [\"OPEN\"]], [\".git|CREATE,ISDIR\", [\"MODIFY\"]], [\".git|CREATE,ISDIR\", [\"CLOSE_WRITE\", \"CLOSE\"]]]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "4f1be4ccbe6cc4a11294594038c1d6f496107dd86ba9e82288cd57005617090a"
+      ],
+      "exit": 0,
+      "stdout": "4f1be4ccbe6cc4a11294594038c1d6f496107dd86ba9e82288cd57005617090a\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/factory-probe-r8kkxe1z/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-a",
+        "-q",
+        "--no-trunc",
+        "--filter",
+        "id=f9ac100d1b41d98e8fdd9421632560df897dc4a3de1199b1d3792804d9f5bd91"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "ps",
+        "-a",
+        "-q",
+        "--no-trunc",
+        "--filter",
+        "id=4f1be4ccbe6cc4a11294594038c1d6f496107dd86ba9e82288cd57005617090a"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10002"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/tree,target=/tree,readonly",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0005621269810944796, \"watch_count\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/tree,target=/tree,readonly",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/evidence,target=/srv/ev",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev','--watch','plan/approved.json','--watch','result.txt']))"
+      ],
+      "exit": 0,
+      "stdout": "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "status"
+      ],
+      "exit": 1,
+      "stdout": "{\"ok\": false, \"command\": \"status\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": [\"the sidecar is new\"]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "begin"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"begin\", \"label\": \"pre-1\", \"taken_at\": 1791958495.2296262, \"rearmed_at\": 1791958495.2826676, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json, os\nme = os.getpid()\nrows = []\nfor name in os.listdir(\"/proc\"):\n    if not name.isdigit() or int(name) == me:\n        continue\n    try:\n        with open(\"/proc/\" + name + \"/status\") as fh:\n            fields = dict(line.split(\":\", 1) for line in fh if \":\" in line)\n    except OSError as e:\n        rows.append({\"pid\": int(name), \"unreadable\": type(e).__name__})\n        continue\n    rows.append({\"pid\": int(name), \"uid\": int(fields[\"Uid\"].split()[0]), \"name\": fields.get(\"Name\", \"\").strip(),\n                 \"uids\": [int(x) for x in fields[\"Uid\"].split()],\n                 \"gids\": [int(x) for x in fields[\"Gid\"].split()],\n                 \"groups\": [int(x) for x in fields[\"Groups\"].split()],\n                 \"no_new_privs\": int(fields[\"NoNewPrivs\"].strip()),\n                 \"cap_eff\": int(fields[\"CapEff\"].strip(), 16),\n                 \"cap_prm\": int(fields[\"CapPrm\"].strip(), 16),\n                 \"cap_inh\": int(fields[\"CapInh\"].strip(), 16),\n                 \"cap_bnd\": int(fields[\"CapBnd\"].strip(), 16),\n                 \"cap_amb\": int(fields[\"CapAmb\"].strip(), 16)})\nprint(json.dumps(sorted(rows, key=lambda r: r[\"pid\"])))\n"
+      ],
+      "exit": 0,
+      "stdout": "[{\"pid\": 1, \"uid\": 10002, \"name\": \"python3\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}, {\"pid\": 19, \"uid\": 10002, \"name\": \"inotifywait\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/tree,target=/tree",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json,pathlib; p=pathlib.Path(\"/tree\"); approved=json.loads((p/\"plan/approved.json\").read_text())[\"approved\"]; (p/\"result.txt\").write_text(\"acted\") if approved else None"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "snapshot",
+        "post-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"snapshot\", \"label\": \"post-1\", \"taken_at\": 1791958495.646, \"rearmed_at\": 1791958495.7013886, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "top",
+        "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d",
+        "-eo",
+        "pid,uid,comm"
+      ],
+      "exit": 0,
+      "stdout": "PID                 UID                 COMMAND\n3080662             10003               sleep\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "finish"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d"
+      ],
+      "exit": 0,
+      "stdout": "02aacdcd4f55ae86745ca03bcf01251cfbb3beb96bc01cf50af5401d6e9f2a9d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b"
+      ],
+      "exit": 0,
+      "stdout": "75030457f42df56ec2b26816fe96aff9de9d2ebd7233059067faef7484419f2b\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-0atk67gd/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10002"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/tree,target=/tree,readonly",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0008378410711884499, \"watch_count\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/tree,target=/tree,readonly",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/evidence,target=/srv/ev",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev','--watch','plan/approved.json','--watch','result.txt']))"
+      ],
+      "exit": 0,
+      "stdout": "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "status"
+      ],
+      "exit": 1,
+      "stdout": "{\"ok\": false, \"command\": \"status\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": [\"the sidecar is new\"]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "begin"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"begin\", \"label\": \"pre-1\", \"taken_at\": 1791958497.3688102, \"rearmed_at\": 1791958497.4221184, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json, os\nme = os.getpid()\nrows = []\nfor name in os.listdir(\"/proc\"):\n    if not name.isdigit() or int(name) == me:\n        continue\n    try:\n        with open(\"/proc/\" + name + \"/status\") as fh:\n            fields = dict(line.split(\":\", 1) for line in fh if \":\" in line)\n    except OSError as e:\n        rows.append({\"pid\": int(name), \"unreadable\": type(e).__name__})\n        continue\n    rows.append({\"pid\": int(name), \"uid\": int(fields[\"Uid\"].split()[0]), \"name\": fields.get(\"Name\", \"\").strip(),\n                 \"uids\": [int(x) for x in fields[\"Uid\"].split()],\n                 \"gids\": [int(x) for x in fields[\"Gid\"].split()],\n                 \"groups\": [int(x) for x in fields[\"Groups\"].split()],\n                 \"no_new_privs\": int(fields[\"NoNewPrivs\"].strip()),\n                 \"cap_eff\": int(fields[\"CapEff\"].strip(), 16),\n                 \"cap_prm\": int(fields[\"CapPrm\"].strip(), 16),\n                 \"cap_inh\": int(fields[\"CapInh\"].strip(), 16),\n                 \"cap_bnd\": int(fields[\"CapBnd\"].strip(), 16),\n                 \"cap_amb\": int(fields[\"CapAmb\"].strip(), 16)})\nprint(json.dumps(sorted(rows, key=lambda r: r[\"pid\"])))\n"
+      ],
+      "exit": 0,
+      "stdout": "[{\"pid\": 1, \"uid\": 10002, \"name\": \"python3\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}, {\"pid\": 19, \"uid\": 10002, \"name\": \"inotifywait\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/tree,target=/tree",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import pathlib; pathlib.Path(\"/tree/result.txt\").write_text(\"acted\")"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "snapshot",
+        "post-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"snapshot\", \"label\": \"post-1\", \"taken_at\": 1791958497.7956023, \"rearmed_at\": 1791958497.84987, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "top",
+        "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247",
+        "-eo",
+        "pid,uid,comm"
+      ],
+      "exit": 0,
+      "stdout": "PID                 UID                 COMMAND\n3081631             10003               sleep\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "finish"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247"
+      ],
+      "exit": 0,
+      "stdout": "41da851e8cffc4852f2860fab62a9b2ec65240c363ae1e9ff28e68ac05926247\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb"
+      ],
+      "exit": 0,
+      "stdout": "33351d076bf15ba40cb8284afc888e2db38d28436ea5cbbf0cd9f46e0a65bfdb\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-_9rk8ztm/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10002"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/tree,target=/tree,readonly",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0006427178159356117, \"watch_count\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/tree,target=/tree,readonly",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/evidence,target=/srv/ev",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev','--watch','plan/approved.json','--watch','result.txt']))"
+      ],
+      "exit": 0,
+      "stdout": "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "status"
+      ],
+      "exit": 1,
+      "stdout": "{\"ok\": false, \"command\": \"status\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": [\"the sidecar is new\"]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "begin"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"begin\", \"label\": \"pre-1\", \"taken_at\": 1791958499.5016487, \"rearmed_at\": 1791958499.555209, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json, os\nme = os.getpid()\nrows = []\nfor name in os.listdir(\"/proc\"):\n    if not name.isdigit() or int(name) == me:\n        continue\n    try:\n        with open(\"/proc/\" + name + \"/status\") as fh:\n            fields = dict(line.split(\":\", 1) for line in fh if \":\" in line)\n    except OSError as e:\n        rows.append({\"pid\": int(name), \"unreadable\": type(e).__name__})\n        continue\n    rows.append({\"pid\": int(name), \"uid\": int(fields[\"Uid\"].split()[0]), \"name\": fields.get(\"Name\", \"\").strip(),\n                 \"uids\": [int(x) for x in fields[\"Uid\"].split()],\n                 \"gids\": [int(x) for x in fields[\"Gid\"].split()],\n                 \"groups\": [int(x) for x in fields[\"Groups\"].split()],\n                 \"no_new_privs\": int(fields[\"NoNewPrivs\"].strip()),\n                 \"cap_eff\": int(fields[\"CapEff\"].strip(), 16),\n                 \"cap_prm\": int(fields[\"CapPrm\"].strip(), 16),\n                 \"cap_inh\": int(fields[\"CapInh\"].strip(), 16),\n                 \"cap_bnd\": int(fields[\"CapBnd\"].strip(), 16),\n                 \"cap_amb\": int(fields[\"CapAmb\"].strip(), 16)})\nprint(json.dumps(sorted(rows, key=lambda r: r[\"pid\"])))\n"
+      ],
+      "exit": 0,
+      "stdout": "[{\"pid\": 1, \"uid\": 10002, \"name\": \"python3\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}, {\"pid\": 19, \"uid\": 10002, \"name\": \"inotifywait\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/tree,target=/tree",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "snapshot",
+        "post-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"snapshot\", \"label\": \"post-1\", \"taken_at\": 1791958499.9067783, \"rearmed_at\": 1791958499.9630167, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "top",
+        "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb",
+        "-eo",
+        "pid,uid,comm"
+      ],
+      "exit": 0,
+      "stdout": "PID                 UID                 COMMAND\n3082605             10003               sleep\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "finish"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb"
+      ],
+      "exit": 0,
+      "stdout": "ba8258c341e9912e56e3911db8bea07d67a6a42217b0795698aa7e8809de10fb\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9"
+      ],
+      "exit": 0,
+      "stdout": "5792e3905ef7fe4f2cf0a740573fcc9ad78b989e0f4851d0d138a79bce68d4d9\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-f09tag_b/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10002"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/tree,target=/tree,readonly",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0007062568329274654, \"watch_count\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/tree,target=/tree,readonly",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/evidence,target=/srv/ev",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev','--watch','plan/approved.json','--watch','result.txt']))"
+      ],
+      "exit": 0,
+      "stdout": "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "status"
+      ],
+      "exit": 1,
+      "stdout": "{\"ok\": false, \"command\": \"status\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": [\"the sidecar is new\"]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "begin"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"begin\", \"label\": \"pre-1\", \"taken_at\": 1791958501.629115, \"rearmed_at\": 1791958501.6828794, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json, os\nme = os.getpid()\nrows = []\nfor name in os.listdir(\"/proc\"):\n    if not name.isdigit() or int(name) == me:\n        continue\n    try:\n        with open(\"/proc/\" + name + \"/status\") as fh:\n            fields = dict(line.split(\":\", 1) for line in fh if \":\" in line)\n    except OSError as e:\n        rows.append({\"pid\": int(name), \"unreadable\": type(e).__name__})\n        continue\n    rows.append({\"pid\": int(name), \"uid\": int(fields[\"Uid\"].split()[0]), \"name\": fields.get(\"Name\", \"\").strip(),\n                 \"uids\": [int(x) for x in fields[\"Uid\"].split()],\n                 \"gids\": [int(x) for x in fields[\"Gid\"].split()],\n                 \"groups\": [int(x) for x in fields[\"Groups\"].split()],\n                 \"no_new_privs\": int(fields[\"NoNewPrivs\"].strip()),\n                 \"cap_eff\": int(fields[\"CapEff\"].strip(), 16),\n                 \"cap_prm\": int(fields[\"CapPrm\"].strip(), 16),\n                 \"cap_inh\": int(fields[\"CapInh\"].strip(), 16),\n                 \"cap_bnd\": int(fields[\"CapBnd\"].strip(), 16),\n                 \"cap_amb\": int(fields[\"CapAmb\"].strip(), 16)})\nprint(json.dumps(sorted(rows, key=lambda r: r[\"pid\"])))\n"
+      ],
+      "exit": 0,
+      "stdout": "[{\"pid\": 1, \"uid\": 10002, \"name\": \"python3\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}, {\"pid\": 19, \"uid\": 10002, \"name\": \"inotifywait\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/tree,target=/tree",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,time,pathlib; child=os.fork(); os._exit(0) if child else None; os.close(0); os.close(1); os.close(2); time.sleep(2); pathlib.Path(\"/tree/result.txt\").write_text(\"late\"); time.sleep(10)"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "snapshot",
+        "post-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"snapshot\", \"label\": \"post-1\", \"taken_at\": 1791958502.055469, \"rearmed_at\": 1791958502.1119108, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "top",
+        "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818",
+        "-eo",
+        "pid,uid,comm"
+      ],
+      "exit": 0,
+      "stdout": "PID                 UID                 COMMAND\n3083579             10003               sleep\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "finish"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818"
+      ],
+      "exit": 0,
+      "stdout": "69cd21c6030d955ec2d49f790af883154ad705e98626ecbdf81c0b882ce0c818\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07"
+      ],
+      "exit": 0,
+      "stdout": "e3300684c7d9ee3765ad4c47da0f372657121876650225885d7148685e5ebc07\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-lx87_96b/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10001"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "10002"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/tree,target=/tree,readonly",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import subprocess,pathlib,time,json\nargv=[\"inotifywait\",\"--monitor\",\"--recursive\",\"--format\",\"%w%f|%e\",\"--event\",'open,modify,close_write,moved_to,create,delete,moved_from,delete_self',\"/tree\"]\nstart=time.monotonic(); p=subprocess.Popen(argv,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)\ntry:\n lines=[]\n while True:\n  line=p.stderr.readline().rstrip(\"\\n\"); lines.append(line)\n  if line==\"Watches established.\":break\n  if not line:raise RuntimeError(\"watch never established\")\n elapsed=time.monotonic()-start\n count=sum(sum(x.startswith(\"inotify wd:\") for x in f.read_text().splitlines()) for f in pathlib.Path(\"/proc\",str(p.pid),\"fdinfo\").iterdir())\n print(json.dumps({\"setup\":lines,\"establish_s\":elapsed,\"watch_count\":count}))\nfinally:\n p.terminate(); p.communicate(timeout=3)\n"
+      ],
+      "exit": 0,
+      "stdout": "{\"setup\": [\"Setting up watches.  Beware: since -r was given, this may take a while!\", \"Watches established.\"], \"establish_s\": 0.0006753990892320871, \"watch_count\": 2}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--cap-add",
+        "DAC_READ_SEARCH",
+        "--cap-add",
+        "SETUID",
+        "--cap-add",
+        "SETGID",
+        "--cap-add",
+        "SETPCAP",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/tree,target=/tree,readonly",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/evidence,target=/srv/ev",
+        "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094",
+        "/usr/bin/setpriv",
+        "--reuid=10002",
+        "--regid=10002",
+        "--clear-groups",
+        "--inh-caps=-all,+dac_read_search",
+        "--ambient-caps=-all,+dac_read_search",
+        "--bounding-set=-all,+dac_read_search",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import importlib.util,sys,json; s=importlib.util.spec_from_file_location('w','/opt/w/sidecar.py'); m=importlib.util.module_from_spec(s); sys.modules['w']=m; s.loader.exec_module(m); sys.exit(m.main(['serve','--run-tree','/tree','--evidence','/srv/ev','--watch','fresh0/inner.txt','--watch','fresh1/inner.txt','--watch','fresh2/inner.txt','--watch','fresh3/inner.txt','--watch','fresh4/inner.txt']))"
+      ],
+      "exit": 0,
+      "stdout": "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "status"
+      ],
+      "exit": 1,
+      "stdout": "{\"ok\": false, \"command\": \"status\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": [\"the sidecar is new\"]}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "begin"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"begin\", \"label\": \"pre-1\", \"taken_at\": 1791958506.304274, \"rearmed_at\": 1791958506.3566887, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import json, os\nme = os.getpid()\nrows = []\nfor name in os.listdir(\"/proc\"):\n    if not name.isdigit() or int(name) == me:\n        continue\n    try:\n        with open(\"/proc/\" + name + \"/status\") as fh:\n            fields = dict(line.split(\":\", 1) for line in fh if \":\" in line)\n    except OSError as e:\n        rows.append({\"pid\": int(name), \"unreadable\": type(e).__name__})\n        continue\n    rows.append({\"pid\": int(name), \"uid\": int(fields[\"Uid\"].split()[0]), \"name\": fields.get(\"Name\", \"\").strip(),\n                 \"uids\": [int(x) for x in fields[\"Uid\"].split()],\n                 \"gids\": [int(x) for x in fields[\"Gid\"].split()],\n                 \"groups\": [int(x) for x in fields[\"Groups\"].split()],\n                 \"no_new_privs\": int(fields[\"NoNewPrivs\"].strip()),\n                 \"cap_eff\": int(fields[\"CapEff\"].strip(), 16),\n                 \"cap_prm\": int(fields[\"CapPrm\"].strip(), 16),\n                 \"cap_inh\": int(fields[\"CapInh\"].strip(), 16),\n                 \"cap_bnd\": int(fields[\"CapBnd\"].strip(), 16),\n                 \"cap_amb\": int(fields[\"CapAmb\"].strip(), 16)})\nprint(json.dumps(sorted(rows, key=lambda r: r[\"pid\"])))\n"
+      ],
+      "exit": 0,
+      "stdout": "[{\"pid\": 1, \"uid\": 10002, \"name\": \"python3\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}, {\"pid\": 19, \"uid\": 10002, \"name\": \"inotifywait\", \"uids\": [10002, 10002, 10002, 10002], \"gids\": [10002, 10002, 10002, 10002], \"groups\": [], \"no_new_privs\": 1, \"cap_eff\": 4, \"cap_prm\": 4, \"cap_inh\": 4, \"cap_bnd\": 4, \"cap_amb\": 4}]\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "10003:10003",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "-d",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/tree,target=/tree",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "sleep",
+        "infinity"
+      ],
+      "exit": 0,
+      "stdout": "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import pathlib,time\np=pathlib.Path(\"/tree\")\nfor i in range(5):\n    f=p/(\"fresh%d\" % i); f.mkdir(); (f/\"inner.txt\").write_text(\"acted\"); time.sleep(0.2)\n"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "snapshot",
+        "post-1"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"snapshot\", \"label\": \"post-1\", \"taken_at\": 1791958507.7286632, \"rearmed_at\": 1791958507.7859986, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10001:10001",
+        "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,signal\ntry:\n os.kill(-1, signal.SIGKILL)\nexcept ProcessLookupError:\n pass"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "top",
+        "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d",
+        "-eo",
+        "pid,uid,comm"
+      ],
+      "exit": 0,
+      "stdout": "PID                 UID                 COMMAND\n3084555             10003               sleep\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "exec",
+        "--user",
+        "10002:10002",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc",
+        "python3",
+        "-I",
+        "-B",
+        "/opt/w/sidecar.py",
+        "ctl",
+        "finish"
+      ],
+      "exit": 0,
+      "stdout": "{\"ok\": true, \"command\": \"finish\", \"label\": null, \"taken_at\": null, \"rearmed_at\": null, \"unreadable\": [], \"unreadable_consequential\": [], \"problems\": []}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d"
+      ],
+      "exit": 0,
+      "stdout": "b735324c5471878509203a2eb616dd0bca9bf9350941de08b1d55de0b05fe26d\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "logs",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "rm",
+        "-f",
+        "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc"
+      ],
+      "exit": 0,
+      "stdout": "a8bbddb0a0c9744fb70e71e80f7a21ae61d06c9b95d9342134d58456af728fcc\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/tree,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "run",
+        "--pull=never",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--cpus",
+        "1",
+        "--memory",
+        "268435456",
+        "--pids-limit",
+        "64",
+        "--rm",
+        "--cap-add",
+        "CHOWN",
+        "--cap-add",
+        "DAC_OVERRIDE",
+        "--mount",
+        "type=bind,source=/home/javier/gap4-cand2-20261014-uDo6eAsi/component-4a6emebk/evidence,target=/scratch",
+        "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+        "/usr/bin/python3",
+        "-I",
+        "-S",
+        "-c",
+        "import os,stat,sys\nuid=int(sys.argv[1])\ndef visit(fd):\n st=os.fstat(fd)\n if not (stat.S_ISDIR(st.st_mode) or stat.S_ISREG(st.st_mode)):raise RuntimeError(\"nonregular refused\")\n if stat.S_ISDIR(st.st_mode):\n  for name in os.listdir(fd):\n   child=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)\n   try:visit(child)\n   finally:os.close(child)\n os.fchown(fd,uid,uid)\nfd=os.open(\"/scratch\",os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)\ntry:visit(fd)\nfinally:os.close(fd)\n",
+        "0"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "images": {
+    "take": "sha256:4a5f3b48d61f8e84c1e5b7b8e8827a83779b9cb2b2ab9ba08e7bac1538be8081",
+    "watch": "sha256:aad335911cfc72e19f9f3cf032aa0b29be5b3693a60701858bbbc30a6f11c094"
+  },
+  "baked_sidecar_sha256": "3633ed7f7778422b7225931617a2c4ef8c1c403085af0f5cd3c0640bfa124591",
+  "factory_probe": {
+    "scope": "candidate-image evidence: the image's own factory and parser over hostile names",
+    "names": [
+      "a|b.txt",
+      "x\nqc|OPEN",
+      "planted.tsv|OPEN",
+      ".git|CREATE,ISDIR"
+    ],
+    "stdout": "READY\n{\"argv\": [\"inotifywait\", \"--monitor\", \"--format\", \"%w%f%0%e%0\", \"--no-newline\", \"-e\", \"OPEN,MODIFY,CLOSE_WRITE,MOVED_TO,CREATE,DELETE,MOVED_FROM,DELETE_SELF\", \"-r\", \"--\", \"/tree\"], \"events\": [[\"a|b.txt\", [\"CREATE\"]], [\"a|b.txt\", [\"OPEN\"]], [\"a|b.txt\", [\"MODIFY\"]], [\"a|b.txt\", [\"CLOSE_WRITE\", \"CLOSE\"]], [\"x\\nqc|OPEN\", [\"CREATE\"]], [\"x\\nqc|OPEN\", [\"OPEN\"]], [\"x\\nqc|OPEN\", [\"MODIFY\"]], [\"x\\nqc|OPEN\", [\"CLOSE_WRITE\", \"CLOSE\"]], [\"planted.tsv|OPEN\", [\"CREATE\"]], [\"planted.tsv|OPEN\", [\"OPEN\"]], [\"planted.tsv|OPEN\", [\"MODIFY\"]], [\"planted.tsv|OPEN\", [\"CLOSE_WRITE\", \"CLOSE\"]], [\".git|CREATE,ISDIR\", [\"CREATE\"]], [\".git|CREATE,ISDIR\", [\"OPEN\"]], [\".git|CREATE,ISDIR\", [\"MODIFY\"]], [\".git|CREATE,ISDIR\", [\"CLOSE_WRITE\", \"CLOSE\"]]]}\n",
+    "stderr": "",
+    "result": {
+      "argv": [
+        "inotifywait",
+        "--monitor",
+        "--format",
+        "%w%f%0%e%0",
+        "--no-newline",
+        "-e",
+        "OPEN,MODIFY,CLOSE_WRITE,MOVED_TO,CREATE,DELETE,MOVED_FROM,DELETE_SELF",
+        "-r",
+        "--",
+        "/tree"
+      ],
+      "events": [
+        [
+          "a|b.txt",
+          [
+            "CREATE"
+          ]
+        ],
+        [
+          "a|b.txt",
+          [
+            "OPEN"
+          ]
+        ],
+        [
+          "a|b.txt",
+          [
+            "MODIFY"
+          ]
+        ],
+        [
+          "a|b.txt",
+          [
+            "CLOSE_WRITE",
+            "CLOSE"
+          ]
+        ],
+        [
+          "x\nqc|OPEN",
+          [
+            "CREATE"
+          ]
+        ],
+        [
+          "x\nqc|OPEN",
+          [
+            "OPEN"
+          ]
+        ],
+        [
+          "x\nqc|OPEN",
+          [
+            "MODIFY"
+          ]
+        ],
+        [
+          "x\nqc|OPEN",
+          [
+            "CLOSE_WRITE",
+            "CLOSE"
+          ]
+        ],
+        [
+          "planted.tsv|OPEN",
+          [
+            "CREATE"
+          ]
+        ],
+        [
+          "planted.tsv|OPEN",
+          [
+            "OPEN"
+          ]
+        ],
+        [
+          "planted.tsv|OPEN",
+          [
+            "MODIFY"
+          ]
+        ],
+        [
+          "planted.tsv|OPEN",
+          [
+            "CLOSE_WRITE",
+            "CLOSE"
+          ]
+        ],
+        [
+          ".git|CREATE,ISDIR",
+          [
+            "CREATE"
+          ]
+        ],
+        [
+          ".git|CREATE,ISDIR",
+          [
+            "OPEN"
+          ]
+        ],
+        [
+          ".git|CREATE,ISDIR",
+          [
+            "MODIFY"
+          ]
+        ],
+        [
+          ".git|CREATE,ISDIR",
+          [
+            "CLOSE_WRITE",
+            "CLOSE"
+          ]
+        ]
+      ]
+    },
+    "scratch_removed": true,
+    "containers_left": []
+  }
+}

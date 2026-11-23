@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c9e4-90bb-77b1-97b0-59d81ad8115b"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The registrar identified these as **single-end**, so your condition for confirmation is not met. No symlinks have been created.\n\nConfirm registration as single-end, or provide a different path containing the paired-end reads."}}
+{"type":"turn.completed","usage":{"input_tokens":291621,"cached_input_tokens":223360,"cache_write_input_tokens":0,"output_tokens":1006,"reasoning_output_tokens":0}}

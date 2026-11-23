@@ -1,0 +1,48 @@
+{
+  "agent_calls": 1,
+  "change": {
+    "checker_constants_sha256": [
+      "627fc956a41f28812b46f2b4a1599a16c88d30d1a0aad8724e140e7f00849164",
+      "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a"
+    ],
+    "reasons_added": [],
+    "reasons_removed": []
+  },
+  "checker_constants_sha256": "42de363029fb6bf140b98b79694b30548453643ef84c0205b725d21ccb51064a",
+  "checker_reasons": [],
+  "machine": {
+    "checkout": "/home/javier/w-aX7Q1bN6/repo",
+    "home": "/home/javier",
+    "temp_root": "/tmp"
+  },
+  "n": 4,
+  "nested_cli_calls": 0,
+  "no_output_nudges": 1,
+  "route": null,
+  "run_tree": "/tmp/run-40cc7e72",
+  "schema": 1,
+  "subagents": {
+    "calls": [
+      {
+        "agent_id": "a88acf31935b5eeaa",
+        "completion": "completed",
+        "is_async": true,
+        "resolved_model": "claude-haiku-4-5-20251001",
+        "status": "async_launched",
+        "tool_use_id": "toolu_01NCNAn3jr9KtX6xR7CyAMeq"
+      }
+    ],
+    "models": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "stream_file_differences": 0
+  },
+  "supersedes": "recheck-3.json",
+  "walk": "w255",
+  "walk_commit": "e0d22b73d244599670f3aa86b23eaf888e234ae2",
+  "was": {
+    "checker_constants_sha256": "627fc956a41f28812b46f2b4a1599a16c88d30d1a0aad8724e140e7f00849164",
+    "checker_reasons": [],
+    "file": "recheck-3.json"
+  }
+}

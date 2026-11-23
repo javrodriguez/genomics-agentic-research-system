@@ -1,0 +1,20 @@
+{
+  "lane": "w12a-env-allowlist",
+  "files": [
+    {
+      "path": "tests/test_env_allowlist.py",
+      "status": "new",
+      "reason": "Lane w12a-env-allowlist (ruling docs-1 on the docs read of Tue 13 Oct 2026, plans/gap-study-round-4/docs-reads-2026-10-13.md; glitch-2f's assignment under Javier's standing delegation): E1 the ONE table (box/run_take.TAKE_ENV per arm: PATH, HOME at the config mount, LANG, the run tree's TMPDIR, TMP and TEMP, the proxy, the harness's own switches and config home, and exactly one credential by NAME; no refused name; LOGIN_VARIABLE and HARNESS_ENV derived from it, bound by AST); E2 nothing else reaches the agent (every billing and route variable of the docs read, docs and source, plus a canary set in the parent: take_environment is the row alone; exec_argv's turn runs under the launcher with exactly the row and the credential, the client environment the runtime's needs and the credential alone; the launcher run in memory from a dirty start execs the harness with exactly the row and the credential; a closed-list name still refused); E3 a .env a harness would read refuses by its path (the working folder, a parent below the box root, the box root, HOME, each alone, under .env and .gemini/.env, a dangling link; launch before any runtime call; run_turn before its exec; no take Dockerfile names a .env); E4 arm G's model (a short alias refused by its name with what it resolves to; the full pinned ids pass; another id, none or two refused; exec refuses an alias; the ids equal build_draft.MODELS['G'] and the alias table the docs read's); G1 the generated sweep (tests/walk_mutation.py's generator over this lane's six functions in box/run_take.py) with its EQUIVALENT registry; hand witnesses under rule B. Fakes and synthetic strings only, under this module's own process guard. Recovery adds E3.container, a red-first virtual-name test covering all container ancestors and current HOME in every arm, and the container-env-unchecked witness. All name lookup and exec are fakes. W12A-R1-1 fold: red-first E4.boundary asserts absolute-client aliases cannot reach launcher_argv, approved IDs pass admitted spellings, other executables and ambiguous model-flag forms refuse; gemini-executable-unbound witness. Empty Gemini calls now refuse, other arms remain outside this model pin. Athena failure follow-up: E4.values tests missing and leading-flag values for each admitted non-model option. E5.pending asserts the named NotReady cause and converts a wrong exception into an attributable assertion failure, so generated faults cannot survive as uncounted test errors. Production code, mutation generator, equivalent list and gate rules are unchanged."
+    },
+    {
+      "path": "checks.d/w12a-env-allowlist.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_env_allowlist.py, its --witnesses, and the generated sweep in shard lines for athena."
+    },
+    {
+      "path": "COPIED.d/w12a-env-allowlist.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Edits without transfer, each recorded in its owner's entry: box/run_take.py (departure w12a-1) and tests/test_run_take.py (departure w12a-2) in lane w4b-cp2-runtake-preflight's fragment; tests/test_drive_loop.py (departure w12a-3) in lane w6j-claude-adapter's; tests/test_walk_wiring.py (departure w12a-4) in lane w7b-walk-wiring's."
+    }
+  ]
+}

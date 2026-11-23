@@ -1,0 +1,9 @@
+control 0 of 3
+RED   1/3 sidecar uncapped
+RED   2/3 sidecar cap 1 GiB
+RED   6/3 caller's own memory admitted
+RED   3/3 caller's -m admitted
+RED   1/3 launch skips the cap
+RED   2/3 proxy uncapped
+RED   3/3 proxy cap 1 GiB
+ALIVE: none

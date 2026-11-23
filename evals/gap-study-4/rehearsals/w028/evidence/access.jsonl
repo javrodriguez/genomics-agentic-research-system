@@ -1,0 +1,8 @@
+{"at":1792088280.7903173,"path":"gars/_templates/project/CONTEXT.md","op":"open"}
+{"at":1792088306.7690015,"path":"gars/_templates/project/CONTEXT.md","op":"open"}
+{"at":1792088314.5385456,"path":"gars/projects/run-ee90328e/00_data/rnaseq_bulk/raw/A1_S1_L001_R1_001.fastq.gz","op":"modify"}
+{"at":1792088316.6114192,"path":"gars/projects/run-ee90328e/00_data/rnaseq_bulk/files.csv","op":"modify"}
+{"at":1792088316.6150177,"path":"gars/projects/run-ee90328e/00_data/rnaseq_bulk/files.csv","op":"open"}
+{"at":1792088316.6160948,"path":"data/staging/run-ee90328e/src/A1_S1_L001_R1_001.fastq.gz","op":"open"}
+{"at":1792088325.0476775,"path":"gars/projects/run-ee90328e/00_data/rnaseq_bulk/files.csv","op":"open"}
+{"at":1792088325.0511665,"path":"gars/projects/run-ee90328e/00_data/rnaseq_bulk/files.csv","op":"open"}

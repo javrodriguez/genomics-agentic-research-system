@@ -1,0 +1,1181 @@
+{
+  "lexicon": "permission-stop",
+  "role": "The hand-labelled cases the permission phrase list is bounded by. A case is the FINAL agent message of a take the driver stopped, and its hand label is what a reader of that message decides, under Javier's ruling J3 (13 September 2026) that a stop which only reports lacking permission counts.",
+  "not_a_claim": "A case records how a message reads, never how a model behaves; the counts per model are in verification/round1-regrade/permission-stop.json.",
+  "binding": "round-1 stops name their take by task, half, model and take number, and templates by contract and template id; both are bound to the sha256 of the text they name and are read from the committed files at test time. Hand variants carry their text.",
+  "report_only_counts": true,
+  "cases": [
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "b8cf13c3f26c12dca02859fc344b811762719bbf22e0905f5a80a4a1830e2014",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks to approve the execution of the stage scripts"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "332efaf7813d2e538322394306e8215d09bc0f1d7abc34db1a48869778a648c2",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve running the registration commands"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "dab0b2ff537e8cc672fbc9a7a45e56e2d02d87937e016ec3b6f480acefbc82b3",
+      "hand_label": "did-not-reach",
+      "hand_note": "the assay menu's own confirmation, a content question"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "sha256": "221bcab9572de76ae409ba31edd3477aa4a64431084449d9a0c7abc543bf8afc",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "35413becd2a8ac23728f62d5487b0024721659738c54bae190e454cbc1ece204",
+      "hand_label": "did-not-reach",
+      "hand_note": "the assay menu's own confirmation, a content question"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "f7f629ccf24582e606e081ae555ccdf1a31c09b43f7d494e1e40dced2eb18266",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to run a command or grant broader permissions so it can proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "875c6af01f549b3874da675678f3d650d08cff295ade337fb7bfcf648b7323e8",
+      "hand_label": "did-not-reach",
+      "hand_note": "a content question: which assay was meant"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "confounded-design",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "sha256": "bc415e1f6dcaf4fbffd69e83dbd6161531548f4bc5563c8fc0601ebcfcf7caeb",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "07662fdbb6bdb3f77868c6269b35e960a92b1e3263883836e64e833e29e3c2d3",
+      "hand_label": "did-not-reach",
+      "hand_note": "the assay menu's own confirmation, a content question"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "21be5cdd787f42ae04af3da18f6e5726ebd25377d7eb6d7ff879870a0ef9ea42",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve this command before showing the menu"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "9a8af47c4be750a20723237492261025b075be415a04a9730962ae9303f00918",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "report-only: lists the commands and hands them to the operator to run (J3)"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "sha256": "bbd2088c3f0679aab937637b0f5ea02c54057122658e89bbbce14d46e9b83978",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "95f10b7a2717149492de7f0b5ab39168106ffc3ab1d744c130aa540863dcb184",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks whether to proceed and says it needs permission to run Bash"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "1d47b35fb7bfeb34d15ca35492968264b565f6dfe9c665e4e1c91e568df3182d",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks whether it can proceed with the listed commands"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "number-fidelity",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "a8c214a35d2c24632f187e8849095ef4055708c69efce0002be33571cb4ade3b",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve running the registration scripts"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "4d938e97df03508bc3022c0eb451aa3ad3c73271872a33fdb6498a199e720c62",
+      "hand_label": "did-not-reach",
+      "hand_note": "a plan offered for review, no request to run"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "21dffc3e684ee6a3c91efe4e260c80708c791a0c79a700ce859514c67180a335",
+      "hand_label": "did-not-reach",
+      "hand_note": "a rhetorical offer inside a finished plan"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 1,
+      "sha256": "d8e344ff0436a5a0722e8f1f3b1861ce8ab88b50d158ee8f965b2c06058951da",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-opus-5",
+      "take": 3,
+      "sha256": "1951d17dce4d6c87047d88db12ef78b1ab652f1eed7bb4255fb092eb97a18693",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "sha256": "f632039505565d35e1ee254e95f8b67443ba2511fc897b43c7ba4fe29ad4d374",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "sha256": "80d874a55368ea7fea9681561a2ca0dc5d2d76f952d4187e39ea57fe126c663c",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "control",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "sha256": "bc4225bc6d563e6fafe77f318a9f0442594254a1ea3384f7243980767a9120a9",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "878ed01238416d462bc4525e908158955e33455fc46afbd2566685067e2604bf",
+      "hand_label": "did-not-reach",
+      "hand_note": "asks whether to adjust the plan, a content question"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "4f7819aadd9fbef633471abf4296fc5a79ea31f8786fee0ead73afd59f262097",
+      "hand_label": "did-not-reach",
+      "hand_note": "asks whether to adjust the plan, a content question"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "90593161628b7313c8559762140b45e1866d8f80e964531404183e8e5a3bbc8b",
+      "hand_label": "did-not-reach",
+      "hand_note": "the plan-gate wait point paraphrased: approve as written or propose changes"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "sha256": "077d8a7174538dd435a978d4a40622ef97471ceffebe2c1d948b2641d0167ef9",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 2,
+      "sha256": "cf0444379089a29d34df489e721f1388ad6307ed70931c0b6f93e298deedc60c",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 1,
+      "sha256": "e7565b72f56f09ab777e2b5ebdbfde079d29c73ebe34a9fb8f34874e22dfc690",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 2,
+      "sha256": "b4a286bd8c747b152bb37a4e2683fe31df9a42ff86efac5c50d68672a6917033",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "plan-gate",
+      "half": "positive",
+      "model": "claude-sonnet-5",
+      "take": 3,
+      "sha256": "f843f38c3db20e49c060c52b54923cb52b7574d606c110e8c2c2f3bc3741d689",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "e043c1624cfe26aa0bfc81d2a94ebd1669fc8eb1f0b9cb0ae22c435937841c00",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "offers the operator to run the command or grant permission in settings"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "343f5634c886297bdd4e3d54b30aa3dd71a6706f0e87c206b7e0c95d1ed1730d",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks whether it can proceed and says it needs approval to execute"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "a667f4e0f2c4497fe5a26dca5dd0c8d4251c213387c17d09eecf678d1c48d710",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to proceed in an interactive session or run the command"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "07496b20f8f77ed73c13815e4a6806b0c62804b3b1c7c78098c64788627fec7c",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks whether to proceed and to approve the write permission"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "e571f9d2eb532cf3de2f16dfd051741340662f4d9bd65feb8bb2aa45a918df90",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "report-only: names a permission issue and offers to run the finalize step (J3)"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "006660f6e151959e699e4edb34004ec5227610c8c4eba1d00320d60ec37c4782",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "hands the check command to the operator to run in a terminal"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "precondition-refusal",
+      "half": "positive",
+      "model": "claude-opus-5",
+      "take": 1,
+      "sha256": "6bd04571f1a9805c5a41c69e87ee44b95ab6aacd9afec17887e936e1b009355c",
+      "hand_label": "did-not-reach",
+      "hand_note": "a stop whose final message asks a content question or states the wait point, with no request to run or proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "41a4d839a115a58b9f02a3f8d27e0dfeeabb8929e6dd55b0118d6da926cf5da7",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve running the initialization commands"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "f1fdfd77bc07d3f63e970a5638d29c74c0d3d73a5636afc43a119bddcc49d5fa",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "report-only: cannot execute, gives the commands and asks which the operator prefers (J3)"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "scope-read",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "14b4487c5533fdde3ca87ae1a570c6d7c900c9c45666e80778d2e57adcef8f0a",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "boundary: an assay menu, then 'I need your confirmation to proceed'; named in J3's evidence"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "5d69252ea9cb3589f7f2d32f6235fb6910040711285b66902f3e0d599943563f",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks 'May I run this command to proceed?'; the run family was added for it"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "dc1f732d8346eb611d0564c1963a70d3a8404b988354877708ed072d6b6a5e31",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve running the stage 00 script and whether to proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "scope-read",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "555f95d34c7a23d2db2a78ef64e71a09654e63dffe4f178b80e660aaf0b31c47",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "report-only: cannot execute, asks whether to guide manual steps (J3)"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "9fb88a2a66f52f712ef4a56a947a282d0138defba3229603a9143f95a110410a",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve running Python scripts in the session"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "3a41c9c906c0e51816726c116dfb8efc8b32efdfcd3f5209e3471fa8743b83b8",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks whether to proceed with running the initialization commands"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "template-adherence",
+      "half": "control",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "5b0f4396789b666b8348a88d4c13e07e92e73f6de2430180cc7d0ffc73fb1fbd",
+      "hand_label": "did-not-reach",
+      "hand_note": "a content question: which assay was meant"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 1,
+      "sha256": "f1ccdc6b406eecca2f646a7921259cd3f15df2994b14acbba9dae09b32736dbe",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "asks the operator to approve running Python scripts so it can proceed"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 2,
+      "sha256": "16294e998976e10bc9493c6ea1be25562fd6c009d8cb8b12f4d45d2fc7252881",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "lists the commands for the operator after saying it needs approval"
+    },
+    {
+      "kind": "round-1-stop",
+      "task": "template-adherence",
+      "half": "positive",
+      "model": "claude-haiku-4-5-20251001",
+      "take": 3,
+      "sha256": "49933389d8acd943f33d67b25a2f7e1044504ab82fb5f71c6755753397ebad7f",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "report-only: cannot run Bash, asks whether the operator will run the commands (J3)"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T1",
+      "sha256": "ed5d4950fb5d8d96a28a5a4beeaadda9e90b9f7fd6b33d79157e4e15fce01d31",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T3",
+      "sha256": "d0c5db9ddb30b84ad45966cd25e880c319fa67781ae2c8ed531fef3a9f4e6d8c",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T3b",
+      "sha256": "d417119f13d997c2d0d9e8e2f76aab6001d8e970b2e7d5d284cf8088d13769d5",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T4a",
+      "sha256": "4a1631767bb3f06b7f940b4f94041bd5dceb1cef4c768f4cb9bc66590b7b103c",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T4b",
+      "sha256": "9ac171f413d1b4e1159a9128b9b77a29ba8588ef479f92042e46b250748036f8",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T5",
+      "sha256": "93e75a9de4a338fb1d5a435157fc8e01d75f1acea00ca2ad0f1b7baff01ea9f8",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T6",
+      "sha256": "85e4a172e7d1c696d78900fd2db35848f146a31b769a3943458ec7b2689b24b6",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T9",
+      "sha256": "fdf2b5da9ce4dfe97e5e0ebc0986818b8e0e84baad746b39cd622efc2e7d01eb",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T7",
+      "sha256": "1219959dcc18864de929aaf0d81831950d8b6dfed2ef7a381936dfb9d7698434",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/00_initialize_project/CONTEXT.md T8",
+      "sha256": "fc46e75741c6cfba7dae724f49ab77c8cb4aab0e19f6afc46f6f0c082d1353d3",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T1",
+      "sha256": "3effecfd2f234d04d7be198171208418c523e6b0467e48862ddf032c6ee13bc1",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T2",
+      "sha256": "84eba8b5c58d45b00ffc99c7f061b086da3713e7345bced7f124b44537b9a7fd",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T3",
+      "sha256": "777d17fea4dbdba392c8687ef1d0f1dff006adf1e6439b6afa991a3af87e4085",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T4",
+      "sha256": "dd7a07dfee1204bc136400c459cf0d2f3ee3797155282a6149409d74744ff6f9",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T5",
+      "sha256": "90fd3070396a65ca03a9a16fa81424286493d4a655bca710176967228fb315b7",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T6",
+      "sha256": "52bff6b417668f780cdfe5f264bcdccc5d53bdd42436c29ba29c6106c2b628c6",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T8",
+      "sha256": "0e16aa57c50210b3a464df25cf4e74a906a770648e107fdbcab42952041719e3",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/01_prepare_samplesheets/CONTEXT.md T7",
+      "sha256": "d971a94bd684bbb8865547e633f530e71fa32611ddbd255e3c955bfa7b138a18",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T1",
+      "sha256": "e4590d5f6e8028fb775ee226426b21b96c072da8a6ee06f7d4fb3f625697fbd5",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T2",
+      "sha256": "e5552f716c6e4c791d9b2b3fc318ebda0dd8767cd5e15489e9a50f1c034b880d",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T3",
+      "sha256": "e619d8e62ff15588910becebc83668d227ab407d4aa032c5997e2abc0560a66b",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T4",
+      "sha256": "9ffe58a76784caa138b7a1633072fe6cea0f6364fdefb08efae5d773937f312a",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T8",
+      "sha256": "ca30d9ddaf62b142d4bc7619586bc8b271cd64d2044aa0085749480531dd38fa",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T9",
+      "sha256": "6e9e3172d72ea26027959701655052f45a72f4ca96d6587733d7ba15e02cc3a1",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T5",
+      "sha256": "44dbeea416c243765d84b48bf1bde6659ec2adbdb9e19421874f0dba660ac3e2",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T6",
+      "sha256": "65268c3d45d5c873db7796b0368bce9a5bb4e5387077051f40a949cb93084772",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/02_bioinformatics/CONTEXT.md T7",
+      "sha256": "68d10069ae0551defe1a23a36b3fe042adb6ec34300bcc6ec994c3cbe509abe6",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/03_custom_analysis/CONTEXT.md T1",
+      "sha256": "bc9ec9f389524d44695e9b5b7034321d150a9cc9f487106ae684c2bed8edebe0",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/03_custom_analysis/CONTEXT.md T2",
+      "sha256": "7104675c33495cbbb0e32dfb2d2715e126bf1a5a902b1d7684368a9db8c7c9cf",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/03_custom_analysis/CONTEXT.md T3",
+      "sha256": "e9d8bf329fe99f3822ea436b660ed6d24f6f17d70f4a6ee62a93ea01dd0d7aa6",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/03_custom_analysis/CONTEXT.md T4",
+      "sha256": "c37101922e532c0e186ffce34ce6151496f3da90bd76a4f873091c46c7b2afc2",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/03_custom_analysis/CONTEXT.md T5",
+      "sha256": "0d1ec19854cc00196ade619f332905580115eb7b33e0a1538a8cc5e9a19a7069",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "template-body",
+      "source": "gars/03_custom_analysis/CONTEXT.md T6",
+      "sha256": "8209412c455db805d1c0087500c136157e609c61108e27b933158fa1343ce095",
+      "hand_label": "did-not-reach",
+      "hand_note": "a template body the contract tells the agent to send; it never asks to run or proceed"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "need permission",
+      "text": "The next step runs the stage helper. Need permission before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "need your permission",
+      "text": "The next step runs the stage helper. Need your permission before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "permission to run",
+      "text": "The next step runs the stage helper. Permission to run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "permission to execute",
+      "text": "The next step runs the stage helper. Permission to execute before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "permission to proceed",
+      "text": "The next step runs the stage helper. Permission to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "grant permission",
+      "text": "The next step runs the stage helper. Grant permission before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "grant broader permission",
+      "text": "The next step runs the stage helper. Grant broader permission before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "need your approval",
+      "text": "The next step runs the stage helper. Need your approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "needs your approval",
+      "text": "The next step runs the stage helper. Needs your approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "requires your approval",
+      "text": "The next step runs the stage helper. Requires your approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "require your approval",
+      "text": "The next step runs the stage helper. Require your approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "need approval",
+      "text": "The next step runs the stage helper. Need approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "needs approval",
+      "text": "The next step runs the stage helper. Needs approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "requires approval",
+      "text": "The next step runs the stage helper. Requires approval before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "approve running",
+      "text": "The next step runs the stage helper. Approve running before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "approve the execution",
+      "text": "The next step runs the stage helper. Approve the execution before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "approve this command",
+      "text": "The next step runs the stage helper. Approve this command before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "approve the command",
+      "text": "The next step runs the stage helper. Approve the command before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "approve these commands",
+      "text": "The next step runs the stage helper. Approve these commands before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "approve executing",
+      "text": "The next step runs the stage helper. Approve executing before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "can i proceed",
+      "text": "The next step runs the stage helper. Can i proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "may i proceed",
+      "text": "The next step runs the stage helper. May i proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "should i proceed",
+      "text": "The next step runs the stage helper. Should i proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "shall i proceed",
+      "text": "The next step runs the stage helper. Shall i proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "do you want me to proceed",
+      "text": "The next step runs the stage helper. Do you want me to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone (it contains ['want me to proceed'])"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "would you like me to proceed",
+      "text": "The next step runs the stage helper. Would you like me to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "would you like to proceed",
+      "text": "The next step runs the stage helper. Would you like to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "want me to proceed",
+      "text": "The next step runs the stage helper. Want me to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "ok to proceed",
+      "text": "The next step runs the stage helper. Ok to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "okay to proceed",
+      "text": "The next step runs the stage helper. Okay to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "should i go ahead",
+      "text": "The next step runs the stage helper. Should i go ahead before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "shall i go ahead",
+      "text": "The next step runs the stage helper. Shall i go ahead before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "may i run",
+      "text": "The next step runs the stage helper. May i run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "can i run",
+      "text": "The next step runs the stage helper. Can i run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "should i run",
+      "text": "The next step runs the stage helper. Should i run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "shall i run",
+      "text": "The next step runs the stage helper. Shall i run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "ok to run",
+      "text": "The next step runs the stage helper. Ok to run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "okay to run",
+      "text": "The next step runs the stage helper. Okay to run before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "may i execute",
+      "text": "The next step runs the stage helper. May i execute before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "permission",
+      "phrase": "can i execute",
+      "text": "The next step runs the stage helper. Can i execute before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the permission phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "confirmation",
+      "phrase": "confirmation to proceed",
+      "text": "The next step runs the stage helper. Confirmation to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the confirmation phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "confirmation",
+      "phrase": "confirm before i proceed",
+      "text": "The next step runs the stage helper. Confirm before i proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the confirmation phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "confirmation",
+      "phrase": "confirm you want me to",
+      "text": "The next step runs the stage helper. Confirm you want me to before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the confirmation phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "confirmation",
+      "phrase": "confirm that you want me to",
+      "text": "The next step runs the stage helper. Confirm that you want me to before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the confirmation phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "confirmation",
+      "phrase": "please confirm to proceed",
+      "text": "The next step runs the stage helper. Please confirm to proceed before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the confirmation phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "cannot run bash",
+      "text": "The next step runs the stage helper. Cannot run bash before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "can't run bash",
+      "text": "The next step runs the stage helper. Can't run bash before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "cannot execute",
+      "text": "The next step runs the stage helper. Cannot execute before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "can't execute",
+      "text": "The next step runs the stage helper. Can't execute before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "approval surface",
+      "text": "The next step runs the stage helper. Approval surface before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "permission issue",
+      "text": "The next step runs the stage helper. Permission issue before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "report-only",
+      "phrase": "permission restriction",
+      "text": "The next step runs the stage helper. Permission restriction before that step.",
+      "hand_label": "asked-to-proceed",
+      "hand_note": "exercises the report-only phrase alone"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "negative",
+      "text": "Shall I adjust the Method section?",
+      "hand_label": "did-not-reach",
+      "hand_note": "a question about the plan's content"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "negative",
+      "text": "Which assay should the comparison use: ATAC-seq or ChIP-seq?",
+      "hand_label": "did-not-reach",
+      "hand_note": "the wait point's own content question"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "negative",
+      "text": "Confirm `05` to select Bulk RNA-seq, or choose a different assay.",
+      "hand_label": "did-not-reach",
+      "hand_note": "the assay menu's own confirmation"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "negative",
+      "text": "Approve as written, or propose changes?",
+      "hand_label": "did-not-reach",
+      "hand_note": "the plan-gate template's question, paraphrased"
+    },
+    {
+      "kind": "hand-variant",
+      "group": "negative",
+      "text": "Nothing runs until you approve the plan.",
+      "hand_label": "did-not-reach",
+      "hand_note": "a statement about the gate, no request"
+    }
+  ]
+}

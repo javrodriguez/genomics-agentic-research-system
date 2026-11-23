@@ -1,0 +1,15 @@
+== the committed mutants script (last changed in 63c3ff80, unchanged at HEAD), rerun at the working tree on top of HEAD 06775d56
+control 0 of 6
+RED   3/6 only the access token searched
+RED   1/6 a missing token key admitted
+RED   1/6 a short value admitted
+RED   1/6 a link or special file admitted
+RED   1/6 any mode admitted
+RED   1/6 any owner admitted
+RED   1/6 an oversize file admitted
+RED   1/6 deep nesting crashes
+RED   1/6 an unreadable open file crashes
+RED   1/6 no read at take start
+RED   1/6 the take-start values dropped at the scan
+RED   1/6 postflight.json masked as agent text
+ALIVE: none

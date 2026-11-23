@@ -1,0 +1,13 @@
+# Lane w7c-spend-wiring: Gap Study round 4, wave 7, the spend-guard wiring (ruling W7C-gap4-1): batch.py calls
+# costs.month_turn_allowed and costs.walk_gate before any take of a harness that bills money, and routing refuses an
+# empty spend-cap list for one. One command per line, run from the repository root. The module prints one WITNESS line
+# per guard. The transferred modules' own test commands stay in checks.d/w1b-cp1-routing-batch.txt.
+python3 -B -W ignore evals/gap-study-4/tests/test_spend_wiring.py
+python3 -B evals/gap-study-4/routing.py --check
+# Before CP5, batch.py --check exited 1 naming only the pin-profile and spend-status lines. Javier ruled spend_cap_markers_status
+# ("spend markers: 1A 2A 3A", 12 Oct 2026) and this line stayed green, on the two pin-profile lines: it only forbids
+# other lines. The exact two-line expectation is checks.d/w8c-spend-ruled.txt's. This line goes red only when CP5
+# fills pin_profiles and rules its status (no line left), as w1b's does.
+# CP5 (Javier, 14 Oct 2026): routing.json is ready; the not-ready refusal stays exercised on an unpinned fixture.
+out=$(python3 -B evals/gap-study-4/batch.py --check); rc=$?; [ "$rc" -eq 0 ] && [ "$out" = "batch: routing.json ready" ]
+out=$(python3 -B -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import routing, batch; t = routing.load_table(); t.update(pin_profiles={}, pin_profiles_status='PENDING (CP5)'); routing.load_table = lambda *a: t; sys.exit(batch.main(['--check']))"); rc=$?; [ "$rc" -eq 1 ] && [ "$out" = "$(printf '%s\n' 'batch: not ready: pin_profiles is empty in routing.json (CP5 pre-registers them)' 'batch: not ready: pin_profiles_status is not ruled in routing.json (RULED or FILLED, with no PENDING)')" ]

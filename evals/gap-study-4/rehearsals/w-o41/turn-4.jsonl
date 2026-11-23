@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a15c5a-90a3-7133-b5cd-a3d2c62ee114"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Stage 00 does not allow reading QC reports, so I can’t read `qc/multiqc_report.txt`. The inspected path and sample list are unchanged.\n\nConfirm to create symlinks under `00_data/rnaseq_bulk/raw/`, or provide a different path."}}
+{"type":"turn.completed","usage":{"input_tokens":230151,"cached_input_tokens":206976,"cache_write_input_tokens":0,"output_tokens":1353,"reasoning_output_tokens":235}}

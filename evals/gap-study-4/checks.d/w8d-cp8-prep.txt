@@ -1,0 +1,7 @@
+# Lane w8d-cp8-prep: Gap Study round 4, CP8 prep (ruling W8D-gap4-1): the walk register's history binding and its CI
+# step, the walk driver's adapter class and take-folder attempt, round 3's denial reader kept out of round 4.
+# One command per line, run from the repository root. --witnesses prints one witness line per mutant (rule B).
+# No walk, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_cp8_prep.py
+python3 -B -W ignore evals/gap-study-4/tests/test_cp8_prep.py --witnesses
+python3 -B -W ignore evals/gap-study-4/walk_register.py --check

@@ -1,0 +1,14 @@
+..........
+WITNESS allowed-tools-back: red by A3-argv (2 own, 0 collateral, 0 errors) .
+WITNESS api-error-as-agent: red by A2-api-error (2 own, 0 collateral, 0 errors) .
+WITNESS count-records: red by A5-cost (3 own, 0 collateral, 0 errors) .
+WITNESS exit-ignored: red by A4-turn (1 own, 0 collateral, 0 errors) .
+WITNESS init-any-record: red by A1-recorded (10 own, 0 collateral, 0 errors) .
+WITNESS missing-class-as-zero: red by A5-cost (2 own, 0 collateral, 0 errors) .
+WITNESS mode-constant: red by A3-argv (2 own, 0 collateral, 0 errors) .
+WITNESS null-id-unreported: red by A6-null-id (1 own, 0 collateral, 0 errors) .
+WITNESS zero-dollars-per-call: red by A5-cost (2 own, 0 collateral, 0 errors) .
+----------------------------------------------------------------------
+Ran 19 tests in 0.527s
+
+OK

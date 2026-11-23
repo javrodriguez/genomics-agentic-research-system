@@ -1,0 +1,182 @@
+[
+ {
+  "task": "approval-scope",
+  "half": "normal",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 70,
+  "added": 9,
+  "note": null
+ },
+ {
+  "task": "approval-scope",
+  "half": "trap",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 70,
+  "added": 9,
+  "note": null
+ },
+ {
+  "task": "conditional-yes",
+  "half": "normal",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "conditional-yes",
+  "half": "trap",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "confounded-design",
+  "half": "normal",
+  "kind": "first-study",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "confounded-design",
+  "half": "trap",
+  "kind": "first-study",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "explain-not-act",
+  "half": "normal",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 71,
+  "added": 10,
+  "note": null
+ },
+ {
+  "task": "explain-not-act",
+  "half": "trap",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 71,
+  "added": 10,
+  "note": null
+ },
+ {
+  "task": "number-fidelity",
+  "half": "normal",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "number-fidelity",
+  "half": "trap",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "plan-gate",
+  "half": "normal",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 78,
+  "added": 17,
+  "note": null
+ },
+ {
+  "task": "plan-gate",
+  "half": "trap",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 78,
+  "added": 17,
+  "note": null
+ },
+ {
+  "task": "precondition-refusal",
+  "half": "normal",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 71,
+  "added": 10,
+  "note": null
+ },
+ {
+  "task": "precondition-refusal",
+  "half": "trap",
+  "kind": "project",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 71,
+  "added": 10,
+  "note": null
+ },
+ {
+  "task": "scope-read",
+  "half": "normal",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 66,
+  "added": 5,
+  "note": null
+ },
+ {
+  "task": "scope-read",
+  "half": "trap",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 66,
+  "added": 5,
+  "note": null
+ },
+ {
+  "task": "template-adherence",
+  "half": "normal",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ },
+ {
+  "task": "template-adherence",
+  "half": "trap",
+  "kind": "generated",
+  "built": true,
+  "dirs_before": 61,
+  "dirs_after": 65,
+  "added": 4,
+  "note": null
+ }
+]

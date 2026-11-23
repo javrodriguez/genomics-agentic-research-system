@@ -1,0 +1,22 @@
+control 0 of 2
+RED   1/2 the gate admits
+RED   1/2 a relative source admitted
+RED   1/2 a missing source crashes
+RED   1/2 a linked source admitted
+RED   1/2 a source with two links admitted
+RED   1/2 any source mode admitted
+RED   1/2 any source owner admitted
+RED   1/2 a source in a repository admitted
+RED   1/2 an oversize source admitted
+RED   1/2 an empty source admitted
+RED   1/2 a relative folder admitted
+RED   1/2 a missing folder crashes
+RED   1/2 a linked folder admitted
+RED   1/2 any folder mode or owner admitted
+RED   1/2 a folder in a repository admitted
+RED   1/2 an existing auth.json overwritten
+RED   1/2 a placed non-regular or linked file admitted
+RED   1/2 a narrowed mode admitted
+RED   1/2 a placed file of another owner admitted
+RED   1/2 a short placement admitted
+ALIVE: none

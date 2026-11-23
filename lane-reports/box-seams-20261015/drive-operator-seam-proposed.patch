@@ -1,0 +1,47 @@
+diff --git a/evals/gap-study-4/drive.py b/evals/gap-study-4/drive.py
+index 536b893a..0e68728e 100644
+--- a/evals/gap-study-4/drive.py
++++ b/evals/gap-study-4/drive.py
+@@ -1857,8 +1857,9 @@ POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.js
+ #   restore(runtime, *, image, run_tree, config_dir, evidence_dir, ids, caller_env) -> record; raises OwnershipError
+ #   OwnershipError   an exception class whose instances carry `record`
+ #   operator_write(runtime, *, image, run_tree, rel_path, data, caller_env) -> {ok, path, sha256, bytes}
+-#   operator_read(runtime, *, image, root_kind, root, rel_path, caller_env) -> bytes | None
+-#   operator_list(runtime, *, image, root_kind, root, rel_dir, caller_env) -> [(name, kind)], kind in file, dir, link,
++#   operator_read(runtime, *, image, root_kind, run_tree, config_dir, rel_path, caller_env) -> bytes | None
++#   operator_list(runtime, *, image, root_kind, run_tree, config_dir, rel_dir, caller_env) -> [(name, kind)], kind in
++#                    file, dir, link,
+ #                    other (root_kind "run_tree" or "config"; drive-wiring review MAJOR 1: the vendor arms' native
+ #                    sessions are read in the agent-owned config folder through these, never host-side)
+ #                    (ownership review MAJOR 2, the box contract at 4c3d8e53: a mid-take operator step reads and writes
+@@ -1866,8 +1867,8 @@ POSTFLIGHT_RECORD, OPERATOR_CHECK_RECORD = "postflight.json", "operator-check.js
+ OWNERSHIP_GRANT_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "caller_env")
+ OWNERSHIP_RESTORE_PARAMS = ("runtime", "image", "run_tree", "config_dir", "evidence_dir", "ids", "caller_env")
+ OWNERSHIP_OPERATOR_WRITE_PARAMS = ("runtime", "image", "run_tree", "rel_path", "data", "caller_env")
+-OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "root_kind", "root", "rel_path", "caller_env")
+-OWNERSHIP_OPERATOR_LIST_PARAMS = ("runtime", "image", "root_kind", "root", "rel_dir", "caller_env")
++OWNERSHIP_OPERATOR_READ_PARAMS = ("runtime", "image", "root_kind", "run_tree", "config_dir", "rel_path", "caller_env")
++OWNERSHIP_OPERATOR_LIST_PARAMS = ("runtime", "image", "root_kind", "run_tree", "config_dir", "rel_dir", "caller_env")
+ OPERATOR_ROOTS = ("run_tree", "config")      # the box's operator_read and operator_list roots (box d73c43ed)
+ OWNERSHIP_GRANT_RECORD, OWNERSHIP_RESTORE_RECORD = "ownership-grant.json", "ownership-restore.json"
+ OWNERSHIP_STEPS = ("ownership-grant", "ownership-restore")      # the driver ledger's operator steps, in order
+@@ -2393,7 +2394,8 @@ class TakeDriver:
+         """The box's read of one run-tree file (bytes, or None when it does not exist); any failure stops the take."""
+         try:
+             got = self.ownership.operator_read(self.runtime, image=take.spec.image, root_kind="run_tree",
+-                                               root=take.launched.spec.run_tree, rel_path=rel,
++                                               run_tree=take.launched.spec.run_tree, config_dir=take.config_dir,
++                                               rel_path=rel,
+                                                caller_env=self.caller_env)
+         except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else: the take's stop
+             raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} failed "
+@@ -2521,7 +2523,8 @@ class TakeDriver:
+         def call(what, **kw):
+             try:
+                 return getattr(road, what)(self.runtime, image=take.spec.image, root_kind="config",
+-                                           root=take.config_dir, caller_env=self.caller_env, **kw)
++                                           run_tree=take.spec.run_tree, config_dir=take.config_dir,
++                                           caller_env=self.caller_env, **kw)
+             except Exception as e:  # noqa: BLE001 - OwnershipError, Refused or anything else
+                 raise _native_snapshot.SnapshotRefused(f"the box's {what} of the config folder failed "
+                                                        f"({type(e).__name__}: {str(e)[:200]})") from None

@@ -1,0 +1,4 @@
+== test_preflight (lease tests) against 5c73dab4
+FAIL: test_the_lease_admits_exactly_its_one_credential (test_preflight.TestLeasePostflight.test_the_lease_admits_exactly_its_one_credential)
+Ran 56 tests in 10.794s
+FAILED (failures=1)

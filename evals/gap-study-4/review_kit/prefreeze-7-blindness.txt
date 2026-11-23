@@ -1,0 +1,122 @@
+blindness check, read from the reviewer's own session file (252 records, 42 attachment records, 50 tool calls) and its 0 sub-agent session files
+session id: 8246e72f-2a60-5bb0-9854-0376a3e2e86d
+
+1. Operator material in the loaded context (attachment records).
+   Every hit is classified. Two causes carry nothing about the study and recur in EVERY round:
+   the review folder's own path, which the harness echoes through its own furniture, and the
+   reviewer's own report, which it wrote and the harness attached back into its context. The
+   count that binds is UNEXPLAINED, and it must be 0 (Ruling 6, 20 September 2026). A rule read
+   on the totals could never pass, because both causes are present before the reviewer starts.
+   A sub-agent's hand-back is not counted here: section 4 reads it. An operator row is never
+   explained (lane blindness-sidechains, 24 October 2026).
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the study's folder name                74          10           64            0
+   the round's name                        0           0            0            0
+   the round's shorthand                   0           0            0            0
+   round 3's goal id                       0           0            0            0
+   round 3's folder name                   0           0            0            0
+   round 3's name                          0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          0           0            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's coordinating session      0           0            0            0
+   the operator's lane board               0           0            0            0
+   the operator's list system              0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the operator's Brain, by path           0           0            0            0
+   the account email                       4                             tolerated
+
+2. The reviewer's sub-agents: 0 sidechain session files read
+   launched agents with no session file: 0
+   session files no launch names: 0
+   Agent results that name no agent: 0
+
+3. Operator material in the sub-agents' own loaded context, all sessions together, by the rules of 1.
+
+   marker                              total  own report  folder path  UNEXPLAINED
+   the study's folder name                 0           0            0            0
+   the round's name                        0           0            0            0
+   the round's shorthand                   0           0            0            0
+   round 3's goal id                       0           0            0            0
+   round 3's folder name                   0           0            0            0
+   round 3's name                          0           0            0            0
+   round 2's goal id                       0           0            0            0
+   round 2's folder name                   0           0            0            0
+   round 2's name                          0           0            0            0
+   the pre-study's goal id                 0           0            0            0
+   the pre-study's folder name             0           0            0            0
+   the operator's coordinating session      0           0            0            0
+   the operator's lane board               0           0            0            0
+   the operator's list system              0           0            0            0
+   the operator's open-items list          0           0            0            0
+   the assistant's memory folder           0           0            0            0
+   the assistant's identity file           0           0            0            0
+   the operator's objective line           0           0            0            0
+   the operator's memory file              0           0            0            0
+   this repository, by path                0           0            0            0
+   the operator's Brain, by path           0           0            0            0
+
+4. Sub-agent hand-backs carrying a report: 0, from 0 agents.
+   Task notifications, listed apart: 3, from 3 agents; their
+   text is read by the same rule, so any hit in one is in the table below.
+   A hit is explained only when its text (the word or path it sits in) is in a file of the folder as
+   it stood at launch, and in a tool result that sub-agent received (or a report a nested agent of
+   its own handed it and read the same way): it read it there. Any other hit is UNEXPLAINED, and an
+   operator row is never explained. A study word is traced by its word alone, so a word the study's
+   own files also hold passes even when the sub-agent met it elsewhere; that is why the operator
+   rows are refused outright. The count that binds is UNEXPLAINED, and it must be 0.
+   A hit is traced via brief when the sub-agent did not read it but its brief holds it and it is in
+   the folder at launch. What the brief's author read outside the folder lends no cover.
+   The folder as it stood at launch: the per-file manifest written before the round row was hashed: 18035 of its 18035 files, those whose bytes are unchanged since; its digest a343e36ba0de is the input_sha256 of round row 7.
+
+   marker                              total  traced, direct  traced via brief  UNEXPLAINED
+   the study's folder name                 0               0                 0            0
+   the round's name                        0               0                 0            0
+   the round's shorthand                   0               0                 0            0
+   round 3's goal id                       0               0                 0            0
+   round 3's folder name                   0               0                 0            0
+   round 3's name                          0               0                 0            0
+   round 2's goal id                       0               0                 0            0
+   round 2's folder name                   0               0                 0            0
+   round 2's name                          0               0                 0            0
+   the pre-study's goal id                 0               0                 0            0
+   the pre-study's folder name             0               0                 0            0
+   the operator's coordinating session      0               0                 0            0
+   the operator's lane board               0               0                 0            0
+   the operator's list system              0               0                 0            0
+   the operator's open-items list          0               0                 0            0
+   the assistant's memory folder           0               0                 0            0
+   the assistant's identity file           0               0                 0            0
+   the operator's objective line           0               0                 0            0
+   the operator's memory file              0               0                 0            0
+   this repository, by path                0               0                 0            0
+   the operator's Brain, by path           0               0                 0            0
+
+5. Absolute paths in the reviewer's tool inputs that are not inside its folder: 5
+   - (a search pattern the reviewer used on its own report, not a path it read)
+   - /tmp/r7
+   - /tmp/r7/out.txt
+   - /tmp/r7/out.txt;
+   - /tmp/r7/run.sh
+
+6. Writes outside the folder: 2 paths, by the Write and Edit tools' own paths and by the paths
+   a shell command that writes names. Listed, not ruled: a write outside does not void a round by itself.
+   the reviewer: 2
+   - /tmp/r7
+   - /tmp/r7/run.sh
+
+7. The reviewer's isolation, as the sub-agents' own records show it. The launch flags are process
+   flags and no sidechain record carries them, nor the environment it ran with.
+
+8. The report as the reviewer's session wrote it, rebuilt from the session file alone (its Write, then its
+   Edits in order); commit_review.py and the freeze refuse a committed report with other bytes.
+report sha256, as the reviewer's session wrote it: NOT RECORDED, a shell step writes the report
+the reviewer's session file sha256: 5bf57c306bc3d17549380f4c5586c262cbc07f8dca87f802c52f1810c8e16078

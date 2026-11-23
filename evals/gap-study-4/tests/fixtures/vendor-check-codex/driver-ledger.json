@@ -1,0 +1,33 @@
+{
+  "kind": "take",
+  "agent": {
+    "harness": "codex",
+    "version": "0.162.1"
+  },
+  "session_id": "5f0c1a2e-0000-5000-8000-0000000000f1",
+  "turns": [
+    {
+      "n": 1,
+      "sent": "sent 1"
+    },
+    {
+      "n": 2,
+      "sent": "sent 2"
+    }
+  ],
+  "streams": [
+    "turn-1.jsonl",
+    "turn-2.jsonl"
+  ],
+  "transcript": "transcript.jsonl",
+  "native_snapshots": [
+    {
+      "file": "native-turn-1.jsonl",
+      "sha256": "a2b8cb619e8f9a065eb43d9e9f6d4c5117dd7794f21ec55b0b14f84910caa36e"
+    },
+    {
+      "file": "native-turn-2.jsonl",
+      "sha256": "382876dc3469d5dd58e6b43b98c73fa5b1d86c31f8bf06f49cb2e3aa901aebf5"
+    }
+  ]
+}

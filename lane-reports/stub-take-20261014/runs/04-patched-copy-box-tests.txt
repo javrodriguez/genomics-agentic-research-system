@@ -1,0 +1,18 @@
+patched clone of d1386708 + stub-take-candidates-20261014.patch (Mac, light gate passed)
+== test_run_take
+FAIL: test_counters_and_state (__main__.TestCountersAndState.test_counters_and_state)
+FAIL: test_exec_argv (__main__.TestExecArgv.test_exec_argv)
+FAIL: test_pending_refused_before_any_call (__main__.TestLaunch.test_pending_refused_before_any_call)
+FAIL: test_pending (__main__.TestPendingAndNames.test_pending)
+FAIL: test_processes (__main__.TestProcesses.test_processes)
+Ran 46 tests in 12.946s
+FAILED (failures=5)
+== test_preflight
+FAIL: test_mismatch_refuses_pending_and_wrong_keys (__main__.TestExpectedInspect.test_mismatch_refuses_pending_and_wrong_keys)
+FAIL: test_pending (__main__.TestPending.test_pending)
+Ran 53 tests in 5.364s
+FAILED (failures=2)
+== test_live_box
+Ran 35 tests in 0.105s
+OK
+== (earlier, same patched archive copy) test_box_integration: Ran 61, OK; test_stub_take: Ran 18, FAILED (failures=2: the two MirrorIsLaunch tests that assert INSPECT_STATUS is PENDING)

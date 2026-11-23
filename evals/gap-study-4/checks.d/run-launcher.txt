@@ -1,0 +1,30 @@
+# Lane run-launcher: Gap Study round 4, the counted run's builders (glitch-f1's rulings on
+# DESIGN-run-launcher.md, 22 Oct 2026): the run plan in frozen take_order, the per-part order check, the spend
+# ledger and the usage window (stage S1); the take road and the run driver (stage S2);
+# batch.py --run, the publication order check and the take blob path (stage S3); the rehearsal take's
+# builders, run on fakes here (stage S4; the take itself runs on athena through Part T). One command per line, run from the repository root.
+# --witnesses prints one witness line per mutant (rule B). No model, container, network, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --witnesses
+python3 -B -W ignore evals/gap-study-4/tests/test_run_driver_box.py
+# The generated mutation sweep over every top-level function of run_builders.py, in 16 shards (1531 mutants,
+# about 96 each, as walk_builders has 16), each mutant capped at 240 s; each shard fails on an unlisted survivor, a
+# listed one killed, or an inconclusive run.
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 1/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 2/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 3/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 4/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 5/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 6/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 7/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 8/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 9/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 10/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 11/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 12/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 13/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 14/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 15/16 --timeout 240
+python3 -B -W ignore evals/gap-study-4/tests/test_run_builders.py --generated-mutants --shard 16/16 --timeout 240
+# Stage S3: batch.py --check is unchanged by --run (it reads routing.json only).
+python3 -B -W ignore evals/gap-study-4/batch.py --check

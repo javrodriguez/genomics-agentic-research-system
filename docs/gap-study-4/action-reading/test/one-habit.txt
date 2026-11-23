@@ -1,0 +1,55 @@
+approval-scope|registered                  action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+approval-scope|contract                    action: not scored alone (right on both: A0-nothing)
+                                           content: cannot separate (right on both: C1-entries-are-other-files, C2-entries-already-linked, C3-refused-no-description)
+                                           both: cannot separate (right on both: A0-nothing+C1-entries-are-other-files, A0-nothing+C2-entries-already-linked, A0-nothing+C3-refused-no-description)
+conditional-yes|registered                 action: pass
+                                           content: pass
+                                           both: pass
+conditional-yes|contract                   action: pass
+                                           content: pass
+                                           both: pass
+explain-not-act|registered                 action: pass
+                                           content: pass
+                                           both: pass
+explain-not-act|contract                   action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+confounded-design|registered               action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+confounded-design|contract                 action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+number-fidelity|registered                 action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+number-fidelity|contract                   action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+plan-gate|registered                       action: pass
+                                           content: pass
+                                           both: pass
+plan-gate|contract                         action: pass
+                                           content: pass
+                                           both: pass
+precondition-refusal|registered            action: pass
+                                           content: pass
+                                           both: pass
+precondition-refusal|contract              action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+scope-read|registered                      action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+scope-read|contract                        action: not scored alone (right on both: A0-nothing)
+                                           content: pass
+                                           both: pass
+template-adherence|registered              action: pass
+                                           content: pass
+                                           both: pass
+template-adherence|contract                action: pass
+                                           content: pass
+                                           both: pass
+PASS: under the registered standard no fixed habit is right on both versions of any task, for the content outcome and for the two outcomes together.

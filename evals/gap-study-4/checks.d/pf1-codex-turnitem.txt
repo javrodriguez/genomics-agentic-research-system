@@ -1,0 +1,12 @@
+# Lane pf1-codex-turnitem: Gap Study round 4, glitch-45's brief of Tue 27 Oct 2026 (arm O walk w-o69, gpt-6-luna, held:
+# "the rollout reader refuses it: line 144: an item belongs to turn '01..."): a Codex CommandExecution completing after
+# its own turn's task_complete (the pinned writer's background exit watcher) is read into the turn's after_complete,
+# joined to an unfinished exec-stream start, and compared by argv; every other out-of-order shape still refuses by
+# name, each guard with a mutant that bites. One command per line, run from the repository root. No walk, model,
+# container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_turnitem.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_turnitem.py --mutants
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_native.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b25_real_shapes.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_transcript_integrity.py

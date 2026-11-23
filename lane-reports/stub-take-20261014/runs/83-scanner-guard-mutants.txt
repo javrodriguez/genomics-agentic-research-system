@@ -1,0 +1,7 @@
+control 0 of 7
+RED   2/7 record key set unchecked
+RED   1/7 unbuilt-scanner wording back
+RED   1/7 factory module unchecked
+RED   1/7 factory name unchecked
+RED   3/7 pin drift unchecked
+ALIVE: none

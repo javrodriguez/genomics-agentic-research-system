@@ -1,0 +1,109 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-var-tmp-run-bbc22d0f",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-bbc22d0f/bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "post-2",
+   "entries": [
+    [
+     "projects/-var-tmp-run-bbc22d0f",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-bbc22d0f/bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-var-tmp-run-bbc22d0f",
+     "dir"
+    ],
+    [
+     "projects/-var-tmp-run-bbc22d0f/bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-bbc22d0f",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-bbc22d0f/bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0.jsonl",
+     "claude",
+     "bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-bbc22d0f"
+   ],
+   "scanned": 432,
+   "truncated": false,
+   "unreadable": []
+  },
+  {
+   "at": "post-2",
+   "escapes": [],
+   "expected": [
+    "/var/tmp/run-bbc22d0f",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-var-tmp-run-bbc22d0f/bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0.jsonl",
+     "claude",
+     "bbc22d0f-7c6e-58bc-b8c8-a0394a1dbcf0"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/var/tmp/run-bbc22d0f"
+   ],
+   "scanned": 435,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}

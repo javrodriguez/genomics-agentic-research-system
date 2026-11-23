@@ -1,0 +1,46 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform a principal component analysis of the gene count matrix to visualize sample relationships and identify patterns driven by experimental condition. The analysis will reduce the high-dimensional gene expression data to its principal components, plot samples in PC1-PC2 space colored by condition (untreated vs. treated), and report the variance explained by each component.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 00_data/rnaseq_bulk/samples.csv |
+
+## Method
+1. Load the gene count matrix and sample design metadata using Python (pandas, scikit-learn) in environment `gars-bio`.
+2. Filter genes with zero counts across all samples; retain genes with at least 1 count in at least 2 samples.
+3. Normalize counts: convert to log2(counts + 1) to stabilize variance.
+4. Center and scale the normalized count matrix to zero mean and unit variance.
+5. Compute PCA using scikit-learn's PCA function with all components; this runs on the login node (single Python script).
+6. Extract PC1 and PC2 scores for all samples; merge with condition metadata.
+7. Generate a scatter plot of PC1 vs. PC2, with points colored by condition (untreated=blue, treated=red), including sample IDs as labels. Use matplotlib.
+8. Generate a scree plot showing cumulative variance explained by the first 10 PCs.
+9. Write PCA results (sample scores, gene loadings, variance explained) to a TSV table.
+10. Write plots as PNG figures.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.tsv | table | Sample PCA scores (PC1-PC10), with sample_id and condition columns |
+| results/pca_loadings.tsv | table | Per-gene PCA loadings (PC1-PC10) |
+| results/pca_variance_explained.tsv | table | Variance explained and cumulative variance for each PC |
+| results/pca_biplot.png | figure | Scatter plot of PC1 vs PC2, points colored by condition, labeled with sample IDs |
+| results/pca_scree_plot.png | figure | Scree plot showing variance explained by first 10 PCs |
+
+## Execution
+Runs: batch
+Expected wall time: <2 minutes. Output size: ~5 MB (count matrix is 60K genes × 6 samples). Analysis is embarrassingly parallel (PCA on small sample set) and will run quickly on a single core.

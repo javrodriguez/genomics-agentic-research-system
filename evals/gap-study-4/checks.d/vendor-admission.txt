@@ -1,0 +1,179 @@
+# Lane vendor-admission: groundwork for arms O (Codex) and G (Gemini), directed by glitch-b5 under Javier's standing
+# delegation (16 Oct 2026). T1: a vendor take, walk or regrade is graded only through a registered reader and an
+# agreed native cross-check (run.vendor_admission). T2's candidates are bound in test_harness_bookkeeping.py, run by
+# w2a's lines. T3: the freeze refuses an arm whose adapter reads documented shapes only. T0 (on Javier's typed word, 16 Oct): a
+# vendor row gets its script from design_view, and check4 and check4_walk still refuse its take. One command per line, run from
+# the repository root. Fixtures only: no take, model, container or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_admission_regrade.py
+python3 -B -W ignore evals/gap-study-4/tests/test_freeze_shapes.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_script.py
+# T4 (the v4 plan, ruled by glitch-b5 on 17 Oct 2026): the vendor check readers' bindings, and one line per piece
+# asserting its edited files are disjoint from the native readers' source lists (drive.py excepted for P0 alone).
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_check.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py PF freeze.py check_take.py tests/test_freeze_shapes.py tests/test_vendor_check.py tests/check_vendor_sources.py
+python3 -B -W ignore evals/gap-study-4/tests/test_take_checker_dispatch.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P0 drive.py check_take.py tests/test_take_checker_dispatch.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pin_for_vendor.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P0b batch.py tests/test_pin_for_vendor.py
+python3 -B evals/gap-study-4/tests/vendor_check_fixtures.py --check
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P1 check_take.py tests/test_vendor_check.py tests/vendor_check_fixtures.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_body.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py freeze.py tests/test_vendor_body.py tests/test_vendor_check.py tests/test_freeze_shapes.py tests/vendor_check_fixtures.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_roads.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py box/take_config.py build_draft.py prereg-draft.json tests/test_take_config.py tests/test_build_draft.py tests/test_vendor_roads.py
+# Round 10 (glitch-b5, 17 Oct 2026): the account record, fail-closed vendor roads, R-6 for every CLAUDE.md, the
+# secrets() email pairs and the witness re-anchors; the files they edited, against the same source lists.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py check_take.py box/take_config.py tests/test_vendor_roads.py tests/test_walk_builders.py tests/test_scan_record.py tests/test_pending_walk.py tests/test_walk_runner.py
+# Round 12 (glitch-b5, 17 Oct 2026): review c-6302fd3's NITs 2, 5 and 7, and T4 P3 (the vendor entries, the event-count
+# invariant on the vendor readers, NIT 6); the files they edit, against the same source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_entries.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P3 check_take.py walk_builders.py tests/test_vendor_entries.py tests/test_take_checker_dispatch.py tests/test_vendor_body.py tests/test_walk_builders.py
+# T4 P4 (glitch-b5 round 12): the vendor session store and the session binding's legs; the files P4 edits, against the
+# same source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_session.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P4 check_take.py tests/test_vendor_session.py tests/vendor_check_fixtures.py
+# T4 P5 (glitch-b5 round 13): the vendor constants, the vendor view, the merged digest and the vendor side; the files
+# P5 edits, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_constants.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py walk_builders.py walk_regrade.py tests/test_vendor_constants.py tests/test_vendor_body.py tests/test_vendor_entries.py tests/test_vendor_session.py tests/test_take_checker_dispatch.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_walk_road.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pending_walk.py walk_regrade.py walk_plan.py tests/test_vendor_walk_road.py tests/test_walk_plan.py tests/test_pending_walk.py
+# Round 14 (glitch-b5, Sun 18 Oct 2026): review e-71a2b94 finding 3 and NITs 1, 2 and 4; the files they edit, against
+# the same source lists.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P5 check_take.py pending_walk.py walk_regrade.py tests/test_vendor_body.py tests/test_vendor_entries.py tests/test_vendor_constants.py tests/test_vendor_walk_road.py
+# Round 15 (glitch-b5, Sun 18 Oct 2026): T4 edits B and C (review e-71a2b94 findings 1 and 2), the vendor take's host
+# turn envelopes and their and the snapshots' sha256 rebound to the scan's masked bytes; piece EB admits drive.py only
+# with both edits present and every line outside their spans equal to drive.py before edit B.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_envelopes.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py tests/check_vendor_sources.py tests/test_vendor_envelopes.py tests/test_vendor_walk_road.py
+# Round 16 (glitch-b5, Sun 18 Oct 2026): review f-981e871 NITs 1, 4 and 5; piece EB admits edit C only when its gate
+# requires the row's harness in VENDOR_HARNESSES; the files they edit, against the same source lists.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py EB drive.py walk_regrade.py tests/check_vendor_sources.py tests/test_vendor_envelopes.py
+# Round 17 (glitch-b5, Sun 18 Oct 2026): T5, the first-walk road for arms O and G; the files each piece edits, against
+# the same source lists. B2 and B3: the lease source, and the placed lease checked as the agent's after the grant.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py walk_builders.py tests/test_run_take.py tests/test_walk_builders.py
+# B4 (R1): arm O's egress host, chatgpt.com, from the pinned Codex's CHATGPT_CODEX_BASE_URL, and its named residual.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/egress/proxy_conf.py build_draft.py prereg-draft.json tests/test_egress.py tests/test_build_draft.py
+# B5: the walk-start token check on the Codex lease road (the lease's time left and its last_refresh).
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py tests/test_walk_builders.py tests/test_pending_walk.py tests/test_vendor_walk_road.py
+# B6 (R3): the vendor config written on the walk road, with the three values sourced from the pinned packages.
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 walk_builders.py box/take_config.py build_draft.py prereg-draft.json tests/test_walk_builders.py tests/test_take_config.py tests/test_live_box.py tests/test_vendor_roads.py tests/test_build_draft.py
+# B7 (R4) and glitch-b5's follow-up rulings B7-F1 to B7-F7 (Sun 18 Oct 2026): the O and G pin profiles, the codex spend
+# texts, the moved modules and the draft, freeze and manifest checks; the files they edit, against the same source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_pins.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_spend_texts.py
+python3 -B -W ignore evals/gap-study-4/tests/test_spend_wiring.py
+python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_wiring.py
+python3 -B -W ignore evals/gap-study-4/tests/test_prereg_order.py
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py
+python3 -B -W ignore evals/gap-study-4/build_draft.py --check
+python3 -B -W ignore evals/gap-study-4/freeze.py --check
+python3 -B -W ignore evals/gap-study-4/copy_manifest.py --check
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 routing.py routing.json build_draft.py prereg-draft.json COPIED.d/vendor-admission.json language-allowlist.json tests/test_vendor_pins.py tests/test_codex_spend_texts.py tests/test_routing.py tests/test_spend_wiring.py tests/test_pin_for_vendor.py tests/test_walk_wiring.py tests/test_prereg_order.py tests/test_build_draft.py tests/test_walk_builders.py
+# B10 (glitch-26's ruling B10, and review REVIEW-vendor-r18-b10-ec1ea93 NIT 3, Sun 18 Oct 2026): the files B10 and its
+# folds edit (the vendor workspace guard, the folder-trust record, their tests, the fragment) stay off the native
+# readers' source lists; the same line with drive.py added exits 1 (checked by hand as the control).
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/settings_guard.py box/take_config.py tests/test_vendor_workspace_guard.py tests/test_take_config.py COPIED.d/vendor-admission.json
+# Round 18 B12 (glitch-26, 18 Oct 2026; practice walk w-g3): arm G's tool table read from the pinned Gemini CLI 0.64.0's
+# registry, each entry with its source lines, and its witnesses. B13 (practice walk w-o1) is in test_walk_builders.
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_tool_registry.py --witnesses
+# Lane vendor-b14 round 1 B15 (glitch-26, Mon 19 Oct 2026; practice walk w-o3): arm O's turn.completed usage table read
+# from the pinned Codex CLI's exec event struct, each key with its source line, and its witnesses; the files B15 edits,
+# against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_usage_source.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_usage_source.py --witnesses
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 transcript_codex.py codex_adapter.py codex_usage_sources.py tests/test_codex_usage_source.py tests/test_codex_adapter.py COPIED.d/vendor-admission.json
+# Lane vendor-b14 round 2 (glitch-26's rulings R-B14-1 and R-B14-2, Mon 19 Oct 2026; practice walk w-g5): arm G's
+# helper aliases repointed at the row's model and invoke_agent excluded, read from the pinned Gemini CLI 0.64.0; the
+# witnesses are test_take_config's TestB14HelperPins mutants (each alias entry, the exclusion, the in-place write), each
+# red alone; the files the round edits, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py build_draft.py prereg-draft.json tests/test_take_config.py tests/test_walk_builders.py tests/test_live_box.py
+# Lane vendor-b14 round 3 (glitch-26's rulings R-B14-6 and R-B14-7, Mon 19 Oct 2026; review of d180aaf7 findings 1 and
+# 3): TestB14HelperPins gains the set-twice refusal's test and two writer mutants, each red alone: the unread-model
+# refusal dropped (an unread model falling back to no per-row aliases) and the set-twice refusal dropped.
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py TestB14HelperPins
+# Lane vendor-b16 round 1 B16-1 (glitch-26, Mon 19 Oct 2026; the GPT practice walk's SnapshotRefused): both native-session
+# locators name the config folder's root "." as the box's operator_list does, driven through ownership's real _rel_dir;
+# the witnesses put "" back in one locator each, each red alone. native_snapshot.py is CODEX_SOURCES and its edit is
+# the ruling's named exception, so it is not on the source-list line, which holds the round's other files.
+python3 -B -W ignore evals/gap-study-4/tests/test_native_snapshot.py
+python3 -B -W ignore evals/gap-study-4/tests/test_native_snapshot.py --witnesses
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 check_take.py tests/test_native_snapshot.py tests/test_box_integration.py tests/test_drive_ownership.py
+# Lane vendor-b16 round 2 R-B16-2 and the rulings on its review, R-B16-5 and R-B16-6 (glitch-26, Mon 19 Oct 2026; the
+# Gemini practice walk w-g7): a model-invented argument key on a known, open-schema Gemini tool is read as named,
+# ignored input, each entry cited from the pinned Gemini CLI 0.64.0 (the loop detector's and the policy engine's
+# whole-args reads included); the witnesses (citation removed, closed schema assumed, name dropped from the item) each
+# red alone. transcript_gemini.py is a native reader source and its edit is the ruling's named exception, so it is not
+# on the source-list line, which holds the round's other files (the copy manifest's claim for the new test included).
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_undeclared_args.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_undeclared_args.py --witnesses
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 gemini_tool_sources.py tests/test_gemini_adapter.py tests/test_gemini_undeclared_args.py COPIED.d/vendor-admission.json
+# Lane vendor-b18 round 1 B18-1 (glitch-26, Mon 19 Oct 2026; the GPT practice walk w-o7's egress log): every arm O
+# config.toml switches off the pinned Codex CLI's plugins (features.plugins) and its metrics export at exit
+# (otel.metrics_exporter none), each cited from rust-v0.162.1 in VALUE_SOURCES; the witnesses are TestB18CodexSwitches'
+# mutants, each red alone; the files the round edits, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_take_config.py TestB18CodexSwitches
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/take_config.py prereg-draft.json tests/test_take_config.py
+# Lane vendor-b17 round 2 (glitch-26's rulings B17-5 to B17-9, Mon 19 Oct 2026; Gemini practice walk w-g9 held at the
+# drive scan on OD57's line in its turn stream and native session files): OD57's admission carried to the Gemini and
+# Codex arms' reads of the same doc through read shapes (box/scan_record.py's closed, vendor-neutral schema; each arm's
+# records in its adapter; drive.scan_read_shapes at the three scan calls), the empty default unchanged, B17-6 and
+# B17-7's refusals, one witness per admission conjunct (test_scan_record's TestB17ReadShapes mutants, each red alone);
+# the adapters pin their records' bytes so their generated sweeps kill every mutant of them. drive.py is a native
+# reader source, so its edit is registered as piece B17 (its exact lines; every other drive.py line held by piece EB as
+# before), and the round's other files are checked against the source lists on the same line.
+python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py
+python3 -B -W ignore evals/gap-study-4/tests/test_sidecar.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_adapter.py
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py B17 drive.py box/scan_record.py gemini_adapter.py codex_adapter.py tests/check_vendor_sources.py tests/test_scan_record.py tests/test_gemini_adapter.py tests/test_codex_adapter.py checks.d/vendor-admission.txt
+# Lane vendor-b20 (glitch-26's rulings B20-1 to B20-5, Tue 20 Oct 2026). B20-1 to B20-4 (GPT practice walk w-o17 held at
+# pre-2): the pinned Codex's .sandbox_migration marker admitted on codex's allow-list at its exact shape (b"v1\n", mode
+# 0600, one link, read and checked), its near misses refused, the multi-turn pre-2 road through run_turn, and the
+# Gemini, named, placed and harness tables pinned to the base; the witnesses are test_config_folder's registry, each red
+# alone. B20-5 (Gemini practice walk w-g11 held at the drive scan): OD57's line admitted with one diff prefix inside the
+# doc's hunk of a `git log -p` or `git show` read on both arms' read shapes (TestB20GitReads' mutants, each red alone);
+# the files both edit, against the native readers' source lists.
+python3 -B -W ignore evals/gap-study-4/tests/test_config_folder.py C14SandboxMarker
+python3 -B -W ignore evals/gap-study-4/tests/test_scan_record.py TestB20GitReads
+python3 -B evals/gap-study-4/tests/check_vendor_sources.py P2 box/run_take.py box/scan_record.py gemini_adapter.py codex_adapter.py tests/test_config_folder.py tests/test_scan_record.py tests/test_gemini_adapter.py tests/test_codex_adapter.py checks.d/vendor-admission.txt
+# Lane vendor-b21 (glitch-26's B21-2 to B21-9, Tue 20 Oct 2026): codex and gemini promoted into harness_bookkeeping.TABLE
+# after 18 real walks (lane-reports/vendor-b21-DESIGN.md): w-o45's operator step, Evidence.load of a vendor take, the
+# excluded-path guard and the claude-code entry pinned; the witnesses are its 13 mutants, each red alone.
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_bookkeeping.py --witnesses
+# Lane vendor-b22 (glitch-26's B22-6 to B22-9, Tue 20 Oct 2026): a file_change in item.started (GPT walk w-o38), admitted
+# only with status in_progress and mapped to no view call (lane-reports/vendor-b22-DESIGN.md); the witnesses are its 3
+# mutants, each red on its own check.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_started_file_change.py --witnesses
+# Lane vendor-b22 (glitch-26's B22-10 and B22-11, Tue 20 Oct 2026): arm O's config.toml writes [agents] enabled = false,
+# so the pinned Codex offers no collaboration (delegation) tools (lane-reports/vendor-b22-DESIGN.md section 10); the
+# witnesses are its 3 mutants, each red on its own check.
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_agents_off.py --witnesses
+# Lane vendor-b23 (glitch-26's rulings Q1 to Q6 and B23-2, Tue 20 Oct 2026): a Codex patch edit read as a shell edit
+# is (lane-reports/vendor-b23-DESIGN.md): the view keeps a cut patch as an unanswered call, the rollout reader and the
+# join read FileChange, reach reads it, and the T-8:file-change site hands in its reader; the witnesses are its 15
+# mutants, each red on its own check. (--walks needs the records clone and --unchanged a full history, so neither is here.)
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py
+python3 -B -W ignore evals/gap-study-4/tests/test_codex_patch_reads.py --witnesses
+# Lanes vendor-b25 and vendor-b26 (glitch-26's rulings, 21 Oct 2026; added by lane vendor-b27 on glitch-f1's word): the
+# native readers on the real walk shapes and the Gemini history-rewrite roads, their witnesses and mutants, and the
+# scanner witness of B26's fold; until now these ran on the Mac and in the reviews only, never in athena's battery.
+python3 -B -W ignore evals/gap-study-4/tests/test_b25_real_shapes.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b26_rewrites.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b26_scanner.py
+# Lane vendor-b27 (glitch-f1's rulings 1 to 4 on the B27 design and REVIEW-vendor-b27-25ffff5's fold, 21 Oct 2026): the
+# stub-model probe on fakes: the scripted stub, the probe and its walk_launch entries, the reader harness and the cutter.
+python3 -B -W ignore evals/gap-study-4/tests/test_stub_model_server.py
+python3 -B -W ignore evals/gap-study-4/tests/test_stub_model_probe.py
+python3 -B -W ignore evals/gap-study-4/tests/test_b27_reading.py
+# Lane vendor-b28 (glitch-f1's B27 rulings 3 and 5, B27 DECISION and the rulings on REVIEW-vendor-b28-DESIGN, 21 Oct
+# 2026): road (a), the resume after a masking re-record, on the raw probe fixtures, its mutants, F-B26-9 and the
+# refusals that stay.
+python3 -B -W ignore evals/gap-study-4/tests/test_b28_resume_after_rerecord.py

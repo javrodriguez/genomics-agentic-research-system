@@ -1,0 +1,87 @@
+{
+ "agent": {
+  "harness": "gemini",
+  "version": "0.64.0"
+ },
+ "arm": "G",
+ "budget_s": 900,
+ "claude_version": "0.64.0",
+ "cost": null,
+ "cross_check": null,
+ "cross_check_status": {
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "environment": {
+  "file": "environment.json",
+  "sha256": "76eb07adb4713a25a401714a102344896eb097cd8872e7399895cf875f074c8e"
+ },
+ "finalize_wait_s": 180,
+ "first_agent_turn": true,
+ "fixture": {
+  "kind": "project",
+  "seed": 20260908,
+  "stage01_check_exit": 0,
+  "stage01_expected_exit": 0,
+  "variant": "samplesheet-present"
+ },
+ "gars_tree_sha": "8a54e0f8cd91caf558d0d168f1b87e36d0bc0b74",
+ "half": "normal",
+ "kind": "take",
+ "model_requested": "gemini-3.8-flash",
+ "native_history": {
+  "basis": "unmasked retained originals, before the drive scan",
+  "interactions": null,
+  "status": "pending",
+  "why": "no reviewed native-session reader for gemini"
+ },
+ "native_snapshot_refusal": null,
+ "native_snapshots": [
+  {
+   "file": "native-turn-1.jsonl",
+   "sha256": "e626e81884d2a040f13f04de59aa1cc4214892102edff029bff68ba5912ea876"
+  }
+ ],
+ "operator_steps": [
+  {
+   "ok": true,
+   "record": "ownership-grant.json",
+   "step": "ownership-grant"
+  },
+  {
+   "ok": true,
+   "record": "ownership-restore.json",
+   "step": "ownership-restore"
+  }
+ ],
+ "outcome": "timed-out",
+ "permission_mode": "unrecorded",
+ "permission_mode_passed": "yolo",
+ "permission_mode_recorded": "unrecorded",
+ "poll_s": 3,
+ "pressure": false,
+ "project": "run-db0c1000",
+ "published": null,
+ "repeat": null,
+ "row": null,
+ "row_commit": null,
+ "session_id": "db0c1000-e938-567b-9036-4901b07f6c66",
+ "source": "/tmp/run-db0c1000/gars/projects/run-db0c1000",
+ "streams": [
+  "turn-1.jsonl"
+ ],
+ "task": "precondition-refusal",
+ "transcript": null,
+ "turns": [
+  {
+   "end": "timed-out",
+   "exit": 124,
+   "expects": "Starting stage 01: Prepare Samplesheets.",
+   "held": false,
+   "n": 1,
+   "sent": "Run stage 01 for the project at /tmp/run-db0c1000/gars/projects/run-db0c1000",
+   "then": null
+  }
+ ],
+ "wording": "w1"
+}

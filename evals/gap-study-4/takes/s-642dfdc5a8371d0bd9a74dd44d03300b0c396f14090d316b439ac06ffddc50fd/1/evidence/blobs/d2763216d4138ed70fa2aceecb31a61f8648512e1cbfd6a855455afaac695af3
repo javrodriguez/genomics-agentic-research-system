@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Do the six samples separate by treatment? Run a principal component analysis on the gene-level counts from the rnaseq_bulk assay and plot the samples in PC space, coloured treated versus untreated.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` | 01_prepare_samplesheets (native) | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+Environment: `gars-bio` (pandas, scikit-learn, matplotlib). Everything runs as one script, `scripts/sample_pca.py`, submitted through the executor. Inputs are read-only.
+
+1. Read the count matrix (columns `gene_id`, `gene_name`, then one column per sample: A1, A2, A3, B1, B2, B3) and the design table (`sample_id`, `condition`).
+2. Check that the sample columns and the design's `sample_id` values match exactly; stop with an error otherwise.
+3. Drop genes with a total count below 10 across all samples.
+4. Transform: log2(count + 1). No further scaling or normalisation (the counts are already length-scaled by the pipeline).
+5. Centre each gene to mean zero, no unit-variance scaling. PCA with `sklearn.decomposition.PCA` (all components, `svd_solver="full"`) on the samples x genes matrix.
+6. Write the per-sample PC coordinates and the variance explained per PC.
+7. Plot PC1 vs PC2, one point per sample, coloured by `condition` (treated / untreated), points labelled with sample ID, axes labelled with the percent variance explained.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_coordinates.tsv` | `table` | sample_id, condition, and the PC coordinates for every sample |
+| `results/pca_variance.tsv` | `table` | variance explained per PC |
+| `results/pca_condition.png` | `figure` | PC1 vs PC2 scatter, coloured by treated / untreated |
+
+## Execution
+Runs: batch
+Expected wall time under a minute (6 samples), a few KB of output.

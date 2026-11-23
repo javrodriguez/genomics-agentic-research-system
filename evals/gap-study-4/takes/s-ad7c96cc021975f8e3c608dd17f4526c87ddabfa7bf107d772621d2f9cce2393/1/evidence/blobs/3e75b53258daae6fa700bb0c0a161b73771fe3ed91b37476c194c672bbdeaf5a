@@ -1,0 +1,70 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-10
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+See how the treated and untreated samples separate on a PCA of the gene-level counts. The
+analysis places the six rnaseq_bulk samples (A1-A3 untreated, B1-B3 treated) on the leading
+principal components of their variance-stabilised gene-level counts, coloured by `condition`,
+and reports the fraction of variance each component explains. It makes no statistical claim
+about differential expression; that is sub-stage 02.02's question.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib
+3.11.1), submitted as a single batch job. Inputs are read only; nothing is written outside
+this analysis directory.
+
+1. **Resolve inputs.** Call `_system/resolve_artifact.py --project <project> --assay
+   rnaseq_bulk --consumes counts_gene design` and read the two paths it returns. Stop with an
+   error if either fails to resolve.
+2. **Load and align.** Read the count matrix (tab-separated; `gene_id` as index, drop the
+   `gene_name` column) and the design table (`sample_id` as index). Check that the matrix's
+   sample columns and the design's `sample_id` values are the same set; stop with an error
+   if they differ. Order the matrix columns to match the design.
+3. **Prepare counts.** Round the length-scaled Salmon estimates to integers (the standard
+   way to bring tximport `lengthScaledTPM`-style counts into DESeq2) and drop genes with zero
+   counts in every sample. Keep a copy in memory only; the input file is never changed.
+4. **Variance-stabilising transform.** Build a pydeseq2 `DeseqDataSet` with `design =
+   "~condition"` and apply `vst(use_design=False)` — the equivalent of DESeq2's
+   `vst(blind=TRUE)`, so the transform does not know the treatment labels it is about to be
+   judged on. Size factors use pydeseq2's default median-of-ratios.
+5. **Select genes.** Take the 500 genes with the highest variance across samples in the VST
+   matrix (the DESeq2 `plotPCA` default, `ntop = 500`).
+6. **PCA.** Centre each gene (no scaling to unit variance, as in `plotPCA`) and run
+   `sklearn.decomposition.PCA(n_components=5)` with samples as observations — five is the
+   maximum informative number for six samples. Record each sample's scores and each
+   component's explained-variance ratio.
+7. **Plot.** Scatter PC1 vs PC2 with matplotlib: one point per sample, coloured by
+   `condition` (treated / untreated), each point labelled with its `sample_id`, axis labels
+   carrying the percent variance explained. Save as PNG (300 dpi).
+8. **Write outputs** listed below, then exit 0.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_scores.tsv` | `table` | per sample: `sample_id`, `condition`, `replicate`, PC1-PC5 scores |
+| `results/pca_variance_explained.tsv` | `table` | per component: `pc`, explained-variance ratio, cumulative ratio |
+| `results/pca_pc1_pc2.png` | `figure` | PC1 vs PC2 scatter, coloured by condition, labelled by sample |
+
+## Execution
+Runs: batch
+One job through the workspace's configured executor, submitted with
+`_system/executorlib.py submit`, running `scripts/sample_pca.py` in `gars-bio`. Requested
+resources: 1 CPU, 4 GB memory, 30 minutes. Expected wall time is under 5 minutes (six samples);
+total output under 1 MB.

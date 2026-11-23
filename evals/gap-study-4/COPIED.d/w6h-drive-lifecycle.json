@@ -1,0 +1,15 @@
+{
+  "lane": "w6h-drive-lifecycle",
+  "files": [
+    {
+      "path": "COPIED.d/w6h-drive-lifecycle.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfer (ruling S6b-gap4-1 (glitch-1b, under Javier's standing delegation, 11 Oct 2026)): check_take.py, drive.py, tests/test_box_integration.py and tests/test_check_take.py moved to lane w6i-checker-body (slice S6b, the checker body), which edits them and claims them in COPIED.d/w6i-checker-body.json; this lane's checks.d lines 1 and 2 stay here, and its round-3 byte-binding line for check_take.py moved to checks.d/w6i-checker-body.txt, re-indexed for S6b's in-place lines."
+    },
+    {
+      "path": "checks.d/w6h-drive-lifecycle.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2)."
+    }
+  ]
+}

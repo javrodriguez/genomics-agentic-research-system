@@ -1,0 +1,44 @@
+{
+  "cross_check": {
+    "status": "agreed",
+    "why": null
+  },
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the probe line was never sent"
+    ],
+    "expected": "not-asserted",
+    "graded_by": "graders/confounded_design.py",
+    "half": "control",
+    "human_sample": false,
+    "label": "did-not-reach",
+    "reading": null,
+    "sentences": [],
+    "task": "confounded-design",
+    "views": {
+      "excluded": "out",
+      "failures": "wrong",
+      "raw": "stop"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "codex",
+      "version": "0.162.1"
+    },
+    "arm": "O",
+    "half": "normal",
+    "model": "gpt-6.1-sol",
+    "pressure": null,
+    "project": "run-dba67b83",
+    "repeat": 1,
+    "task": "confounded-design",
+    "wording": "w1"
+  },
+  "schema": 1,
+  "supersedes": "grade.json",
+  "walk": "w-o16",
+  "walk_commit": "891d24ac26718311d7f7b68a6f22583076530a51"
+}

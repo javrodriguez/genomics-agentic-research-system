@@ -1,0 +1,48 @@
+test_a_process_start_trips (__main__.TestGuardArmed.test_a_process_start_trips) ... ok
+test_check4_refuses_a_script_that_is_not_the_wordings (__main__.TestTheRealDesign.test_check4_refuses_a_script_that_is_not_the_wordings) ... ok
+test_only_the_named_lines_above_the_round4_section_changed (__main__.TestTheRealDesign.test_only_the_named_lines_above_the_round4_section_changed) ... ok
+test_r1_a_clean_take_grades_on_the_real_design (__main__.TestTheRealDesign.test_r1_a_clean_take_grades_on_the_real_design) ... ok
+test_r2_the_mode_comes_from_the_routing_pin (__main__.TestTheRealDesign.test_r2_the_mode_comes_from_the_routing_pin) ... ok
+test_r3_the_first_turn_rule_agrees_with_harness_records (__main__.TestTheRealDesign.test_r3_the_first_turn_rule_agrees_with_harness_records) ... ok
+test_r4_only_claude_code_is_read (__main__.TestTheRealDesign.test_r4_only_claude_code_is_read) ... ok
+test_r5_a_partial_view_is_refused (__main__.TestTheRealDesign.test_r5_a_partial_view_is_refused) ... ok
+test_r6_the_scratch_folder_is_the_views (__main__.TestTheRealDesign.test_r6_the_scratch_folder_is_the_views) ... ok
+test_r7_the_instruction_file_binds_the_pinned_tree (__main__.TestTheRealDesign.test_r7_the_instruction_file_binds_the_pinned_tree) ... ok
+test_r8_the_parsers_first_turn_rule_agrees (__main__.TestTheRealDesign.test_r8_the_parsers_first_turn_rule_agrees) ... ok
+test_r9_the_sessions_tree_is_the_views (__main__.TestTheRealDesign.test_r9_the_sessions_tree_is_the_views) ... ok
+test_the_constants_are_closed_and_never_shadow_the_draft (__main__.TestTheRealDesign.test_the_constants_are_closed_and_never_shadow_the_draft) ... ok
+test_the_gars_tree_is_the_pinned_trees (__main__.TestTheRealDesign.test_the_gars_tree_is_the_pinned_trees) ... ok
+test_the_view_is_round_4s_tasks_and_draft (__main__.TestTheRealDesign.test_the_view_is_round_4s_tasks_and_draft) ... ok
+test_the_witnesses_are_named_and_each_bound_to_its_own_check (__main__.TestWitnesses.test_the_witnesses_are_named_and_each_bound_to_its_own_check) ... ok
+test_witness_draft_mode_table (__main__.TestWitnesses.test_witness_draft_mode_table) ... 
+WITNESS draft-mode-table: red by R2-mode (1 own, 0 collateral, 0 errors) ok
+test_witness_first_wording_always (__main__.TestWitnesses.test_witness_first_wording_always) ... 
+WITNESS first-wording-always: red by R1-real (1 own, 0 collateral, 0 errors) ok
+test_witness_instructions_from_head (__main__.TestWitnesses.test_witness_instructions_from_head) ... 
+WITNESS instructions-from-head: red by R7-pinned (4 own, 0 collateral, 0 errors) ok
+test_witness_no_design_view (__main__.TestWitnesses.test_witness_no_design_view) ... 
+WITNESS no-design-view: red by R1-real (1 own, 0 collateral, 0 errors) ok
+test_witness_no_harness_guard (__main__.TestWitnesses.test_witness_no_harness_guard) ... 
+WITNESS no-harness-guard: red by R4-guard (4 own, 0 collateral, 0 errors) ok
+test_witness_parser_blank_text (__main__.TestWitnesses.test_witness_parser_blank_text)
+W6I-R1-5: claude_code_adapter.py with a blank text block read as agent output, compiled in memory. ... 
+WITNESS parser-blank-text: red by R8-parser (1 own, 0 collateral, 0 errors) ok
+test_witness_partial_view_admitted (__main__.TestWitnesses.test_witness_partial_view_admitted) ... 
+WITNESS partial-view-admitted: red by R5-partial (2 own, 0 collateral, 0 errors) ok
+test_witness_pending_ignored (__main__.TestWitnesses.test_witness_pending_ignored) ... 
+WITNESS pending-ignored: red by R1-real (1 own, 0 collateral, 0 errors) ok
+test_witness_text_only_first_turn (__main__.TestWitnesses.test_witness_text_only_first_turn) ... 
+WITNESS text-only-first-turn: red by R3-first (1 own, 0 collateral, 0 errors) ok
+test_witness_tmpdir_from_the_draft (__main__.TestWitnesses.test_witness_tmpdir_from_the_draft) ... 
+WITNESS tmpdir-from-the-draft: red by R6-tmpdir (1 own, 0 collateral, 0 errors) ok
+test_witness_tree_none_admitted (__main__.TestWitnesses.test_witness_tree_none_admitted) ... 
+WITNESS tree-none-admitted: red by R9-tree (1 own, 0 collateral, 0 errors) ok
+test_witness_tree_unchecked (__main__.TestWitnesses.test_witness_tree_unchecked) ... 
+WITNESS tree-unchecked: red by R9-tree (1 own, 0 collateral, 0 errors) ok
+test_witness_walk_instructions_from_head (__main__.TestWitnesses.test_witness_walk_instructions_from_head) ... 
+WITNESS walk-instructions-from-head: red by R7-pinned (2 own, 0 collateral, 0 errors) ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 9.705s
+
+OK

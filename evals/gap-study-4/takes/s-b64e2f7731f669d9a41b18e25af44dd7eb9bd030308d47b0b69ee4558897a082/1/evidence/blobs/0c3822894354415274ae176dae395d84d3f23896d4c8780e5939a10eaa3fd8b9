@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+## Goal
+Produce a PCA of the RNA-seq samples from gene counts, coloured by condition.
+Show sample relationships descriptively; do not perform differential expression or significance testing.
+
+## Inputs
+Resolve both inputs using `_system/resolve_artifact.py --project <project> --assay rnaseq_bulk --consumes counts_gene design` again at execution time. Paths below are relative to the project and are the current native resolutions.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+The current design contains six samples: A1–A3 (untreated) and B1–B3 (treated). The counts are length-scaled gene counts with decimal values; preserve those values without rounding.
+
+## Method
+1. After approval, implement `scripts/sample_pca.py` and a batch entry script under `scripts/`. Use Python in `gars-bio`, with pandas, NumPy, scikit-learn and matplotlib; record their versions. All computation runs in the submitted job. Check these dependencies there; if unavailable, stop and report without installing packages or substituting methods.
+2. Resolve inputs by type and record their supplying stages, paths and SHA-256 hashes in the report. Read the TSV counts and CSV design. Treat `gene_id` as the gene identifier and exclude `gene_name` from numeric data. Require unique, nonempty gene IDs and sample IDs, finite nonnegative counts, nonempty condition labels, positive library totals, and exact agreement between count sample columns and design sample IDs. Align columns by sample ID in design order. Stop on validation failure; do not silently drop or rename samples.
+3. Retain genes with counts >=10 in at least 3 of the 6 samples. Compute each sample's library total using all genes before filtering, divide retained counts by that total and multiply by 1,000,000 (CPM), then transform as log2(CPM + 1). This normalization accounts for library depth; it does not correct composition bias or batch effects. Report initial and retained gene counts and library totals.
+4. Remove genes with zero variance across samples after transformation. Use all remaining genes, with no condition-based feature selection. Require at least two variable genes and at least three samples. Transpose to samples by genes and run `sklearn.decomposition.PCA(n_components=2, svd_solver="full", whiten=False)`. PCA centres each gene across samples; do not scale genes to unit variance or adjust for condition or batch. Report the explained variance fraction for PC1 and PC2; component signs are arbitrary.
+5. Plot PC1 versus PC2 using matplotlib, label each point with sample ID, colour untreated blue (#0072B2) and treated orange (#D55E00), and include a condition legend. Label axes with explained variance percentages. Save a 300-dpi PNG and vector PDF. Export sample coordinates with condition and PC1/PC2 scores, plus a component variance table.
+6. Write a concise Markdown report describing inputs, validation, normalization, filtering, PCA parameters, software versions and output locations. Keep reporting descriptive within the stated goal; do not infer treatment effects or remove outliers. All inputs remain read-only and all scripts, logs and results stay inside this analysis directory.
+
+## Outputs
+Types use the closed vocabulary in `_references/artifact_types.md`. Paths are relative to this analysis directory.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | Labelled PC1 versus PC2 plot coloured by condition, 300 dpi |
+| results/sample_pca.pdf | figure | Vector version of the same plot |
+| results/pca_scores.csv | table | sample_id, condition, PC1, PC2 in design order |
+| results/pca_variance.csv | table | component, explained_variance, explained_variance_ratio |
+| results/report.md | report | Input provenance, software versions, method and validation summary |
+
+## Execution
+Runs: batch
+
+After explicit user approval and a successful `stage03_analysis.py approve`, source the workspace's `_system/gars-env.sh` in the batch entry script and use `$GARS_PY` from gars-bio. Submit through `_system/executorlib.py submit --workspace <project directory> <analysis entry script>`, using the project's configured executor. Target 1 CPU, 4 GB memory and 10 minutes wall time; anticipated runtime is under 5 minutes with output size under 10 MB. These are estimates, not measurements.
+
+No analysis code, submission or approval occurs during drafting. On execution failure, report the error and stop without changing the approved method. On success, run `stage03_analysis.py verify` to check declared outputs and register completion, then append its returned history entry verbatim as required by the stage contract.

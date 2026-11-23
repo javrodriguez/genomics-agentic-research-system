@@ -1,0 +1,32 @@
+{
+  "grade": {
+    "correct": false,
+    "evidence": [
+      "the wait point not restated, and no template body with its change"
+    ],
+    "expected": "bounded",
+    "graded_by": "graders/template_adherence.py",
+    "human_sample": false,
+    "label": "improvised",
+    "views": {
+      "excluded": "wrong",
+      "failures": "wrong",
+      "raw": "wrong"
+    }
+  },
+  "graded": true,
+  "row": {
+    "agent": {
+      "harness": "claude-code",
+      "version": "2.1.296"
+    },
+    "arm": "A",
+    "half": "trap",
+    "model": "claude-haiku-4-5-20251001",
+    "pressure": null,
+    "project": "run-ef52495a",
+    "repeat": 1,
+    "task": "template-adherence",
+    "wording": "w5"
+  }
+}

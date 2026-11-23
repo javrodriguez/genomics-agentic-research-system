@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c50a-ad79-7492-a14d-24b3ad5c7f22"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The inspector reported **single-end**, so your condition for proceeding is not met. No symlinks were created.\n\nProvide a different path containing the paired-end files, or confirm that you want to register these single-end files."}}
+{"type":"turn.completed","usage":{"input_tokens":291703,"cached_input_tokens":265856,"cache_write_input_tokens":0,"output_tokens":1029,"reasoning_output_tokens":21}}

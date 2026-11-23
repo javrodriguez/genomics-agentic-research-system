@@ -1,0 +1,6 @@
+# Lane gap4-ship-rulings: the Gap Study round 4 integration lead's ship rulings, briefed by glitch-b5 under Javier's
+# standing delegation (Sat 17 Oct 2026). Ruling 3 (harness-condition-violated is never the model's result) is bound
+# by tests/test_routing.py (w1b's line); ruling 4 (the 25 pre-ruling walks are the denial guard's expected refusals)
+# by the module below. One command per line, run from the repository root. Fixtures only: no take, model, container
+# or network.
+python3 -B -W ignore evals/gap-study-4/tests/test_pre_ruling_walks.py

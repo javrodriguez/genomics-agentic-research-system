@@ -1,0 +1,64 @@
+{
+ "binary_bytes": 257068216,
+ "binary_path_in_image": "/usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+ "binary_sha256": "24972e3bc859fab2b46ed4c1e51f7d6130f06d3bd550811a114640de3370d0de",
+ "graph_driver": null,
+ "hits": {
+  "catalog_any_haiku45": {
+   "contexts": [
+    "{id:\"claude-haiku-4-5\",family:"
+   ],
+   "count": 1,
+   "offsets": [
+    207705848
+   ]
+  },
+  "catalog_haiku45": {
+   "contexts": [
+    "{id:\"claude-haiku-4-5\",family:\"haiku\",display_name:\"Haiku 4.5\",knowledge_cutoff:\"February 2025\",provider_ids:{first_party:\"claude-haiku-4-5-20251001\",bedrock:\"us.anthropic.claude-haiku-4-5-20251001-v1:0\",vertex:\"claude-haiku-4-5@20251001\",foundry:\"claude-haiku-4-5\",anthropic_aws:\"claude-haiku-4-5-20251001\",anthropic_google_cloud:\"claude-haiku-4-5-20251001\",mantle:\"anthropic.claude-haiku-4-5\",gateway:\"claude-haiku-4-5-20251001\"},vertex_region_env_var:\"VERTEX_REGION_CLAUDE_HAIKU_4_5\",context:{window:200000,supports_1m_suffix:!0},max_output_tokens:{default:32000,upper:64000},pricing:\"haiku_45\",capabilities:[\"context_management\"],advisor_rank:1}"
+   ],
+   "count": 1,
+   "offsets": [
+    207705848
+   ]
+  },
+  "catalog_opus55": {
+   "contexts": [
+    "{id:\"claude-opus-5-5\",family:\"opus\",display_name:\"Opus 5.5\",knowledge_cutoff:\"June 2026\",provider_ids:{first_party:\"claude-opus-5-5\",bedrock:\"us.anthropic.claude-opus-5-5\",vertex:\"claude-opus-5-5\",foundry:\"claude-opus-5-5\",anthropic_aws:\"claude-opus-5-5\",anthropic_google_cloud:\"claude-opus-5-5\",mantle:\"anthropic.claude-opus-5-5\",gateway:\"claude-opus-5-5\"},eager_input_streaming:{bedrock:!0,vertex:!0},vertex_region_env_var:\"VERTEX_REGION_CLAUDE_5_5_OPUS\",fallback_3p:\"claude-opus-5\",context:{window:1e6,native_1m:!0,supports_1m_beta:!0,supports_1m_suffix:!0},max_output_tokens:{default:128000,upper:128000},pricing:\"tier_4_20_cache_read_0_20\",capabilities:[\"effort\",\"max_effort\",\"xhigh_effort\",\"adaptive_thinking\",\"rejects_disabled_thinking\",\"mid_conv_tool_change\",\"per_turn_effort\",\"per_turn_timing\",\"context_management\",\"fast_mode\",\"lean_prompt\",\"refusal_fallback\",\"opus_5_5_prompt_bundle\"],default_effort:\"medium\",image_limits:{maxWidth:2000,maxHeight:2000},advisor_rank:7}"
+   ],
+   "count": 1,
+   "offsets": [
+    207717423
+   ]
+  },
+  "catalog_sonnet55": {
+   "contexts": [
+    "{id:\"claude-sonnet-5-5\",family:\"sonnet\",display_name:\"Sonnet 5.5\",knowledge_cutoff:\"June 2026\",provider_ids:{first_party:\"claude-sonnet-5-5\",bedrock:\"us.anthropic.claude-sonnet-5-5\",vertex:\"claude-sonnet-5-5\",foundry:\"claude-sonnet-5-5\",anthropic_aws:\"claude-sonnet-5-5\",anthropic_google_cloud:\"claude-sonnet-5-5\",mantle:\"anthropic.claude-sonnet-5-5\",gateway:\"claude-sonnet-5-5\"},eager_input_streaming:{bedrock:!0,vertex:!0},vertex_region_env_var:\"VERTEX_REGION_CLAUDE_5_5_SONNET\",fallback_3p:\"claude-sonnet-5\",context:{window:1e6,native_1m:!0,supports_1m_beta:!0},max_output_tokens:{default:128000,upper:128000},pricing:\"tier_2_10_cache_read_0_10\",capabilities:[\"effort\",\"max_effort\",\"xhigh_effort\",\"adaptive_thinking\",\"mid_conv_tool_change\",\"context_management\",\"rejects_disabled_thinking\",\"per_turn_effort\",\"per_turn_timing\",\"lean_prompt\",\"refusal_fallback\",\"silent_turn_reminder\",\"org_locked_thinking\"],default_effort:\"medium\",image_limits:{maxWidth:2000,maxHeight:2000},advisor_rank:6}"
+   ],
+   "count": 1,
+   "offsets": [
+    207711243
+   ]
+  }
+ },
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "inspect_rc": 0,
+ "layer_dirs": 0,
+ "package_entries": [
+  {
+   "layer": "blobs/sha256/09830513684d9f938a1b1d737b4dcdcf4c40811f7021eb2ee10b1fb1e3782817",
+   "link": null,
+   "name": "usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+   "size": 257068216,
+   "type": "0"
+  },
+  {
+   "layer": "blobs/sha256/09830513684d9f938a1b1d737b4dcdcf4c40811f7021eb2ee10b1fb1e3782817",
+   "link": "usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe",
+   "name": "usr/local/lib/node_modules/@anthropic-ai/claude-code/node_modules/@anthropic-ai/claude-code-linux-x64/claude",
+   "size": 0,
+   "type": "1"
+  }
+ ],
+ "read_from": "docker save: layer blobs/sha256/09830513684d9f938a1b1d737b4dcdcf4c40811f7021eb2ee10b1fb1e3782817 member usr/local/lib/node_modules/@anthropic-ai/claude-code/bin/claude.exe"
+}

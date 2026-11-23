@@ -1,0 +1,65 @@
+{
+ "harness": "claude-code",
+ "listings": [
+  {
+   "at": "post-1",
+   "entries": [
+    [
+     "projects/-tmp-run-c8ce3b08",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-c8ce3b08/c8ce3b08-d610-50c5-9d6d-4f827b80c623.jsonl",
+     "file"
+    ]
+   ]
+  },
+  {
+   "at": "publish",
+   "entries": [
+    [
+     "projects/-tmp-run-c8ce3b08",
+     "dir"
+    ],
+    [
+     "projects/-tmp-run-c8ce3b08/c8ce3b08-d610-50c5-9d6d-4f827b80c623.jsonl",
+     "file"
+    ]
+   ]
+  }
+ ],
+ "root": "projects",
+ "sweeps": [
+  {
+   "at": "post-1",
+   "escapes": [],
+   "expected": [
+    "/tmp/run-c8ce3b08",
+    "/opt/cfg",
+    "/tmp",
+    "/var/tmp",
+    "/dev/shm",
+    "/etc/hosts",
+    "/etc/hostname",
+    "/etc/resolv.conf"
+   ],
+   "files": [
+    [
+     "/opt/cfg/projects/-tmp-run-c8ce3b08/c8ce3b08-d610-50c5-9d6d-4f827b80c623.jsonl",
+     "claude",
+     "c8ce3b08-d610-50c5-9d6d-4f827b80c623"
+    ]
+   ],
+   "mounts": [
+    "/dev/shm",
+    "/opt/cfg",
+    "/tmp",
+    "/tmp/run-c8ce3b08",
+    "/var/tmp"
+   ],
+   "scanned": 423,
+   "truncated": false,
+   "unreadable": []
+  }
+ ]
+}

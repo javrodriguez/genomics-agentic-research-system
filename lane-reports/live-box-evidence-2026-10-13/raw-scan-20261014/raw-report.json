@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 175,
+  "EndLine": 175,
+  "StartColumn": 2,
+  "EndColumn": 38,
+  "Match": "Key pinned versions: `REDACTED`",
+  "Secret": "REDACTED",
+  "File": "/Users/javrodher/aegis-builds/gap4-export-20261014/admitted-20261014/gars/_references/environment.md",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 3.5216405,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/Users/javrodher/aegis-builds/gap4-export-20261014/admitted-20261014/gars/_references/environment.md:generic-api-key:175"
+ }
+]

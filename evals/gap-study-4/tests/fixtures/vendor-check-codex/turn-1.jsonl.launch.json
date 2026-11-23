@@ -1,0 +1,1 @@
+{"schema":1,"harness":"codex","container_id":"synthetic","argv":["codex","exec","--json","-m","gpt-6-luna","--dangerously-bypass-approvals-and-sandbox","sent 1"],"cwd":"/work/tree","stream":"/synthetic/take/turn-1.jsonl","started_at":0}

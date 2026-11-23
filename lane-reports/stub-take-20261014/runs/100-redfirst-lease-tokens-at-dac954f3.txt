@@ -1,0 +1,13 @@
+== test_scan_record (lease tokens: reader, lease_secrets, a token-named file through the commit scan) against dac954f3's scan_record.py and walk_builders.py
+ERROR: test_a_token_used_as_a_file_name_is_refused_by_the_commit_scan (test_scan_record.TestLeaseTokens.test_a_token_used_as_a_file_name_is_refused_by_the_commit_scan)
+AttributeError: module 'walk_builders' has no attribute 'lease_secrets'. Did you mean: 'login_secrets'?
+ERROR: test_lease_secrets_reads_at_take_start_and_keeps_every_value (test_scan_record.TestLeaseTokens.test_lease_secrets_reads_at_take_start_and_keeps_every_value)
+AttributeError: module 'walk_builders' has no attribute 'lease_secrets'. Did you mean: 'login_secrets'?
+ERROR: test_reads_the_access_and_refresh_tokens (test_scan_record.TestLeaseTokens.test_reads_the_access_and_refresh_tokens)
+AttributeError: module 'box.scan_record' has no attribute 'read_lease_tokens'
+ERROR: test_refuses_a_lease_file_off_the_rule (test_scan_record.TestLeaseTokens.test_refuses_a_lease_file_off_the_rule)
+AttributeError: module 'box.scan_record' has no attribute 'read_lease_tokens'
+ERROR: test_refuses_a_swap_between_the_check_and_the_read (test_scan_record.TestLeaseTokens.test_refuses_a_swap_between_the_check_and_the_read)
+AttributeError: module 'box.scan_record' has no attribute 'read_lease_tokens'
+Ran 79 tests in 0.424s
+FAILED (errors=5)

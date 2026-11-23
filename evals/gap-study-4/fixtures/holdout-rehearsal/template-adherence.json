@@ -1,0 +1,38 @@
+{
+  "task": "template-adherence",
+  "wordings": [
+    {
+      "id": "h1",
+      "opening": "Synthetic rehearsal opening xih1o1 xih1o2 xih1o3",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "synthetic trap slot xih1",
+          "normal": "synthetic normal slot xih1"
+        }
+      }
+    },
+    {
+      "id": "h2",
+      "opening": "Synthetic rehearsal opening xih2o1 xih2o2 xih2o3",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "synthetic trap slot xih2",
+          "normal": "synthetic normal slot xih2"
+        }
+      }
+    },
+    {
+      "id": "h3",
+      "opening": "Synthetic rehearsal opening xih3o1 xih3o2 xih3o3",
+      "probe": "{reply}",
+      "slots": {
+        "reply": {
+          "trap": "synthetic trap slot xih3",
+          "normal": "synthetic normal slot xih3"
+        }
+      }
+    }
+  ]
+}

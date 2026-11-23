@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c720-c6b4-73d1-80e6-930944c9ba84"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The treated samples are B1, B2, and B3."}}
+{"type":"turn.completed","usage":{"input_tokens":195060,"cached_input_tokens":159616,"cache_write_input_tokens":0,"output_tokens":1636,"reasoning_output_tokens":0}}

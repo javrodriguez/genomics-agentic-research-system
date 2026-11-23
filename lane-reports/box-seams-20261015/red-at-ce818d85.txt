@@ -1,0 +1,77 @@
+EEFF
+======================================================================
+ERROR: test_s1_operator_read_from_drive (__main__.TestSeams.test_s1_operator_read_from_drive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ce81/evals/gap-study-4/drive.py", line 2395, in _operator_read
+    got = self.ownership.operator_read(self.runtime, image=take.spec.image, root_kind="run_tree",
+                                       root=take.launched.spec.run_tree, rel_path=rel,
+                                       caller_env=self.caller_env)
+TypeError: operator_read() got an unexpected keyword argument 'root'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/box-seams-20261015/test_drive_box_seams.py", line 49, in test_s1_operator_read_from_drive
+    self.assertIsNone(drive.TakeDriver._operator_read(me, take, "op", "plan/approved.json"))
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ce81/evals/gap-study-4/drive.py", line 2399, in _operator_read
+    raise OperatorStepRefused(f"operator step {op_id!r}: the box's read of {rel} failed "
+                              f"({type(e).__name__}: {str(e)[:300]}); the take is kept for a human ruling, "
+                              f"never a re-run") from e
+drive.OperatorStepRefused: operator step 'op': the box's read of plan/approved.json failed (TypeError: operator_read() got an unexpected keyword argument 'root'); the take is kept for a human ruling, never a re-run
+
+======================================================================
+ERROR: test_s2_config_view_from_drive (__main__.TestSeams.test_s2_config_view_from_drive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/box-seams-20261015/test_drive_box_seams.py", line 55, in test_s2_config_view_from_drive
+    self.assertIsNone(reader("sessions/x.jsonl"))
+                      ~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ce81/evals/gap-study-4/drive.py", line 2529, in <lambda>
+    lambda rel_path: call("operator_read", rel_path=rel_path))
+                     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-javrodher-glitch/2fccbe08-5729-47ba-b421-9f21d7b572a8/scratchpad/ce81/evals/gap-study-4/drive.py", line 2526, in call
+    raise _native_snapshot.SnapshotRefused(f"the box's {what} of the config folder failed "
+                                           f"({type(e).__name__}: {str(e)[:200]})") from None
+native_snapshot.SnapshotRefused: the box's operator_read of the config folder failed (TypeError: operator_read() got an unexpected keyword argument 'root')
+
+======================================================================
+FAIL: test_s3_interface_checks_over_the_real_box (__main__.TestSeams.test_s3_interface_checks_over_the_real_box)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/box-seams-20261015/test_drive_box_seams.py", line 59, in test_s3_interface_checks_over_the_real_box
+    self.assertEqual(drive.ownership_problems(ownership, operator_write=True, native=True), [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ["the ownership road's operator_read is no[186 chars]nv)"] != []
+
+First list contains 2 additional elements.
+First extra element 0:
+"the ownership road's operator_read is not operator_read(runtime, *, image, root_kind, root, rel_path, caller_env)"
+
++ []
+- ["the ownership road's operator_read is not operator_read(runtime, *, image, "
+-  'root_kind, root, rel_path, caller_env)',
+-  "the ownership road's operator_list is not operator_list(runtime, *, image, "
+-  'root_kind, root, rel_dir, caller_env)']
+
+======================================================================
+FAIL: test_s4_every_named_call_binds (__main__.TestSeams.test_s4_every_named_call_binds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/javrodher/aegis-builds/gap4-live-box-20261013/lane-reports/box-seams-20261015/test_drive_box_seams.py", line 83, in test_s4_every_named_call_binds
+    self.assertEqual(bad, [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^
+AssertionError: Lists differ: ["drive.py:2395 operator_read: missing a required argument: 'run_tree'"] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+"drive.py:2395 operator_read: missing a required argument: 'run_tree'"
+
+- ["drive.py:2395 operator_read: missing a required argument: 'run_tree'"]
++ []
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.097s
+
+FAILED (failures=2, errors=2)

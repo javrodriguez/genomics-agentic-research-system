@@ -1,0 +1,6 @@
+# Lane w11b-gemini-adapter: Gap Study round 4, arm G's adapter on documented shapes (ruling Q-3): the Gemini CLI
+# adapter and its stream parser, on synthetic streams over a fake runtime. One command per line, run from the repository
+# root. --witnesses runs the witnesses only and prints one WITNESS line per guard and the red count.
+# No model, container, network, credential, salt or holdout.
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_gemini_adapter.py --witnesses

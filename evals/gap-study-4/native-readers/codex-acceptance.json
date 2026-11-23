@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "harness": "codex",
+  "cli_version": "0.162.1",
+  "reader_sources_sha256": "b7018ec53b040adcc5427c43e4eae50c4026330381eba085530352641c786851",
+  "walk": "w-o46",
+  "native": {
+    "file": "session/native-turn-3.jsonl",
+    "sha256": "568705600a468810a42d12ee0665c796053c353a624eea9024655604f73aba2b"
+  },
+  "streams": [
+    {
+      "file": "turn-1.jsonl",
+      "sha256": "ac849ba731e54c68f80694add1d35fc769e4cb6851478ab28f0aa1b56683c733"
+    },
+    {
+      "file": "turn-2.jsonl",
+      "sha256": "b8fe52b5aa82a55f8874718e4384cf30d3546e3759b11bd919b45de21c6265eb"
+    },
+    {
+      "file": "turn-3.jsonl",
+      "sha256": "2156c7be941367c18fe8724a99670fd205aa1a7ec0aa0e670b6aa4fc6e4fd543"
+    }
+  ],
+  "join": {
+    "status": "PASS",
+    "interactions": 3
+  },
+  "review": {
+    "verdict": "PASS",
+    "file": "codex-review.md",
+    "sha256": "44cf53b077220fe07633d11cf29fea69ab0c805e8dadfff3585941bc73780552",
+    "reviewer": "a fresh Opus 5.5 reviewer agent of glitch-45"
+  },
+  "accepted_by": "javier"
+}

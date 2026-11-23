@@ -1,0 +1,57 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) on the gene count matrix to visualize sample relationships and identify the dominant sources of variation across the RNA-seq samples. Samples will be colored by experimental condition (untreated vs. treated) to examine whether the two conditions separate along the first two principal components.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+All steps run in the `gars-bio` conda environment. A single Python script (`scripts/pca_analysis.py`) performs all computations.
+
+1. **Load data** (pandas): Read the gene count matrix (TSV) with gene_id as index and sample columns A1-B3. Read the design file (CSV) with sample_id and condition columns. Validate that all 6 samples are present in both files.
+
+2. **Extract count matrix** (pandas): Create a numeric matrix with genes as rows and 6 samples (A1, A2, A3, B1, B2, B3) as columns. Extract condition labels from the design file, in the same sample order.
+
+3. **Filter low-abundance genes** (pandas/numpy): Remove genes with mean expression less than 0.5 TPM across all samples. This removes noise from low-signal genes. Retain gene names for later reference.
+
+4. **Log transformation** (numpy): Transform counts using log2(count + 1) to stabilize variance and meet normality assumptions for PCA. Rationale: input matrix is already TPM-normalized by Salmon.
+
+5. **Standardization** (scikit-learn, StandardScaler): Center each gene (subtract mean across samples) and scale each gene (divide by standard deviation). This ensures equal weighting across genes.
+
+6. **PCA computation** (scikit-learn, sklearn.decomposition.PCA): Fit PCA on the standardized log-transformed matrix (genes as features, samples as observations). Compute all 6 principal components to capture full variance structure. Extract PC scores (coordinates of samples in PC space) and variance explained ratio per component.
+
+7. **Generate outputs** (matplotlib/pandas):
+   - Write PC scores for all 6 samples to TSV (samples × 6 PCs).
+   - Write gene loadings (genes × 2 PCs) to TSV showing which genes drive PC1 and PC2.
+   - Create PC1 vs PC2 scatter plot with samples colored by condition (untreated: blue, treated: red). Annotate each point with sample ID. Include PC variance percentages on axis labels.
+   - Create scree plot showing cumulative variance explained across first 4 PCs to justify 2D visualization.
+   - Save both plots as PDF.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_scores.tsv | table | PC1–PC6 coordinates for all 6 samples with sample IDs as row names |
+| results/pca_loadings.tsv | table | Gene contributions (loadings) to PC1 and PC2, sorted by absolute loading magnitude |
+| results/pca_biplot.pdf | figure | Scatter plot of PC1 vs PC2 with samples colored by condition; each point labeled with sample ID; variance explained percentages on axes |
+| results/pca_screeplot.pdf | figure | Cumulative variance explained by first 4 principal components; shows that PC1 and PC2 capture the majority of variance in the data |
+
+## Execution
+Runs: batch
+
+Expected wall time: <5 minutes. PCA on ~18K genes × 6 samples is lightweight.
+Expected output size: <10 MB (TSV tables + PDF plots combined).

@@ -1,0 +1,35 @@
+# Analysis plan: sample-pca
+
+Status: APPROVED 2026-11-11
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Create a principal component analysis (PCA) plot of the six RNA-seq samples from the gene-level counts, with points coloured by condition (untreated or treated), to show the major patterns of sample-to-sample variation.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+
+## Method
+1. Run a Python script under the `gars-bio` environment on the batch executor. Read the resolved gene count TSV, use its sample columns and retain only gene identifier and count columns; exclude non-count annotation columns (such as gene name). Match sample columns to the project design in `00_data/rnaseq_bulk/samples.csv` and use the `condition` values as plot labels. Stop with an informative error if the sample columns do not match the six design sample IDs or if counts are not numeric.
+2. For each gene, calculate counts per million (CPM) across samples using each sample's library total. Retain genes with CPM >= 1 in at least three samples. Transform retained values as log2(CPM + 1), center and scale each gene across samples, then calculate the first two principal components with scikit-learn `PCA(n_components=2)` on the samples-by-genes matrix. Do not use condition labels in feature selection or PCA fitting.
+3. Save a scatter plot of PC1 versus PC2 with each sample labelled by sample ID and coloured by condition, including the variance explained in each axis label and a legend. Also save a table of sample ID, condition, PC1 and PC2. Do not interpret or perform inferential tests on the separation.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/sample_pca.png | figure | PC1 versus PC2 scatter plot, sample labels and condition colours |
+| results/sample_pca_scores.csv | table | Sample ID, condition and first two PCA coordinates |
+
+## Execution
+Runs: batch
+Expected runtime: under 10 minutes; expected outputs: one PNG figure and one small CSV table. Uses the workspace's configured batch executor and the `gars-bio` environment.

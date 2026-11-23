@@ -1,0 +1,17 @@
+control 0 of 2
+RED   1/2 registered path may be a link 
+RED   1/2 registered path may be non-regular 
+RED   1/2 oversize admitted 
+RED   1/2 links to it or to a folder above it admitted 
+RED   1/2 credential-named links admitted 
+RED   1/2 unreadable candidate raises 
+RED   1/2 second hard link admitted 
+RED   1/2 any mode admitted 
+RED   1/2 any owner admitted 
+RED   1/2 second credential-shaped file admitted 
+RED   1/2 renamed copy admitted 
+RED   1/2 registered file not exempted by path 
+RED   1/2 the read not bound to the check 
+RED   1/2 registered unreadable raises 
+RED   1/2 absent credential admitted 
+ALIVE: none

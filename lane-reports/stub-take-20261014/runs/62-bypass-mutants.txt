@@ -1,0 +1,7 @@
+control test_claude_code_adapter: 0 of 19
+RED   5 failing in test_claude_code_adapter: adapter drops -p
+RED   5 failing in test_claude_code_adapter: adapter and gate drop -p
+RED   3 failing in test_claude_code_adapter: adapter moves -p last, gate check dropped
+RED   3 failing in test_claude_code_adapter: key re-added to the settings
+RED   5 failing in test_claude_code_adapter: key re-added as the value
+ALIVE: none

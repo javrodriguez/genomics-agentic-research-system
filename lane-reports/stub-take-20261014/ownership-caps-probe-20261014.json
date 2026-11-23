@@ -1,0 +1,151 @@
+{
+ "image": "sha256:336aa8cd024f0781c3ae3223e70bb0df15d9ad052fb1ec935deb2294b17c8b49",
+ "variants": {
+  "CHOWN+DAC_OVERRIDE": {
+   "agent": {
+    "returncode": 0,
+    "stderr": ""
+   },
+   "caps": [
+    "CHOWN",
+    "DAC_OVERRIDE"
+   ],
+   "cleanup_restore": "OwnershipError",
+   "grant": {
+    "ok": true,
+    "steps": [
+     {
+      "container_id": "55b3590c3e3735250a4ac49023449bcda898f962ffbc87dbaea272ed4b2f02c9",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-run_tree"
+     },
+     {
+      "container_id": "77db990da427d01f053a6a43863b201281acb817748d7468fd5d025cafa72010",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-config_dir"
+     },
+     {
+      "container_id": "e2b5a590d5a1d22e35d709204c8fe7581df34292d57406ad72624a8d189da862",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-evidence_dir"
+     }
+    ]
+   },
+   "link_uid_after_agent": 110000,
+   "link_uid_after_restore": 1000,
+   "outside_text_after": "host-owned\n",
+   "outside_uid_after": 1000,
+   "outside_uid_before": 1000,
+   "restore": {
+    "error": "restore failed (1 problem(s)): the take's folders are kept for a human",
+    "ok": false,
+    "problems": [
+     "/home/javier/w-54a36896/scratch/ownp-4mqtt5ck/t/locked/inner: unreadable (PermissionError)"
+    ],
+    "steps": [
+     {
+      "container_id": "bd128e65764519caaf54826b326a965ec96c9526b0648ad2c50949911fb75b90",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-run_tree"
+     },
+     {
+      "container_id": "19ab9e021d06c1e8a9291b3cbc3f8365ec573e14334ca2f8efe34485846a2ba4",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-config_dir"
+     },
+     {
+      "container_id": "3540d9a0b8597940acdbd70c9c48e2c66bcd1e3f8bd27d5345d5df82d166f081",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-evidence_dir"
+     }
+    ]
+   },
+   "scratch_removed": true
+  },
+  "CHOWN+DAC_READ_SEARCH": {
+   "agent": {
+    "returncode": 0,
+    "stderr": ""
+   },
+   "caps": [
+    "CHOWN",
+    "DAC_READ_SEARCH"
+   ],
+   "cleanup_restore": "OwnershipError",
+   "grant": {
+    "ok": true,
+    "steps": [
+     {
+      "container_id": "1957688125b57f0902e1c39adbeabbb792664be164055015486739fd682bc5a4",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-run_tree"
+     },
+     {
+      "container_id": "b5188ebd7681764abe64b4e825e5ff2df72e690496d2f5de937cd95dff1550e0",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-config_dir"
+     },
+     {
+      "container_id": "1d6dfdaa874755b11e59938da31c174fbaeb0bf6dccabdad1cbce6d79c408d3d",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "grant-evidence_dir"
+     }
+    ]
+   },
+   "link_uid_after_agent": 110000,
+   "link_uid_after_restore": 1000,
+   "outside_text_after": "host-owned\n",
+   "outside_uid_after": 1000,
+   "outside_uid_before": 1000,
+   "restore": {
+    "error": "restore failed (1 problem(s)): the take's folders are kept for a human",
+    "ok": false,
+    "problems": [
+     "/home/javier/w-54a36896/scratch/ownp-gpm03c1b/t/locked/inner: unreadable (PermissionError)"
+    ],
+    "steps": [
+     {
+      "container_id": "208fc455a8be137d68e51db5d0edce8265139df559df48ecf952370d329ebe46",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-run_tree"
+     },
+     {
+      "container_id": "756791284f344e75b1604a7747c2269c4a313f34a0d94a7b1b05d3eae02d4bd8",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-config_dir"
+     },
+     {
+      "container_id": "4531ece7e349efd525c896dd1e80d23d5dad300aba70ef3e1bb53852ce9f2124",
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "",
+      "step": "restore-evidence_dir"
+     }
+    ]
+   },
+   "scratch_removed": true
+  }
+ }
+}

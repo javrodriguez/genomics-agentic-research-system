@@ -1,0 +1,142 @@
+{
+ "files": {
+  "HG/G-off/fired-after-process-1.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/fired-after-process-2.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/fired-after-teardown.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-off/probe.json": {
+   "bytes": 15769,
+   "sha256": "e69fd114f0166a414944f34b21caa56c114a18f7d5f9c3c53c0713947a51dcd7"
+  },
+  "HG/G-off/scenario.json": {
+   "bytes": 941,
+   "sha256": "8d33f1be6898f37e6f450f4fb15035fd3bf61103978909bbcd49a64edab768df"
+  },
+  "HG/G-off/stub/bodies/req-1.json": {
+   "bytes": 40669,
+   "sha256": "64594e254b3b4ffd988bcd4ba5500023c90dffc8ec1d3aee5ee956f41624df1c"
+  },
+  "HG/G-off/stub/bodies/req-2.json": {
+   "bytes": 41624,
+   "sha256": "fea03ac994b65628ee8675c2de9622a1bda41cfbcdf4519053a26d07ea9dced3"
+  },
+  "HG/G-off/stub/bodies/req-3.json": {
+   "bytes": 42525,
+   "sha256": "9d6ff817e75b09c280ca3c5fb8667a76b0482a053c7a530234cdb39f254e85e0"
+  },
+  "HG/G-off/stub/requests.jsonl": {
+   "bytes": 1253,
+   "sha256": "8081018996b4207d8b57b95b7813ca94273fb87cbfb401f4152e57fd5aa6d1ba"
+  },
+  "HG/G-off/stub/state.json": {
+   "bytes": 100,
+   "sha256": "9ed468312ed7610eda4654e716fec5485d6860ba9f6202821f219959b07909e8"
+  },
+  "HG/G-off/turn-1.jsonl": {
+   "bytes": 1019,
+   "sha256": "02c569bf02746c8663eddee7b87f9ac2924b8ba71e0a93165f76cd1a6c2b2e61"
+  },
+  "HG/G-off/turn-1.stderr.txt": {
+   "bytes": 681,
+   "sha256": "3366cf469cb15be2a7f6e0ad80b32b49941cf00dfd8d2feadefdf57767edf30b"
+  },
+  "HG/G-off/turn-2.jsonl": {
+   "bytes": 665,
+   "sha256": "ab156659c0e8b2c62acbf8e0ce56c655127cc6618b24c3be3e9ae3899cb28d40"
+  },
+  "HG/G-off/turn-2.stderr.txt": {
+   "bytes": 482,
+   "sha256": "b9ffd0e21705488bdf373fc8d1382aedaaf54259804825fd7ceb077e984a2c87"
+  },
+  "HG/G-off/twin/.gemini__settings.json": {
+   "bytes": 6185,
+   "sha256": "d1ffc581ba466ac236a2f1f3d47fe5bb00d7ce6198dba052c2c3ac1a96cb64cd"
+  },
+  "HG/G-on/fired-after-process-1.log": {
+   "bytes": 187,
+   "sha256": "ee874661d8ec094c2584c3683c27d44344389d2e813850535740f9909da81acd"
+  },
+  "HG/G-on/fired-after-process-2.log": {
+   "bytes": 289,
+   "sha256": "ca24e696b8a9c40d764f123a9a90bbb99659e1506ca70030415081c7ade4fc51"
+  },
+  "HG/G-on/fired-after-selftest.log": {
+   "bytes": 9,
+   "sha256": "107b87b724478f9e49e8d27cb81c2df60c5d1390730529ce1352d88216ffaedd"
+  },
+  "HG/G-on/fired-after-teardown.log": {
+   "bytes": 289,
+   "sha256": "ca24e696b8a9c40d764f123a9a90bbb99659e1506ca70030415081c7ade4fc51"
+  },
+  "HG/G-on/probe.json": {
+   "bytes": 17132,
+   "sha256": "639e04320efc6aeee265841683a7369d3d03229a9dd2a86ccdce01f24a94b03b"
+  },
+  "HG/G-on/scenario.json": {
+   "bytes": 941,
+   "sha256": "ef7f2fd0084e98e330667001289375b3f689781f6ce60dbf3de0b513dd5b7301"
+  },
+  "HG/G-on/stub/bodies/req-1.json": {
+   "bytes": 40669,
+   "sha256": "9694fd7f6a1fbfe308ec7a8b0723f46a795f91c89b2560ee72943e9157ef1ad6"
+  },
+  "HG/G-on/stub/bodies/req-2.json": {
+   "bytes": 41624,
+   "sha256": "15b62daae5c2d0f42346288dade942897506d8f23f4ab08c46a364f367495a3c"
+  },
+  "HG/G-on/stub/bodies/req-3.json": {
+   "bytes": 42525,
+   "sha256": "3ce041445633bd1af13df0823e10718ef2b6f99e1ff345396e3ece74c857c6ab"
+  },
+  "HG/G-on/stub/requests.jsonl": {
+   "bytes": 1252,
+   "sha256": "740e143cf415c6681bef6a9067b0bac3db4cae11a95be18e6a86525a5c2dbfdc"
+  },
+  "HG/G-on/stub/state.json": {
+   "bytes": 100,
+   "sha256": "9ed468312ed7610eda4654e716fec5485d6860ba9f6202821f219959b07909e8"
+  },
+  "HG/G-on/turn-1.jsonl": {
+   "bytes": 1020,
+   "sha256": "75c6b57c6bfc599ba1b13adc067c8e8b1248c7e51165bab4159d05847581e2d3"
+  },
+  "HG/G-on/turn-1.stderr.txt": {
+   "bytes": 681,
+   "sha256": "3366cf469cb15be2a7f6e0ad80b32b49941cf00dfd8d2feadefdf57767edf30b"
+  },
+  "HG/G-on/turn-2.jsonl": {
+   "bytes": 665,
+   "sha256": "839fdd637af30202f87b9a7347989d65fae064a3c6149b211877aad706cefb2c"
+  },
+  "HG/G-on/turn-2.stderr.txt": {
+   "bytes": 559,
+   "sha256": "e7b402c8f16ea110a3a34900093fcbc2d6db15ebddf24537ac6933ad001110bc"
+  },
+  "HG/G-on/twin/.gemini__settings.json": {
+   "bytes": 6184,
+   "sha256": "6a2e567efa976ef9edc700f7561f9cef51942ea407145e52156b5b673bbc3132"
+  },
+  "calls.json": {
+   "bytes": 121209,
+   "sha256": "20120df9abd314fca0486ea608b8909fa87fd182f08e43065e3b4f16bcff2205"
+  },
+  "summary.json": {
+   "bytes": 3018,
+   "sha256": "2410ae52c429df08bd37effabc6c6e13badc640c8fc87f91543415b880c9213c"
+  }
+ },
+ "not_a_study_record": "a hook positive-control observation of the pinned Codex and Gemini CLIs (lane hook-control); never a study take, walk, rehearsal, cell or registered attempt",
+ "record_kind": "stub-model-probe"
+}

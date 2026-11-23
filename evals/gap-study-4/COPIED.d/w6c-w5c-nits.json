@@ -1,0 +1,15 @@
+{
+  "lane": "w6c-w5c-nits",
+  "files": [
+    {
+      "path": "run_checks.py",
+      "status": "new",
+      "reason": "The local stand-in for CI until publication: runs test_round4.py and every checks.d/*.txt line and prints the fixed summary line athena reads. Ownership moved from w1a-cp1-scaffold to this lane by ruling S4-gap4-1 (glitch-1b, 11 Oct 2026); S4 adds the echo, on a pass, of every witness group's summary and collateral lines."
+    },
+    {
+      "path": "COPIED.d/w6c-w5c-nits.json",
+      "status": "new",
+      "reason": "Records this lane's files: run_checks.py, transferred from w1a-cp1-scaffold under ruling S4-gap4-1."
+    }
+  ]
+}

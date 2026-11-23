@@ -1,0 +1,5 @@
+# Lane w4d-cp4-variants: CP4's variants.py and tasks/check_task.py (the task-spec schema and the one-task gate).
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_variants.py
+# Tasks now exist (glitch-f3's merge-time ruling, second set): --all must exit 0 and name every tasks/*.json present as ok, one line each; an empty glob fails.
+o="$(python3 -B -W ignore evals/gap-study-4/tasks/check_task.py --all)" && n=0 && for f in evals/gap-study-4/tasks/*.json; do test -e "$f" && t="$(basename "$f" .json)" && grep -qF "check_task: $t: ok (" <<<"$o" && n=$((n+1)) || n=-999999; done && test "$n" -gt 0 && test "$n" -eq "$(grep -c "" <<<"$o")"

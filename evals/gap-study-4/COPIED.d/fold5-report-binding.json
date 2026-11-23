@@ -1,0 +1,35 @@
+{
+  "lane": "fold5-report-binding",
+  "files": [
+    {
+      "path": "COPIED.d/fold5-report-binding.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment. Lane fold5/report-binding folds pre-freeze review 5 (review_kit/prefreeze-5.md, DO NOT FREEZE on M1) on glitch-45's rulings 1-7 of Sat 31 Oct 2026, under Javier's standing delegation, on branch fold5/report-binding from the freeze line at 6fdf803e. Edits without transfer, in files other fragments claim. review_kit/blindness.py (lane review-kit-port's entry): section 8 states the sha256 of the report as the reviewer's own session wrote it, rebuilt from the session file alone (its Write, then its Edits and MultiEdits in order), and the session file's own sha256, and NOT RECORDED with the reason when the rebuild is not exact: a write the file does not show whole, a sub-agent writing the report, any shell step that names the report and is not a recognised pure read (cat, head, tail, grep, wc, sed -n, shasum, ls, diff), or a shell write the text cannot place into its folder (fail closed; the review of f3ae7772, m1). review_kit/commit_review.py (lane review-kit-port's entry): it re-runs the record from the reviewer's session file (the launch folder's SESSION) and refuses unless it is the side folder's record byte for byte (the review of f3ae7772, MAJOR), and refuses a report whose sha256 is not that record's digest, and its commit message states the digest instead of the unchecked 'committed unedited'; its ABS_PATH no longer reads a placeholder segment (one starting with '<') or a bare root as a host path, the rule that made review 4 be masked, and still refuses a real one. freeze.py (lane w8b-holdout-digests' entry): registered_review_problem refuses a seed review whose committed bytes are not its committed record's digest, rounds 1-4 grandfathered by number (REPORT_DIGEST_GRANDFATHERED), added after every line the draft cites. box/ownership.py (lane live-box-2026-10-14's entry): its docstring and comment say a restore chowns a socket in place and a grant refuses one (review 5, n11), line count unchanged, line 171 unchanged. lint_pooling.py (lane fold2-lb's entry): BOUND_REVIEW_RECORDS binds review_kit/prefreeze-4.as-written.md to its sha256. language-allowlist.json (lane w1a-cp1-scaffold's entry): the as-written record's five lines are excused as prefreeze-4.md's are. tests/test_fold2_lb.py (lane fold2-lb's entry): its commit_review rig's blindness record states the report's digest. Review 5, n12, the copy record's earlier gaps, named here: commit 8807149a added five prefreeze-4.md excusals to language-allowlist.json (lines 48, 74, 81, 145 and 178), and commit c781e261 raised three witness child limits, tests/test_holdout_digests.py 110 s to 3000 s, tests/test_walk_layout.py 110 s to 900 s and tests/test_build_draft.py 180 s to 3600 s."
+    },
+    {
+      "path": "tests/test_fold5_report_binding.py",
+      "status": "new",
+      "reason": "Lane fold5/report-binding's tests (pre-freeze review 5, M1; glitch-45's rulings 1 and 2): blindness rebuilds a report from a session's Write and Edits in order and records nothing for a write it cannot rebuild exactly; the committed rounds' real sessions are read by review_kit/check_real_sessions.py on the Mac, not here; commit_review refuses a report changed after its reviewer wrote it or a record with no digest, and states the digest; the freeze refuses such a seed review from round 5 on, rounds 1-4 grandfathered; ABS_PATH reads no placeholder or bare root as a host path and still refuses real ones. After the review of f3ae7772: a forged report with its record's digest line edited to match, and a record edited anywhere else, are refused; the record states the session file's sha256; and python3 -c open, perl -pi, dd of=, truncate, git checkout --, bash -c '... >>' and an mv of a glob into the folder each leave the report NOT RECORDED, while the pure reads do not."
+    },
+    {
+      "path": "review_kit/prefreeze-4.as-written.md",
+      "status": "new",
+      "reason": "Pre-freeze review 4's report as its reviewer's session wrote it (sha256 27f6afb8ae52e91bb5256ad508135b50d16a259322ccf902fcbce44fb47be9d8, which review_kit/blindness.py rebuilds from that session), committed by lane fold5/report-binding on glitch-45's ruling 3 from the orchestrator's off-repo copy; a bound record, never edited. CORRECTION RECORD: commit c2cb345e's message says review 4's report and blindness record are 'committed unedited'. That was false. Before commit_review ran, the Lane-orchestrator masked five lines of review_kit/prefreeze-4.md, because commit_review's old ABS_PATH refused placeholder strings: lines 63, 86, 87, 90 and 215, where each '/home/<user' became '/home[/]<user' and the pattern '`/Users/`' became '`/Users[/]`'; no other byte differs. prefreeze-4.md itself is left as committed."
+    },
+    {
+      "path": "review_kit/prefreeze-5.md",
+      "status": "new",
+      "reason": "Pre-freeze review 5's report (Ruling: DO NOT FREEZE), committed by 6fdf803e as its reviewer's session wrote it: its sha256 2a03d9dcca9f45cacad19b05bc26ead4ccf903fe3022889269d1188216e64892 is the one review_kit/blindness.py now rebuilds from that session; a bound record, never edited. Claimed here by lane fold5/report-binding on glitch-45's ruling 7 (Sat 31 Oct 2026), as review 4's were claimed; its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/prefreeze-5-blindness.txt",
+      "status": "new",
+      "reason": "Pre-freeze review 5's blindness record, committed unedited by 6fdf803e; a bound record, never edited. It predates the report digest of section 8, so freeze.registered_review_problem does not admit round 5 as a seed (round 5 ruled DO NOT FREEZE). Claimed here by lane fold5/report-binding on glitch-45's ruling 7 (Sat 31 Oct 2026); its bytes are not this lane's."
+    },
+    {
+      "path": "review_kit/check_real_sessions.py",
+      "status": "new",
+      "reason": "Lane fold5/report-binding's Mac-only check (glitch-45's ruling of Sun 1 Nov 2026, under Javier's standing delegation): it rebuilds review 4's and review 5's reports from their reviewers' real session files with review_kit/blindness.py and prints each against the expected digest (review 4 as written, 27f6afb8..., and review 5's committed report, 2a03d9dc...), exiting 1 on a mismatch and 2 when a session is absent. The sessions live only under the operator's ~/.claude, so it is not a unittest: the battery bans skips (test_round4.SKIP_ALLOWED), and the two real-session tests left tests/test_fold5_report_binding.py for it. The orchestrator runs it on the Mac before each freeze step."
+    }
+  ]
+}

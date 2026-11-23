@@ -1,0 +1,20 @@
+# Lane pf1-l3-transcript-integrity: Gap Study round 4, fold plan prefreeze-1 (the lane orchestrator's approval of
+# Sat 24 Oct 2026, under Javier's standing delegation), pre-freeze review 1's MAJOR 7 and m9. The new and changed test
+# modules, one command per line, run from the repository root. The box-side egress probes run on athena's real box in
+# tests/test_box_integration.py and the live preflight, which are freeze_rehearsal's.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_transcript_integrity.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_egress_probe.py
+python3 -B -W ignore evals/gap-study-4/tests/test_claude_code_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
+python3 -B -W ignore evals/gap-study-4/tests/test_preflight.py
+python3 -B -W ignore evals/gap-study-4/tests/test_build_draft.py
+python3 -B -W ignore evals/gap-study-4/routing.py --check
+python3 -B -W ignore evals/gap-study-4/tests/test_steer_condition.py
+python3 -B -W ignore evals/gap-study-4/tests/test_line_separators.py
+python3 -B -W ignore evals/gap-study-4/tests/test_auto_mode.py
+python3 -B -W ignore evals/gap-study-4/tests/test_pre_ruling_walks.py
+python3 -B -W ignore evals/gap-study-4/tests/test_walk_runner.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_body.py
+python3 -B -W ignore evals/gap-study-4/tests/test_vendor_entries.py
+python3 -B -W ignore evals/gap-study-4/tests/test_checker_body.py
+python3 -B -W ignore evals/gap-study-4/tests/test_isolation_denials_checker.py

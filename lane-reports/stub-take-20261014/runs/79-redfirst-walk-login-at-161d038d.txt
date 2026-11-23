@@ -1,0 +1,13 @@
+== new tests against 161d038d modules
+-- test_run_take
+FAIL: test_the_walk_login_place (test_run_take.TestWalkLoginPlace.test_the_walk_login_place)
+AssertionError: Lists differ: ["raised AttributeError: module 'box.run_t[37 chars]ES'"] != []
+"raised AttributeError: module 'box.run_take' has no attribute 'WALK_LOGIN_FILES'"
+- ["raised AttributeError: module 'box.run_take' has no attribute "
+Ran 49 tests in 128.936s
+FAILED (failures=1)
+-- test_settings_guard
+FAIL: test_each_forbidden_key_refuses (test_settings_guard.Baseline.test_each_forbidden_key_refuses)
+AssertionError: Items in the second set but not the first:
+Ran 15 tests in 3.200s
+FAILED (failures=1)

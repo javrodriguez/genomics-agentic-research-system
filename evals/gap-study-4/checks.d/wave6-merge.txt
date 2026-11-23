@@ -1,0 +1,3 @@
+# The wave 6 merge: binding W6M1, every wave 6 test module that imports check_take.py puts sys.path back.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_wave6_bindings.py

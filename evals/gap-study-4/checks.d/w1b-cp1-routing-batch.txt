@@ -1,0 +1,18 @@
+# Lane w1b-cp1-routing-batch: labels4, the agent adapter, the routing table and the take loop.
+# One command per line, run from the repository root.
+python3 -B -W ignore evals/gap-study-4/tests/test_labels4.py
+python3 -B -W ignore evals/gap-study-4/tests/test_agent_adapter.py
+python3 -B -W ignore evals/gap-study-4/tests/test_routing.py
+python3 -B -W ignore evals/gap-study-4/tests/test_batch.py
+python3 -B evals/gap-study-4/routing.py --check
+python3 -B evals/gap-study-4/batch.py --states
+! grep -nE "^[[:space:]]*(import|from)[[:space:]].*(drive|claude|agent_adapter)" evals/gap-study-4/batch.py evals/gap-study-4/routing.py
+# batch.py --check must exit 1 naming CP5's pin profiles and nothing else: round 3's operator reasons and pause
+# cap are filled (Javier's ruling "gap4 routing: A") and the rate-limit markers are ruled (glitch-f3, W1B2-6).
+# The spend-cap status line is allowed too: Javier ruled it ("spend markers: 1A 2A 3A", 12 Oct 2026) and this line
+# stayed green; the exact two-line expectation is checks.d/w8c-spend-ruled.txt's.
+# When CP5 fills pin_profiles and rules its status this line goes red on purpose; replace it then with the plain
+# `python3 -B evals/gap-study-4/batch.py --check`, which must exit 0.
+# CP5 (Javier, 14 Oct 2026): routing.json is ready; the not-ready refusal stays exercised on an unpinned fixture.
+out=$(python3 -B evals/gap-study-4/batch.py --check); rc=$?; [ "$rc" -eq 0 ] && [ "$out" = "batch: routing.json ready" ]
+out=$(python3 -B -c "import sys; sys.path.insert(0, 'evals/gap-study-4'); import routing, batch; t = routing.load_table(); t.update(pin_profiles={}, pin_profiles_status='PENDING (CP5)'); routing.load_table = lambda *a: t; sys.exit(batch.main(['--check']))"); rc=$?; [ "$rc" -eq 1 ] && [ "$out" = "$(printf '%s\n' 'batch: not ready: pin_profiles is empty in routing.json (CP5 pre-registers them)' 'batch: not ready: pin_profiles_status is not ruled in routing.json (RULED or FILLED, with no PENDING)')" ]

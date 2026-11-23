@@ -1,0 +1,69 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Run a principal component analysis of the gene count matrix and plot the samples on the first
+two principal components, with each point coloured by its experimental condition, to show how
+the six samples (A1-A3, B1-B3) group relative to one another.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` (native) | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper` | `02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv` |
+| `design` (native) | `01_prepare_samplesheets` | `01_samplesheets/rnaseq_bulk_design.csv` |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` conda
+environment (pandas 3.0.5, numpy 2.5.2, pydeseq2 0.5.4, scikit-learn 1.9.0, matplotlib 3.11.1),
+submitted as a single batch job. Inputs are read only; nothing is written outside `results/`.
+
+1. **Resolve inputs.** At run time, call
+   `python3 _system/resolve_artifact.py --project projects/run-c3e50a58 --assay rnaseq_bulk --consumes counts_gene design`
+   and read the two `resolved` paths from its JSON; stop with an error if `ok` is false.
+2. **Load and align.** Read the count matrix (tab-separated); set `gene_id` as the index and
+   drop the `gene_name` column. Read the design table (`sample_id,condition,group,replicate`).
+   Stop with an error unless the count-matrix sample columns and the design `sample_id`s are
+   the same set; reorder the design to the matrix's column order.
+3. **Prepare counts.** The input is salmon's length-scaled estimates, which are not integers;
+   round to the nearest integer (as DESeq2's `tximport`/`DESeqDataSetFromMatrix` route does).
+   Drop genes whose count is zero in every sample.
+4. **Variance-stabilise.** Build a pydeseq2 `DeseqDataSet` (samples x genes, metadata = design,
+   `design="~condition"`) and apply `vst(use_design=False)` — a *blind* transform, so the
+   condition labels play no part in the values the PCA sees (the DESeq2 `vst(blind=TRUE)`
+   convention for sample-level QC).
+5. **Select genes.** Keep the 500 genes with the highest variance across samples of the VST
+   values (DESeq2 `plotPCA`'s default `ntop=500`); if fewer than 500 genes remain, use all of
+   them. Record the number used.
+6. **PCA.** `sklearn.decomposition.PCA` on the samples x genes matrix, centred (sklearn's
+   default) and not scaled to unit variance; `n_components = min(n_samples, n_genes)` (6 here).
+   Record each component's percentage of variance explained.
+7. **Plot.** Scatter of PC1 (x) vs PC2 (y), one point per sample, coloured by `condition` with
+   one fixed colour per level and a legend; each point labelled with its `sample_id`; axis
+   labels carry the percentage of variance explained (e.g. `PC1 (xx.x%)`); equal axis aspect is
+   not forced. Saved as PNG (300 dpi) and PDF.
+8. **Write tables.** Per-sample PC scores (all components) joined with the design columns, and
+   per-component variance explained.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| `results/pca_pc1_pc2.png` | `figure` | PC1 vs PC2 scatter, points coloured by condition and labelled by sample_id |
+| `results/pca_pc1_pc2.pdf` | `figure` | the same plot, vector format |
+| `results/pca_scores.tsv` | `table` | one row per sample: `sample_id`, `condition`, `group`, `replicate`, `PC1`…`PC6` |
+| `results/pca_variance_explained.tsv` | `table` | one row per component: `component`, `variance_explained_pct`, `cumulative_pct`; header comment records the number of genes used |
+
+## Execution
+Runs: batch
+One job through the workspace's configured executor (`_system/executorlib.py submit`), in
+`gars-bio`. 6 samples x ~200 genes: expected wall time under 2 minutes, memory under 2 GB,
+total output under 1 MB.

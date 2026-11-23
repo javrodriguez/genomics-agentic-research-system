@@ -1,0 +1,43 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Perform principal component analysis (PCA) of the gene expression matrix to visualize the relationships between samples based on global expression patterns. The analysis will project all samples onto principal components and color them by experimental condition (untreated vs treated) to assess whether conditions cluster separately and identify the major drivers of variation.
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| counts_gene | 01_nfcore-rnaseq-wrapper | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| design | 01_prepare_samplesheets | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+1. Load the gene count matrix and design table using Python (pandas) in the `gars-bio` environment.
+2. Filter genes: retain only genes with mean count ≥ 1 across all samples to remove low-abundance noise.
+3. Normalize counts: apply DESeq2-like log2(count + 1) transformation to stabilize variance.
+4. Standardize features: center and scale each gene to zero mean and unit variance using scikit-learn's StandardScaler.
+5. Perform PCA using scikit-learn.decomposition.PCA, retaining all components to examine variance explained across dimensions.
+6. Generate visualization: create a 2D scatter plot of PC1 vs PC2, with points sized by replicate number and colored by condition (untreated/treated). Include variance explained percentages on axes.
+7. Optionally generate a second plot showing cumulative variance explained by the first 10 components to assess dimensionality.
+8. Save outputs as described below; execute the analysis script as a batch job.
+All computation occurs on batch via the executor; no steps modify inputs in place.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_plot.png | figure | 2D PCA scatter plot (PC1 vs PC2) colored by condition, showing sample relationships and variance explained |
+| results/pca_variance.png | figure | Scree plot showing cumulative variance explained by the first 10 principal components |
+| results/pca_scores.csv | table | PCA component scores (sample × component matrix) for all retained components |
+
+## Execution
+Runs: batch
+Expected wall time: <2 minutes. Output size: ~500 KB (two PNG plots + one CSV table). Batch execution via the workspace's configured scheduler (Slurm).

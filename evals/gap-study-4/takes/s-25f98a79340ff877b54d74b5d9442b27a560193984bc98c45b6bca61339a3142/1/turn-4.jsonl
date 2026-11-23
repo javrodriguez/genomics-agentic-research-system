@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a1c7bc-90ae-7a40-a58c-b5acadec189b"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"The registrar reported **single-end**, with 4 files for samples `C1`, `C2`, `D1`, and `D2`. It did not identify these as paired-end files. Nothing was linked.\n\nProvide a different path for the paired-end data, or confirm that you want to register this single-end set."}}
+{"type":"turn.completed","usage":{"input_tokens":291648,"cached_input_tokens":232192,"cache_write_input_tokens":0,"output_tokens":1045,"reasoning_output_tokens":30}}

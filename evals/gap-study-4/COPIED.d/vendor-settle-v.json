@@ -1,0 +1,70 @@
+{
+ "lane": "vendor-settle-v",
+ "files": [
+  {
+   "path": "COPIED.d/vendor-settle-v.json",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): converge C and G, the flips, the hand-back rulings. This fragment: the files stage V adds."
+  },
+  {
+   "path": "checks.d/vendor-settle-v.txt",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation). Its battery lines."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o46-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o46 (codex-cli 0.162.1), a byte copy of rehearsals/w-o46/turn-1.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o46-rollout-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o46 (codex-cli 0.162.1), a byte copy of rehearsals/w-o46/session/native-turn-1.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o46-turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o46 (codex-cli 0.162.1), a byte copy of rehearsals/w-o46/turn-2.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o46-rollout-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o46 (codex-cli 0.162.1), a byte copy of rehearsals/w-o46/session/native-turn-2.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o46-turn-3.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o46 (codex-cli 0.162.1), a byte copy of rehearsals/w-o46/turn-3.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o46-rollout-3.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o46 (codex-cli 0.162.1), a byte copy of rehearsals/w-o46/session/native-turn-3.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/codex-streams/w-o47-rollout-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-o47 (codex-cli 0.162.1, gpt-6-luna), a byte copy of rehearsals/w-o47/session/native-turn-1.jsonl (test_codex_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/gemini-streams/w-g21-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-g21 (gemini-cli 0.64.0), a byte copy of rehearsals/w-g21/turn-1.jsonl (test_gemini_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/gemini-streams/w-g21-turn-2.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-g21 (gemini-cli 0.64.0), a byte copy of rehearsals/w-g21/turn-2.jsonl (test_gemini_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/fixtures/gemini-streams/w-g24-turn-1.jsonl",
+   "status": "new",
+   "reason": "Lane vendor-settle stage V (glitch-f1's settle rulings and the C/G hand-back rulings, Thu 22 Oct 2026, under Javier's standing delegation): freeze leg i, RECORDED at walk w-g24 (gemini-cli 0.64.0) (the turn timed out with no result record), a byte copy of rehearsals/w-g24/turn-1.jsonl (test_gemini_adapter R-recorded binds it)."
+  },
+  {
+   "path": "tests/test_leak_grep_vendor.py",
+   "status": "new",
+   "reason": "Lane vendor-settle stage W (glitch-f1's ruling 2, Thu 22 Oct 2026, under Javier's standing delegation): the prereg draft's checked_against reads a vendor session's loaded context through that harness's settled T-10 reader (LG-bytes, LG-plant, LG-witness, LG-live). SYNTHETIC takes and committed walk records read in place."
+  }
+ ]
+}

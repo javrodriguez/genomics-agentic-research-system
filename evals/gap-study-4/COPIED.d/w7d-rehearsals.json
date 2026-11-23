@@ -1,0 +1,31 @@
+{
+  "lane": "w7d-rehearsals",
+  "files": [
+    {
+      "path": "review_kit/rounds.py",
+      "status": "edited",
+      "source": "evals/gap-study-3/review_kit/rounds.py",
+      "reason": "Transferred from lane w1a-cp1-scaffold (where it was an identical copy) under ruling W7D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; wave 7 piece P3, the rehearsal register). Wave 7 P3 (lane w7d): the five usage lines of the module docstring named evals/gap-study-3/review_kit/rounds.py; they now name evals/gap-study-4/review_kit/rounds.py, the path CP6's VALIDATE command runs (plan line 893). Lane w7d changed no other line: the register, report and brief paths already come from study.py (REVIEW_DIR, VERIFY_DIR) and HERE. Later edits without transfer are described in their own lane's fragment: lane blindness-sidechains (b7159493) made --add write folder-manifest.txt beside the folder and hash the row from it (COPIED.d/blindness-sidechains.json, its own entry); corrected by lane fold2/lc on pre-freeze review 2, m14, which read the earlier wording here as false at HEAD. Bound by tests/test_rehearsals.py U1.usage (witness round3-usage)."
+    },
+    {
+      "path": "rehearsals/register.json",
+      "status": "new",
+      "reason": "Lane w7d (wave 7 P3): the walk register, empty (schema 1, no walks): no walk has been run."
+    },
+    {
+      "path": "tests/test_rehearsals.py",
+      "status": "new",
+      "reason": "Lane w7d (wave 7 P3): R1.unregistered (an unregistered walk folder or a stray file fails), R2.folder (a registered walk with no folder, or an empty one, fails), R3.malformed (twelve malformed entries, duplicate ids, a wrong schema, an unknown top-level key and a non-JSON register fail; arm C's optional model passes), R4.empty (the empty register passes and says 0 walks; a missing register fails; the committed register checked), U1.usage (rounds.py's usage names round 4's paths, no gap-study-3 left). Nine whole-file witnesses under rule B (walk_register.py compiled in memory; rounds.py read through its accessor). Review fold W7D-close-1: R5.case, R6.symlink, R7.dupkey and R8.nits (class TheRegisterFold); eleven more witnesses (folder-by-path, case-collision-admitted, symlink-file-admitted, symlink-folder-admitted, register-symlink-admitted, duplicate-keys-admitted, duplicate-id-admitted, walk-id-unchecked, schema-by-value, reason-format-admitted, unreadable-raises), 20 in all. Wave 7 merge, test-only (athena run on 22b320be, witness folder-by-path FAIL on ext4): R5.case gains a second leg under case_blind(), which simulates APFS's case-blind path lookup on any filesystem while the listing stays exact, so the exact-name guard is proven on case-sensitive filesystems too; the real-filesystem leg is kept. No production file changed."
+    },
+    {
+      "path": "COPIED.d/w7d-rehearsals.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment (interface 1). Transfer under ruling W7D-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; wave 7 piece P3, the rehearsal register): review_kit/rounds.py from lane w1a-cp1-scaffold, named in that lane's self-entry. Transfer (ruling W8A-gap4-1 (glitch-1b, under Javier's standing delegation, Mon 12 Oct 2026; slice w8a, the walk layout, from ruling W8-layout-1)): walk_register.py, rehearsals/README.md moved to lane w8a-walk-layout, which edits them for the walk layout and claims them in COPIED.d/w8a-walk-layout.json."
+    },
+    {
+      "path": "checks.d/w7d-rehearsals.txt",
+      "status": "new",
+      "reason": "This lane's local checks (interface 2): tests/test_rehearsals.py, its --witnesses, walk_register.py --check and review_kit/rounds.py --check."
+    }
+  ]
+}

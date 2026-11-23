@@ -1,0 +1,5 @@
+# Lane pf1-l2a-routing-rulings: Gap Study round 4, pre-freeze review 1's MAJOR 5, MAJOR 8 and m17, folded under the
+# Lane-orchestrator's approval of the fold plan (Sat 24 Oct 2026, under Javier's standing delegation). One command per
+# line, from the repository root. routing.py --check (now with the no-match proof) runs from checks.d/w8c-spend-ruled.txt. The after-first-turn error line names its unreadable alternative since fold2/merge 6df9d010.
+python3 -B -W ignore evals/gap-study-4/tests/test_pf1_routing_rulings.py
+out=$(python3 -B evals/gap-study-4/routing.py --check); rc=$?; [ "$rc" -eq 0 ] && printf '%s\n' "$out" | grep -qxF '  after-first-turn, last turn error -> route graded (end state unreadable: route aborted, cited)'

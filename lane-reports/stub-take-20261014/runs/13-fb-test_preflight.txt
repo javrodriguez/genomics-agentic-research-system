@@ -1,0 +1,145 @@
+test_the_ruled_values (__main__.TestCP5Values.test_the_ruled_values) ... ok
+test_all_green_every_arm (__main__.TestEvaluate.test_all_green_every_arm) ... ok
+test_each_check_catches_its_breaks (__main__.TestEvaluate.test_each_check_catches_its_breaks) ... ok
+test_each_check_mutant_red (__main__.TestEvaluate.test_each_check_mutant_red)
+Replacing a check with one that always passes leaves its breaks uncaught: red. ... ok
+test_missing_probe_fails (__main__.TestEvaluate.test_missing_probe_fails) ... ok
+test_run_records_failures (__main__.TestEvaluate.test_run_records_failures) ... ok
+test_run_tree_path_neutral (__main__.TestEvaluate.test_run_tree_path_neutral) ... ok
+test_bound_to_create (__main__.TestExpectedInspect.test_bound_to_create) ... ok
+test_mismatch_refuses_pending_and_wrong_keys (__main__.TestExpectedInspect.test_mismatch_refuses_pending_and_wrong_keys) ... ok
+test_host_temp_root_is_never_read (__main__.TestHostIndependence.test_host_temp_root_is_never_read) ... ok
+test_c1_loader_really_used (__main__.TestLockSeam.test_c1_loader_really_used) ... ok
+test_c1_no_flattened_lock (__main__.TestLockSeam.test_c1_no_flattened_lock) ... ok
+test_c1_relative_path_to_a_valid_lock_refused (__main__.TestLockSeam.test_c1_relative_path_to_a_valid_lock_refused) ... ok
+test_c2_closed_validation_survives (__main__.TestLockSeam.test_c2_closed_validation_survives) ... ok
+test_c2_pending_refused_before_the_runtime (__main__.TestLockSeam.test_c2_pending_refused_before_the_runtime) ... ok
+test_c3_harness_image_binding (__main__.TestLockSeam.test_c3_harness_image_binding) ... ok
+test_c3_no_sidecar_or_egress_lock_for_a_take (__main__.TestLockSeam.test_c3_no_sidecar_or_egress_lock_for_a_take) ... ok
+test_c4_evidence_dir_required (__main__.TestLockSeam.test_c4_evidence_dir_required) ... ok
+test_c4_evidence_identity (__main__.TestLockSeam.test_c4_evidence_identity) ... ok
+test_c5_positive_composition (__main__.TestLockSeam.test_c5_positive_composition) ... ok
+test_c6_incomplete_launch_record (__main__.TestLockSeam.test_c6_incomplete_launch_record) ... ok
+test_c6_launched_spec (__main__.TestLockSeam.test_c6_launched_spec) ... ok
+test_c7_sidecar_lock_and_manifest (__main__.TestLockSeam.test_c7_sidecar_lock_and_manifest) ... ok
+test_c8_egress_lock_and_manifest (__main__.TestLockSeam.test_c8_egress_lock_and_manifest) ... ok
+test_lw7_spelled_names_are_image_locks (__main__.TestLockSeam.test_lw7_spelled_names_are_image_locks)
+LW-7: the names preflight spells (it reads image_lock only through load and require_ready) are w4a's. ... ok
+test_o1_spelled_names_are_image_locks (__main__.TestLockSeam.test_o1_spelled_names_are_image_locks)
+O-1: the egress names preflight spells are w4a's. ... ok
+test_the_composition_names_no_lifecycle_or_adapter (__main__.TestLockSeam.test_the_composition_names_no_lifecycle_or_adapter)
+The helper's own source calls no launch, turn, teardown, subprocess or adapter (read by ast). ... ok
+test_every_base_break_still_runs (__main__.TestNothingDropped.test_every_base_break_still_runs) ... ok
+test_every_base_test_still_runs (__main__.TestNothingDropped.test_every_base_test_still_runs) ... ok
+test_no_parameter_overrides_a_pending_constant (__main__.TestPending.test_no_parameter_overrides_a_pending_constant) ... ok
+test_pending (__main__.TestPending.test_pending) ... ok
+test_guard_is_armed (__main__.TestProcessGuard.test_guard_is_armed) ... ok
+test_module_is_this_rounds (__main__.TestProcessGuard.test_module_is_this_rounds) ... ok
+test_the_guard_starts_no_patch_at_import (__main__.TestProcessGuard.test_the_guard_starts_no_patch_at_import)
+Recorded at the very end of this module's import: no guarded name was patched then. Inside a test every ... ok
+test_literal_refused_names (__main__.TestProcessesProgram.test_literal_refused_names) ... ok
+test_processes_program (__main__.TestProcessesProgram.test_processes_program) ... ok
+test_programs (__main__.TestPrograms.test_programs) ... ok
+test_postflight (__main__.TestRecordAndPostflight.test_postflight) ... ok
+test_write_beside_evidence (__main__.TestRecordAndPostflight.test_write_beside_evidence) ... ok
+test_shape (__main__.TestShape.test_shape) ... ok
+test_patterns (__main__.TestVersionPatterns.test_patterns) ... ok
+test_the_witnesses_are_named (__main__.TestWitnesses.test_the_witnesses_are_named)
+The readiness note's six, plus W6A-R1-1's absolute-path witness, each bound to its own check; plus the ... ok
+test_witness_drop_mount_source_comparison (__main__.TestWitnesses.test_witness_drop_mount_source_comparison) ... ok
+test_witness_lw7_sidecar_lock_not_loaded (__main__.TestWitnesses.test_witness_lw7_sidecar_lock_not_loaded) ... ok
+test_witness_lw7_sidecar_manifest_not_compared (__main__.TestWitnesses.test_witness_lw7_sidecar_manifest_not_compared) ... ok
+test_witness_lw7_sidecar_readiness_omitted (__main__.TestWitnesses.test_witness_lw7_sidecar_readiness_omitted) ... ok
+test_witness_o1_egress_launch_image_not_compared (__main__.TestWitnesses.test_witness_o1_egress_launch_image_not_compared) ... ok
+test_witness_o1_egress_manifest_not_compared (__main__.TestWitnesses.test_witness_o1_egress_manifest_not_compared) ... ok
+test_witness_o1_egress_readiness_omitted (__main__.TestWitnesses.test_witness_o1_egress_readiness_omitted) ... ok
+test_witness_omit_absolute_path_rule (__main__.TestWitnesses.test_witness_omit_absolute_path_rule) ... ok
+test_witness_omit_harness_image_binding (__main__.TestWitnesses.test_witness_omit_harness_image_binding) ... ok
+test_witness_omit_load (__main__.TestWitnesses.test_witness_omit_load) ... ok
+test_witness_omit_readiness (__main__.TestWitnesses.test_witness_omit_readiness) ... ok
+test_witness_pre_launch_spec (__main__.TestWitnesses.test_witness_pre_launch_spec) ... ok
+test_witness_probes_at_another_evidence_path (__main__.TestWitnesses.test_witness_probes_at_another_evidence_path) ... ok
+
+----------------------------------------------------------------------
+Ran 55 tests in 9.123s
+
+OK
+  mutant study-entry-dropped: red - STUDY_PATHS is not round 3's seven excluded paths: ('evals', 'docs/EVALS.md', '.github', 'docs/imple
+  mutant study-reordered: red - STUDY_PATHS is not round 3's seven excluded paths: ('docs/decisions/0041-glitch-produces-the-v1-0-1-
+  mutant leak-entry-dropped: red - LEAK_WORDS is not the ruled 28: ('eval', 'benchmark', 'test case', 'grading', 'graded', 'score', 'co
+  mutant gap4-removed: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  mutant box-user-dropped: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  mutant box-user-drifted: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  mutant lock-user-renamed: red - LEAK_WORDS is not the ruled 28: ('evaluation', 'eval', 'benchmark', 'test case', 'grading', 'graded'
+  117 breaks over 18 checks, per arm
+  mutant agent-non-root-always-passes: red - agent-non-root/root-uid was not caught
+  mutant image-matches-lock-always-passes: red - image-matches-lock/other-image was not caught
+  mutant harness-version-matches-lock-always-passes: red - harness-version-matches-lock/other-version was not caught
+  mutant take-inspect-matches-spec-always-passes: red - take-inspect-matches-spec/third-mount was not caught
+  mutant limits-apply-always-passes: red - limits-apply/cpu-max was not caught
+  mutant evidence-out-of-reach-always-passes: red - evidence-out-of-reach/mount-listed was not caught
+  mutant watcher-invisible-always-passes: red - watcher-invisible/unreadable-row was not caught
+  mutant sidecar-isolated-always-passes: red - sidecar-isolated/network was not caught
+  mutant watcher-started-always-passes: red - watcher-started/no-health was not caught
+  mutant watcher-capability-always-passes: red - watcher-capability/unreadable-row was not caught
+  mutant consequential-paths-readable-always-passes: red - consequential-paths-readable/unreadable was not caught
+  mutant no-container-socket-always-passes: red - no-container-socket/socket was not caught
+  mutant egress-allowed-host-always-passes: red - egress-allowed-host/refused was not caught
+  mutant egress-other-host-refused-always-passes: red - egress-other-host-refused/allowed was not caught
+  mutant egress-direct-refused-always-passes: red - egress-direct-refused/direct was not caught
+  mutant names-do-not-resolve-always-passes: red - names-do-not-resolve/github was not caught
+  mutant study-folders-absent-always-passes: red - study-folders-absent/present was not caught
+  mutant missing-assumed-to-pass: red - probe identity missing passed
+  mutant crash-passes: red - probe identity missing passed
+  mutant no-leak-check: red - a run tree path carrying evaluation passed
+  mutant substring-hits: red - leak_hits is not word-bounded
+  mutant memory-off: red - memory: 536870912 != 1610612736
+  mutant cap-add-allowed: red - an absent fact is expected present
+  mutant user-agent: red - user: '10001:10001' != '10003:10003'
+  mutant one-mount: red - mounts differ
+  mutant tree-under-host-temp: red - study-word host, claude-code: a passing world fails ['run-tree-path-neutral']
+  mutant override-parameter: red - box.preflight.evaluate_with(study_paths)
+  mutant never-pending: red - run_take.pending() = ['TakeSpec.resources']
+  mutant version-unfilled: red - preflight.pending() = ['VERSION_PATTERNS']
+  mutant version-loose: red - the filled values fail ['harness-version-matches-lock']
+  mutant study-empty: red - the filled values fail ['study-folders-absent']
+  mutant leaks-empty: red - the filled values fail ['run-tree-path-neutral']
+  mutant inspect-unfilled: red - run_take.pending() = ['INSPECT_STATUS', 'TakeSpec.resources', 'VENDOR_BILLING_ROUTE_VARIABLES']
+  mutant other-vendors-dropped: red - claude-code
+  mutant skips-unreadable: red - rows [{'pid': 1, 'uid': 10003, 'name': 'sleep', 'uids': [10003, 10003, 10003, 10003], 'gids': [10003
+  mutant py312-feature: red - identity: not 3.11 (Type statement is only supported in Python 3.12 and greater)
+  mutant study-word: red - identity: carries ['probe']
+  mutant reads-tree: red - cgroup: opens something other than /proc or the cgroup root
+  mutant version-without-config-home: red - the version probe carries [], not its config home alone
+  mutant port-typed: red - the egress probe's port is not derived from PROXY_URL
+  mutant tree-in-argv: red - probe identity names the run tree
+  mutant no-isolation: red - probe identity is not python3 -I -B -c
+  mutant agent-root: red - raised Refused: the agent user is 0:0, never another
+  mutant no-names: red - an unsourced credential name is used as a real value
+  mutant no-pattern: red - claude-code: .credentials.json passed
+  mutant check-dropped: red - PREFLIGHT_CHECKS is not the tested ordered tuple
+  mutant check-reordered: red - PREFLIGHT_CHECKS is not the tested ordered tuple
+  mutant watcher-uid: red - WATCHER_UID or the capability bit drifted
+  mutant cap-bit: red - WATCHER_UID or the capability bit drifted
+  mutant lock-keys: red - LOCK_KEYS drifted from w4a's schema paths
+  mutant c3-key: red - the C3 names drifted
+  mutant c3-row: red - the C3 names drifted
+  mutant ev-mount: red - the evidence mount or the blocked names drifted
+  mutant blocked: red - the evidence mount or the blocked names drifted
+  mutant agent-uid: red - the uids drifted
+  mutant claude-loose-tail: red - claude-code: the pattern admits a trailing line
+  mutant codex-no-prefix: red - codex: the pattern does not read 0.162.1 from athena's output
+
+WITNESS drop-mount-source-comparison: red by C4-mount (1 own, 0 collateral, 0 errors) 
+WITNESS lw7-sidecar-lock-not-loaded: red by C7-sidecar (8 own, 0 collateral, 0 errors) 
+WITNESS lw7-sidecar-manifest-not-compared: red by C7-sidecar (1 own, 0 collateral, 0 errors) 
+WITNESS lw7-sidecar-readiness-omitted: red by C7-sidecar (1 own, 0 collateral, 0 errors) 
+WITNESS o1-egress-launch-image-not-compared: red by C8-egress (1 own, 0 collateral, 0 errors) 
+WITNESS o1-egress-manifest-not-compared: red by C8-egress (1 own, 0 collateral, 0 errors) 
+WITNESS o1-egress-readiness-omitted: red by C8-egress (1 own, 0 collateral, 0 errors) 
+WITNESS omit-absolute-path-rule: red by C1-relative (1 own, 0 collateral, 0 errors) 
+WITNESS omit-harness-image-binding: red by C3-cross (1 own, 0 collateral, 0 errors) 
+WITNESS omit-load: red by C1-loader-spy (3 own, 3 collateral, 0 errors) 
+WITNESS omit-readiness: red by C2-pending (4 own, 0 collateral, 0 errors) 
+WITNESS pre-launch-spec: red by C6-launched-spec (2 own, 0 collateral, 0 errors) 
+WITNESS probes-at-another-evidence-path: red by C5-probes-path (3 own, 6 collateral, 0 errors) 

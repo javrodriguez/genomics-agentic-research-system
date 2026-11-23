@@ -1,0 +1,65 @@
+# Analysis plan: sample-pca
+
+Status: DRAFT
+
+An analysis runs only after a person has read this file and approved it. Edit anything;
+approval is what freezes it. After approval the plan is the record of intent -- change of
+mind means a new analysis, not a quiet edit.
+
+## Goal
+Produce a PCA of the samples from the gene counts, coloured by condition, so the user can see
+how the six rnaseq_bulk samples (A1-A3, B1-B3) separate in expression space and whether that
+separation follows the `condition` column of the design (untreated vs treated).
+
+## Inputs
+Artifact types resolve through each sub-stage's OUTPUTS.tsv at execution time; the paths
+below are what they resolve to today.
+
+| Artifact type | Resolved from | Path |
+|---|---|---|
+| `counts_gene` | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper (native) | 02_bioinformatics/rnaseq_bulk/01_nfcore-rnaseq-wrapper/run/results/star_salmon/salmon.merged.gene_counts_length_scaled.tsv |
+| `design` | 01_prepare_samplesheets (native) | 01_samplesheets/rnaseq_bulk_design.csv |
+
+## Method
+All steps run in one Python script, `scripts/sample_pca.py`, in the `gars-bio` environment
+(via `_system/gars-env.sh`), submitted as a single batch job. Inputs are read only; nothing is
+written outside this analysis directory.
+
+1. Resolve both inputs at run time with
+   `_system/resolve_artifact.py --project projects/run-99012efd --assay rnaseq_bulk --consumes counts_gene design`;
+   abort if resolution fails.
+2. Load the count matrix with pandas: index `gene_id`, drop the `gene_name` column, keep the
+   sample columns. Load the design and check that its `sample_id` set equals the matrix's
+   sample columns exactly; abort on any mismatch (no silent dropping of samples).
+3. Round the length-scaled counts to integers (DESeq2 requires integer counts; this is the
+   standard treatment of salmon `gene_counts_length_scaled`). Drop genes with zero counts in
+   every sample.
+4. Variance-stabilising transform with pydeseq2 0.5.4: build a `DeseqDataSet` with design
+   `~condition`, estimate size factors, and apply `vst(use_design=False)` (blind, as is
+   standard for exploratory QC so the transform is not informed by the labels being plotted).
+5. Select the 500 genes with the highest variance across samples in the VST matrix (all
+   retained genes if fewer than 500 remain — the matrix currently has 200 genes, so in practice
+   all of them).
+6. PCA with scikit-learn 1.9.0 `PCA` on the selected genes, samples as observations, genes
+   centred (not scaled), `n_components = min(n_samples, n_genes)` (6 here). Record each
+   component's explained-variance ratio.
+7. Plot PC1 vs PC2 with matplotlib 3.11.1: one point per sample, colour by `condition`
+   (two categorical colours with a legend), each point labelled with its `sample_id`, axis
+   labels giving the percentage of variance explained. Save as PNG (300 dpi) and PDF.
+8. Write the per-sample PC scores (PC1-PC6, joined with `condition`, `group`, `replicate`) and
+   the per-component explained variance as CSV tables.
+
+## Outputs
+Types come from the closed vocabulary in _references/artifact_types.md.
+
+| File | Type | Description |
+|---|---|---|
+| results/pca_pc1_pc2_by_condition.png | figure | PC1 vs PC2 scatter, coloured by condition, points labelled by sample_id |
+| results/pca_pc1_pc2_by_condition.pdf | figure | the same plot, vector format |
+| results/pca_scores.csv | table | one row per sample: sample_id, condition, group, replicate, PC1-PC6 scores |
+| results/pca_explained_variance.csv | table | one row per component: PC, explained variance ratio, cumulative ratio |
+
+## Execution
+Runs: batch
+One batch job via `_system/executorlib.py submit`, 1 CPU, 4 GB memory, 30-minute limit.
+Expected wall time under 2 minutes (6 samples x 200 genes); total output size under 1 MB.

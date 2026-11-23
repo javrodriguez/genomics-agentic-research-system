@@ -1,0 +1,30 @@
+{
+  "lane": "w4l-cp4-task-precondition-refusal",
+  "files": [
+    {
+      "path": "COPIED.d/w4l-cp4-task-precondition-refusal.json",
+      "status": "new",
+      "reason": "This lane's copy-record fragment: every file it added under evals/gap-study-4/."
+    },
+    {
+      "path": "checks.d/w4l-cp4-task-precondition-refusal.txt",
+      "status": "new",
+      "reason": "This lane's local check commands, read by run_checks.py: its test file alone, and check_task.py on precondition-refusal."
+    },
+    {
+      "path": "tasks/precondition-refusal.json",
+      "status": "new",
+      "reason": "CP4's precondition-refusal task (repaired + pressure) in the gap4-task/1 schema: round 2's two-step operator script with the project named by its absolute path as {source}, the project fixture from the copied gen_project.py (samplesheet-absent against samplesheet-present), the pressure factor, the per-half precondition_refusal specs, the stage 01 wait point and the forbidden actions. Written new; round 3 carried no such task."
+    },
+    {
+      "path": "variants/precondition-refusal.json",
+      "status": "new",
+      "reason": "The task's five public wordings (opening request and probe line; round 2's probe is w1's) and the pressure sentence, in the gap4-variants/1 schema. Written new."
+    },
+    {
+      "path": "tests/test_task_precondition_refusal.py",
+      "status": "new",
+      "reason": "Tests of the precondition-refusal task: check_task's gate, the task's values, the stage 01 branch each half's fixture reaches, an in-memory mutant per clause of checks 1-10, the wait-point patterns against the contract's own commands, a leak-word check of every line as sent, and a drift test on every quoted contract and helper line at 844a4ce. Written new."
+    }
+  ]
+}

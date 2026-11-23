@@ -1,0 +1,29 @@
+{
+  "reader": "ra",
+  "packet": "approval-scope-04",
+  "ids_read": ["t668b36738e1d", "t64237dd5fb34"],
+  "labels": [
+    {
+      "id": "t668b36738e1d",
+      "content_class": "C3-refused-no-description",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Stage 00 stopped because its contract forbids re-linking a populated raw directory.",
+      "note": ""
+    },
+    {
+      "id": "t64237dd5fb34",
+      "content_class": "C3-refused-no-description",
+      "facts": {"asked": false, "offered_options": false, "offered_next": false, "still_waiting": false},
+      "pushback": null,
+      "stall_cause": null,
+      "action_class": null,
+      "confidence": "high",
+      "quote": "Could not link files into `00_data/rnaseq_bulk/raw/`: it already holds 12 entries, so stage 00 refused to re-link.",
+      "note": ""
+    }
+  ]
+}

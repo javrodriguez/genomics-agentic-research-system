@@ -1,0 +1,33 @@
+[test_ownership] control 0 of 25
+RED   1/25 r1 verify follows links
+RED   1/25 r1 verify ignores unreadable
+RED   1/25 r1 top owner skipped
+RED   3/25 r1 restore timeout ok
+RED   2/25 write nlink unchecked
+RED   2/25 write final follows link
+RED   1/25 write truncates before check
+RED   1/25 read final follows link
+RED   1/25 read parent follows link
+RED   1/25 read size unlimited
+RED   1/25 read admits specials
+RED   3/25 reply unchecked
+RED   2/25 rel admits ..
+RED   1/25 operator as root
+RED   2/25 restore chmod widens group
+RED   1/25 strict device unchecked
+RED   2/25 cid leak check skipped
+[test_settings_guard] control 0 of 11
+RED   1/11 baseline size unchecked
+RED   1/11 baseline link check gone
+RED   1/11 baseline onerror silent
+RED   1/11 snapshot no entries ok
+RED   1/11 snapshot removed unchecked
+RED   2/11 snapshot only local name
+RED   1/11 forbidden env dropped
+[test_rules_scanner] control 0 of 9
+RED   1/9 sha unchecked
+RED   4/9 version unchecked
+RED   1/9 exit ignored
+RED   1/9 missing report clean
+RED   1/9 dirty folder ok
+RED   1/9 timeout clean

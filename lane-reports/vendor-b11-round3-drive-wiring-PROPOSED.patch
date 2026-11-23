@@ -1,0 +1,306 @@
+--- a/evals/gap-study-4/drive.py
++++ b/evals/gap-study-4/drive.py
+@@ -2044,6 +2044,7 @@
+         self.ownership_hold = None     # why the take's folders are kept for a human: no postflight, scan or commit
+         self.settings = None           # {baseline, refused, checks}: the settings guard's record (settings-guard.json)
+         self.settings_stop = None      # the problems that stopped the take before turn k > 1 (a ruling)
++        self.config_stop = None        # B11: the config folder's problems that stopped an O or G take before turn k > 1
+ 
+ 
+ class TakeDriver:
+@@ -2564,6 +2565,20 @@
+         except Exception as e:  # noqa: BLE001 - a sweep that fails is recorded, never a pass
+             take.session_sweeps.append({"at": at, "refused": f"{type(e).__name__}: {str(e)[:200]}"})
+ 
++    def config_folder(self, take, lease=None):
++        """B11 (lane vendor-b11 round 3): the take's run_take.ConfigFolder for its O or G turns, through the box's
++        census and reads of the config folder (ownership.config_folder): the take image, run tree, config folder and
++        model, the codex lease's placement record (`lease`, the adapter's login: bound to the take's uid map; None
++        for gemini), and the take's uid map."""
++        harness = (take.row.get("agent") or {}).get("harness")
++        uid_map = self.uid_map
++        if callable(uid_map):                       # read at run time (the take container's own map), or given
++            uid_map = uid_map(take)
++        return self.ownership.config_folder(self.runtime, image=take.spec.image, harness=harness,
++                                            run_tree=take.spec.run_tree, config_dir=take.config_dir,
++                                            model=take.row["model"], lease=lease, uid_map=uid_map,
++                                            caller_env=self.caller_env)
++
+     def config_view(self, take) -> tuple:
+         """(lister(rel_dir), reader(rel_path)) over the take's config folder through the box's operator_list and
+         operator_read (drive-wiring review MAJOR 1: the folder is the agent's during the take). A failure of either is
+@@ -2822,6 +2837,13 @@
+                     take.adapter_ref = adapter
+                     try:
+                         turn = adapter.turn(line, first=(n == 1), budget_s=self.budget_s)
++                    except _run_take.ConfigFolderRefused as e:    # B11 (vendor-b11 R-CF): refused before its exec,
++                        if n == 1:                                # routed as the settings guard is: a rehearsal
++                            self._refused(take, e)
++                            ok = False
++                        else:                                     # after turn 1, a stop for a ruling
++                            take.config_stop = f"pre-{n}: the config folder: {'; '.join(e.problems)}"
++                        break
+                     except _adapter.ExecutedTurnRefused as e:     # live harness 3a: the turn ran; account for it
+                         unreadable += self._executed_refused(take, n, line, e)
+                         after = self._settings_problems(take, f"post-{n}")   # review MINOR 2: this road too
+@@ -2914,6 +2936,9 @@
+             if rebound:                       # replaced whole, in the ledger writer's own form
+                 _run_take._write_json(path + ".partial", led)
+                 os.replace(path + ".partial", path)
++        if take.config_stop is not None:          # B11 after turn 1, as the settings guard: cleaned and scanned
++            raise DriveRefused(f"{take.config_stop}: no further turn is sent; the take is kept for a human ruling "
++                               f"(no registered harness-error row reads it), never a re-run")
+         if take.settings_stop is not None:        # the settings guard after turn 1: cleaned, recorded and scanned
+             raise DriveRefused(f"{take.settings_stop}: no further turn is sent; the take is kept for a human ruling "
+                                f"(no registered harness-error row reads it), never a re-run")
+@@ -3596,7 +3621,7 @@
+ 
+ 
+ def harness_adapter_for(*, runtime, login_file: str, counters_for, pin_for, clock,
+-                        rollout_for=None, caller_env=None, config_view=None):
++                        rollout_for=None, caller_env=None, config_view=None, config_folder=None):
+     """The three production adapters, with no default harness or invented evidence.
+ 
+     Codex rollout_for(take, interaction_n) must retain and return the native
+@@ -3617,7 +3642,11 @@
+                       run_tree=take.launched.spec.run_tree, login_file=login_file_of(login_file, take),
+                       model=row["model"], pin=pin_for(row),
+                       stream_path_for=lambda n: stream_path(take, n),
+-                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env)
++                      counters_for=lambda: counters_for(take), clock=clock, caller_env=caller_env,
++                      # B11 (vendor-b11 R-CF): the take's config folder record (walk_driver binds the driver's)
++                      config_folder=None)
++        if callable(config_folder):
++            common["config_folder"] = config_folder(take, common["login_file"] if harness == "codex" else None)
+         if harness == "codex":
+             if callable(rollout_for):
+                 return _codex.CodexAdapter(**common, rollout_for=lambda n: rollout_for(take, n))
+@@ -3851,7 +3880,8 @@
+         sidecar_for=sidecar_for, proxy=proxy, lock_path=lock_path, hosts=hosts,
+         adapter_for=harness_adapter_for(runtime=runtime, login_file=login_file, counters_for=counters_for,
+                                         pin_for=pin_for, clock=clock, rollout_for=rollout_for, caller_env=caller_env,
+-                                        config_view=lambda take: bound["driver"].config_view(take)),
++                                        config_view=lambda take: bound["driver"].config_view(take),
++                                        config_folder=lambda take, lease: bound["driver"].config_folder(take, lease)),
+         script_for=script_for, pin_for=pin_for,
+         checker=take_checker(design_for=lambda row, take: design_for(row, take.launched.spec.run_tree),
+                              records=records),
+--- a/evals/gap-study-4/tests/test_drive_ownership.py
++++ b/evals/gap-study-4/tests/test_drive_ownership.py
+@@ -580,6 +580,60 @@
+     return out
+ 
+ 
++@contextmanager
++def config_refused_at(k: int):
++    """B11 (lane vendor-b11 round 3): the fake turn k raises run_take.ConfigFolderRefused before anything of it runs,
++    as run_take.run_turn does for an arm O or G turn whose config folder check refuses (tests/test_config_folder.py)."""
++    real = tbi.FakeAdapter._turn
++
++    def turn(self, line, *, first, budget_s):
++        if self._turns + 1 == k:
++            raise rt.ConfigFolderRefused(["extra.txt: neither placed nor on codex's allow-list"], k)
++        return real(self, line, first=first, budget_s=budget_s)
++    with mock.patch.object(tbi.FakeAdapter, "_turn", turn):
++        yield
++
++
++@tbi.guarded("C1-config-turn-one")
++def c1_config_turn_one(mod, p):
++    """B11 R-CF: a config folder refusal before turn 1 is routed as the settings guard's pre-1 problem is: no turn is
++    sent, the take rehearses, and the refusal record names the config folder."""
++    out = []
++    with tbi.scratch_repo() as root:
++        rig = tbi.Rig(mod, root)
++        with config_refused_at(1):
++            b, got = tbi.run_batch(rig, [tbi.row(1)])
++        o = got[0]
++        if o["state"] != tbi.labels4.REHEARSAL:
++            out.append(f"{p}: a config folder refusal before turn 1 is {o['state']} ({o['reason']})")
++        if rig.adapters and rig.adapters[0].lines:
++            out.append(f"{p}: turn 1 was sent: {rig.adapters[0].lines}")
++        take = rig.driver.published_takes[0] if rig.driver.published_takes else None
++        rec = read(os.path.join(take.folder, mod.REFUSAL_RECORD)) if take else None
++        if not rec or rec.get("refused") != "ConfigFolderRefused" or "extra.txt" not in rec.get("why", ""):
++            out.append(f"{p}: the refusal is not recorded with its problems: {rec}")
++    return out
++
++
++@tbi.guarded("C2-config-later")
++def c2_config_later(mod, p):
++    """B11 R-CF: a config folder refusal before turn k > 1 stops the take as the settings guard's pre-k problem does:
++    nothing further is sent, and the take is kept for a ruling, never a re-run (harness-error's side, not graded)."""
++    out = []
++    with tbi.scratch_repo() as root:
++        rig = tbi.Rig(mod, root, turns=[{"text": "a"}, {"text": "b"}, {"text": "c"}])
++        with config_refused_at(2):
++            b, got = tbi.run_batch(rig, [tbi.row(1)])
++        o = got[0]
++        if o["state"] != tbi.labels4.FAILED or o["drive_started"] is not True or "pre-2" not in (o["reason"] or "") \
++                or "config folder" not in (o["reason"] or ""):
++            out.append(f"{p}: a config folder refusal before turn 2 is {o['state']} (drive_started "
++                       f"{o['drive_started']}): {o['reason']}")
++        if len(rig.adapters[0].lines) != 1:
++            out.append(f"{p}: {len(rig.adapters[0].lines)} lines were sent, not 1")
++    return out
++
++
+ @tbi.guarded("S3-later")
+ def s3_later(mod, p):
+     out = []
+@@ -843,7 +897,8 @@
+           "S1-baseline": s1_baseline, "S2-turn-one": s2_turn_one, "S3-later": s3_later, "B3-one-road": b3_one_road,
+           "U1-uid-map": u1_uid_map, "P2-machine": p2_machine,
+           "L1-ledger": l1_ledger, "N1-native": n1_native,
+-          "S4-executed": s4_executed, "O9-early": o9_early, "R6-ruling": r6_ruling}
++          "S4-executed": s4_executed, "O9-early": o9_early, "R6-ruling": r6_ruling,
++          "C1-config-turn-one": c1_config_turn_one, "C2-config-later": c2_config_later}
+ 
+ # name: (edits to drive.py, the check whose own line must go red)
+ MUTANTS = {
+@@ -914,6 +969,12 @@
+     "post-unchecked": ((("                    after = self._settings_problems(take, f\"post-{n}\")   # the settings guard, "
+                          "the last turn's too",
+                          "                    after = []"),), "S3-later"),
++    "config-turn-one-not-rehearsed": ((("                        if n == 1:                                # routed as "
++                                        "the settings guard is: a rehearsal",
++                                        "                        if False:                                # routed as "
++                                        "the settings guard is: a rehearsal"),), "C1-config-turn-one"),
++    "config-later-unstopped": ((("        if take.config_stop is not None:          # B11 after turn 1",
++                                 "        if False:          # B11 after turn 1"),), "C2-config-later"),
+     "missing-snapshot-passes": ((("            problems = [f\"{label}: the settings check could not run "
+                                   "({type(e).__name__}: {str(e)[:200]})\"]",
+                                   "            problems = []"),), "S3-later"),
+@@ -981,6 +1042,12 @@
+     def test_s3_later(self):
+         self.assertEqual(s3_later(tbi.drive), [])
+ 
++    def test_c1_config_turn_one(self):
++        self.assertEqual(c1_config_turn_one(tbi.drive), [])
++
++    def test_c2_config_later(self):
++        self.assertEqual(c2_config_later(tbi.drive), [])
++
+     def test_b3_one_road(self):
+         self.assertEqual(b3_one_road(tbi.drive), [])
+ 
+@@ -1026,6 +1093,12 @@
+     def test_grant_skipped(self):
+         self.kill("grant-skipped")
+ 
++    def test_config_turn_one_not_rehearsed(self):
++        self.kill("config-turn-one-not-rehearsed")
++
++    def test_config_later_unstopped(self):
++        self.kill("config-later-unstopped")
++
+     def test_restore_after_postflight(self):
+         self.kill("restore-after-postflight")
+ 
+--- a/evals/gap-study-4/tests/test_box_integration.py
++++ b/evals/gap-study-4/tests/test_box_integration.py
+@@ -243,6 +243,17 @@
+         self.box, self.fail_grant, self.fail_restore, self.fail_write = box, fail_grant, fail_restore, fail_write
+         self.fail_read = fail_read
+         self.events: list = []
++        self.config_folders: list = []
++
++    def config_folder(self, runtime, *, image, harness, run_tree, config_dir, model, lease, uid_map,
++                      caller_env=None):
++        """B11 (lane vendor-b11 round 3): the box's ownership.config_folder on fakes. The record's arguments are
++        kept (config_folders, never `events`, whose order other checks read) and returned as the stand-in record an
++        O or G turn hands run_turn; the real check and its census are tests/test_config_folder.py's."""
++        rec = {"image": image, "harness": harness, "run_tree": run_tree, "config_dir": config_dir, "model": model,
++               "lease": lease, "uid_map": uid_map}
++        self.config_folders.append(rec)
++        return rec
+ 
+     def _at(self):
+         return None if self.box is None else len(self.box.calls)
+--- a/evals/gap-study-4/tests/test_config_folder.py
++++ b/evals/gap-study-4/tests/test_config_folder.py
+@@ -630,6 +630,46 @@
+             self.refused(t.problems(1), "R-OA.home", f"{h}: .home owned by another uid", ".home", "owned")
+ 
+ 
++# ---------------------------------------------------------------------------------- C11 (the drive's wiring)
++class C11DriveWiring(Case):
++    def test_each_o_and_g_adapter_gets_the_takes_record(self):
++        import drive
++        from types import SimpleNamespace
++        take = SimpleNamespace(launched=SimpleNamespace(take_id="d" * 64, spec=SimpleNamespace(run_tree="/srv/w/t")),
++                               spec=SimpleNamespace(image=IMAGE, run_tree="/srv/w/t"), config_dir="/srv/c/cfg",
++                               identity={"session_id": "s"}, folder="/srv/w/records",
++                               row={"agent": {"harness": "codex"}, "model": "gpt-6.1-sol"})
++        asked = []
++
++        def config_folder(tk, lease):
++            asked.append((tk, lease))
++            return ("RECORD", len(asked))
++        factory = drive.harness_adapter_for(runtime=None, login_file=lambda tk: "LEASE-RECORD",
++                                            counters_for=lambda tk: {}, clock=lambda: 0,
++                                            pin_for=lambda row: {"permission_mode": {"codex": "bypass", "gemini": "yolo",
++                                                                                     "claude-code": "bypass"}
++                                                                 .get(row["agent"]["harness"])},
++                                            rollout_for=lambda tk, n: "r", config_folder=config_folder)
++        got = {h: factory({"agent": {"harness": h}, "model": "synthetic-model"}, take) for h in ("codex", "gemini")}
++        self.assertEqual([(tk is take, lease) for tk, lease in asked], [(True, "LEASE-RECORD"), (True, None)],
++                         "R-CF.drive: the factory did not ask for the take's record with the codex lease alone")
++        self.assertEqual((got["codex"].config_folder, got["gemini"].config_folder), (("RECORD", 1), ("RECORD", 2)),
++                         "R-CF.drive: an adapter does not hold the take's record")
++        src = Path(drive.__file__).read_text()
++        self.assertIn('config_folder=lambda take, lease: bound["driver"].config_folder(take, lease)', src,
++                      "R-CF.drive: walk_driver does not bind the driver's config folder record")
++        calls = []
++        road = SimpleNamespace(config_folder=lambda runtime, **kw: calls.append((runtime, kw)) or "BUILT")
++        driver = SimpleNamespace(runtime="RUNTIME", ownership=road, uid_map=lambda tk: ((10001, 1000, 1),),
++                                 caller_env={"PATH": "/usr/bin"})
++        self.assertEqual(drive.TakeDriver.config_folder(driver, take, "LEASE-RECORD"), "BUILT")
++        self.assertEqual(calls, [("RUNTIME", {"image": IMAGE, "harness": "codex", "run_tree": "/srv/w/t",
++                                              "config_dir": "/srv/c/cfg", "model": "gpt-6.1-sol",
++                                              "lease": "LEASE-RECORD", "uid_map": ((10001, 1000, 1),),
++                                              "caller_env": {"PATH": "/usr/bin"}})],
++                         "R-CF.drive: the record is not built from the take's own facts")
++
++
+ # ------------------------------------------------------------------------------------------------- witnesses
+ def mutants() -> dict:
+     """name -> (clause, old text in box/run_take.py, new text). Each weakens one guard; old occurs exactly once."""
+--- a/evals/gap-study-4/tests/test_pending_walk.py
++++ b/evals/gap-study-4/tests/test_pending_walk.py
+@@ -157,10 +157,7 @@
+         # has filled it (Gemini: bea73659 / 3a0d7f5a; Codex: 9d4bfd40) the real list is checked (the Gemini walk wiring).
+         routes = dict(rt.VENDOR_BILLING_ROUTE_VARIABLES)
+         routes.update({h: () for h in (rt.CODEX, rt.GEMINI) if routes.get(h) == rt.PENDING})
+-        # B11 (lane vendor-b11 round 3): run_take.check_config_folder runs before every O and G exec and refuses a turn
+-        # without its take's record; drive.py (a native reader source, frozen outside edits B and C) does not hand one
+-        # yet (BLOCKED ON glitch-26), so on this road the check is a recording spy. Its own tests: test_config_folder.
+-        self.config_checks: list = []
++        self.config_checks: list = []      # B11's per-turn check, recorded: its own tests are test_config_folder's
+         for name, value in (("VENDOR_BILLING_ROUTE_VARIABLES", routes),
+                             ("run_turn", journaling(run_turn or rt.run_turn)),
+                             ("check_config_folder", lambda folder, **kw: self.config_checks.append((folder, kw)))):
+@@ -205,7 +202,9 @@
+             adapter_for=drive.harness_adapter_for(runtime=r.box, login_file=str(login),
+                                                   counters_for=lambda take: {"oom_kill": 0, "pids_max": 0},
+                                                   pin_for=self.pin_for, clock=r.clock,
+-                                                  config_view=lambda take: self.driver.config_view(take)),
++                                                  config_view=lambda take: self.driver.config_view(take),
++                                                  config_folder=lambda take, lease: self.driver.config_folder(take,
++                                                                                                             lease)),
+             script_for=lambda row: [{"n": k, "line": f"sent {k}"} for k in range(1, turns + 1)],
+             pin_for=self.pin_for, checker=self.never_checked, secrets=lambda: [("token", tbi.TOKEN)],
+             rules_scanner=lambda paths: [], uid_map=tbi.UID_MAP, budget_s=600, finalize_wait_s=tbi.CAP_S,
+@@ -346,6 +345,12 @@
+         for k in (1, 2):
+             self.assertTrue((road.folder / f"turn-{k}.jsonl.launch.json").is_file())
+             self.assertTrue((road.folder / "session" / f"native-turn-{k}.jsonl").is_file())
++        # B11 (lane vendor-b11 round 3, R-CF): each turn reached run_take's config folder check with the take's record
++        # from the driver's ownership road (TakeDriver.config_folder) and its number
++        checks = [(kw["harness"], kw["turn"], folder.get("harness"), folder.get("model"), folder.get("lease"),
++                   folder.get("uid_map")) for folder, kw in road.config_checks]
++        self.assertEqual(checks, [("gemini", k, "gemini", MODEL, None, tbi.UID_MAP)
++                                  for k in (1, 2)])
+         self.assertEqual(walk_register.check(road.study / "rehearsals", walk_register.design_in_force(road.study))[0],
+                          [])
+         self.assertEqual(run.walk_problems(road.study)[0], [])

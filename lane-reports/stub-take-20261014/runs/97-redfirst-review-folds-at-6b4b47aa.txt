@@ -1,0 +1,6 @@
+== test_preflight (review folds: size, non-regular, credential-named link, link to an ancestor, unreadable candidate) against 6b4b47aa's preflight.py
+FAIL: test_the_lease_admits_exactly_its_one_credential (test_preflight.TestLeasePostflight.test_the_lease_admits_exactly_its_one_credential)
+AssertionError: Lists differ: ['a link to the folder holding the credent[85 chars]ing'] != []
+'a link to the folder holding the credential: admitted'
+Ran 56 tests in 7.040s
+FAILED (failures=1)
