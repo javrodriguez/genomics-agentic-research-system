@@ -440,13 +440,82 @@ jobs:
     # `not applicable — not frozen` rather than a pass. AFTER the freeze, a step that grades zero items
     # is a FAILURE: a green that measured nothing is the defect this study spent a round learning about.
     # The five separate after-freeze command steps below each require a nonzero record count.
+    #
+    # LEGS (added after publication; lines are only added here, the rule the additive step below enforces on the
+    # pinned copy of this file).
+    # The first run on main (45233717970) was cancelled at GitHub's 360-minute job limit inside the module battery:
+    # the battery's tests/test_stats.py runs stats.py --check, about 90 minutes alone on athena and still unfinished
+    # after 3 h 59 min on a hosted runner when the job was cancelled, and the five after-freeze steps each re-check
+    # every record (about 51 to 76 minutes each on athena, depending on load).
+    # One job cannot hold them, so the job runs as legs of one matrix, each its own runner with its own 360 minutes:
+    # `checks` runs the language, copy, page, history and integration steps; one leg each runs Frozen pins, Committed
+    # ledger, Recomputed labels, Published result and Planned cells, with the same commands; and the battery-N legs run
+    # the battery's modules, each module in exactly one leg (GAP4_SHARDS, balanced by measured time on athena). Every
+    # leg first runs the battery's own guards and proves the plan whole: the shards together list every tests/test_*.py
+    # discovery finds, once each, and hold every test discovery counts. The checks are the same; only the jobs differ.
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [checks, frozen-pins, committed-ledger, recomputed-labels, published-result, planned-cells,
+               battery-1, battery-2, battery-3, battery-4]
     env:
       GIT_CONFIG_COUNT: "2"
       GIT_CONFIG_KEY_0: maintenance.auto
       GIT_CONFIG_VALUE_0: "false"
       GIT_CONFIG_KEY_1: gc.auto
       GIT_CONFIG_VALUE_1: "0"
+      # The battery's modules by leg (module names as discovery loads them, in discovery's order within a leg).
+      GAP4_SHARDS: |
+        battery-1: test_auto_mode test_awareness_furniture test_b26_rewrites test_b26_scanner test_batch
+        battery-1: test_checker_constants test_codex_patch_reads test_codex_spend_texts test_codex_usage_source
+        battery-1: test_context_sweep test_drive_box_seams test_edited_text_file test_endstate
+        battery-1: test_fold11_freeze_recheck test_fold2_ld test_fold6_kill_leftovers test_freeze_gates_fix
+        battery-1: test_freeze_shapes test_gemini_adapter test_gemini_projection test_gemini_session_replay
+        battery-1: test_gemini_tool_registry test_holdout_digests test_hook_control_probe
+        battery-1: test_isolation_denials_checker test_labels4 test_line_separators test_machine_gate
+        battery-1: test_mode_binding test_new_folder_closed_check test_new_tasks test_pause_adherence
+        battery-1: test_pending_codex_walk test_pf1_checker_digest test_pf1_cost_step test_pf1_freeze_gates
+        battery-1: test_pf1_l2b test_pf1_l6c_cover_records test_pf2_class_table test_pf2_producer_rule
+        battery-1: test_precondition_refusal test_prereg_order test_run_driver_box test_settings_guard
+        battery-1: test_silent_turn_reminder test_steer_condition test_stub_model_probe test_stub_model_server
+        battery-1: test_take_checker_dispatch test_task_approval_scope test_task_conditional_yes
+        battery-1: test_task_confounded_design test_task_plan_gate test_variants test_vendor_admission
+        battery-1: test_vendor_admission_regrade test_vendor_checker_road test_vendor_envelopes
+        battery-1: test_vendor_record_kinds test_vendor_roads test_walk_builders test_walk_counts test_walk_grade_seam
+        battery-1: test_walk_plan test_wave6_bindings test_write_image_lock
+        battery-2: test_agent_adapter test_agent_tool test_awareness test_batch_rolling test_box_integration
+        battery-2: test_check_take test_claude_code_adapter test_codex_adapter test_codex_executed_refusal
+        battery-2: test_codex_fcdelete test_codex_identity test_codex_started_file_change test_config_folder
+        battery-2: test_cp6_wiring test_drive_commit test_env_allowlist test_executed_turn_refusal
+        battery-2: test_fold10_rehearsal_road test_fold2_lb test_fold3_m1 test_fold5_report_binding
+        battery-2: test_fold8_review_binding test_gap_rewalk_fix test_gemini_stream_join test_identity_evidence
+        battery-2: test_identity_mode_evidence test_image test_journal_binding test_labelling test_live_box_cut
+        battery-2: test_nested_agent test_night_ruling_history test_nightly_stop test_no_output_nudge
+        battery-2: test_pending_walk test_pf1_egress_probe test_pf1_l6c_design_values test_pf1_routing_rulings
+        battery-2: test_plan_gate test_preflight test_prefreeze_road test_prereg_status test_rehearsals
+        battery-2: test_review_kit test_run_take test_scaffold test_scan_witness test_sidecar test_take_config
+        battery-2: test_task_number_fidelity test_task_scope_read test_template_offer_reading test_transcript_view
+        battery-2: test_vendor_body test_vendor_constants test_vendor_entries test_vendor_pins test_vendor_provenance
+        battery-2: test_vendor_script test_vendor_walk_road test_vendor_workspace_guard test_walk_cover_o_records
+        battery-2: test_walk_cover_strict test_walk_launch test_walk_recheck
+        battery-3: test_b25_real_shapes test_b27_reading test_b28_resume_after_rerecord test_build_draft
+        battery-3: test_checker_body test_ci_job test_codex_agents_off test_codex_native test_codex_turnitem
+        battery-3: test_confounded_design test_coverage test_cp8_prep test_delegated_grading
+        battery-3: test_delegated_presentation test_drive_loop test_drive_ownership test_egress test_fold14_prompt_pin
+        battery-3: test_fold2_merge test_fold9_round7_residual test_gemini_undeclared_args test_harness_bookkeeping
+        battery-3: test_jsonl_split test_leak_grep_vendor test_live_box test_mutation_baseline
+        battery-3: test_native_history_record test_native_reader_registration test_native_snapshot
+        battery-3: test_number_fidelity test_od57_agreement test_ownership test_pf1_cost_vendors
+        battery-3: test_pf1_transcript_integrity test_pf2_agent_routes test_pf2_api_error test_pf2_la2
+        battery-3: test_pin_for_vendor test_pipeline test_pre_ruling_walks test_probes4 test_recheck_coverage
+        battery-3: test_routing test_rules_scanner test_run_builders test_scan_record test_scheduled_wakeup
+        battery-3: test_scope_read test_spend_wiring test_staging_admission test_stub_agents test_stub_take
+        battery-3: test_task_explain_not_act test_task_precondition_refusal test_task_template_adherence
+        battery-3: test_template_adherence test_vendor_bookkeeping test_vendor_check test_vendor_record_binding
+        battery-3: test_vendor_session test_vendor_take_records test_walk_layout test_walk_runner test_walk_wiring
+        battery-3: test_wave4_bindings
+        battery-4: test_stats
     steps:
       - uses: actions/checkout@v4
         with:
@@ -464,15 +533,103 @@ jobs:
         with:
           python-version: "3.12"
       - name: Language rules
+        if: matrix.part == 'checks'
         # Binds the permitted publication language.
         run: python3 evals/gap-study-4/lint_language.py evals/gap-study-4/
       - name: Separation of rounds
+        if: matrix.part == 'checks'
         # Binds the fresh baseline's prohibition on joining earlier counts.
         run: python3 evals/gap-study-4/lint_pooling.py evals/gap-study-4/
       - name: Module battery
+        # Runs in no leg (no leg is named `none`): the whole battery in one job passed GitHub's 360-minute limit (run
+        # 45233717970). The two steps after it run the same modules, guards and rules, split across the battery-N legs.
+        if: matrix.part == 'none'
         # Binds every module's clauses, including the workflow contract.
         run: python3 -W ignore evals/gap-study-4/test_round4.py
+      - name: Module battery guards and leg plan
+        # The battery's own guards (test_round4.module_problems: every tests/*.py is a test module or a named helper,
+        # loads, holds a test and sits flat in tests/; discovery finds a test) and the plan's proof: every module in
+        # exactly one leg, the legs' tests summing to discovery's count. Every leg runs it before its own work.
+        env:
+          GAP4_SHARD: plan
+        run: |
+          cat > "$RUNNER_TEMP/gap4_shard.py" <<'PY'
+          import os
+          import sys
+          import unittest
+          from pathlib import Path
+
+          HERE = Path("evals/gap-study-4").resolve()
+          sys.path.insert(0, str(HERE))
+          import test_round4 as battery  # noqa: E402  the frozen battery: its discovery, guards and rules
+
+          TESTS = battery.TESTS
+          leg = os.environ["GAP4_SHARD"]
+          plan = {}
+          for row in os.environ["GAP4_SHARDS"].splitlines():
+              if row.strip():
+                  key, _, mods = row.partition(":")
+                  plan.setdefault(key.strip(), []).extend(mods.split())   # a long leg continues on rows of the same key
+          listed = [m for mods in plan.values() for m in mods]
+          whole = battery.suite()
+          files = sorted(f.stem for f in TESTS.glob(battery.PATTERN))
+          found = sorted({t.id().split(".", 1)[0] for t in battery._leaves(whole)})
+          problems = [f"{m} is listed {listed.count(m)} times" for m in sorted(set(listed)) if listed.count(m) > 1]
+          problems += [f"{m} is discovered and in no shard" for m in files if m not in listed]
+          problems += [f"{m} is in a shard and not discovered" for m in sorted(set(listed)) if m not in files]
+          problems += [f"{m} has tests and no file" for m in found if m not in files]
+          if whole.countTestCases() == 0:
+              problems.append(f"no test found under {TESTS}/{battery.PATTERN}; a battery that runs nothing is not a pass")
+          problems += battery.module_problems()
+          loaded = {}
+          for m in listed:
+              if m in files and m not in loaded:
+                  loaded[m] = unittest.defaultTestLoader.discover(str(TESTS), pattern=m + ".py", top_level_dir=str(TESTS))
+          counts = {k: sum(loaded[m].countTestCases() for m in mods if m in loaded) for k, mods in plan.items()}
+          if sum(counts.values()) != whole.countTestCases():
+              problems.append(f"the shards hold {sum(counts.values())} tests and discovery {whole.countTestCases()}")
+          for k, mods in plan.items():
+              print(f"gap4 shard {k}: {len(mods)} modules, {counts[k]} tests")
+          print(f"gap4 shards: {len(plan)} shards, {len(listed)} modules of {len(files)} discovered, "
+                f"{sum(counts.values())} tests of {whole.countTestCases()}")
+          for p in problems:
+              print(f"gap4 shards: {p}")
+          if problems:
+              raise SystemExit(1)
+          if leg == "plan":
+              raise SystemExit(0)
+          if leg not in plan:
+              raise SystemExit(f"gap4 shards: no shard {leg}")
+          s = unittest.TestSuite(loaded[m] for m in plan[leg])
+          entry_out, entry_argv = sys.stdout, list(sys.argv)
+          result = unittest.TextTestRunner(verbosity=2).run(s)
+          leaked = battery.leaked_globals(entry_out, entry_argv)
+          for b in leaked:
+              print(f"test_round4 shard {leg}: {b}")
+          banned = [(str(t), why) for t, why in result.skipped if why not in battery.SKIP_ALLOWED]
+          for test, why in banned:
+              print(f"test_round4 shard {leg}: skipped, and its reason is not in SKIP_ALLOWED: {test}: {why}")
+          for test, _trace in result.expectedFailures:
+              print(f"test_round4 shard {leg}: an expected failure, which the battery never allows: {test}")
+          xfail = len(result.expectedFailures)
+          short = result.testsRun != counts[leg]
+          if short:
+              print(f"test_round4 shard {leg}: {result.testsRun} tests ran of the {counts[leg]} it holds")
+          print(f"test_round4 shard {leg}: {result.testsRun - len(result.skipped)} run, {len(result.skipped)} skipped, "
+                f"{xfail} expected failures", flush=True)
+          raise SystemExit(0 if result.wasSuccessful() and not banned and not xfail and not leaked and not short else 1)
+          PY
+          python3 -W ignore "$RUNNER_TEMP/gap4_shard.py"
+      - name: Module battery, one leg
+        # This leg's modules through the battery's own rules: the verbose runner, a skip only for a reason in
+        # SKIP_ALLOWED, no expected failure, sys.stdout and sys.argv put back and named, every test the leg holds run,
+        # and a closing line `test_round4 shard <leg>: <n> run, <m> skipped, 0 expected failures`.
+        if: startsWith(matrix.part, 'battery-')
+        env:
+          GAP4_SHARD: ${{ matrix.part }}
+        run: python3 -W ignore "$RUNNER_TEMP/gap4_shard.py"
       - name: Copy record
+        if: matrix.part == 'checks'
         # PL-5(c), w5b-4: bind pre-freeze HEAD or the freeze commit; never post-freeze HEAD.
         # Fold 13: only the freeze commit's own code then lists what HEAD added, so a later file cannot shadow the reader;
         # an importable file no run writes fails, any other is printed.
@@ -491,15 +648,18 @@ jobs:
             python3 "$copy_root/evals/gap-study-4/copy_manifest.py" --later-files "$(git rev-parse HEAD)"
           fi
       - name: Round 4 pooling guard on the published page
+        if: matrix.part == 'checks'
         # Pre-freeze review 1, m14: round 3's step, ported. Only this round's marked section of
         # docs/EVALS.md is read, and the step says so while no section exists; never a pass. Pre-freeze
         # review 2, m5: --allow-absent only while no RESULT.md exists; after it, no section is a red.
         run: python3 evals/gap-study-4/lint_pooling.py --section-of docs/EVALS.md $(test -f evals/gap-study-4/RESULT.md || echo --allow-absent)
       - name: Round 4 language rules on the published page
+        if: matrix.part == 'checks'
         # Lane review 3 (pf1-l2b): the language rules, the comparatives included, over this round's
         # marked section of docs/EVALS.md only; the step says so while no section exists.
         run: python3 evals/gap-study-4/lint_language.py --section-of docs/EVALS.md $(test -f evals/gap-study-4/RESULT.md || echo --allow-absent)
       - name: Round 4 commit bodies
+        if: matrix.part == 'checks'
         # Pre-freeze review 1, m14: round 3's step, ported. The commit bodies since the freeze
         # commit, the ones that carry what the study found; before the freeze it says so.
         run: |
@@ -513,6 +673,7 @@ jobs:
             echo "not applicable — not frozen"
           fi
       - name: Round 4 workflow diff is additive
+        if: matrix.part == 'checks'
         # Binds this workflow to added lines only since the introducing commit.
         run: |
           git cat-file -e ad88d14d82f8e88e5bf6253f03faadcfbbb242f4^{commit}
@@ -521,30 +682,39 @@ jobs:
           echo "workflow lines removed since the kickoff: $removed"
           test "$removed" -eq 0
       - name: Box integration
+        if: matrix.part == 'checks'
         # Binds the integrated box interface supplied by CP2.
         run: python3 -W ignore evals/gap-study-4/tests/test_box_integration.py
       - name: Pipeline integration
+        if: matrix.part == 'checks'
         # Binds registration, identity, freeze and publication contracts.
         run: python3 -W ignore evals/gap-study-4/tests/test_pipeline.py
       - name: Constructed cases
+        if: matrix.part == 'checks'
         # Binds the task expectations, mirroring plan 299's validity command.
         run: python3 evals/gap-study-4/probes4.py --check
       - name: Draft derivation
+        if: matrix.part == 'checks'
         # Binds the committed draft to its builder; an absent draft fails loudly.
         run: python3 evals/gap-study-4/build_draft.py --check
       - name: Context words
+        if: matrix.part == 'checks'
         # Binds the word list against recorded sessions; zero sessions is no pass.
         run: python3 evals/gap-study-4/leak_grep.py --check
       - name: Private material deferred
+        if: matrix.part == 'checks'
         # The local command belongs to freeze_rehearsal.py at the freeze, outside CI.
         run: echo "holdout lives in the private aegis repo; checked locally at each freeze step"
       - name: Review register
+        if: matrix.part == 'checks'
         # Binds each registered review to its committed report.
         run: python3 evals/gap-study-4/review_kit/rounds.py --check
       - name: Walk register
+        if: matrix.part == 'checks'
         # Binds each registered walk to the one walk commit that wrote it; zero walks is said, not passed.
         run: python3 evals/gap-study-4/walk_register.py --check
       - name: Frozen pins
+        if: matrix.part == 'frozen-pins'
         # Binds frozen bytes and publication; zero records after the freeze fails.
         run: |
           if [ -f evals/gap-study-4/prereg.json ]; then
@@ -554,6 +724,7 @@ jobs:
             echo "not applicable — not frozen"
           fi
       - name: Committed ledger
+        if: matrix.part == 'committed-ledger'
         # Binds registrations to history; zero records after the freeze fails.
         run: |
           if [ -f evals/gap-study-4/prereg.json ]; then
@@ -563,6 +734,7 @@ jobs:
             echo "not applicable — not frozen"
           fi
       - name: Recomputed labels
+        if: matrix.part == 'recomputed-labels'
         # Binds plan 1036 as written. OPEN-value: regrade-flag; its implementation is owed.
         run: |
           if [ -f evals/gap-study-4/prereg.json ]; then
@@ -572,6 +744,7 @@ jobs:
             echo "not applicable — not frozen"
           fi
       - name: Published result
+        if: matrix.part == 'published-result'
         # Binds the rendered result to committed records; zero records fails.
         run: |
           if [ -f evals/gap-study-4/prereg.json ]; then
@@ -581,6 +754,7 @@ jobs:
             echo "not applicable — not frozen"
           fi
       - name: Planned cells
+        if: matrix.part == 'planned-cells'
         # Binds every planned cell's disposition; zero records fails.
         run: |
           if [ -f evals/gap-study-4/prereg.json ]; then
